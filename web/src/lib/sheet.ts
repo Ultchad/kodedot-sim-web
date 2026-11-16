@@ -4,7 +4,7 @@ export type Detent = 'peek' | 'half' | 'full';
 export const PEEK_PX = 72;
 
 export function detentHeights(vh: number): Record<Detent, number> {
-  return { peek: PEEK_PX, half: Math.max(300, Math.round(vh * 0.5)), full: Math.max(320, vh - 16) };
+  return { peek: PEEK_PX, half: Math.max(300, Math.round(vh * 0.5)), full: Math.max(320, vh - 40) };
 }
 
 /** Nearest detent to a dragged height; a quick flick (px/ms, negative = upwards) goes one step further in its direction. */

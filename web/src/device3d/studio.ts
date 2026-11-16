@@ -12,7 +12,7 @@
  *   top    overhead strip (lights the top face, draws the top fillets)
  *   rims   two tall strips behind, left and right (edge light on the walls,
  *          so no wall ever sinks into the page colour)
- *   floor  weak bounce in the page colour from below
+ *   floor  bounce from below, a light version of the page colour
  *   sheen  seen by the glossy parts only: a soft panel off to the right
  */
 import { BackSide, BoxGeometry, Color, DoubleSide, Mesh, MeshBasicMaterial, PlaneGeometry, PMREMGenerator, Scene, type Texture, type WebGLRenderer } from 'three';
@@ -32,11 +32,11 @@ export const STUDIO: { room: string; roomPower: number; panels: Panel[] } = {
   panels: [
     { pos: [6, 7, 7], size: [7, 7], colour: '#fffaf3', power: 5.8 }, // key
     { pos: [-8.5, 1.5, 4.5], size: [6, 9], colour: '#f4f6ff', power: 1.65 }, // fill
-    { pos: [0, 1, 11], size: [16, 12], colour: '#fffdfa', power: 1.2, mirrored: false }, // front
+    { pos: [0, -1, 11], size: [16, 17], colour: '#fffdfa', power: 1.25, mirrored: false }, // front (reaches low: faces tilted downwards must not sink into the page colour)
     { pos: [0, 10, -1], size: [9, 5], colour: '#ffffff', power: 3.4 }, // top
     { pos: [-8.5, 2, -6], size: [2.4, 11], colour: '#fff7ec', power: 5.0 }, // rim left
     { pos: [8.5, 2, -6.5], size: [2.4, 11], colour: '#f4f6ff', power: 5.0 }, // rim right
-    { pos: [0, -7, 1], size: [18, 18], colour: '#c2bab3', power: 0.6, mirrored: false }, // floor bounce (the page colour)
+    { pos: [0, -7, 1], size: [18, 18], colour: '#d9d3cd', power: 1.05, mirrored: false }, // floor bounce (a light version of the page colour)
     { pos: [9, 2, 6.5], size: [5, 9], colour: '#ffffff', power: 1.6, mirrored: 'only' }, // sheen: what the glass shows when the device is turned a little
   ],
 };

@@ -512,7 +512,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
   };
 
   // ---- debug hook (headless verification): only with ?debug in the URL
-  const view = useRef<{ elevation: number; distance: number | null; fov: number; rotation: [number, number, number] | null; position: [number, number, number] | null; offsetY: number }>({ elevation: CAMERA_ELEVATION, distance: null, fov: CAMERA_FOV, rotation: null, position: null, offsetY: 0 });
+  const view = useRef<{ elevation: number; distance: number | null; fov: number; rotation: [number, number, number] | null; position: [number, number, number] | null; offsetY: number; shadow: boolean }>({ elevation: CAMERA_ELEVATION, distance: null, fov: CAMERA_FOV, rotation: null, position: null, offsetY: 0, shadow: true });
   const frameMs = useRef<number[]>([]);
   useEffect(() => {
     if (!new URLSearchParams(location.search).has('debug')) return;
@@ -556,7 +556,8 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
         invalidate();
       },
       /** Extras for scripts/model-shots.mjs. */
-      setViewDebug: (v: { elevationDeg?: number; distance?: number | null; fovDeg?: number; zoom?: number; rotationZXY?: [number, number, number] | null; position?: [number, number, number] | null; offsetY?: number }) => {
+      setViewDebug: (v: { elevationDeg?: number; distance?: number | null; fovDeg?: number; zoom?: number; rotationZXY?: [number, number, number] | null; position?: [number, number, number] | null; offsetY?: number; shadow?: boolean }) => {
+        if (v.shadow !== undefined) view.current.shadow = v.shadow; // ground shadow on/off (silhouette comparisons)
         if (v.position !== undefined) view.current.position = v.position; // model position override (mm)
         if (v.offsetY !== undefined) view.current.offsetY = v.offsetY; // look-at point, as a fraction of the body height below the centre
         if (v.rotationZXY !== undefined) view.current.rotation = v.rotationZXY; // radians about X, Y, Z, applied as Rz*Rx*Ry; null = follow the pose
@@ -618,6 +619,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
       // ground shadow follows the footprint
       const sh = shadowMesh.current;
       if (sh) {
+        sh.visible = view.current.shadow;
         g.updateMatrix();
         const f = footprint(g.matrix.elements, D);
         const groundY = -(D.hh + GROUND_GAP_MM);

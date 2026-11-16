@@ -209,7 +209,7 @@ export function Sheet({ landscape, onInset }: { landscape: boolean; onInset(px: 
       data-layer="sheet"
       className="absolute inset-x-0 bottom-0 z-40 flex min-h-0 flex-col rounded-t-3xl bg-card shadow-[0_-6px_24px_rgba(40,25,10,0.14)]"
       style={{
-        height: `min(calc(${height}px + env(safe-area-inset-bottom)), calc(100dvh - env(safe-area-inset-top) - 8px))`,
+        height: `min(calc(${height}px + env(safe-area-inset-bottom)), calc(100dvh - env(safe-area-inset-top) - 32px))`,
         paddingBottom: 'env(safe-area-inset-bottom)',
         transition: drag === null ? 'height var(--dur) var(--ease)' : 'none',
       }}

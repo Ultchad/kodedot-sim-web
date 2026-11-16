@@ -59,8 +59,10 @@ front face to the bottom facet of the back).
   contact shadows around the controls, the seams and the back cover's hairline
   are painted once into the UV sheet (`src/device3d/textures.ts`).
 - Light: a small studio (key softbox upper right, fill left, front panel, top
-  strip, two rim strips, floor bounce in the page colour) rendered once into a
-  prefiltered environment map (`src/device3d/studio.ts`). Neutral tone mapping.
+  strip, two rim strips, a light floor bounce) rendered once into a prefiltered
+  environment map (`src/device3d/studio.ts`). The glass and the side window
+  mirror a second, darker version of the same studio, so the picture keeps its
+  blacks. Neutral tone mapping.
   No shadow maps, no post-processing. A soft blob follows the footprint on the
   ground.
 

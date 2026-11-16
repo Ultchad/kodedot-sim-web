@@ -310,6 +310,8 @@
   @media (pointer: coarse) {
     button.pill {
       height: 44px;
+      min-width: 44px;
+      justify-content: center;
     }
   }
   button.pill:hover {

@@ -14,6 +14,7 @@
 //   covered       an interactive element is under another element (for example a fixed bar) that is not a floating layer
 //   overlap       two interactive elements overlap
 //   target-size   an interactive element is smaller than 24x24 CSS px (44x44 on touch viewports)
+//   device-cut    the 2D device in Fit does not fit its stage, or is squeezed to almost nothing
 //   contrast      text below WCAG AA (4.5:1, or 3:1 for large text) against its effective background
 import { LANGS, THEMES, VIEWPORTS, launch, openPage, sleep, startServer, waitRunning, BASE } from './ux-lib.mjs';
 import { layoutOf, scenesFor } from './ux-scenes.mjs';
@@ -68,7 +69,7 @@ function auditInPage({ touch }) {
   const clipsX = (cs) => cs.overflowX === 'hidden' || cs.overflowX === 'clip';
   const clipsY = (cs) => cs.overflowY === 'hidden' || cs.overflowY === 'clip';
   // the device picture is art inside a window (the glass, the pan view): not page content
-  const inDeviceArt = (el) => !!el.closest('[data-testid=device-2d-body], [data-testid=device-3d]');
+  const inDeviceArt = (el) => !!el.closest('[data-testid=device-2d], [data-testid=device-3d]');
   const inLayer = (el) => el.closest('[data-layer]');
 
   // ---- page-scroll
@@ -115,14 +116,35 @@ function auditInPage({ touch }) {
     }
   }
 
+  // ---- device-cut: in Fit the whole device picture must be inside its stage (the picture itself is exempt from the generic rules)
+  const dev = document.querySelector('[data-testid=device-2d]');
+  const devBody = document.querySelector('[data-testid=device-2d-body]');
+  if (dev && devBody && visible(dev) && dev.dataset.pans !== 'true') {
+    const a = dev.getBoundingClientRect();
+    const b = devBody.getBoundingClientRect();
+    if (b.left < a.left - EPS || b.right > a.right + EPS || b.top < a.top - EPS || b.bottom > a.bottom + EPS) report('device-cut', devBody, `device ${Math.round(b.width)}x${Math.round(b.height)} does not fit its ${Math.round(a.width)}x${Math.round(a.height)} stage`);
+    if (b.width < 120) report('device-cut', devBody, `device is only ${Math.round(b.width)} px wide`);
+  }
+
   // ---- cut-content and double-scroll
   for (const el of vis) {
     if (inDeviceArt(el) || el.tagName === 'svg' || el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') continue;
     const cs = styleOf(el);
     if (cs.display === 'inline') continue;
     const truncates = cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none';
-    if (clipsY(cs) && !truncates && el.scrollHeight - el.clientHeight > 2 && el.clientHeight > 0) report('cut-content', el, `content ${el.scrollHeight}px tall in a ${el.clientHeight}px box that does not scroll`);
-    if (clipsX(cs) && !truncates && el.scrollWidth - el.clientWidth > 2 && el.clientWidth > 0) report('cut-content', el, `content ${el.scrollWidth}px wide in a ${el.clientWidth}px box that does not scroll`);
+    // the box's own text (child elements are covered by "clipped"): measured, because scrollWidth also counts parked, invisible children
+    if ((clipsX(cs) || clipsY(cs)) && !truncates && hasOwnText(el)) {
+      const box = el.getBoundingClientRect();
+      const range = document.createRange();
+      for (const n of el.childNodes) {
+        if (n.nodeType !== 3 || !n.textContent.trim()) continue;
+        range.selectNodeContents(n);
+        for (const r of range.getClientRects()) {
+          if (clipsY(cs) && (r.bottom > box.bottom + 2 || r.top < box.top - 2)) report('cut-content', el, `its text reaches ${Math.round(r.top)}..${Math.round(r.bottom)}, the box ${Math.round(box.top)}..${Math.round(box.bottom)}, and it does not scroll`);
+          if (clipsX(cs) && (r.right > box.right + 2 || r.left < box.left - 2)) report('cut-content', el, `its text reaches ${Math.round(r.left)}..${Math.round(r.right)}, the box ${Math.round(box.left)}..${Math.round(box.right)}, and it does not scroll`);
+        }
+      }
+    }
     if (scrollsY(el, cs)) {
       for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
         if (scrollsY(a)) {
@@ -256,6 +278,24 @@ function auditInPage({ touch }) {
   return out;
 }
 
+/** Waits until every finite animation and transition has ended, so colours and positions are final when measured. */
+async function settled(page) {
+  await sleep(60);
+  await page.evaluate(
+    () =>
+      Promise.race([
+        Promise.all(
+          document
+            .getAnimations()
+            .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+            .map((a) => a.finished.catch(() => {})),
+        ),
+        new Promise((r) => setTimeout(r, 1500)),
+      ]),
+  );
+  await sleep(40);
+}
+
 /**
  * Guards the guard: breaks the live page in one known way per rule and expects the audit to name each one.
  * Returns the rules that were NOT caught (empty = the audit can see every kind of defect).
@@ -263,29 +303,30 @@ function auditInPage({ touch }) {
 export async function auditSelfTest(page, touch) {
   const before = (await page.evaluate(auditInPage, { touch })).length;
   await page.evaluate(() => {
-    const host = document.querySelector('[data-testid=top-bar]');
+    const host = document.body;
     const add = (html) => host.insertAdjacentHTML('beforeend', html);
-    // clipped + cut-content: a tall block inside a short clipping box
-    add('<div id="st-clip" style="position:fixed;left:40px;top:120px;width:120px;height:20px;overflow:hidden;z-index:999"><p id="st-clip-p" style="margin:0;height:60px;line-height:60px">selftest clipped</p></div>');
+    // clipped: a tall block inside a short clipping box; cut-content: a box that cuts its own text
+    add('<div id="st-clip" style="position:fixed;left:10px;top:120px;width:60px;height:20px;overflow:hidden;z-index:999"><p id="st-clip-p" style="margin:0;height:60px;line-height:60px">clipped</p></div>');
+    add('<div id="st-cut" style="position:fixed;left:80px;top:120px;width:50px;height:10px;overflow:hidden;line-height:40px;z-index:999">cut text</div>');
     // target-size: a tiny button
-    add('<button id="st-small" style="position:fixed;left:200px;top:120px;width:12px;height:12px;padding:0;z-index:999" aria-label="selftest small"></button>');
+    add('<button id="st-small" style="position:fixed;left:140px;top:120px;width:12px;height:12px;padding:0;z-index:999" aria-label="selftest small"></button>');
     // overlap: two buttons on the same spot
-    add('<button id="st-o1" style="position:fixed;left:240px;top:120px;width:60px;height:60px;z-index:999">a</button><button id="st-o2" style="position:fixed;left:270px;top:130px;width:60px;height:60px;z-index:999">b</button>');
+    add('<button id="st-o1" style="position:fixed;left:170px;top:120px;width:60px;height:60px;z-index:999">a</button><button id="st-o2" style="position:fixed;left:200px;top:130px;width:60px;height:60px;z-index:999">b</button>');
     // covered: a button under a plain (non-layer) bar
-    add('<button id="st-cov" style="position:fixed;left:360px;top:120px;width:60px;height:60px;z-index:998">c</button><div id="st-bar" style="position:fixed;left:350px;top:110px;width:90px;height:90px;background:#888;z-index:999"></div>');
+    add('<button id="st-cov" style="position:fixed;left:150px;top:210px;width:60px;height:60px;z-index:998">c</button><div id="st-bar" style="position:fixed;left:140px;top:200px;width:90px;height:90px;background:#888;z-index:999"></div>');
     // offscreen: a button past the right edge
     add('<button id="st-off" style="position:fixed;left:calc(100vw + 40px);top:120px;width:60px;height:60px">d</button>');
     // contrast: grey on grey
-    add('<p id="st-con" style="position:fixed;left:40px;top:200px;margin:0;background:#777;color:#888;z-index:999">selftest contrast</p>');
+    add('<p id="st-con" style="position:fixed;left:10px;top:210px;margin:0;background:#777;color:#888;z-index:999">low contrast</p>');
     // double-scroll: a scroller inside a scroller
-    add('<div id="st-s1" style="position:fixed;left:200px;top:200px;width:100px;height:60px;overflow-y:auto;z-index:999"><div style="height:200px"><div id="st-s2" style="height:40px;overflow-y:auto"><div style="height:120px">x</div></div></div></div>');
+    add('<div id="st-s1" style="position:fixed;left:250px;top:210px;width:90px;height:60px;overflow-y:auto;z-index:999"><div style="height:200px"><div id="st-s2" style="height:40px;overflow-y:auto"><div style="height:120px">x</div></div></div></div>');
     // page-scroll: an element in normal flow wider than the page
     document.body.insertAdjacentHTML('beforeend', '<div id="st-wide" style="position:absolute;left:0;top:0;width:calc(100vw + 300px);height:1px"></div>');
   });
   const found = await page.evaluate(auditInPage, { touch });
   await page.evaluate(() => document.querySelectorAll('[id^=st-]').forEach((e) => e.remove()));
   const after = (await page.evaluate(auditInPage, { touch })).length;
-  const expected = { clipped: 'st-clip', 'cut-content': 'st-clip', 'target-size': 'st-small', overlap: 'st-o', covered: 'st-cov', offscreen: 'st-off', contrast: 'st-con', 'double-scroll': 'st-s2', 'page-scroll': 'html' };
+  const expected = { clipped: 'st-clip', 'cut-content': 'st-cut', 'target-size': 'st-small', overlap: 'st-o', covered: 'st-cov', offscreen: 'st-off', contrast: 'st-con', 'double-scroll': 'st-s2', 'page-scroll': 'html' };
   const missed = Object.entries(expected).filter(([rule, id]) => !found.some((f) => f.rule === rule && (f.sel.includes(id) || f.detail.includes(id)))).map(([rule]) => rule);
   if (after !== before) missed.push(`cleanup (${before} findings before, ${after} after)`);
   return missed;
@@ -322,11 +363,11 @@ export async function runLayoutAudit(browser, { base = BASE, only = [], check = 
           if (lang !== 'en' && !scene.textHeavy) continue;
           try {
             await scene.enter(page, vp);
-            await sleep(Math.max(400, scene.settle ?? 0));
+            await sleep(Math.max(250, scene.settle ?? 0));
             for (const theme of THEMES) {
               if (!wanted(lang, theme)) continue;
               await page.evaluate((t) => window.__dotbench.ui.setTheme(t), theme);
-              await sleep(120);
+              await settled(page);
               const found = await page.evaluate(auditInPage, { touch: !!vp.touch });
               audits++;
               for (const f of found) bad[theme].push(`[${scene.id}] ${f.rule}: ${f.sel} :: ${f.detail}`);

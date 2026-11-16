@@ -244,8 +244,8 @@ function DeskShell() {
   const hide = (id: PanelId) => t('panel.hide', { panel: t(id === 'bench' ? 'nav.bench' : 'nav.console') });
 
   return (
-    <div className="flex h-full min-h-0 flex-col" data-layout={layout} data-testid="desk-root">
-      <a className="skip-link btn btn-primary" href="#device">
+    <div className="flex h-full min-h-0 flex-col [overflow:clip]" data-layout={layout} data-testid="desk-root">
+      <a className="skip-link btn btn-primary" href="#device" data-layer="skip">
         {t('nav.skip')}
       </a>
       <TopBar />
@@ -281,7 +281,7 @@ function PhoneShell() {
   const [inset, setInset] = useState({ px: 96, animate: false });
   const onInset = useCallback((px: number, animate: boolean) => setInset((cur) => (cur.px === px && cur.animate === animate ? cur : { px, animate })), []);
   return (
-    <main className={`relative flex h-full min-h-0 overflow-hidden ${land ? 'flex-row' : 'flex-col'}`} data-testid="phone-root" data-layout={layout}>
+    <main className={`relative flex h-full min-h-0 [overflow:clip] ${land ? 'flex-row' : 'flex-col'}`} data-testid="phone-root" data-layout={layout}>
       <div
         className="flex min-h-0 min-w-0 flex-1 flex-col"
         style={land ? undefined : { paddingBottom: `calc(${inset.px}px + env(safe-area-inset-bottom))`, transition: inset.animate ? 'padding-bottom var(--dur) var(--ease)' : 'none' }}
