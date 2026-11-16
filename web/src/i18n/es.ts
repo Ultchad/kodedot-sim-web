@@ -193,7 +193,7 @@ export const es: Messages = {
   'bench.inUse': 'en uso',
   'bench.soonTab': 'Próximamente',
   'bench.soonIntro': 'Previsto para próximas versiones. Esto es lo que traerá cada área:',
-  'bench.addFirst': 'Poner en el banco de pruebas',
+  'bench.addFirst': 'Añadir al banco',
   'bench.addAnother': 'Añadir: {kind}',
   'bench.objectMenu': 'Más acciones para {name}',
   'console.send': 'Enviar',

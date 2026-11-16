@@ -1,8 +1,16 @@
 # The 3D model of the device
 
-The page shows a procedural model, built in code at start-up. You can replace
-it with your own model by dropping one file in this folder (see "Drop-in
-model" below). Nothing here is downloaded: no textures, no HDRI.
+The 3D view can show three models. The choice is in the Device menu (on a
+phone: Settings), under "3D model":
+
+| Choice | What it is |
+| --- | --- |
+| Kode model (default) | `model.glb` in this folder: Kode's own model of the Kode Dot, made lighter for the web by `scripts/optimise-model.mjs` (see `NOTICE-model.md`). |
+| Simple model | The procedural model built in code at start-up (described below). It is also what the page shows by itself when `model.glb` is missing, cannot be read, or the browser only has WebGL 1. |
+| My own… | A `.glb`, or a `.gltf` with everything embedded, picked from disk or dropped on the page. It is kept in this browser (IndexedDB) and never uploaded. |
+
+Whatever the model, the page draws the live 410 x 502 screen on it, makes the
+glass touchable and the six controls pressable, and lights the LED.
 
 ## Frame, units, origin (procedural model and drop-in model alike)
 
@@ -66,47 +74,57 @@ front face to the bottom facet of the back).
   No shadow maps, no post-processing. A soft blob follows the footprint on the
   ground.
 
-## Drop-in model
+## How a model file is read
 
-Put a binary glTF at
+`src/device3d/prepare.ts` loads the file (Draco or meshopt geometry, WebP
+textures) and `src/device3d/analyse.ts` finds the device in it. Names come
+first; when a name is missing, shape and position decide, so a file that
+knows nothing about this page still works:
 
-    web/public/device/model.glb
-
-The viewer fetches it at start-up. If the file is missing, is not a GLB, or
-lacks any required node, the procedural model is used (a console warning names
-the missing nodes). The file is displayed as it is: bring your own materials.
-The studio light and the ground shadow stay.
-
-Use the frame, units and origin given at the top of this file. From Blender:
-model in millimetres (or scale on export so that 1 glTF unit = 1 mm), device
-upright with the screen facing -Y in Blender, export with "+Y up" ticked
-(the default): Blender's -Y becomes glTF +Z.
-
-### Required node names (exact, case-sensitive)
-
-| Node | What it is | What the viewer does |
+| Part | By name | Otherwise |
 | --- | --- | --- |
-| `screen` | The lit picture only (not the black border): a flat mesh, 33.09 x 40.52 mm. UV-mapped so the whole 410 x 502 picture fills the 0..1 square, upright in Blender's UV editor (glTF stores V downwards; the exporter handles it). | Its material is replaced by the live screen. A press on it is a touch at the pixel under the pointer (from the hit UV). |
-| `btn_top` | Blue round button (a mesh or a group) | Pressable: sends "top"; moves 0.6 mm towards -Z while held. |
-| `btn_bottom` | Red round button | Same, "bottom". |
-| `dpad_up`, `dpad_down`, `dpad_left`, `dpad_right` | The four arms of the D-pad, as separate nodes | Each is pressable on its own and moves 0.6 mm towards -Z while held. |
-| `led` | The light guide | Its material is cloned; base colour and emissive follow the live LED (pale yellow when off). Use a standard PBR material. |
+| Frame | | The tilt of the scene is removed, the outline is scaled to 46.65 x 77.0 mm and centred; the screen side becomes +Z, the edge nearer the screen +Y. |
+| Screen | node `screen`, or a node, mesh or material name containing "screen", "display" or "lcd" | the largest flat surface on a big face. A part larger than the picture stays as the glass and the picture sits in its middle. |
+| Round buttons | nodes `btn_top`, `btn_bottom`, or a name containing a control word ("button", "btn", "dpad", "key", "cross", "arrow") at the button's place | a part of the right size at the button's place. Two buttons in one mesh are cut apart. |
+| D-pad | nodes `dpad_up`, `dpad_down`, `dpad_left`, `dpad_right` (four arms) or `dpad` (one rocker), or a name containing a control word at the D-pad's place | a part of the right size at the D-pad's place; one piece rocks towards the pressed arm. |
+| LED | node `led`, or a name with "led" or "light guide" | a glowing part in the top right corner; with none, a small overlay is drawn there. |
 
-Everything else in the file is "body": dragging it turns the device. A node
-name applies to the node and everything under it, so a group named `btn_top`
-holding several meshes works. Keep the pressable nodes directly under an
+A control that has no mesh of its own stays clickable through an invisible
+target; it just does not move. What was matched how is listed under "Details"
+next to the model's name in the menu.
+
+"Lighter materials" (on by default for your own model) swaps clear coat,
+transmission and the like for plain materials, joins static parts that share a
+material and scales textures down to 1024 px.
+
+### Making your own
+
+Use the frame, units and origin given below. From Blender: model in
+millimetres (or scale on export so that 1 glTF unit = 1 mm), device upright
+with the screen facing -Y in Blender, export with "+Y up" ticked (the
+default): Blender's -Y becomes glTF +Z. Name the nodes as in the table above
+and nothing has to be guessed. Keep the pressable nodes directly under an
 un-rotated parent (their parent's Z must be the model's Z), or they will not
 move straight in.
 
-To check a model without the rest of the page: `node scripts/model-shots.mjs
---glb` runs the same checks on a synthetic GLB; put yours in place and run
-`node scripts/model-shots.mjs` to get the screenshots.
+## Rebuilding the bundled model
+
+    cd web
+    node scripts/optimise-model.mjs <Kode's original .glb>     # writes public/device/model.glb and NOTICE-model.md
+    node scripts/model-shots.mjs --kode                          # shots (screenshots/model-kode-*.png) and checks
+    npm run build && node scripts/og/make-og.mjs                 # the link-preview picture, with the new model
+
+Numbers of the current file: 48,706 triangles (the original has 144,817),
+416 kB (1005 kB), one 1024 px normal map and the pin labels as textures,
+25 draw calls in the page.
 
 ## Screenshots and checks
 
     cd web
     node scripts/model-shots.mjs          # builds the model stand, writes screenshots/model-*.png, checks them
-    node scripts/model-shots.mjs --glb    # also exercises the drop-in path with a synthetic GLB
+    node scripts/model-shots.mjs --kode   # the bundled Kode model (model-kode-*.png)
+    node scripts/model-shots.mjs --custom <file.glb>   # a file loaded as a user would, through the model store
+    node scripts/model-shots.mjs --glb    # the documented node names, on a synthetic GLB
     node scripts/model-shots.mjs --page   # the same through the real page (adds model-in-page.png)
 
 The script builds into `/tmp/dotbench-model-dist` and serves on port 4391

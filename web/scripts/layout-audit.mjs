@@ -279,7 +279,10 @@ function auditInPage({ touch }) {
 }
 
 /** Waits until every finite animation and transition has ended, so colours and positions are final when measured. */
-async function settled(page) {
+async function settled(page, theme) {
+  // on a busy machine the theme may not have reached the document yet: wait for it, then for the frame that paints it
+  if (theme) await page.waitForFunction((t) => document.documentElement.dataset.theme === t, { timeout: 5000 }, theme).catch(() => {});
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   await sleep(60);
   await page.evaluate(
     () =>
@@ -367,7 +370,7 @@ export async function runLayoutAudit(browser, { base = BASE, only = [], check = 
             for (const theme of THEMES) {
               if (!wanted(lang, theme)) continue;
               await page.evaluate((t) => window.__dotbench.ui.setTheme(t), theme);
-              await settled(page);
+              await settled(page, theme);
               const found = await page.evaluate(auditInPage, { touch: !!vp.touch });
               audits++;
               for (const f of found) bad[theme].push(`[${scene.id}] ${f.rule}: ${f.sel} :: ${f.detail}`);

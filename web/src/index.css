@@ -146,6 +146,21 @@
   .btn:active:not(:disabled) {
     transform: scale(0.97);
   }
+  /* a label that may be longer than its card in some language: it wraps inside the button instead of leaving it */
+  .btn-wrap {
+    max-width: 100%;
+    height: auto;
+    min-height: var(--control-h);
+    padding-block: 8px;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.25;
+  }
+  .btn-sm.btn-wrap {
+    height: auto;
+    min-height: var(--compact-h);
+    padding-block: 6px;
+  }
   .btn-sm {
     height: var(--compact-h);
     min-width: var(--compact-h);

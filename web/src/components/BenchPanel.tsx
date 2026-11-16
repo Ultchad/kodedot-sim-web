@@ -121,7 +121,7 @@ function AreaBody({ area }: { area: AreaDef }) {
                   <p className="m-0 mt-0.5 text-[13.5px] leading-snug text-ink2">{t(k.descKey)}</p>
                 </div>
               </div>
-              <button type="button" className="btn btn-primary self-start" data-testid={`add-${k.key}`} onClick={() => add(k)}>
+              <button type="button" className="btn btn-primary btn-wrap self-start" data-testid={`add-${k.key}`} onClick={() => add(k)}>
                 <Icon name="plus" />
                 {t('bench.addFirst')}
               </button>
@@ -137,7 +137,7 @@ function AreaBody({ area }: { area: AreaDef }) {
             ))}
           </ul>
           {kinds.map((k) => (
-            <button key={k.key} type="button" className="btn btn-sm btn-dashed self-start" data-testid={`add-${k.key}`} onClick={() => add(k)}>
+            <button key={k.key} type="button" className="btn btn-sm btn-dashed btn-wrap self-start" data-testid={`add-${k.key}`} onClick={() => add(k)}>
               <Icon name="plus" size={16} />
               {t('bench.addAnother', { kind: t(k.labelKey) })}
             </button>

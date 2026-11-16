@@ -7,6 +7,7 @@ import { isPhone } from '../lib/layout';
 import { ZERO_POSE } from '../lib/pose';
 import { loadPref, savePref } from '../lib/prefs';
 import { useHost } from '../state/host';
+import { useObservable } from '../state/hooks';
 import type { PanelId, PanelPlacement } from '../lib/layout';
 import { Device2D } from './Device2D';
 import { DeviceStatusCard } from './DeviceStatusCard';
@@ -232,13 +233,15 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
  */
 export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | 'panel' }) {
   const { t } = useI18n();
-  const { welcome, dismissWelcome, requestApps, bundles } = useHost();
+  const { welcome, dismissWelcome, requestApps, bundles, device } = useHost();
   // the Dot starts with its system: the hint then says how to get past the lock screen
   const os = useSystemRunning();
+  const status = useObservable(device.status);
   useEffect(() => {
     if (welcome && bundles.length > 0) dismissWelcome();
   }, [welcome, bundles.length, dismissWelcome]);
-  if (!welcome) return null;
+  // "This Dot is live" is only true while it runs; a stopped or crashed Dot has its own card on the stage
+  if (!welcome || status === 'idle' || status === 'crashed') return null;
   if (variant !== 'desk') {
     return (
       <aside className={`anim-rise shrink-0 ${variant === 'panel' ? 'px-3 pb-2' : 'px-3'}`} aria-label={t('welcome.title')} data-testid="welcome">

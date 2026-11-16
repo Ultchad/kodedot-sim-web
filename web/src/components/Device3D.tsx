@@ -159,10 +159,13 @@ function buildSimple() {
   return { ...geo, all, triangles, shellTriangles: body.indices.length / 3, buildMs: performance.now() - t0 };
 }
 
+const STAGE_FADE = 'linear-gradient(to bottom, #000 calc(100% - 36px), transparent)';
+
 // ------------------------------------------------------------------- canvas
 export default function Device3D(props: Device3DProps) {
   return (
-    <div className="device-surface relative min-h-0 min-w-0 flex-1" style={{ touchAction: 'none' }} data-testid="device-3d">
+    // the ground shadow may reach the lower edge of the stage: it fades out there instead of ending in a hard line
+    <div className="device-surface relative min-h-0 min-w-0 flex-1" style={{ touchAction: 'none', maskImage: STAGE_FADE, WebkitMaskImage: STAGE_FADE }} data-testid="device-3d">
       <Canvas
         frameloop="demand"
         dpr={[1, 2]}
@@ -683,7 +686,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
       cam.updateProjectionMatrix();
     }
     const aspect = size.width / Math.max(1, size.height);
-    const halfH = Math.max((M.bodyMm.h / 2) * 1.16, ((M.bodyMm.w / 2) * 1.2) / aspect);
+    const halfH = Math.max((M.bodyMm.h / 2) * 1.16, ((M.bodyMm.w / 2) * 1.32) / aspect);
     baseDist.current = halfH / Math.tan((view.current.fov * Math.PI) / 360);
     const z = zoom.current;
     z.display += (z.target - z.display) * (rm ? 1 : 1 - Math.exp(-dt * 12));
