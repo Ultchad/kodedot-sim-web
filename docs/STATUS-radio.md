@@ -139,7 +139,24 @@ the radio fake conflicts with an area that supersedes `kdrv_ir.c`: the default h
 
 ## kodeOS role
 
-KODEOS_PLACEHOLDER
+The areas apply to the `kodeos` role (default `roles`), and kodeOS runs the same real `kdrv_radio`, AO_Radio, AO_Net over them. Verified in a scratch
+checkout of `main` (kodeOS build profile, kodeos_boot, kgui) with this branch's three area folders and tests overlaid, and the five stub entries of item 1
+under "Shared-file changes" removed from `kodeos_boot/area.json`:
+
+```
+tools/dotbench --build /tmp/radio-k seed /home/claude/dotbench/build ; DOTBENCH_BUILD=/tmp/radio-k tools/dotbench sdk
+DOTBENCH_BUILD=/tmp/radio-k tools/dotbench build /home/claude/src/KodeOS --role kodeos
+DOTBENCH_BUILD=/tmp/radio-k node --expose-gc tests/node/radio/kodeos_radio.kodeos-test.mjs     # 11 checks, PASSED
+DOTBENCH_BUILD=/tmp/radio-k node --expose-gc tests/node/kodeos/boot.kodeos-test.mjs            # main's own kodeOS test, 5 checks, still PASSED
+```
+`tests/node/radio/kodeos_radio.kodeos-test.mjs` (named like main's kodeOS tests so `tests/node/run.sh` skips it; it needs the main tree) checks: C5 link up
+and the board named from the C5; no "not implemented" for radio/Wi-Fi/net functions; the control centre (swipe down), a tap on the Wi-Fi circle (switches
+it on) and a long press (opens the Wi-Fi page) list the three bench routers with security and dBm; a touch on the open "Cafe" row joins it (`joined 'Cafe'`,
+bench station says Cafe, saved in the C5's vault); SNTP delivers the network time ("the time arrived from the network"); router off gives "the network went
+away", back on rejoins and asks for the time again; a router with `internet: false` gives an address and no network time. Typing a password on kodeOS's
+keyboard (the WPA row) is not driven by the test; the same join is covered by the console path in `wifi.test.mjs`.
+This test cannot run from this branch alone (the branch base predates the kodeOS merge); it runs once the branch is merged with main and item 1 is applied.
+
 
 ## Shared-file changes needed (not made)
 
@@ -156,4 +173,21 @@ KODEOS_PLACEHOLDER
 
 ## Final output
 
-FINAL_PLACEHOLDER
+Last full run, `DOTBENCH_BUILD=/tmp/radio tests/node/run.sh radio wifi net` (rtos 85 checks, 0 failed; acceptance buttons_led 5 and display_lvgl 4 ok), per suite:
+
+```
+wifi/wifi.test.mjs               39 ok   wifi: PASSED
+net/mqtt.test.mjs                39 ok   mqtt example: PASSED
+net/mqtt_api.test.mjs            38 ok   mqtt api and broker: PASSED
+net/net.test.mjs                 76 ok   net: PASSED
+net/network_example.test.mjs     16 ok   network example: PASSED
+radio/radio.test.mjs             43 ok   radio: PASSED   (two later standalone runs; see below)
+```
+In that run `radio.test.mjs` failed once at `link to the C5 dropped` (5 s wait) while the machine's load average was 24 to 33 (other engineers'
+builds); it passed in the 3 standalone runs that followed (2 before and 1 after widening that wait to 12 s; the assertion is unchanged). That is the only failure
+seen, and it is a timing flake under load, not a logic one. Total: 251 checks in the area suites, plus 11 for kodeOS.
+
+The build log of that run printed `282 stub functions` (app role); it was not compared with `main`'s count for this branch's base, so "stub count did not
+grow" is not asserted. Browser check: the guide asks for one only if the glue matters; the three glue files are exercised through the real attach path
+(`bench.mjs` loads them as packaged) and none touches the DOM; no browser test was added.
+

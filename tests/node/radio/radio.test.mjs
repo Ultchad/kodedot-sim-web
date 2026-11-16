@@ -112,7 +112,7 @@ check(a.radio.identity.locked && /identity 0x07/.test((await (async () => { awai
   check(a.radio.state().usable, "switched back on, the radio comes back");
 
   a.radio.setPower(false);
-  await a.waitLog(/link to the C5 dropped/, 5000, m);
+  await a.waitLog(/link to the C5 dropped/, 12000, m);
   check(a.radio.state().link === "down", "power off while up: the SDK reports the link dropped");
   a.radio.setPower(true);
 
@@ -136,7 +136,7 @@ check(a.radio.identity.locked && /identity 0x07/.test((await (async () => { awai
 
   m = a.mark();
   a.radio.dropLink();
-  await a.waitLog(/link to the C5 dropped/, 5000, m);
+  await a.waitLog(/link to the C5 dropped/, 12000, m);
   check(true, "dropLink(): TRANSPORT_FAILURE reaches the SDK");
 }
 
