@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+"""dotbench: build kode-sdk C apps for the browser test bench.
+
+  dotbench sdk                      precompile SDK + LVGL + QP/C + runtime into static libraries
+  dotbench build APPDIR [-o OUT]    compile an app's main/ sources, link, package OUT/<name>.dotbench
+
+Paths come from arguments or environment variables:
+  --sdk   / DOTBENCH_SDK    kode-sdk checkout          (default /home/claude/src/kode-sdk)
+  --lvgl  / DOTBENCH_LVGL   LVGL checkout              (default <sdk>/../third/lvgl)
+  --emsdk / DOTBENCH_EMSDK  Emscripten SDK             (default /home/claude/tools/emsdk)
+  --build / DOTBENCH_BUILD  build directory            (default <dotbench>/build)
+The SDK and LVGL trees are only read; nothing is ever written into them.
+"""
+import argparse
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import zipfile
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from dblib import sources as S          # noqa: E402
+from dblib import toolchain as T        # noqa: E402
+
+PINNED_SDK_COMMIT = "c9568a3"
+
+
+def paths(a):
+    sdk = pathlib.Path(a.sdk or os.environ.get("DOTBENCH_SDK", "/home/claude/src/kode-sdk")).resolve()
+    lvgl = pathlib.Path(a.lvgl or os.environ.get("DOTBENCH_LVGL", str(sdk.parent / "third" / "lvgl"))).resolve()
+    emsdk = pathlib.Path(a.emsdk or os.environ.get("DOTBENCH_EMSDK", "/home/claude/tools/emsdk"))
+    build = pathlib.Path(a.build or os.environ.get("DOTBENCH_BUILD", str(ROOT / "build"))).resolve()
+    for p, n in ((sdk, "SDK"), (lvgl, "LVGL")):
+        if not p.is_dir():
+            sys.exit("dotbench: %s not found at %s" % (n, p))
+    if str(build).startswith(str(sdk)) or str(build).startswith(str(lvgl)):
+        sys.exit("dotbench: refusing to build inside the SDK/LVGL tree")
+    return sdk, lvgl, emsdk, build
+
+
+def sdk_commit(sdk):
+    r = subprocess.run(["git", "-C", str(sdk), "rev-parse", "--short", "HEAD"], capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else "unknown"
+
+
+# ---- configuration ---------------------------------------------------------------
+
+def ensure_config(sdk, lvgl, build):
+    build.mkdir(parents=True, exist_ok=True)
+    hdr, js = build / "sdkconfig.h", build / "sdkconfig.json"
+    inputs = [ROOT / "tools/gen_sdkconfig.py", ROOT / "runtime/idf/sdkconfig.web.defaults",
+              sdk / "components/kbsp/sdkconfig.board", lvgl / "Kconfig"]
+    inputs += sorted(sdk.glob("components/**/Kconfig*"))
+    stamp = build / "sdkconfig.stamp"
+    h = T.file_hash(inputs)
+    if not (hdr.exists() and js.exists() and stamp.exists() and stamp.read_text() == h):
+        subprocess.run([sys.executable, str(ROOT / "tools/gen_sdkconfig.py"), "--sdk", str(sdk),
+                        "--kconfig", str(lvgl / "Kconfig"),
+                        "--defaults", str(sdk / "components/kbsp/sdkconfig.board"),
+                        "--defaults", str(ROOT / "runtime/idf/sdkconfig.web.defaults"),
+                        "--out-h", str(hdr), "--out-config", str(build / "sdkconfig"),
+                        "--json", str(js)], check=True)
+        stamp.write_text(h)
+    commit = sdk_commit(sdk)
+    vh = build / "kode_sdk_version.h"
+    txt = ('#ifndef KODE_SDK_VERSION_H\n#define KODE_SDK_VERSION_H\n'
+           '#define KODE_SDK_VERSION "%s-dotbench"\n#endif\n' % commit)
+    if not vh.exists() or vh.read_text() != txt:
+        vh.write_text(txt)
+    return json.loads(js.read_text())
+
+
+# ---- compile flags -----------------------------------------------------------------
+
+def include_dirs(sdk, lvgl, build, comp=None):
+    inc = []
+    for p in S.PUBLIC_INCLUDES:
+        inc.append(sdk / p)
+    for g in S.PUBLIC_GLOBS:
+        inc += sorted(sdk.glob(g))
+    priv = []
+    for g in S.PRIVATE_GLOBS.get(comp, []):
+        priv += sorted(sdk.glob(g))
+    rt = [ROOT / "runtime/rtos/include", ROOT / "runtime/idf/include", ROOT / "runtime/bridge",
+          ROOT / "runtime/drivers/include", ROOT / "runtime/drivers/_stubs", build]
+    return priv + inc + rt + [lvgl, lvgl / "src"]
+
+
+def base_flags(opt):
+    return ["-std=gnu17", "-pthread", opt, "-w", "-include", "stdio.h", "-ffunction-sections", "-fdata-sections",
+            "-DESP_PLATFORM", "-DKODE_SYS_INTERNAL_ALLOWED", "-DKODE_INTERNAL_ALLOWED",
+            "-DLV_LVGL_H_INCLUDE_SIMPLE", "-DDOTBENCH=1"]
+
+
+def flags_for(sdk, lvgl, build, comp, opt="-O2"):
+    return base_flags(opt) + ["-I" + str(i) for i in include_dirs(sdk, lvgl, build, comp)]
+
+
+# ---- dotbench sdk --------------------------------------------------------------------
+
+def cmd_sdk(a):
+    sdk, lvgl, emsdk, build = paths(a)
+    T.activate_emsdk(emsdk)
+    cfg = ensure_config(sdk, lvgl, build)
+    obj = build / "obj"
+    nproc = a.jobs or os.cpu_count() or 2
+    srcs = S.sdk_sources(sdk, cfg)
+    n_real = 0
+    groups = {"sdk": [], "lvgl": [], "rt": []}
+    for comp, files in srcs.items():
+        fl = flags_for(sdk, lvgl, build, comp)
+        for f in S.apply_replaced(files):
+            o = obj / "sdk" / (f.replace("/", "__") + ".o")
+            groups["sdk"].append((sdk / f, o, fl))
+            n_real += 1
+    fl = flags_for(sdk, lvgl, build, None)
+    for f in S.lvgl_sources(lvgl, cfg):
+        groups["lvgl"].append((lvgl / f, obj / "lvgl" / (f.replace("/", "__") + ".o"), fl))
+    for f in S.runtime_sources(ROOT):
+        groups["rt"].append((ROOT / f, obj / "rt" / (f.replace("/", "__") + ".o"), fl))
+    failed = []
+    for g in ("rt", "sdk", "lvgl"):
+        failed += T.compile_all(groups[g], nproc, g)
+    if failed:
+        print("dotbench sdk: %d file(s) failed" % len(failed), file=sys.stderr)
+        return 1
+    # stubs: every declared khal/kdrv function that no compiled object defines
+    real_objs = [j[1] for g in groups.values() for j in g]
+    defined = T.defined_symbols(real_objs)
+    dfile = build / "defined.txt"
+    dfile.write_text("\n".join(sorted(defined)))
+    stubdir = build / "stubs"
+    sfl = fl + ["-I" + str(d) for d in sorted(sdk.glob("components/khal/*/src"))]
+    subprocess.run([sys.executable, str(ROOT / "tools/gen_stubs.py"), "--sdk", str(sdk),
+                    "--defined", str(dfile), "--out", str(stubdir),
+                    "--cpp-flags", " ".join(x for x in sfl if x.startswith(("-I", "-D")))], check=True)
+    stub_jobs = [(p, obj / "stubs" / (p.name + ".o"), sfl) for p in sorted(stubdir.glob("*.c"))]
+    stub_jobs.append((ROOT / "runtime/drivers/_stubs/stub_support.c", obj / "stubs" / "stub_support.c.o", sfl))
+    failed = T.compile_all(stub_jobs, nproc, "stubs")
+    if failed:
+        return 1
+    lib = build / "lib"
+    lib.mkdir(exist_ok=True)
+    for name, jobs in (("libdotbench_sdk.a", groups["sdk"]), ("libdotbench_lvgl.a", groups["lvgl"]),
+                       ("libdotbench_rt.a", groups["rt"]), ("libdotbench_stubs.a", stub_jobs)):
+        T.make_archive(lib / name, [j[1] for j in jobs])
+    meta = {"sdk_commit": sdk_commit(sdk), "emscripten": T.emcc_version(),
+            "real_sdk_files": n_real, "lvgl_files": len(groups["lvgl"]),
+            "stub_functions": sum(1 for _ in open(dfile)) and sum(
+                len(re.findall(r"^DOTBENCH_UNIMPLEMENTED", p.read_text(), re.M)) if False else
+                p.read_text().count("DOTBENCH_UNIMPLEMENTED(") for p in stubdir.glob("*.c")),
+            "replaced": S.REPLACED}
+    (build / "sdk-meta.json").write_text(json.dumps(meta, indent=1))
+    print("dotbench sdk: done (%d real SDK files, %d LVGL files, %d stub functions)"
+          % (n_real, len(groups["lvgl"]), meta["stub_functions"]))
+    return 0
+
+
+# ---- dotbench build --------------------------------------------------------------------
+
+def parse_component(appdir):
+    cm = (appdir / "main" / "CMakeLists.txt").read_text()
+    m = re.search(r"idf_component_register\s*\((.*?)\n\)", cm, re.S) or re.search(r"idf_component_register\s*\((.*?)\)", cm, re.S)
+    if not m:
+        sys.exit("dotbench: no idf_component_register() in %s" % (appdir / "main/CMakeLists.txt"))
+    body = re.sub(r"#[^\n]*", "", m.group(1))
+    toks = re.findall(r'"[^"]*"|[^\s"]+', body)
+    cur, d = None, {}
+    for t in toks:
+        if re.fullmatch(r"[A-Z_]+", t):
+            cur = t
+            d.setdefault(cur, [])
+        elif cur:
+            d[cur].append(t.strip('"'))
+    return d
+
+
+def app_name(appdir):
+    cm = (appdir / "CMakeLists.txt").read_text()
+    m = re.search(r"project\s*\(\s*([\w\-]+)", cm)
+    return m.group(1) if m else appdir.name
+
+
+def collect_exports():
+    syms = ["_main"]
+    for f in sorted((ROOT / "runtime").rglob("exports.txt")):
+        for line in f.read_text().splitlines():
+            line = line.split("#")[0].strip()
+            if line:
+                syms.append(line if line.startswith("_") else "_" + line)
+    out = []
+    for s in syms:
+        if s not in out:
+            out.append(s)
+    return out
+
+
+def png_placeholder(path, size=64):
+    import struct
+    import zlib
+    raw = b"".join(b"\x00" + bytes([0x20, 0x60, 0xB0, 0xFF]) * size for _ in range(size))
+
+    def chunk(t, d):
+        c = struct.pack(">I", len(d)) + t + d
+        return c + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    data = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0)) \
+        + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+    pathlib.Path(path).write_bytes(data)
+
+
+def cmd_build(a):
+    sdk, lvgl, emsdk, build = paths(a)
+    T.activate_emsdk(emsdk)
+    appdir = pathlib.Path(a.app).resolve()
+    lib = build / "lib"
+    libs = [lib / n for n in ("libdotbench_sdk.a", "libdotbench_lvgl.a", "libdotbench_rt.a", "libdotbench_stubs.a")]
+    if not all(p.exists() for p in libs):
+        sys.exit("dotbench: run `dotbench sdk` first (static libraries missing in %s)" % lib)
+    ensure_config(sdk, lvgl, build)
+    name = app_name(appdir)
+    reg = parse_component(appdir)
+    main = appdir / "main"
+    srcs = [main / s for s in reg.get("SRCS", [])]
+    for d in reg.get("SRC_DIRS", []):
+        srcs += sorted((main / d).glob("*.c"))
+    incs = [main / d for d in reg.get("INCLUDE_DIRS", ["."]) + reg.get("PRIV_INCLUDE_DIRS", [])]
+    outdir = pathlib.Path(a.output).resolve() if a.output else build / "apps" / name
+    outdir.mkdir(parents=True, exist_ok=True)
+    objdir = build / "obj" / "app" / name
+    fl = flags_for(sdk, lvgl, build, None, "-O2") + ["-I" + str(i) for i in incs]
+    jobs = [(s, objdir / (s.name + ".o"), fl) for s in srcs]
+    if T.compile_all(jobs, a.jobs or os.cpu_count() or 2, "app " + name):
+        return 1
+    exports = collect_exports()
+    mem = a.memory_mb
+    js = outdir / (name + ".js")
+    link = ["emcc"] + [str(j[1]) for j in jobs] + [str(p) for p in libs] + [
+        "-o", str(js), "-pthread", "-O2", "-sPROXY_TO_PTHREAD", "-sMODULARIZE", "-sEXPORT_ES6",
+        "-sEXPORT_NAME=createDotbench", "-sENVIRONMENT=web,worker,node",
+        "-sINITIAL_MEMORY=%dMB" % mem, "-sALLOW_MEMORY_GROWTH=0", "-sSTACK_SIZE=1MB",
+        "-sDEFAULT_PTHREAD_STACK_SIZE=256KB", "-sPTHREAD_POOL_SIZE=%d" % a.pool, "-sEXIT_RUNTIME=0",
+        "-sEXPORTED_FUNCTIONS=" + ",".join(exports),
+        "-sEXPORTED_RUNTIME_METHODS=HEAPU8,HEAP32,HEAPU32,wasmMemory,ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8",
+        "-sERROR_ON_UNDEFINED_SYMBOLS=%d" % (0 if a.allow_undefined else 1),
+        "-Wl,--gc-sections", "-Wl,--wrap=gettimeofday", "-Wl,--error-limit=0", "-Wno-pthreads-mem-growth",
+    ]
+    if a.allow_undefined:
+        link.append("-Wl,--unresolved-symbols=ignore-all")
+    r = subprocess.run(link, capture_output=True, text=True)
+    sys.stderr.write(r.stderr[-6000:])
+    if r.returncode:
+        print("dotbench build: link failed", file=sys.stderr)
+        return 1
+    # ---- package ----
+    wasm = outdir / (name + ".wasm")
+    extra = [p for p in (outdir / (name + ".worker.js"),) if p.exists()]
+    manifest_re = re.search(r'KODE_APP_MANIFEST\(\s*"([^"]*)"\s*,\s*"([^"]*)"', "\n".join(s.read_text() for s in srcs))
+    display, category = (manifest_re.group(1), manifest_re.group(2)) if manifest_re else (name, "")
+    version = "0.0.0"
+    yml = main / "idf_component.yml"
+    if yml.exists():
+        m = re.search(r"^version:\s*\"?([\w.\-]+)", yml.read_text(), re.M)
+        if m:
+            version = m.group(1)
+    icon = appdir / "icon.png"
+    icon_out = outdir / "icon.png"
+    if icon.exists():
+        icon_out.write_bytes(icon.read_bytes())
+    else:
+        png_placeholder(icon_out)
+    app_json = {"name": name, "display_name": display, "category": category, "version": version,
+                "entry": name + ".js", "wasm": name + ".wasm", "icon": "icon.png"}
+    manifest = {"format": 1, "name": name, "sdk_commit": sdk_commit(sdk), "pinned_sdk_commit": PINNED_SDK_COMMIT,
+                "emscripten": T.emcc_version(), "abi_version": 1,
+                "js": name + ".js", "wasm": name + ".wasm", "workers": [p.name for p in extra],
+                "memory_mb": mem, "exports": exports, "state_export": "_kweb_state"}
+    pkg = outdir / (name + ".dotbench")
+    with zipfile.ZipFile(pkg, "w", zipfile.ZIP_DEFLATED) as z:
+        z.write(js, name + ".js")
+        z.write(wasm, name + ".wasm")
+        for p in extra:
+            z.write(p, p.name)
+        z.writestr("appdata/app.json", json.dumps(app_json, indent=1))
+        z.write(icon_out, "icon.png")
+        z.writestr("manifest.json", json.dumps(manifest, indent=1))
+    print("dotbench build: %s (%d bytes)" % (pkg, pkg.stat().st_size))
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="dotbench", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--sdk"); ap.add_argument("--lvgl"); ap.add_argument("--emsdk"); ap.add_argument("--build")
+    ap.add_argument("-j", "--jobs", type=int)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("sdk")
+    b = sub.add_parser("build")
+    b.add_argument("app")
+    b.add_argument("-o", "--output")
+    b.add_argument("--memory-mb", type=int, default=96)
+    b.add_argument("--pool", type=int, default=32)
+    b.add_argument("--allow-undefined", action="store_true", help="link with unresolved symbols ignored (diagnostics)")
+    a = ap.parse_args()
+    return {"sdk": cmd_sdk, "build": cmd_build}[a.cmd](a)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

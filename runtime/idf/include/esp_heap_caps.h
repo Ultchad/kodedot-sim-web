@@ -1,0 +1,36 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later
+ * Heap capabilities. WebAssembly has one linear memory: every capability maps
+ * to the same malloc. The flags exist so call sites compile and so the free-
+ * size queries can answer something plausible. */
+#ifndef DOTBENCH_ESP_HEAP_CAPS_H
+#define DOTBENCH_ESP_HEAP_CAPS_H
+#include <stddef.h>
+#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+#define MALLOC_CAP_EXEC            (1 << 0)
+#define MALLOC_CAP_32BIT           (1 << 1)
+#define MALLOC_CAP_8BIT            (1 << 2)
+#define MALLOC_CAP_DMA             (1 << 3)
+#define MALLOC_CAP_SPIRAM          (1 << 10)
+#define MALLOC_CAP_INTERNAL        (1 << 11)
+#define MALLOC_CAP_DEFAULT         (1 << 12)
+#define MALLOC_CAP_IRAM_8BIT       (1 << 13)
+#define MALLOC_CAP_RETENTION       (1 << 14)
+#define MALLOC_CAP_RTCRAM          (1 << 15)
+#define MALLOC_CAP_TCM             (1 << 16)
+void *heap_caps_malloc(size_t size, uint32_t caps);
+void *heap_caps_calloc(size_t n, size_t size, uint32_t caps);
+void *heap_caps_realloc(void *ptr, size_t size, uint32_t caps);
+void *heap_caps_aligned_alloc(size_t alignment, size_t size, uint32_t caps);
+void *heap_caps_aligned_calloc(size_t alignment, size_t n, size_t size, uint32_t caps);
+void  heap_caps_free(void *ptr);
+size_t heap_caps_get_free_size(uint32_t caps);
+size_t heap_caps_get_largest_free_block(uint32_t caps);
+size_t heap_caps_get_minimum_free_size(uint32_t caps);
+size_t heap_caps_get_total_size(uint32_t caps);
+#ifdef __cplusplus
+}
+#endif
+#endif

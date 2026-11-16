@@ -68,6 +68,7 @@ O Kode Dot do Murilo só chega em 2027. Ele quer escrever os apps dele desde já
 
 0. **Fundação:** RTOS sobre pthreads, script de build, tudo ligando, `buttons_led` e `display_lvgl` rodando em Node com LED, botões e tela falsos. Casca da página com aparelho e bancada vazia.
 1. **Base:** tela, toque, botões, LED, vibração, hora, arquivos (IndexedDB), console, carregar app pelo arrastar. Template e exemplos básicos rodando na página.
+1b. **kodeOS de verdade** (pedido do Murilo): compilar o kodeOS (`kodediy/KodeOS`, GPL-3.0: `main` + `components/kgui` + o mesmo SDK) como mais um programa WebAssembly. O aparelho liga na tela de bloqueio e na lista de apps do sistema real. A página faz o papel do bootloader: kodeOS e cada app são pacotes separados; "iniciar app" e "voltar ao sistema" trocam o pacote em execução, como o reset faz na placa. Apps instalados ficam no IndexedDB. Plano em `docs/kodeos-plan.md`.
 2. **NFC e RFID.**
 3. **Wi-Fi, HTTP, MQTT e Bluetooth.** HTTP via `fetch` (sujeito a CORS), MQTT via WebSocket.
 4. **Infravermelho, microSD, USB, bateria, movimento, áudio.**
@@ -76,6 +77,7 @@ O Kode Dot do Murilo só chega em 2027. Ele quer escrever os apps dele desde já
 ## Acréscimos pedidos depois (2026-11-16)
 
 - **Visual:** aparelho em 3D com o render oficial da frente (vem no kode-sdk, GPL) e a geometria do `kode-dot.json`; botões e tela clicáveis; modo 2D pixel a pixel. Espessura estimada (12 mm), laterais e traseira lisas. Não usar o modelo 3D do site kode.diy.
+- **Linguagem visual (pedido do Murilo, depois de rejeitar o primeiro visual "painel de avião"):** inspirada nos sites da Kode (docs, apps e principal), medidos no navegador: tema claro por padrão, fundo bege `#C2BAB3`, cartões creme `#DED7CD`, texto `#191919`, âmbar `#FFAC00` nas ações principais, azul `#028AC2`, vermelho `#C9303D`, superfícies escuras `#191919`; títulos em Outfit, interface em DM Sans (fontes abertas, hospedadas no próprio site); pílulas, cartões com raio de 24 px, quase sem bordas nem sombras. Sem copiar logo, mascote ou ilustrações da Kode. Espessura estimada do corpo passa a 18 mm (pela foto do site).
 - **Responsivo:** no celular, "modo aparelho": a frente ocupa a tela, sensores reais do telefone alimentam o IMU, instalável na tela de início.
 - **Etapa 6, componentes personalizados ("Tinkercad do Kode Dot"):**
   - Um componente é um pacote (`.dotpart`): manifesto (nome, imagem ou modelo, pinos e portas sem fio, campos editáveis) + comportamento em código, rodando isolado num Worker.
