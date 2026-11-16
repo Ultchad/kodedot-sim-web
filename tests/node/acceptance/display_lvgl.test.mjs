@@ -1,9 +1,9 @@
 // Acceptance test 2: examples/display_lvgl runs unmodified; the shared framebuffer becomes non-uniform
 // and a touch, or a top-button press, changes the counter ("count N" in the log) and the picture.
 import assert from "node:assert/strict";
-import { boot, BTN, OFF, sleep } from "./harness.mjs";
+import { boot, pkgPath, BTN, OFF, sleep } from "../harness.mjs";
 
-const a = await boot(process.argv[2]);
+const a = await boot(pkgPath("display_lvgl"));
 let failed = false;
 const check = async (name, fn) => {
   try { await fn(); console.log("ok   - " + name); }

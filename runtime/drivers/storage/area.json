@@ -1,0 +1,7 @@
+{
+  "area": "storage",
+  "description": "FATFS (stubbed)",
+  "supersedes": {
+    "components/kdrv/storage/src/kdrv_fs.c": "stubbed: FATFS (stage 1 files / stage 4 microSD)"
+  }
+}

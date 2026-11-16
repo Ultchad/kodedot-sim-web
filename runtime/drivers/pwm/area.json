@@ -1,0 +1,7 @@
+{
+  "area": "pwm",
+  "description": "LEDC PWM (stubbed)",
+  "supersedes": {
+    "components/khal/pwm/src/khal_pwm_esp.c": "stubbed: LEDC peripheral"
+  }
+}

@@ -58,7 +58,7 @@ void _esp_error_check_failed(esp_err_t rc, const char *file, int line, const cha
 {
     kweb_text_printf(KWEB_CH_LOG, "ESP_ERROR_CHECK failed: esp_err_t 0x%x (%s) at %s:%d in %s: %s\n",
                      rc, esp_err_to_name(rc), file, line, fn, expr);
-    abort();
+    kweb_restart(KWEB_RESET_PANIC, "");
 }
 
 /* ---- esp_log ---- */
@@ -159,7 +159,7 @@ uint32_t esp_get_minimum_free_heap_size(void) { return (uint32_t)heap_caps_get_m
 void esp_restart(void)
 {
     kweb_text_printf(KWEB_CH_LOG, "dotbench: esp_restart() requested\n");
-    exit(0);
+    kweb_restart(KWEB_RESET_SOFTWARE, "");
 }
 
 /* ---- random ---- */

@@ -1,0 +1,10 @@
+{
+  "area": "gpio",
+  "description": "khal_gpio pin table + TCA6408A expander and the six buttons",
+  "supersedes": {
+    "components/khal/gpio/src/khal_gpio_esp.c": "web fake: runtime/drivers/gpio (GPIO35 button, expander INT line)"
+  },
+  "i2c_chips": [
+    "dotbench_ioexp_register"
+  ]
+}

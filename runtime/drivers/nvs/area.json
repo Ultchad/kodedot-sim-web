@@ -1,0 +1,7 @@
+{
+  "area": "nvs",
+  "description": "khal_nvs over a flat arena that survives restarts (persist region 'nvs')",
+  "supersedes": {
+    "components/khal/nvs/src/khal_nvs_esp.c": "web fake: runtime/drivers/nvs (in-memory key-value store)"
+  }
+}

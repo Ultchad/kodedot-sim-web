@@ -1,0 +1,12 @@
+{
+  "area": "system",
+  "description": "khal_system, khal_keep (retention store), boot info (running desc, reset reason)",
+  "supersedes": {
+    "components/khal/system/src/khal_system_esp.c": "web fake: runtime/drivers/system",
+    "components/khal/keep/src/khal_keep_esp.c": "stubbed: RTC-RAM survives-reset store"
+  },
+  "exports": [],
+  "test_apps": [
+    "area:testapp"
+  ]
+}

@@ -16,15 +16,13 @@
 void khal_restart(void)
 {
     kweb_text_printf(KWEB_CH_LOG, "dotbench: khal_restart()\n");
-    __atomic_fetch_or(&kweb_state()->events, KWEB_EVT_RESTART_REQUESTED, __ATOMIC_SEQ_CST);
-    exit(0);
+    kweb_restart(KWEB_RESET_SOFTWARE, "");
 }
 
 void khal_panic(const char *why)
 {
     kweb_text_printf(KWEB_CH_LOG, "PANIC: %s\n", why ? why : "(null)");
-    __atomic_fetch_or(&kweb_state()->events, KWEB_EVT_PANIC, __ATOMIC_SEQ_CST);
-    abort();
+    kweb_restart(KWEB_RESET_PANIC, "");
 }
 
 uint32_t khal_random(void) { return esp_random(); }

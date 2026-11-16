@@ -1,0 +1,7 @@
+{
+  "area": "touch",
+  "description": "CST820 touch controller model",
+  "i2c_chips": [
+    "dotbench_touch_register"
+  ]
+}

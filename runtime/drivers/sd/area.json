@@ -1,0 +1,7 @@
+{
+  "area": "sd",
+  "description": "microSD controller (stubbed)",
+  "supersedes": {
+    "components/khal/sdmmc/src/khal_sdmmc_esp.c": "stubbed: microSD controller (stage 4)"
+  }
+}

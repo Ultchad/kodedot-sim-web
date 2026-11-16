@@ -1,0 +1,7 @@
+{
+  "area": "power",
+  "description": "light sleep / power management (stubbed)",
+  "supersedes": {
+    "components/khal/power/src/khal_power_esp.c": "stubbed: light sleep / power management"
+  }
+}

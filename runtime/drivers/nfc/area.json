@@ -1,0 +1,7 @@
+{
+  "area": "nfc",
+  "description": "ST25R3916 NFC front end (stubbed)",
+  "supersedes": {
+    "components/kdrv/nfc/src/kdrv_st25r3916.c": "stubbed: ST25R3916B NFC front end (stage 2)"
+  }
+}

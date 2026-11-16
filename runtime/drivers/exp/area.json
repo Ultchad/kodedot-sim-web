@@ -1,0 +1,8 @@
+{
+  "area": "exp",
+  "description": "J3 expansion pins and buses (stubbed, stage 5)",
+  "supersedes": {
+    "components/khal/exp/src/khal_exp_esp.c": "stubbed: J3 expansion pins (stage 5)",
+    "components/kdrv/exp_bus/src/kdrv_exp_bus.c": "stubbed: J3 buses (stage 5)"
+  }
+}

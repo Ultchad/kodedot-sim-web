@@ -21,10 +21,10 @@ typedef struct dotbench_i2c_chip {
 
 void dotbench_i2c_register(const dotbench_i2c_chip_t *chip);
 
-/* Chip model entry points; each registers itself with the bus at khal_i2c_init(). */
-void dotbench_ioexp_register(void);   /* gpio/  : TCA6408A + the six buttons + TP_INT */
-void dotbench_led_register(void);     /* led/   : KTD2026 -> kweb_state.led_rgb       */
-void dotbench_touch_register(void);   /* touch/ : CST820  <- kweb_touch()             */
+/* Registers every virtual chip named in an area.json "i2c_chips" list. Generated
+ * (build/gen/areas_gen.c); khal_i2c_init() calls it once. A chip function has the
+ * shape `void f(void)` and calls dotbench_i2c_register(). */
+void dotbench_register_chips(void);
 
 /* ioexp <-> touch: the TP_INT line (expander bit 6, active low). */
 void dotbench_ioexp_set_tp_int(bool asserted);

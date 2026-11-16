@@ -4,6 +4,7 @@
  * __wrap_gettimeofday (the link uses -Wl,--wrap=gettimeofday) applies it. */
 #include <stdint.h>
 #include <sys/time.h>
+#include <emscripten.h>
 
 extern int __real_gettimeofday(struct timeval *tv, void *tz);
 static volatile int64_t g_offset_us;
@@ -30,3 +31,7 @@ int __wrap_gettimeofday(struct timeval *tv, void *tz)
     }
     return rc;
 }
+
+/* Page side: device clock = host clock + this offset (ms). The page keeps it across restarts like an RTC. */
+EMSCRIPTEN_KEEPALIVE double kweb_time_offset_ms(void) { return (double)g_offset_us / 1000.0; }
+EMSCRIPTEN_KEEPALIVE void kweb_time_set_offset_ms(double ms) { g_offset_us = (int64_t)(ms * 1000.0); }

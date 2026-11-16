@@ -13,7 +13,9 @@ _Static_assert(offsetof(kweb_state_t, fb_width) == 0x010, "display");
 _Static_assert(offsetof(kweb_state_t, led_rgb) == 0x050, "outputs");
 _Static_assert(offsetof(kweb_state_t, buttons) == 0x070, "inputs");
 _Static_assert(offsetof(kweb_state_t, text_head) == 0x090, "text ring header");
-_Static_assert(offsetof(kweb_state_t, growth) == 0x0B0, "growth area");
+_Static_assert(offsetof(kweb_state_t, boot_reason) == 0x0B0, "boot block");
+_Static_assert(offsetof(kweb_state_t, boot_version) == 0x100, "boot block");
+_Static_assert(offsetof(kweb_state_t, growth) == 0x120, "growth area");
 _Static_assert(offsetof(kweb_state_t, fb) == 0x3A0, "framebuffer");
 _Static_assert(offsetof(kweb_state_t, text) == 0x3A0 + KWEB_FB_BYTES, "text ring");
 
@@ -56,36 +58,87 @@ EMSCRIPTEN_KEEPALIVE kweb_state_t *kweb_state(void)
 
 EMSCRIPTEN_KEEPALIVE uint32_t kweb_abi_version(void) { return KWEB_ABI_VERSION; }
 
+/* ---- inputs: lock-free hand-over from the page's thread to an input pump thread -------------------
+ * kweb_button()/kweb_touch() run on the page's (main) thread and must never block: they push an event
+ * into a single-producer single-consumer ring and wake the pump with a futex wake (non-blocking). The
+ * pump thread applies the event to the shared state and calls the driver hook, in order. */
+#include <emscripten/threading.h>
+#include <pthread.h>
+
+typedef struct { uint8_t kind; uint8_t id; uint8_t down; int16_t x, y; } in_evt_t;
+#define IN_RING 256u
+static in_evt_t g_in[IN_RING];
+static volatile uint32_t g_in_head, g_in_tail;     /* head: producer, tail: consumer */
+static volatile uint32_t g_in_wake;
+static volatile uint32_t g_in_dropped;
+static pthread_once_t g_pump_once = PTHREAD_ONCE_INIT;
+
+static void apply(const in_evt_t *e)
+{
+    if (e->kind == 0) {
+        if (e->down) __atomic_fetch_or(&g_state.buttons, 1u << e->id, __ATOMIC_SEQ_CST);
+        else         __atomic_fetch_and(&g_state.buttons, ~(1u << e->id), __ATOMIC_SEQ_CST);
+        if (g_button_hook) g_button_hook();
+    } else {
+        g_state.touch_x = e->x;
+        g_state.touch_y = e->y;
+        g_state.touch_down = e->down ? 1u : 0u;
+        __atomic_fetch_add(&g_state.touch_seq, 1u, __ATOMIC_SEQ_CST);
+        if (g_touch_hook) g_touch_hook();
+    }
+}
+static void *pump(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        uint32_t t = __atomic_load_n(&g_in_tail, __ATOMIC_ACQUIRE);
+        if (t == __atomic_load_n(&g_in_head, __ATOMIC_ACQUIRE)) {
+            uint32_t w = __atomic_load_n(&g_in_wake, __ATOMIC_ACQUIRE);
+            if (t == __atomic_load_n(&g_in_head, __ATOMIC_ACQUIRE)) {
+                emscripten_futex_wait(&g_in_wake, w, 1000.0);
+            }
+            continue;
+        }
+        in_evt_t e = g_in[t % IN_RING];
+        apply(&e);
+        __atomic_store_n(&g_in_tail, t + 1u, __ATOMIC_RELEASE);
+    }
+    return NULL;
+}
+static void start_pump(void)
+{
+    pthread_t th;
+    pthread_attr_t at;
+    pthread_attr_init(&at);
+    pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
+    pthread_attr_setstacksize(&at, 128 * 1024);
+    pthread_create(&th, &at, pump, NULL);
+}
+static void push(in_evt_t e)
+{
+    uint32_t h = __atomic_load_n(&g_in_head, __ATOMIC_RELAXED);
+    if (h - __atomic_load_n(&g_in_tail, __ATOMIC_ACQUIRE) >= IN_RING) { g_in_dropped++; return; }
+    g_in[h % IN_RING] = e;
+    __atomic_store_n(&g_in_head, h + 1u, __ATOMIC_RELEASE);
+    __atomic_fetch_add(&g_in_wake, 1u, __ATOMIC_RELEASE);
+    emscripten_futex_wake(&g_in_wake, 1);
+}
+
 EMSCRIPTEN_KEEPALIVE void kweb_button(int id, int pressed)
 {
-    state_init();
-    if (id < 0 || (unsigned)id >= KWEB_BTN_COUNT) {
-        return;
-    }
-    if (pressed) {
-        __atomic_fetch_or(&g_state.buttons, 1u << id, __ATOMIC_SEQ_CST);
-    } else {
-        __atomic_fetch_and(&g_state.buttons, ~(1u << id), __ATOMIC_SEQ_CST);
-    }
-    if (g_button_hook != NULL) {
-        g_button_hook();
-    }
+    if (id < 0 || (unsigned)id >= KWEB_BTN_COUNT) return;
+    pthread_once(&g_pump_once, start_pump);
+    push((in_evt_t){ .kind = 0, .id = (uint8_t)id, .down = pressed ? 1 : 0 });
 }
 
 EMSCRIPTEN_KEEPALIVE void kweb_touch(int x, int y, int down)
 {
-    state_init();
-    g_state.touch_x = x;
-    g_state.touch_y = y;
-    g_state.touch_down = down ? 1u : 0u;
-    __atomic_fetch_add(&g_state.touch_seq, 1u, __ATOMIC_SEQ_CST);
-    if (g_touch_hook != NULL) {
-        g_touch_hook();
-    }
+    pthread_once(&g_pump_once, start_pump);
+    push((in_evt_t){ .kind = 1, .down = down ? 1 : 0, .x = (int16_t)x, .y = (int16_t)y });
 }
 
-void kweb_set_button_hook(kweb_input_hook_t hook) { g_button_hook = hook; }
-void kweb_set_touch_hook(kweb_input_hook_t hook) { g_touch_hook = hook; }
+void kweb_set_button_hook(kweb_input_hook_t hook) { g_button_hook = hook; pthread_once(&g_pump_once, start_pump); }
+void kweb_set_touch_hook(kweb_input_hook_t hook) { g_touch_hook = hook; pthread_once(&g_pump_once, start_pump); }
 
 /* ---- the text ring -----------------------------------------------------------
  * Producers (any C thread) append records [u8 channel][u16 len LE][len bytes]
@@ -179,3 +232,43 @@ EMSCRIPTEN_KEEPALIVE uint32_t kweb_text_drain(uint8_t *dst, uint32_t cap)
 }
 
 EMSCRIPTEN_KEEPALIVE void kweb_text_echo(int on) { g_echo = on; }
+
+/* ---- restart ------------------------------------------------------------------------ */
+#include <string.h>
+#include <unistd.h>
+
+void kweb_restart(uint32_t reason, const char *target)
+{
+    kweb_state_t *s = kweb_state();
+    memset((void *)s->restart_target, 0, sizeof s->restart_target);
+    if (target) {
+        strncpy((char *)s->restart_target, target, sizeof s->restart_target - 1);
+    }
+    s->restart_reason = reason;
+    __atomic_fetch_add(&s->restart_seq, 1u, __ATOMIC_SEQ_CST);
+    __atomic_fetch_or(&s->events, KWEB_EVT_RESTART_REQUESTED | (reason == KWEB_RESET_PANIC ? KWEB_EVT_PANIC : 0u),
+                      __ATOMIC_SEQ_CST);
+    emscripten_futex_wake((void *)&s->restart_seq, 0x7fffffff);   /* wakes a page parked in Atomics.waitAsync */
+    /* The host tears every worker down; until then this thread must not run on. */
+    for (;;) {
+        sleep(3600);
+    }
+}
+
+/* ---- persistent regions ------------------------------------------------------------- */
+static struct { char name[16]; void *ptr; uint32_t size; } g_persist[KWEB_PERSIST_MAX];
+static uint32_t g_npersist;
+
+void kweb_persist_register(const char *name, void *ptr, uint32_t size)
+{
+    if (g_npersist < KWEB_PERSIST_MAX) {
+        strncpy(g_persist[g_npersist].name, name, 15);
+        g_persist[g_npersist].ptr = ptr;
+        g_persist[g_npersist].size = size;
+        g_npersist++;
+    }
+}
+EMSCRIPTEN_KEEPALIVE uint32_t kweb_persist_count(void) { return g_npersist; }
+EMSCRIPTEN_KEEPALIVE const char *kweb_persist_name(uint32_t i) { return i < g_npersist ? g_persist[i].name : ""; }
+EMSCRIPTEN_KEEPALIVE void *kweb_persist_ptr(uint32_t i) { return i < g_npersist ? g_persist[i].ptr : 0; }
+EMSCRIPTEN_KEEPALIVE uint32_t kweb_persist_size(uint32_t i) { return i < g_npersist ? g_persist[i].size : 0; }

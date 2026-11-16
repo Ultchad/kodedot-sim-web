@@ -1,0 +1,10 @@
+{
+  "area": "console",
+  "description": "khal_console over the bridge text ring",
+  "supersedes": {
+    "components/khal/console/src/khal_console_esp.c": "web fake: runtime/drivers/console (USB-CDC console -> bridge ring)"
+  },
+  "exports": [
+    "kweb_console_input"
+  ]
+}

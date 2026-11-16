@@ -1,6 +1,8 @@
 """Locating and running the Emscripten toolchain; shared build helpers."""
 import concurrent.futures as cf
 import hashlib
+import json
+import threading
 import os
 import pathlib
 import shlex
@@ -40,8 +42,58 @@ def _read_deps(dfile):
     except OSError:
         return None
     txt = txt.replace("\\\n", " ")
-    parts = txt.split(":", 1)[1].split()
-    return parts
+    return txt.split(":", 1)[1].split()
+
+
+# Path normalisation makes a build directory relocatable: stamps store paths with the
+# worktree / build / SDK roots replaced by placeholders, and staleness is decided by
+# content hashes (not mtimes), so a copied build directory is valid in another worktree.
+CTX = {}          # {"@ROOT@": path, "@SDK@": path, "@LVGL@": path, "@BUILD@": path}
+_hash_cache = {}
+_hash_lock = threading.Lock()
+
+
+def set_context(**roots):
+    CTX.clear()
+    for k, v in roots.items():
+        CTX["@%s@" % k.upper()] = str(v)
+
+
+def norm(text):
+    for k, v in sorted(CTX.items(), key=lambda kv: -len(kv[1])):
+        text = text.replace(v, k)
+    return text
+
+
+def load_hash_cache(path):
+    try:
+        _hash_cache.update(json.loads(pathlib.Path(path).read_text()))
+    except (OSError, ValueError):
+        pass
+
+
+def save_hash_cache(path):
+    # keep only entries still pointing at existing files
+    pathlib.Path(path).write_text(json.dumps(_hash_cache))
+
+
+def content_hash(p):
+    try:
+        st = os.stat(p)
+    except OSError:
+        return None
+    key = "%s|%d|%d" % (p, st.st_mtime_ns, st.st_size)
+    with _hash_lock:
+        h = _hash_cache.get(key)
+    if h is None:
+        h = hashlib.sha1(pathlib.Path(p).read_bytes()).hexdigest()
+        with _hash_lock:
+            _hash_cache[key] = h
+    return h
+
+
+def _stamp_of(cmd, deps):
+    return {"cmd": norm(" ".join(cmd)), "deps": {norm(d): content_hash(d) for d in deps}}
 
 
 def needs_build(obj, src, cmd):
@@ -50,19 +102,16 @@ def needs_build(obj, src, cmd):
     d = obj.with_suffix(".d")
     if not obj.exists() or not stamp.exists() or not d.exists():
         return True
-    if stamp.read_text() != " ".join(cmd):
+    try:
+        old = json.loads(stamp.read_text())
+    except ValueError:
         return True
-    t = obj.stat().st_mtime
+    if old.get("cmd") != norm(" ".join(cmd)):
+        return True
     deps = _read_deps(d)
     if deps is None:
         return True
-    for p in deps:
-        try:
-            if os.stat(p).st_mtime > t:
-                return True
-        except OSError:
-            return True
-    return False
+    return old.get("deps") != _stamp_of(cmd, deps)["deps"]
 
 
 def compile_one(job):
@@ -74,7 +123,8 @@ def compile_one(job):
         return (src, 0, "", False)
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode == 0:
-        obj.with_suffix(".cmd").write_text(" ".join(cmd))
+        deps = _read_deps(obj.with_suffix(".d")) or []
+        obj.with_suffix(".cmd").write_text(json.dumps(_stamp_of(cmd, deps)))
     return (src, r.returncode, r.stderr, True)
 
 
@@ -96,19 +146,19 @@ def compile_all(jobs, nproc, label):
 
 
 def make_archive(archive, objs):
+    """(Re)build archive from objs unless it already holds exactly these objects, unchanged."""
     archive = pathlib.Path(archive)
     objs = [str(o) for o in objs]
-    if archive.exists():
-        t = archive.stat().st_mtime
-        if all(os.stat(o).st_mtime <= t for o in objs) and \
-                archive.with_suffix(".list").exists() and archive.with_suffix(".list").read_text() == "\n".join(objs):
-            return False
+    listing = archive.with_suffix(".list")
+    state = {o: content_hash(o) for o in objs}
+    want = norm(json.dumps(state, sort_keys=True))
+    if archive.exists() and listing.exists() and listing.read_text() == want:
+        return False
     if archive.exists():
         archive.unlink()
-    # emar in chunks to keep the command line short
     for i in range(0, len(objs), 200):
         subprocess.run(["emar", "rcs", str(archive)] + objs[i:i + 200], check=True)
-    archive.with_suffix(".list").write_text("\n".join(objs))
+    listing.write_text(want)
     return True
 
 

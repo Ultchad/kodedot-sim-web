@@ -16,8 +16,8 @@ Deploy: `web/vercel.json` sends `Cross-Origin-Opener-Policy: same-origin` and `C
 Debug hooks (`window.__dotbench`, `window.__dotbench3d`) exist only when the URL has `?debug`.
 
 ## Dependencies
-Runtime: react, react-dom, three, @react-three/fiber (no drei). Dev: vite, @vitejs/plugin-react, typescript, tailwindcss + @tailwindcss/vite (v4), vitest, fake-indexeddb, puppeteer-core, types.
-Bundle (build): main JS 313 KB (96 KB gzip), CSS 22 KB, lazy `Device3D` chunk 933 KB (248 KB gzip, only loaded in 3D view). The 2D page works without three.js loaded.
+Runtime: react, react-dom, three, @react-three/fiber (no drei), @fontsource/outfit, @fontsource/dm-sans, @fontsource/dm-mono (self-hosted fonts, latin subset, so COEP stays satisfied). Dev: vite, @vitejs/plugin-react, typescript, tailwindcss + @tailwindcss/vite (v4), vitest, fake-indexeddb, puppeteer-core, types.
+Bundle (build): main JS 318 KB (98.6 KB gzip), CSS 30 KB (7 KB gzip; was 22 KB), lazy `Device3D` chunk 945 KB (253 KB gzip, only loaded in 3D view). Fonts: 7 woff2 files, about 100 KB total, fetched on demand. The 2D page works without three.js loaded.
 
 ## Seam: `web/src/device/types.ts` (`KodeDevice`)
 - Lifecycle: `load(ArrayBuffer, {name})`, `start()`, `stop()`, `restart()`, `dispose()`, `status` (idle|booting|running|crashed), `appName`.
@@ -45,9 +45,9 @@ Bundle (build): main JS 313 KB (96 KB gzip), CSS 22 KB, lazy `Device3D` chunk 93
 - i18n: en (source, fallback), pt-BR, es; typed (`Messages = Record<MessageKey,string>`), plural via Intl.PluralRules, detection from navigator.languages, persisted, `<html lang>` set. Mock device output (screen, log) is English by design: it is device output, not UI.
 - Phone: sensors behind a toggle in the Motion section (off by default), `navigator.vibrate` on haptic (feature-detected, only after user activation), Wake Lock while running (setting, default on), web manifest + Apple meta tags + generated icons (original mark). No service worker. Manifest `orientation: portrait` as requested (landscape works in the browser only).
 
-## Verified by running (headless Chrome, `scripts/headless-check.mjs`, 82/82)
+## Verified by running (headless Chrome, `scripts/headless-check.mjs`, 88/88)
 Console clean in every phase; COOP/COEP on the served build; `crossOriginIsolated` true; WebGL context; 3D screen texture version and GL frame counter advance; canvas pixels change; click on the top button mesh changes the LED; glass clicks map within 2 px in 3D, 2D and phone (touch); glass drag does not orbit; orbit, tilt link both ways; IndexedDB bundle, mock/wasm notices; language switch (en, pt-BR, es); phone 390x844@3x and 844x390: fills viewport, no scroll or zoom on touch-drag, 6 buttons >= 44 px inside viewport, one-pointer touch, sheet open/close, nothing overflows in en, es, pt-BR across all five sheet tabs.
-Screenshots (`web/screenshots/`): `3d-dark-1440x900.png`, `3d-orbited-side.png`, `2d-light-1280x720.png`, `phone-portrait.png`, `phone-landscape.png` (plus sheet-open and tablet-drawers).
+Screenshots (`web/screenshots/`): `3d-light-1440x900.png`, `2d-dark-1280x720.png`, `3d-orbited-side.png`, `2d-light-1280x720.png`, `phone-portrait.png`, `phone-landscape.png` (plus sheet-open and tablet-drawers).
 
 ## NOT verified (needs a real phone or GPU)
 - iOS permission prompts for DeviceOrientation/DeviceMotion, real sensor data and shake threshold tuning.
@@ -58,3 +58,14 @@ Screenshots (`web/screenshots/`): `3d-dark-1440x900.png`, `3d-orbited-side.png`,
 ## Known limits
 - D-pad in 3D fixes the direction at press (no slide between arms); 2D does slide.
 - Mock screen draws its own text in English.
+
+## Restyle (warm, toy-like; light is the default regardless of OS)
+Tokens in `src/styles/tokens.css` (light + `[data-theme=dark]`), primitives in `src/index.css` (.card, .inner, .btn, .chip, .seg, .pill, .tag, .soon, .icon-tile). Outfit headings, DM Sans body, DM Mono only in console log lines. Secondary text and the success colour were darkened from the owner's greys to pass WCAG AA (secondary #4A4742, success text #0D5F2F). Contrast (measured): ink on card 12.3, ink on bg 9.2, secondary on card 6.5, amber button label 9.3, link text 4.8, red text 5.2, console text 14.4, console dim 5.1. Headless check asserts tab-label contrast >= 4.5 in light and dark.
+
+## 3D view: public interface (model is owned by another engineer from here)
+- `Device3D` (default export of `components/Device3D.tsx`, lazy): props `{ device, input, painter, storePose, tiltLink, onPose, resetSignal, reducedMotion, onContextLost }`.
+- Screen: `ScreenPainter.canvas` (410x502) is a CanvasTexture on the glass mesh; `painter.onFrame` sets `needsUpdate`. LED: `device.led` is read per frame and drives the light-guide material (emissive) and a point light. Backlight/panelOn dim the screen material.
+- Input: glass hit -> UV -> `uvToScreen` -> `input.touchDown/Move/Up` (-> `setTouch`); controls call `input.press/release(id, 'p3:<pointerId>')` (-> `setButton`). Pressable ids: `top`, `bottom`, `up`, `down`, `left`, `right` (D-pad arm from `dpadDirection` on the hit point). Background and body drag orbits.
+- Debug hook (only with `?debug`): `window.__dotbench3d` {project('top'|'bottom'|'dpad:<dir>'|'glass:x,y'), textureVersion, rendered, pose, setPoseDebug, scene}.
+- GLB override: `components/glbModel.ts` (`loadGlbModel`, nodes screen, btn_top, btn_bottom, dpad_*, led) is wired into Device3D; loading and rendering were checked with a synthetic GLB, the press path was not.
+- Half-done in the model files: see the coordinator report (lib/bodyModel.ts SDF body, Device3D.tsx; bezel 1.9 mm and body colour tweaks applied but not reviewed visually).

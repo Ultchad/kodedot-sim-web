@@ -1,0 +1,7 @@
+{
+  "area": "i2c",
+  "description": "khal_i2c bus over virtual chips",
+  "supersedes": {
+    "components/khal/i2c/src/khal_i2c_esp.c": "web fake: runtime/drivers/i2c (virtual TCA6408A, KTD2026, CST820)"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "area": "time",
+  "description": "settimeofday / wall clock offset (khal_time itself is the real SDK file)",
+  "exports": ["kweb_time_offset_ms", "kweb_time_set_offset_ms"]
+}

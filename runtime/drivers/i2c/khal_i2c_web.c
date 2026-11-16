@@ -33,9 +33,7 @@ kode_status_t khal_i2c_init(void)
     g_init = true;
     pthread_mutex_unlock(&g_mu);
     if (first) {
-        dotbench_ioexp_register();
-        dotbench_led_register();
-        dotbench_touch_register();
+        dotbench_register_chips();      /* generated from the areas' manifests */
     }
     return KODE_OK;
 }

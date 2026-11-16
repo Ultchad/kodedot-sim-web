@@ -47,7 +47,14 @@ is returned by `kweb_abi_version()` and stored at offset 0x04.
 | 0x0A0 | 4 | `text_offset` | | byte offset of `text[]` |
 | 0x0A4 | 4 | `text_size` | | 65536 |
 | 0x0A8 | 8 | reserved | | |
-| 0x0B0 | 752 | `growth[188]` | | room for later stages (NFC/RFID, radio, IR, SD, battery, motion, audio, expansion pins). New fields go in here; nothing above ever moves |
+| 0x0B0 | 4 | `boot_reason` | host | why this boot happens, `KWEB_RESET_*` (numbered as `esp_reset_reason_t`: 1 POWERON, 2 EXTERNAL, 3 SOFTWARE, 4 PANIC, ...); written before `callMain` |
+| 0x0B4 | 4 | `boot_count` | host | boots since the page created the device |
+| 0x0B8 | 4 | `restart_reason` | C | reason of the last restart request |
+| 0x0BC | 4 | `restart_seq` | C | +1 per request (the page waits on it with `Atomics.waitAsync`; C wakes it) |
+| 0x0C0 | 32 | `restart_target` | C | program to start next, empty = same program |
+| 0x0E0 | 32 | `boot_name` | host | running program name (`app.json` name) |
+| 0x100 | 32 | `boot_version` | host | its version |
+| 0x120 | 640 | `growth[160]` | | room for later stages (NFC/RFID, radio, IR, SD, battery, motion, audio, expansion pins). New fields go in here; nothing above ever moves |
 | 0x3A0 | 820160 | `fb[]` | C | 410 x 502 x 4 framebuffer |
 | 0x3A0 + 820160 | 65536 | `text[]` | C | text ring |
 
@@ -66,6 +73,13 @@ Buttons use the SDK's own numbering: `UP 0, DOWN 1, LEFT 2, RIGHT 3, TOP 4, BOT 
 | `kweb_text_echo(on)` | also echo every record to the process stdout (debugging) |
 | `kweb_console_input(ptr, len)` | bytes typed on the console (from `runtime/drivers/console`) |
 | `malloc`, `free` | so the page can allocate a drain buffer |
+| `kweb_persist_count/name/ptr/size(i)` | the persistent regions ("keep" 1 MiB, "nvs" 128 KiB) the host copies across restarts |
+| `kweb_time_offset_ms()`, `kweb_time_set_offset_ms(ms)` | device clock = host clock + offset; the page keeps it across restarts like an RTC |
+| `pthread_self` | main-thread mailbox address (used to wake the runtime when tearing down) |
+
+`kweb_button` and `kweb_touch` never block and take no lock: they push into a 256-entry lock-free
+single-producer ring and wake a pump pthread, which updates the state and calls the hooks, in order. A full ring
+drops the newest event. The page may call them from the main thread.
 
 Every `runtime/**/exports.txt` is concatenated by `dotbench build` into `-sEXPORTED_FUNCTIONS`.
 
@@ -88,3 +102,13 @@ that stopped draining never blocks the firmware. The page drains with
 `kweb_text_write(channel, text, len)`, `kweb_text_printf(channel, fmt, ...)`,
 `kweb_set_button_hook(fn)`, `kweb_set_touch_hook(fn)` (hooks run on the thread that
 called `kweb_button`/`kweb_touch`, after the shared state is updated).
+
+## Restart and boot (stage 1)
+
+Restart: firmware calls `kweb_restart(reason, target)` (`khal_restart`, `esp_restart`, `khal_panic`, a failed
+`ESP_ERROR_CHECK`). It records `restart_reason`/`restart_target`, bumps `restart_seq`, sets `events` and wakes the
+page, then parks the calling thread forever. The page tears down every worker (`PThread.terminateAllThreads`)
+and boots again: instantiate with `noInitialRun`, write the boot block and the persistent regions into the fresh
+memory, then `callMain`. Persistent regions are registered in C with `kweb_persist_register(name, ptr, size)`
+(max `KWEB_PERSIST_MAX` = 8); a power-on clears "keep" (RTC RAM) and keeps "nvs" (flash); any other restart keeps both.
+The Node reference of this sequence is `tests/node/harness.mjs`, the browser one `runtime/web-adapter/`.

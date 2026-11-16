@@ -1,0 +1,7 @@
+{
+  "area": "display",
+  "description": "kdrv_display into the RGBA framebuffer",
+  "supersedes": {
+    "components/kdrv/display/src/kdrv_display.c": "web fake: runtime/drivers/display (esp_lcd DSI panel -> kweb_state framebuffer)"
+  }
+}

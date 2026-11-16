@@ -1,0 +1,7 @@
+{
+  "area": "led",
+  "description": "KTD2026 RGB LED model",
+  "i2c_chips": [
+    "dotbench_led_register"
+  ]
+}

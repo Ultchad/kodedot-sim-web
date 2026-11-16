@@ -2,10 +2,9 @@
 // green (0,32,0), and pressing the top button through the bridge turns it red (32,0,0). The example
 // toggles on the press of KODE_SYS_BUTTON_TOP (not the release) with BL_LEVEL = 32.
 import assert from "node:assert/strict";
-import { boot, BTN, sleep } from "./harness.mjs";
+import { boot, pkgPath, BTN, sleep } from "../harness.mjs";
 
-const pkg = process.argv[2];
-const a = await boot(pkg);
+const a = await boot(pkgPath("buttons_led"));
 let failed = false;
 const check = async (name, fn) => {
   try { await fn(); console.log("ok   - " + name); }

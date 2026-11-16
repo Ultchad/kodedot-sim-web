@@ -1,0 +1,20 @@
+{
+  "area": "bridge",
+  "description": "core exports",
+  "exports": [
+    "kweb_state",
+    "kweb_abi_version",
+    "kweb_button",
+    "kweb_touch",
+    "kweb_text_drain",
+    "kweb_text_pending",
+    "kweb_text_echo",
+    "malloc",
+    "free",
+    "kweb_persist_count",
+    "kweb_persist_name",
+    "kweb_persist_ptr",
+    "kweb_persist_size",
+    "pthread_self"
+  ]
+}

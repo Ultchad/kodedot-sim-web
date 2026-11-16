@@ -97,12 +97,33 @@ typedef struct kweb_state {
     /* ---- 0x0B0 room to grow: one area per later stage ----------------------------
      * Stage 2 NFC/RFID, stage 3 radio, stage 4 IR/SD/USB/battery/motion/audio,
      * stage 5 expansion pins. New fields go in here, never move the ones above. */
-    uint32_t growth[188];         /* 752 bytes */
+    /* 0x0B0 boot and reset: the host writes boot_* before the program starts (noInitialRun,
+     * then callMain), the firmware writes restart_* when it asks for a restart. */
+    volatile uint32_t boot_reason;     /* 0x0B0 KWEB_RESET_*: why this boot happens (host -> C)   */
+    volatile uint32_t boot_count;      /* 0x0B4 boots since the page created the device (host)     */
+    volatile uint32_t restart_reason;  /* 0x0B8 KWEB_RESET_* the firmware asked for (C -> host)    */
+    volatile uint32_t restart_seq;     /* 0x0BC +1 per request; events bit RESTART_REQUESTED too   */
+    char     restart_target[32];       /* 0x0C0 program to start next, "" = the same one (C -> host) */
+    char     boot_name[32];            /* 0x0E0 name of the running program (host -> C)            */
+    char     boot_version[32];         /* 0x100 its version (host -> C)                            */
+    uint32_t growth[160];         /* 0x120, 640 bytes */
 
     /* ---- 0x3A0 big buffers: framebuffer, then the text ring ---------------------- */
     uint8_t  fb[KWEB_FB_BYTES];
     uint8_t  text[KWEB_TEXT_RING_BYTES];
 } kweb_state_t;
+
+/* Reset reasons, numbered as ESP-IDF's esp_reset_reason_t (= KDRV_RESET_*). */
+#define KWEB_RESET_UNKNOWN   0u
+#define KWEB_RESET_POWERON   1u
+#define KWEB_RESET_EXTERNAL  2u
+#define KWEB_RESET_SOFTWARE  3u
+#define KWEB_RESET_PANIC     4u
+#define KWEB_RESET_INT_WDT   5u
+#define KWEB_RESET_TASK_WDT  6u
+#define KWEB_RESET_WDT       7u
+#define KWEB_RESET_DEEPSLEEP 8u
+#define KWEB_RESET_BROWNOUT  9u
 
 /* ---- exported to the page (see exports.txt) ------------------------------------ */
 kweb_state_t *kweb_state(void);
@@ -122,6 +143,21 @@ void kweb_text_printf(unsigned channel, const char *fmt, ...) __attribute__((for
 /* Hooks the input drivers register; the exported kweb_button()/kweb_touch() call
  * them after the shared state is updated. May be NULL until the driver starts. */
 typedef void (*kweb_input_hook_t)(void);
+/* Ask the host to end this program: records the reason (and optionally the name of the
+ * program to start next), raises KWEB_EVT_RESTART_REQUESTED, then parks the calling
+ * thread for good. The host terminates every worker and boots again. Never returns. */
+void kweb_restart(uint32_t reason, const char *target) __attribute__((noreturn));
+
+/* Memory that must survive a restart (the keep store, NVS, later: SD image, ...). Register
+ * a fixed buffer from a constructor; the host copies every region out before it tears the
+ * program down and back in before the next one starts, and may mirror them to IndexedDB. */
+#define KWEB_PERSIST_MAX 8
+void kweb_persist_register(const char *name, void *ptr, uint32_t size);
+uint32_t kweb_persist_count(void);
+const char *kweb_persist_name(uint32_t i);
+void *kweb_persist_ptr(uint32_t i);
+uint32_t kweb_persist_size(uint32_t i);
+
 void kweb_set_button_hook(kweb_input_hook_t hook);
 void kweb_set_touch_hook(kweb_input_hook_t hook);
 

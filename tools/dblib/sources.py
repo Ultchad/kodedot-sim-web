@@ -2,41 +2,13 @@
 
 This mirrors the CMakeLists.txt of every kode-sdk component (read them side by
 side), evaluated against the sdkconfig produced by gen_sdkconfig.py. Where the
-web build replaces a file, REPLACED says which and why; docs/STATUS-foundation.md
-repeats the list for humans.
+web build replaces a file, the area manifests (runtime/drivers/*/area.json) say which and why.
 """
 import pathlib
 
 # Source files of the SDK that are NOT compiled, because runtime/drivers (or a
 # generated stub) provides the functions instead. path relative to the SDK root.
 # value = reason (copied into STATUS).
-REPLACED = {
-    "components/khal/system/src/khal_system_esp.c": "web fake: runtime/drivers/system",
-    "components/khal/console/src/khal_console_esp.c": "web fake: runtime/drivers/console (USB-CDC console -> bridge ring)",
-    "components/khal/gpio/src/khal_gpio_esp.c": "web fake: runtime/drivers/gpio (GPIO35 button, expander INT line)",
-    "components/khal/i2c/src/khal_i2c_esp.c": "web fake: runtime/drivers/i2c (virtual TCA6408A, KTD2026, CST820)",
-    "components/khal/nvs/src/khal_nvs_esp.c": "web fake: runtime/drivers/nvs (in-memory key-value store)",
-    "components/khal/clk/src/khal_clk_esp.c": "stubbed: clock tree readout, no meaning in a browser",
-    "components/khal/exp/src/khal_exp_esp.c": "stubbed: J3 expansion pins (stage 5)",
-    "components/khal/keep/src/khal_keep_esp.c": "stubbed: RTC-RAM survives-reset store",
-    "components/khal/power/src/khal_power_esp.c": "stubbed: light sleep / power management",
-    "components/khal/sdmmc/src/khal_sdmmc_esp.c": "stubbed: microSD controller (stage 4)",
-    "components/khal/temp/src/khal_temp_esp.c": "stubbed: die temperature sensor",
-    "components/khal/zlib/src/khal_zlib_esp.c": "stubbed: needs ESP ROM miniz",
-    "components/khal/pwm/src/khal_pwm_esp.c": "stubbed: LEDC peripheral",
-    "components/kdrv/display/src/kdrv_display.c": "web fake: runtime/drivers/display (esp_lcd DSI panel -> kweb_state framebuffer)",
-    "components/kdrv/audio/src/kdrv_es8311.c": "stubbed: I2S codec (stage 4)",
-    "components/kdrv/nfc/src/kdrv_st25r3916.c": "stubbed: ST25R3916B NFC front end (stage 2)",
-    "components/kdrv/rfid/src/kdrv_rfid_lf.c": "stubbed: 125 kHz front end (stage 2)",
-    "components/kdrv/exp_bus/src/kdrv_exp_bus.c": "stubbed: J3 buses (stage 5)",
-    "components/kdrv/apps/src/kdrv_slot.c": "stubbed: OTA slot flash region",
-    "components/kdrv/apps/src/kdrv_slot_crash.c": "stubbed: crash record in flash",
-    "components/kdrv/storage/src/kdrv_fs.c": "stubbed: FATFS (stage 1 files / stage 4 microSD)",
-    "components/kdrv/apps/src/kdrv_apps.c": "stubbed: reads/writes the apps flash region and verifies ESP images",
-    "components/kdrv/apps/src/kdrv_kfw.c": "stubbed: firmware image verification (mbedTLS PSA)",
-    "components/kdrv/apps/src/kdrv_image_check.c": "stubbed: ESP image verification",
-    "components/kui/pack/src/kui_pack.c": "not compiled: needs cJSON, which is not available offline; nothing the examples reference",
-}
 
 
 def _g(sdk, pattern):
@@ -189,8 +161,9 @@ def sdk_sources(sdk, cfg):
     return out
 
 
-def apply_replaced(files):
-    return [f for f in files if f not in REPLACED]
+def apply_replaced(files, replaced):
+    """Drop the files some area supersedes (replaced: {path: reason}, see areas.py)."""
+    return [f for f in files if f not in replaced]
 
 
 # Include directories (public ones of every component, as ESP-IDF would export them),
@@ -251,12 +224,13 @@ def lvgl_sources(lvgl, cfg):
     return out
 
 
-def runtime_sources(root):
-    """The dotbench runtime's own C files (relative to the repo root)."""
+def runtime_sources(root, areas):
+    """The dotbench runtime's own C files (relative to the repo root): the core
+    (rtos, idf, bridge, main) plus whatever each area's manifest selects."""
     root = pathlib.Path(root)
-    out = ["runtime/rtos/src/rtos.c", "runtime/idf/src/idf.c", "runtime/bridge/kweb_bridge.c",
-           "runtime/main/dotbench_main.c"]
-    for d in sorted((root / "runtime/drivers").iterdir()):
-        if d.is_dir() and not d.name.startswith("_"):
-            out += [p.relative_to(root).as_posix() for p in sorted(d.glob("*.c"))]
+    out = []
+    for core in ("rtos/src", "idf/src", "bridge", "main"):
+        out += [p.relative_to(root).as_posix() for p in sorted((root / "runtime" / core).glob("*.c"))]
+    for a in areas:
+        out += [p.relative_to(root).as_posix() for p in a.sources if p.parent != root / "runtime/bridge"]
     return out

@@ -1,0 +1,10 @@
+{
+  "area": "platform",
+  "description": "clock tree, die temperature, zlib, kui_pack (stubbed)",
+  "supersedes": {
+    "components/khal/clk/src/khal_clk_esp.c": "stubbed: clock tree readout, no meaning in a browser",
+    "components/khal/temp/src/khal_temp_esp.c": "stubbed: die temperature sensor",
+    "components/khal/zlib/src/khal_zlib_esp.c": "stubbed: needs ESP ROM miniz",
+    "components/kui/pack/src/kui_pack.c": "not compiled: needs cJSON, which is not available offline; nothing the examples reference"
+  }
+}

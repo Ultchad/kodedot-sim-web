@@ -1,0 +1,7 @@
+{
+  "area": "audio",
+  "description": "ES8311 codec (stubbed except park)",
+  "supersedes": {
+    "components/kdrv/audio/src/kdrv_es8311.c": "stubbed: I2S codec (stage 4)"
+  }
+}

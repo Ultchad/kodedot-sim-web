@@ -1,0 +1,7 @@
+{
+  "area": "rfid",
+  "description": "125 kHz front end (stubbed except init)",
+  "supersedes": {
+    "components/kdrv/rfid/src/kdrv_rfid_lf.c": "stubbed: 125 kHz front end (stage 2)"
+  }
+}

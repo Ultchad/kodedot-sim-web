@@ -1,0 +1,448 @@
+// dotbench web adapter: runs a .dotbench package (Kode Dot firmware compiled to WebAssembly) in a page.
+// Framework-free ES module, no bundler needed. See README.md.
+import { readZip } from "./zip.js";
+
+/** Byte offsets into the shared kweb_state_t (runtime/bridge/README.md). */
+export const OFF = {
+  magic: 0x00, abi: 0x04, events: 0x0c,
+  fbW: 0x10, fbH: 0x14, fbStride: 0x1c, fbOffset: 0x20, frameSeq: 0x24, panelOn: 0x30, backlight: 0x34,
+  ledRgb: 0x50, ledSeq: 0x54, haptic: 0x58, hapticSeq: 0x5c,
+  buttons: 0x70, touchSeq: 0x80,
+  textHead: 0x90, textTail: 0x94,
+  bootReason: 0xb0, bootCount: 0xb4, restartReason: 0xb8, restartSeq: 0xbc, restartTarget: 0xc0,
+  bootName: 0xe0, bootVersion: 0x100,
+};
+export const BUTTONS = { up: 0, down: 1, left: 2, right: 3, top: 4, bottom: 5, bot: 5 };
+export const RESET = { UNKNOWN: 0, POWERON: 1, EXTERNAL: 2, SOFTWARE: 3, PANIC: 4, INT_WDT: 5, TASK_WDT: 6, WDT: 7, DEEPSLEEP: 8, BROWNOUT: 9 };
+const RESET_NAME = Object.fromEntries(Object.entries(RESET).map(([k, v]) => [v, k.toLowerCase()]));
+const EVT_RESTART = 1, EVT_PANIC = 2;
+export const SCREEN_WIDTH = 410, SCREEN_HEIGHT = 502;
+
+/** @typedef {'idle'|'booting'|'running'|'crashed'|'restart-requested'} DeviceStatus */
+/** @typedef {{status: DeviceStatus, reason?: string, target?: string}} StatusDetail */
+/** @typedef {{id: number, ts: number, level: 'debug'|'info'|'warn'|'error'|'input', text: string, channel: number}} LogLine */
+
+const cstr = (u8, p, n) => { let e = p; while (e < p + n && u8[e]) e++; return new TextDecoder().decode(u8.slice(p, e)); };
+const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
+const LEVELS = { E: "error", W: "warn", N: "info", I: "info", D: "debug", V: "debug" };
+
+export class DotbenchDevice {
+  /**
+   * @param {object} [opts]
+   * @param {number} [opts.pollMs=20] how often outputs/log/events are sampled while running
+   * @param {boolean} [opts.autoRestart=true] reboot by itself when the firmware asks for a restart (not after a panic)
+   * @param {(name: string) => Promise<ArrayBuffer|null>} [opts.resolveTarget] called when a restart names another
+   *        program; return its .dotbench bytes to switch to it, or null to restart the current one
+   * @param {number} [opts.maxLogLines=2000]
+   */
+  constructor(opts = {}) {
+    this.opts = { pollMs: 20, autoRestart: true, maxLogLines: 2000, ...opts };
+    this._status = { status: "idle" };
+    this._listeners = new Map();
+    this._pkg = null;
+    this._inst = null;
+    this._persist = new Map();
+    this._bootCount = 0;
+    this._lines = [];
+    this._lineId = 0;
+    this._partial = new Map();
+    this._frame = { seq: -1, width: SCREEN_WIDTH, height: SCREEN_HEIGHT, data: new Uint8ClampedArray(new ArrayBuffer(SCREEN_WIDTH * SCREEN_HEIGHT * 4)) };
+    this._timer = null;
+    this._gen = 0;
+    this._rtcOffsetMs = 0;   // the device's RTC survives resets; it is the host clock plus this
+  }
+
+  // ---------------------------------------------------------------- events
+  /** @param {'status'|'log'|'outputs'|'area:*'} type @param {Function} cb @returns {() => void} */
+  on(type, cb) {
+    if (!this._listeners.has(type)) this._listeners.set(type, new Set());
+    this._listeners.get(type).add(cb);
+    return () => this._listeners.get(type)?.delete(cb);
+  }
+  _emit(type, data) { for (const cb of this._listeners.get(type) ?? []) { try { cb(data); } catch (e) { console.error(e); } } }
+  _setStatus(status, extra = {}) { this._status = { status, ...extra }; this._emit("status", this._status); }
+
+  /** @returns {DeviceStatus} */
+  get status() { return this._status.status; }
+  /** @returns {StatusDetail} */
+  get statusDetail() { return this._status; }
+  /** Name of the loaded program or null. */
+  get appName() { return this._pkg?.appJson.display_name ?? this._pkg?.appJson.name ?? null; }
+  get appInfo() { return this._pkg ? { ...this._pkg.appJson } : null; }
+  /** Worker threads of the running program (pool + running); 0 when stopped. */
+  get workerCount() {
+    const P = this._inst?.M.PThread;
+    return P ? Object.keys(P.pthreads).length + P.unusedWorkers.length : 0;
+  }
+  /** wasm linear memory in bytes (0 when stopped). */
+  get wasmMemoryBytes() { return this._inst ? this._inst.M.HEAPU8.byteLength : 0; }
+
+  // ------------------------------------------------------------- lifecycle
+  /**
+   * Unzip a .dotbench package, build blob URLs for its module / wasm / worker, compile the wasm once.
+   * Replaces any loaded program (stops it first).
+   * @param {ArrayBuffer|Uint8Array} bytes
+   */
+  async load(bytes) {
+    this.stop();
+    this._release();
+    const files = await readZip(bytes);
+    const need = (n) => { const f = files.get(n); if (!f) throw new Error("package has no " + n); return f; };
+    const manifest = JSON.parse(new TextDecoder().decode(need("manifest.json")));
+    const appJson = JSON.parse(new TextDecoder().decode(need("appdata/app.json")));
+    const jsText = new TextDecoder().decode(need(manifest.js));
+    const wasmBytes = need(manifest.wasm);
+    const urls = [];
+    const blob = (parts, type) => { const u = URL.createObjectURL(new Blob(parts, { type })); urls.push(u); return u; };
+    // Workers run the same script (they never spawn workers themselves: pthread_create is proxied to the
+    // main thread), so the worker blob is the unmodified text; the main-thread copy gets the worker URL baked in.
+    const workerUrl = blob([jsText], "text/javascript");
+    const re = new RegExp('new URL\\("' + manifest.js.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + '",import\\.meta\\.url\\)', "g");
+    if (!re.test(jsText)) throw new Error("package script does not look like a dotbench Emscripten module");
+    const mainUrl = blob([jsText.replace(re, "new URL(" + JSON.stringify(workerUrl) + ")")], "text/javascript");
+    const wasmModule = await WebAssembly.compile(wasmBytes);
+    const glue = {};
+    for (const [area, info] of Object.entries(manifest.areas ?? {})) {
+      for (const g of info.glue ?? []) {
+        const u = blob([need(g)], "text/javascript");
+        const m = await import(/* @vite-ignore */ u);
+        (glue[area] ??= []).push(m);
+      }
+    }
+    const mod = await import(/* @vite-ignore */ mainUrl);
+    this._pkg = { manifest, appJson, urls, wasmModule, factory: mod.default, glue, bytes };
+    this._setStatus("idle");
+  }
+
+  /** Boot the loaded program as a power-on: the keep store is cleared, NVS and other flash-like regions stay. */
+  async start(opts = {}) {
+    if (!this._pkg) throw new Error("nothing loaded");
+    if (this._inst) this._teardown();
+    this._persist.delete("keep");
+    await this._boot(opts.reason ?? RESET.POWERON);
+  }
+
+  /** Stop: terminate every worker, free the instance. Persistent regions are kept for the next start. */
+  stop() {
+    if (this._inst) this._teardown();
+    if (this._pkg) this._setStatus("idle");
+  }
+
+  /** Reboot like a reset: everything persistent survives, RAM does not. */
+  async restart(opts = {}) {
+    if (!this._pkg) throw new Error("nothing loaded");
+    if (this._inst) this._teardown();
+    await this._boot(opts.reason ?? RESET.EXTERNAL);
+  }
+
+  dispose() {
+    this.stop();
+    this._release();
+    this._listeners.clear();
+  }
+
+  _release() {
+    // Revoked late: a worker that was terminated while its script was still being fetched must not find the URL gone.
+    const urls = this._pkg?.urls ?? [];
+    if (urls.length) setTimeout(() => urls.forEach((u) => URL.revokeObjectURL(u)), 10000);
+    this._pkg = null;
+  }
+
+  async _boot(reason) {
+    const gen = ++this._gen;
+    this._setStatus("booting");
+    const pkg = this._pkg;
+    let M;
+    try {
+      M = await pkg.factory({
+        noInitialRun: true,
+        locateFile: (p) => p,
+        instantiateWasm: (imports, success) => {
+          WebAssembly.instantiate(pkg.wasmModule, imports).then((inst) => success(inst, pkg.wasmModule));
+          return {};
+        },
+        print: (s) => this._pushText(2, s + "\n"),
+        printErr: (s) => this._pushText(2, s + "\n"),
+        onAbort: (what) => this._crash("abort: " + what),
+      });
+    } catch (e) {
+      this._setStatus("crashed", { reason: "load failed: " + (e?.message ?? e) });
+      throw e;
+    }
+    if (gen !== this._gen) { M.PThread.terminateAllThreads(); return; }
+    const statePtr = M._kweb_state();
+    const inst = { M, statePtr, gen, pending: new Map(), glue: {}, restartSeen: 0, lastLed: -1, lastOut: "" };
+    this._inst = inst;
+    this._bootCount++;
+    const put = (off, v) => new DataView(M.HEAPU8.buffer).setUint32(statePtr + off, v >>> 0, true);
+    put(OFF.bootReason, reason);
+    put(OFF.bootCount, this._bootCount);
+    const enc = new TextEncoder();
+    const putStr = (off, s) => { M.HEAPU8.fill(0, statePtr + off, statePtr + off + 32); M.HEAPU8.set(enc.encode(s).subarray(0, 31), statePtr + off); };
+    putStr(OFF.bootName, pkg.appJson.name);
+    putStr(OFF.bootVersion, pkg.appJson.version);
+    for (let i = 0; i < M._kweb_persist_count(); i++) {
+      const name = cstr(M.HEAPU8, M._kweb_persist_name(i), 16);
+      const saved = this._persist.get(name);
+      if (saved && saved.length === M._kweb_persist_size(i)) M.HEAPU8.set(saved, M._kweb_persist_ptr(i));
+    }
+    inst.words = new Int32Array(M.HEAPU8.buffer, statePtr, 0x40);        // header .. boot block as Int32 (for Atomics)
+    inst.restartSeen = Atomics.load(inst.words, OFF.restartSeq >> 2);
+    for (const [area, mods] of Object.entries(pkg.glue)) {
+      inst.glue[area] = mods.map((m) => m.default(this._glueContext(area, inst)));
+    }
+    M._kweb_time_set_offset_ms(this._rtcOffsetMs);
+    M.callMain([]);
+    this._setStatus("running");
+    this._startPolling();
+    this._watchEvents(inst);
+  }
+
+  _glueContext(area, inst) {
+    const M = inst.M;
+    return {
+      module: M,
+      statePtr: inst.statePtr,
+      u32: (off) => new DataView(M.HEAPU8.buffer).getUint32(inst.statePtr + off, true),
+      i32: (off) => new DataView(M.HEAPU8.buffer).getInt32(inst.statePtr + off, true),
+      setU32: (off, v) => new DataView(M.HEAPU8.buffer).setUint32(inst.statePtr + off, v >>> 0, true),
+      call: (fn, ...args) => M["_" + fn](...args),
+      alloc: (n) => M._malloc(n),
+      free: (p) => M._free(p),
+      heap: () => M.HEAPU8,
+      emit: (type, data) => this._emit("area:" + area + ":" + type, data),
+      onTick: (cb) => { (inst.ticks ??= []).push(cb); },
+    };
+  }
+
+  _teardown() {
+    const inst = this._inst;
+    if (!inst) return;
+    this._inst = null;
+    this._stopPolling();
+    this._drainText(inst);
+    this._flushPartial();
+    const M = inst.M;
+    this._persist = this._snapshot(inst);
+    this._rtcOffsetMs = M._kweb_time_offset_ms();
+    M.PThread.terminateAllThreads();
+    try { Atomics.notify(M.HEAP32, M._pthread_self() >> 2); } catch { /* mailbox wait already gone */ }
+    inst.dead = true;
+  }
+
+  _snapshot(inst) {
+    const M = inst.M, m = new Map(this._persist);
+    for (let i = 0; i < M._kweb_persist_count(); i++) {
+      const p = M._kweb_persist_ptr(i), n = M._kweb_persist_size(i);
+      m.set(cstr(M.HEAPU8, M._kweb_persist_name(i), 16), M.HEAPU8.slice(p, p + n));
+    }
+    return m;
+  }
+
+  /** Persistent regions (name -> bytes) as of the last stop/restart, for the page to mirror to IndexedDB. */
+  exportPersist() { return this._inst ? this._snapshot(this._inst) : new Map(this._persist); }
+  /** Seed persistent regions (e.g. read back from IndexedDB) before start(). */
+  importPersist(map) { this._persist = new Map(map); }
+  /** Forget NVS & co, as a factory reset would. */
+  factoryReset() { this._persist.clear(); }
+
+  _crash(reason) {
+    if (!this._inst) return;
+    this._teardown();
+    this._setStatus("crashed", { reason });
+  }
+
+  // --------------------------------------------------------------- polling
+  _startPolling() { this._stopPolling(); this._timer = setInterval(() => this.poll(), this.opts.pollMs); }
+  _stopPolling() { if (this._timer) clearInterval(this._timer); this._timer = null; }
+
+  // Hidden tabs throttle setInterval to 1 Hz or worse. A MessageChannel ping-pong re-armed by setTimeout is
+  // throttled the same way, so a second path is used while hidden: Atomics.waitAsync on the restart counter
+  // (the firmware bumps it and the host is woken by the Atomics.notify in kweb_restart's path), and
+  // visibilitychange polls at once. Both are best effort; poll() is idempotent.
+  _watchEvents(inst) {
+    if (typeof Atomics.waitAsync !== "function") return;
+    const idx = OFF.restartSeq >> 2;
+    const arm = () => {
+      if (inst.dead) return;
+      const r = Atomics.waitAsync(inst.words, idx, inst.restartSeen, 1000);
+      Promise.resolve(r.async ? r.value : "not-equal").then(() => { if (!inst.dead) { this.poll(); arm(); } });
+    };
+    arm();
+  }
+
+  /** Sample the shared state: outputs, log ring, restart/panic events. Cheap; called by the internal timer. */
+  poll() {
+    const inst = this._inst;
+    if (!inst || inst.dead) return;
+    this._drainText(inst);
+    for (const cb of inst.ticks ?? []) cb();
+    const w = inst.words;
+    const seq = Atomics.load(w, OFF.restartSeq >> 2);
+    if (seq !== inst.restartSeen) {
+      inst.restartSeen = seq;
+      this._onRestartRequest(inst);
+      return;
+    }
+    const out = this._outputsKey(inst);
+    if (out !== inst.lastOut) { inst.lastOut = out; this._emit("outputs", this.outputs()); }
+  }
+
+  _outputsKey(inst) {
+    const dv = new DataView(inst.M.HEAPU8.buffer);
+    const g = (o) => dv.getUint32(inst.statePtr + o, true);
+    return [g(OFF.ledRgb), g(OFF.panelOn), g(OFF.backlight), g(OFF.haptic)].join(",");
+  }
+
+  _onRestartRequest(inst) {
+    const dv = new DataView(inst.M.HEAPU8.buffer);
+    const code = dv.getUint32(inst.statePtr + OFF.restartReason, true);
+    const target = cstr(inst.M.HEAPU8, inst.statePtr + OFF.restartTarget, 32);
+    const reason = RESET_NAME[code] ?? String(code);
+    this._drainText(inst);
+    this._flushPartial();
+    this._setStatus("restart-requested", { reason, target });
+    if (code === RESET.PANIC) { this._teardown(); this._setStatus("crashed", { reason: "panic" }); return; }
+    if (!this.opts.autoRestart) return;
+    queueMicrotask(async () => {
+      try {
+        if (target && this.opts.resolveTarget) {
+          const bytes = await this.opts.resolveTarget(target);
+          if (bytes) { this._teardown(); const keep = this._persist; await this.load(bytes); this._persist = keep; await this._boot(code); return; }
+        }
+        this._teardown();
+        await this._boot(code);
+      } catch (e) { this._setStatus("crashed", { reason: String(e?.message ?? e) }); }
+    });
+  }
+
+  // ----------------------------------------------------------------- screen
+  /**
+   * Copy the current frame (RGBA, 410x502) into `out` if the picture changed since `lastSeq`.
+   * @param {Uint8ClampedArray} out plain-ArrayBuffer-backed, length >= 410*502*4
+   * @param {number} [lastSeq=-1] sequence number of the frame `out` already holds
+   * @returns {number} the frame sequence number (equal to lastSeq: nothing was copied)
+   */
+  copyFrame(out, lastSeq = -1) {
+    const inst = this._inst;
+    if (!inst) return lastSeq;
+    const dv = new DataView(inst.M.HEAPU8.buffer);
+    const seq = dv.getUint32(inst.statePtr + OFF.frameSeq, true);
+    if (seq === lastSeq) return seq;
+    const off = inst.statePtr + dv.getUint32(inst.statePtr + OFF.fbOffset, true);
+    out.set(new Uint8ClampedArray(inst.M.HEAPU8.buffer, off, SCREEN_WIDTH * SCREEN_HEIGHT * 4));
+    return seq;
+  }
+  /** Frame object that is reused (same `data`, same object) while the picture is unchanged. */
+  frame() {
+    const f = this._frame;
+    const seq = this.copyFrame(f.data, f.seq);
+    if (seq !== f.seq) this._frame = { ...f, seq };
+    return this._frame;
+  }
+  get frameSeq() { return this._u32(OFF.frameSeq); }
+  get backlight() { return this._u32(OFF.backlight); }
+  get panelOn() { return this._u32(OFF.panelOn) !== 0; }
+  _u32(off) {
+    const inst = this._inst;
+    return inst ? new DataView(inst.M.HEAPU8.buffer).getUint32(inst.statePtr + off, true) : 0;
+  }
+
+  // ----------------------------------------------------------------- inputs
+  /** @param {number|string} id 0..5 or 'up'|'down'|'left'|'right'|'top'|'bottom' */
+  button(id, pressed) {
+    const n = typeof id === "number" ? id : BUTTONS[id];
+    if (n === undefined || !this._inst) return;
+    this._inst.M._kweb_button(n, pressed ? 1 : 0);        // lock-free hand-over to the firmware's input thread
+  }
+  touch(x, y, down) { this._inst?.M._kweb_touch(Math.round(x), Math.round(y), down ? 1 : 0); }
+  /** Release every button and the touch (the page calls this on blur). */
+  releaseAll() {
+    if (!this._inst) return;
+    for (let i = 0; i < 6; i++) this._inst.M._kweb_button(i, 0);
+    if (this._u32(0x7c)) this._inst.M._kweb_touch(0, 0, 0);
+  }
+
+  // ---------------------------------------------------------------- outputs
+  get led() { const v = this._u32(OFF.ledRgb); return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 }; }
+  /** Vibration strength 0..1 (the chip's 0..255 divided by 255). */
+  get haptic() { return this._u32(OFF.haptic) / 255; }
+  outputs() { return { led: this.led, haptic: this.haptic, backlight: this.backlight, panelOn: this.panelOn }; }
+
+  // ------------------------------------------------------------- console/log
+  /** Lines so far (bounded), oldest first. */
+  get lines() { return this._lines; }
+  clearLog() { this._lines = []; }
+  /** Type a line into the console: echoed into the log with level 'input', then delivered to the firmware. */
+  sendConsole(line) {
+    this._addLine(1, "input", line);
+    // the firmware's terminal echoes what it receives ("kode> help"): drop that one line, the page already showed it
+    this._echo = { text: line.trim(), until: Date.now() + 3000 };
+    const inst = this._inst;
+    if (!inst) return;
+    const bytes = new TextEncoder().encode(line + "\n");
+    const p = inst.M._malloc(bytes.length);
+    inst.M.HEAPU8.set(bytes, p);
+    inst.M._kweb_console_input(p, bytes.length);
+    inst.M._free(p);
+  }
+
+  _drainText(inst) {
+    const M = inst.M;
+    const cap = 16384;
+    if (!inst.drainBuf) inst.drainBuf = M._malloc(cap);
+    for (;;) {
+      const n = M._kweb_text_drain(inst.drainBuf, cap);
+      if (!n) break;
+      const bytes = M.HEAPU8.slice(inst.drainBuf, inst.drainBuf + n);
+      for (let i = 0; i + 3 <= bytes.length;) {
+        const ch = bytes[i], len = bytes[i + 1] | (bytes[i + 2] << 8);
+        this._pushText(ch, new TextDecoder().decode(bytes.subarray(i + 3, i + 3 + len)));
+        i += 3 + len;
+      }
+    }
+  }
+  _pushText(channel, text) {
+    let buf = (this._partial.get(channel) ?? "") + text;
+    const parts = buf.split(/\r?\n/);
+    buf = parts.pop();
+    for (const l of parts) this._addLine(channel, null, l);
+    this._partial.set(channel, buf);
+    // a prompt ("kode> ") has no newline: show it once the output has been quiet for a moment
+    clearTimeout(this._partialTimer);
+    this._partialTimer = setTimeout(() => this._flushPartial(), 150);
+  }
+  _flushPartial() {
+    for (const [ch, buf] of this._partial) if (buf.trim()) this._addLine(ch, null, buf);
+    this._partial.clear();
+  }
+  _addLine(channel, forcedLevel, raw) {
+    let text = raw.replace(ANSI, "").replace(/\r/g, "");
+    if (!text.trim()) return;
+    if (!forcedLevel && channel === 1 && this._echo && Date.now() < this._echo.until
+        && text.replace(/^\s*kode>\s*/, "").trim() === this._echo.text) { this._echo = null; return; }
+    let level = forcedLevel ?? "info";
+    if (!forcedLevel) {
+      const m = /^!([EWNIDV]) /.exec(text);
+      if (m) { level = LEVELS[m[1]]; text = text.slice(3); }
+    }
+    const line = { id: this._lineId++, ts: Date.now(), level, text, channel };
+    this._lines.push(line);
+    if (this._lines.length > this.opts.maxLogLines) this._lines.splice(0, this._lines.length - this.opts.maxLogLines);
+    this._emit("log", line);
+  }
+
+  // ------------------------------------------------------------------- time
+  /** Device clock, epoch ms: the host clock plus whatever the firmware set with settimeofday. */
+  time() {
+    const inst = this._inst;
+    if (!inst) return Date.now() + this._rtcOffsetMs;
+    return Date.now() + inst.M._kweb_time_offset_ms();
+  }
+
+  // ------------------------------------------------------------------ areas
+  /** The JS glue object an area registered (null when the package has none or nothing runs). Recreated at every boot. */
+  area(name) { return this._inst?.glue[name]?.[0] ?? null; }
+  /** Names of the areas that ship JS glue. */
+  get areaNames() { return Object.keys(this._pkg?.glue ?? {}); }
+}

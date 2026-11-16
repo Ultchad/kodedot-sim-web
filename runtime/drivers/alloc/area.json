@@ -1,0 +1,4 @@
+{
+  "area": "alloc",
+  "description": "khal_alloc_psram / khal_realloc_psram / khal_free"
+}
