@@ -470,7 +470,7 @@ export default function create(ctx) {
       };
       if (!t || !router) { setTimeout(() => fail(1, 0, !router ? "no network" : "bad uri"), 0); return; }
       const keepalive = this.keepalive || 120;
-      const hello = { type: T.CONNECT, clientId: this.clientId, clean: !this.keep, keepalive, username: this.user || undefined, password: this.pass || undefined, will: this.willTopic ? { topic: this.willTopic, payload: this.willMsg, qos: this.willQos, retain: this.willRetain } : undefined };
+      const hello = { type: T.CONNECT, level: 4, clientId: this.clientId, clean: !this.keep, keepalive, username: this.user || undefined, password: this.pass || undefined, will: this.willTopic ? { topic: this.willTopic, payload: this.willMsg, qos: this.willQos, retain: this.willRetain } : undefined };
       const onPacket = (p) => {
         if (gen !== this.gen) return;
         switch (p.type) {
