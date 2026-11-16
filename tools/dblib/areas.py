@@ -59,8 +59,14 @@ def load_areas(root, role="app"):
     for a in areas:
         for f in a.supersedes:
             if f in seen:
-                sys.exit("dotbench: %s is superseded by both '%s' and '%s'" % (f, seen[f], a.name))
-            seen[f] = a.name
+                b = seen[f]
+                sys.exit("dotbench: build error (role '%s'): the SDK file %s is superseded by two areas.\n"
+                         "  '%s' (%s/area.json): %s\n  '%s' (%s/area.json): %s\n"
+                         "  Only one area may replace a file. Remove the entry from the area that should not own it "
+                         "(a stand-in is dropped when the real area lands)."
+                         % (role, f, b[0].name, b[0].dir.relative_to(root), b[0].supersedes[f],
+                            a.name, a.dir.relative_to(root), a.supersedes[f]))
+            seen[f] = (a, None)
     return areas
 
 
