@@ -15,6 +15,8 @@ tests/node/<area>/) only. The manifest keys (all optional except "area"):
   js          JS glue files (relative to the folder), packaged into the bundle
   test_apps   apps the area's tests need built: "sdk:examples/<name>" (relative to
               the SDK) or "area:<path>" (relative to the area folder)
+  roles       build roles the area applies to, default ["app", "kodeos"]; an area that only
+              serves one firmware (e.g. runtime/drivers/kodeos_boot) lists just that role
   description one line
 """
 import json
@@ -33,12 +35,14 @@ class Area:
         self.sdkconfig = data.get("sdkconfig", {})
         self.js = data.get("js", [])
         self.test_apps = data.get("test_apps", [])
+        self.roles = data.get("roles", ["app", "kodeos"])
         self.sources = []
         for g in data.get("sources", ["*.c", "src/*.c"]):
             self.sources += sorted(d.glob(g))
 
 
-def load_areas(root):
+def load_areas(root, role="app"):
+    """Areas of one build role (default: the app role, as before the kodeos role existed)."""
     root = pathlib.Path(root)
     areas = []
     for mf in sorted(list((root / "runtime").glob("*/area.json")) + list((root / "runtime/drivers").glob("*/area.json"))):
@@ -49,7 +53,8 @@ def load_areas(root):
         a = Area(mf.parent, data)
         if a.name != mf.parent.name:
             sys.exit("dotbench: %s: \"area\" must be %r" % (mf, mf.parent.name))
-        areas.append(a)
+        if role in a.roles:
+            areas.append(a)
     seen = {}
     for a in areas:
         for f in a.supersedes:

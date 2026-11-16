@@ -118,7 +118,8 @@ def compile_one(job):
     src, obj, flags = job
     obj = pathlib.Path(obj)
     obj.parent.mkdir(parents=True, exist_ok=True)
-    cmd = ["emcc", "-c", str(src), "-o", str(obj), "-MMD", "-MF", str(obj.with_suffix(".d"))] + flags
+    tool = "em++" if pathlib.Path(src).suffix in (".cpp", ".cc", ".cxx") else "emcc"
+    cmd = [tool, "-c", str(src), "-o", str(obj), "-MMD", "-MF", str(obj.with_suffix(".d"))] + flags
     if not needs_build(obj, src, cmd):
         return (src, 0, "", False)
     r = subprocess.run(cmd, capture_output=True, text=True)
