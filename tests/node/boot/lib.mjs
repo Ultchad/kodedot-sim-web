@@ -27,6 +27,8 @@ export function makeSystem(dir, { factory = factoryJson } = {}) {
   });
   sys.logText = () => sys.lines.map((l) => l.text).join("\n");
   sys.events = [];
+  sys.ignored = [];
+  sys.on("persist:region-ignored", (e) => sys.ignored.push(e));
   sys.on("program", (p) => sys.events.push(p));
   return sys;
 }

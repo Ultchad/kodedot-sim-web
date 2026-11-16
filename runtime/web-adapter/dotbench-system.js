@@ -148,6 +148,7 @@ export class DotbenchSystem {
     this._setStatus("booting");
     try {
       const region = this._region();
+      this._gc();                                   // bundles whose app the OS deleted
       const hit = tryBootRequestedApp(region, CAUSE[code] ?? ROM.WDT, this._mailboxFull());
       await this.pm.flush();
       let target = { id: OS_ID, name: "kodeOS", kind: "os", bytes: this.osBytes };
