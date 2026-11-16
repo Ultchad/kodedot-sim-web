@@ -131,6 +131,17 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
   useEffect(() => {
     if (show3d) void customModel.ensureBundled();
   }, [show3d]);
+  // Once the 3D view has been shown it stays mounted, hidden, while the 2D view is on: going back to 3D is then
+  // instant (no new WebGL context, no shaders to compile again). A hidden canvas draws nothing. Not on phones, where
+  // an idle WebGL context is the first thing the system takes away.
+  const [kept3d, setKept3d] = useState(false);
+  useEffect(() => {
+    if (show3d && !phone) setKept3d(true);
+    if (phone || host.glFailed) setKept3d(false);
+  }, [show3d, phone, host.glFailed]);
+  const mount3d = show3d || (kept3d && !phone && !host.glFailed);
+  const showRef = useRef(show3d);
+  showRef.current = show3d;
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t('device.region')}>
@@ -184,25 +195,27 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
       )}
 
       <div className="relative flex min-h-0 min-w-0 flex-1" data-testid="stage" style={phone ? { padding: `${showToolbar ? '0px' : 'env(safe-area-inset-top)'} env(safe-area-inset-right) 0 env(safe-area-inset-left)` } : undefined}>
-        {show3d ? (
-          <Boundary onError={() => host.reportGlFailure('unavailable')}>
-            <Suspense fallback={<div className="m-auto text-[14px] text-ink2">{t('device.loading3d')}</div>}>
-              <Live3D
-                device={device}
-                input={host.input}
-                painter={painter}
-                storePose={storePose}
-                tiltLink={host.tiltLink}
-                onPose={host.applyPose}
-                resetSignal={resetSignal}
-                reducedMotion={reduced}
-                onContextLost={() => host.reportGlFailure('lost')}
-              />
-            </Suspense>
-          </Boundary>
-        ) : (
-          <Device2D zoom={phone ? 'fit' : zoom2d} crop={phone} inset={phone ? 0 : 8} />
+        {mount3d && (
+          <div className={show3d ? 'anim-fade flex min-h-0 min-w-0 flex-1' : 'hidden'} data-testid="stage-3d" data-shown={show3d}>
+            <Boundary onError={() => host.reportGlFailure('unavailable')}>
+              <Suspense fallback={<div className="m-auto text-[14px] text-ink2">{t('device.loading3d')}</div>}>
+                <Live3D
+                  device={device}
+                  input={host.input}
+                  painter={painter}
+                  storePose={storePose}
+                  tiltLink={host.tiltLink}
+                  onPose={host.applyPose}
+                  resetSignal={resetSignal}
+                  reducedMotion={reduced}
+                  // a context lost while the view is only kept in reserve is not a failure: let go of it quietly
+                  onContextLost={() => (showRef.current ? host.reportGlFailure('lost') : setKept3d(false))}
+                />
+              </Suspense>
+            </Boundary>
+          </div>
         )}
+        {!show3d && <Device2D zoom={phone ? 'fit' : zoom2d} crop={phone} inset={phone ? 0 : 8} />}
         <DeviceStatusCard />
         <ModelOffer />
         <NoticeBanner />

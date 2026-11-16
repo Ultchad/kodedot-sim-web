@@ -138,8 +138,10 @@
       color var(--dur-fast) ease-out,
       transform 80ms ease-out;
   }
-  .btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--raised) 70%, var(--ink) 8%);
+  @media (hover: hover) {
+    .btn:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--raised) 70%, var(--ink) 8%);
+    }
   }
   .btn:active:not(:disabled) {
     transform: scale(0.97);
@@ -154,32 +156,40 @@
     background: var(--primary);
     color: var(--primary-ink);
   }
-  .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--primary) 88%, #000);
+  @media (hover: hover) {
+    .btn-primary:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--primary) 88%, #000);
+    }
   }
   .btn-danger {
     background: color-mix(in srgb, var(--red) 14%, transparent);
     color: var(--red-text);
   }
-  .btn-danger:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--red) 24%, transparent);
+  @media (hover: hover) {
+    .btn-danger:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--red) 24%, transparent);
+    }
   }
   .btn-ghost {
     background: transparent;
     color: var(--ink2);
   }
-  .btn-ghost:hover:not(:disabled) {
-    background: var(--raised-soft);
-    color: var(--ink);
+  @media (hover: hover) {
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--raised-soft);
+      color: var(--ink);
+    }
   }
   .btn-dashed {
     background: transparent;
     box-shadow: inset 0 0 0 1px var(--ink3);
     color: var(--ink2);
   }
-  .btn-dashed:hover:not(:disabled) {
-    background: var(--raised-soft);
-    color: var(--ink);
+  @media (hover: hover) {
+    .btn-dashed:hover:not(:disabled) {
+      background: var(--raised-soft);
+      color: var(--ink);
+    }
   }
   .btn-icon {
     width: var(--control-h);
@@ -193,8 +203,10 @@
     background: rgba(255, 255, 255, 0.1);
     color: var(--dark-text);
   }
-  .btn-dark:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.2);
+  @media (hover: hover) {
+    .btn-dark:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.2);
+    }
   }
 
   /* chips and segmented controls: selected = dark */
@@ -220,8 +232,10 @@
       color var(--dur-fast) ease-out,
       transform 80ms ease-out;
   }
-  .chip:hover:not(:disabled) {
-    background: var(--raised);
+  @media (hover: hover) {
+    .chip:hover:not(:disabled):not([aria-selected='true']):not([aria-pressed='true']):not([aria-checked='true']) {
+      background: var(--raised);
+    }
   }
   .chip:active:not(:disabled) {
     transform: scale(0.97);
@@ -243,8 +257,10 @@
   .seg .chip {
     background: transparent;
   }
-  .seg .chip:hover:not(:disabled):not([aria-selected='true']):not([aria-pressed='true']):not([aria-checked='true']) {
-    background: var(--raised-soft);
+  @media (hover: hover) {
+    .seg .chip:hover:not(:disabled):not([aria-selected='true']):not([aria-pressed='true']):not([aria-checked='true']) {
+      background: var(--raised-soft);
+    }
   }
   .seg .chip[aria-pressed='true'],
   .seg .chip[aria-selected='true'],
@@ -314,8 +330,10 @@
       justify-content: center;
     }
   }
-  button.pill:hover {
-    background: var(--raised);
+  @media (hover: hover) {
+    button.pill:hover {
+      background: var(--raised);
+    }
   }
 
   /* the one uppercase style: small bold sans category tag */
@@ -354,8 +372,10 @@
     text-align: left;
     transition: background var(--dur-fast) ease-out;
   }
-  .row-btn:hover:not(:disabled) {
-    background: var(--raised-soft);
+  @media (hover: hover) {
+    .row-btn:hover:not(:disabled) {
+      background: var(--raised-soft);
+    }
   }
   .row-on,
   .toast {
@@ -367,18 +387,24 @@
     background: color-mix(in srgb, var(--chip-on-fg) 14%, transparent);
     color: inherit;
   }
-  .toast .btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--chip-on-fg) 24%, transparent);
+  @media (hover: hover) {
+    .toast .btn:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--chip-on-fg) 24%, transparent);
+    }
   }
-  .row-on .row-btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--chip-on-fg) 12%, transparent);
+  @media (hover: hover) {
+    .row-on .row-btn:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--chip-on-fg) 12%, transparent);
+    }
   }
   .row-on .btn-ghost {
     color: inherit;
   }
-  .row-on .btn-ghost:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--chip-on-fg) 16%, transparent);
-    color: inherit;
+  @media (hover: hover) {
+    .row-on .btn-ghost:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--chip-on-fg) 16%, transparent);
+      color: inherit;
+    }
   }
   .menu-item {
     display: flex;
