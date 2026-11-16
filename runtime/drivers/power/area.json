@@ -1,7 +1,29 @@
 {
   "area": "power",
-  "description": "light sleep / power management (stubbed)",
+  "description": "BQ25896 charger + CW2217 fuel gauge over one virtual battery; ship mode and power-off requests become events; light sleep stays stubbed",
   "supersedes": {
-    "components/khal/power/src/khal_power_esp.c": "stubbed: light sleep / power management"
-  }
+    "components/khal/power/src/khal_power_esp.c": "stubbed: light sleep / power management (kept from the placeholder: no meaning in a browser)",
+    "components/kaos/lowpower/src/lowpower_none.c": "web fake: runtime/drivers/power/lowpower_event.c, same facade (it refuses, CONFIG_KODE_LOWPOWER needs the radio) but the request is also published to the page as a power:off event"
+  },
+  "i2c_chips": [
+    "dotbench_power_register"
+  ],
+  "exports": [
+    "power_set_level",
+    "power_set_usb",
+    "power_set_temp",
+    "power_set_load",
+    "power_set_voltage",
+    "power_set_sim_speed",
+    "power_get",
+    "power_event_pop",
+    "power_i2c_read",
+    "power_i2c_write"
+  ],
+  "js": [
+    "power.js"
+  ],
+  "test_apps": [
+    "sdk:examples/power"
+  ]
 }

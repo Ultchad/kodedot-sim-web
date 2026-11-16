@@ -1,0 +1,22 @@
+{
+  "area": "motion",
+  "description": "QMI8658A IMU (0x6A) and QMC5883P magnetometer (0x2C) over one virtual orientation: pitch/roll/heading, shake, magnet",
+  "i2c_chips": [
+    "dotbench_motion_register"
+  ],
+  "exports": [
+    "motion_set_orientation",
+    "motion_shake",
+    "motion_set_magnet",
+    "motion_set_field",
+    "motion_get",
+    "motion_i2c_read",
+    "motion_i2c_write"
+  ],
+  "js": [
+    "motion.js"
+  ],
+  "test_apps": [
+    "sdk:examples/imu"
+  ]
+}

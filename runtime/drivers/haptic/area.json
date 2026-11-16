@@ -1,0 +1,20 @@
+{
+  "area": "haptic",
+  "description": "AW86233 haptic driver model (RTP FIFO, GO/STOP, level into the bridge haptic field)",
+  "i2c_chips": [
+    "dotbench_haptic_register"
+  ],
+  "exports": [
+    "haptic_get",
+    "haptic_poll",
+    "haptic_event_pop",
+    "haptic_i2c_read",
+    "haptic_i2c_write"
+  ],
+  "js": [
+    "haptic.js"
+  ],
+  "test_apps": [
+    "sdk:examples/haptic"
+  ]
+}
