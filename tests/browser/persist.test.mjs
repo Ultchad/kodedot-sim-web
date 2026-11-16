@@ -32,8 +32,9 @@ await check("page 1: factory-fresh device, the app writes a line and a setting; 
   await press("top");
   await until(() => /line written/.test(P.text()), 8000, "the app's write");
   await page.evaluate(() => { const fs = P.dev.area("storage"); fs.mkdir("/storage/page"); fs.write("/storage/page/hello.txt", "written from the page"); P.dev.area("time").set(Date.UTC(2033, 2, 4, 5, 6, 7)); });
-  await sleep(1800);                                                  // no explicit flush: the debounce timer in poll() does it
-  const c = await page.evaluate(() => P.idbCounts());
+  // no explicit flush: the debounce timer in poll() does it (800 ms quiet; wait up to 15 s, a loaded host stretches the polls)
+  let c = await page.evaluate(() => P.idbCounts());
+  for (let t0 = Date.now(); !(c.meta === 1 && c.chunks >= 3) && Date.now() - t0 < 15000;) { await sleep(300); c = await page.evaluate(() => P.idbCounts()); }
   assert.ok(c.meta === 1 && c.chunks >= 3, "chunks reached IndexedDB without a stop: " + JSON.stringify(c));
   assert.ok((await page.evaluate(() => P.dev.persist)).flushes >= 1);
 });
