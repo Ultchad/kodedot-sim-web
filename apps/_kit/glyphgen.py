@@ -150,8 +150,111 @@ def g_wave(pen):
     pen.disc(0.5, 0.5, 0.05)
 
 
+def g_folder(pen):
+    pen.line([(0.1, 0.28), (0.1, 0.8), (0.9, 0.8), (0.9, 0.36), (0.46, 0.36), (0.38, 0.24), (0.1, 0.24), (0.1, 0.28)])
+
+
+def g_file(pen):
+    pen.line([(0.24, 0.1), (0.62, 0.1), (0.8, 0.28), (0.8, 0.9), (0.24, 0.9), (0.24, 0.1)])
+    pen.line([(0.62, 0.1), (0.62, 0.28), (0.8, 0.28)])
+    pen.line([(0.38, 0.52), (0.66, 0.52)])
+    pen.line([(0.38, 0.68), (0.58, 0.68)])
+
+
+def g_mic(pen):
+    pen.rrect(0.38, 0.1, 0.62, 0.55, 0.12)
+    pen.arc(0.5, 0.5, 0.26, 0, 180)
+    pen.line([(0.5, 0.76), (0.5, 0.9)])
+    pen.line([(0.36, 0.9), (0.64, 0.9)])
+
+
+def g_play(pen):
+    pen.line([(0.3, 0.14), (0.84, 0.5), (0.3, 0.86), (0.3, 0.14)])
+
+
+def g_stop(pen):
+    pen.rrect(0.22, 0.22, 0.78, 0.78, 0.08)
+
+
+def g_trash(pen):
+    pen.line([(0.16, 0.26), (0.84, 0.26)])
+    pen.line([(0.4, 0.26), (0.4, 0.14), (0.6, 0.14), (0.6, 0.26)])
+    pen.line([(0.24, 0.26), (0.3, 0.88), (0.7, 0.88), (0.76, 0.26)])
+
+
+def g_plus(pen):
+    pen.line([(0.5, 0.18), (0.5, 0.82)])
+    pen.line([(0.18, 0.5), (0.82, 0.5)])
+
+
+def g_check(pen):
+    pen.line([(0.16, 0.54), (0.4, 0.76), (0.86, 0.26)])
+
+
+def g_wifi(pen):
+    for r in (0.18, 0.34, 0.5):
+        pen.arc(0.5, 0.8, r, -135, -45)
+    pen.disc(0.5, 0.8, 0.05)
+
+
+def g_ble(pen):
+    pen.line([(0.28, 0.32), (0.72, 0.68), (0.5, 0.88), (0.5, 0.12), (0.72, 0.32), (0.28, 0.68)])
+
+
+def g_chip(pen):
+    pen.rrect(0.26, 0.26, 0.74, 0.74, 0.06)
+    for t in (0.38, 0.5, 0.62):
+        pen.line([(t, 0.12), (t, 0.26)])
+        pen.line([(t, 0.74), (t, 0.88)])
+        pen.line([(0.12, t), (0.26, t)])
+        pen.line([(0.74, t), (0.88, t)])
+
+
+def g_usb(pen):
+    pen.rrect(0.1, 0.3, 0.9, 0.7, 0.08)
+    for i in range(6):
+        pen.line([(0.22 + i * 0.112, 0.42), (0.22 + i * 0.112, 0.46)])
+    pen.line([(0.28, 0.58), (0.72, 0.58)])
+
+
+def g_sensor(pen):
+    pen.ring(0.5, 0.5, 0.12)
+    pen.arc(0.5, 0.5, 0.28, -60, 60)
+    pen.arc(0.5, 0.5, 0.28, 120, 240)
+    pen.arc(0.5, 0.5, 0.44, -60, 60)
+    pen.arc(0.5, 0.5, 0.44, 120, 240)
+
+
+def g_edit(pen):
+    pen.line([(0.2, 0.8), (0.24, 0.62), (0.7, 0.16), (0.84, 0.3), (0.38, 0.76), (0.2, 0.8)])
+
+
+def g_copy(pen):
+    pen.rrect(0.3, 0.3, 0.84, 0.86, 0.08)
+    pen.line([(0.16, 0.7), (0.16, 0.14), (0.62, 0.14)])
+
+
+def g_card(pen):
+    pen.rrect(0.1, 0.24, 0.9, 0.76, 0.1)
+    pen.line([(0.1, 0.42), (0.9, 0.42)])
+
+
+def g_search(pen):
+    pen.ring(0.44, 0.44, 0.26)
+    pen.line([(0.64, 0.64), (0.88, 0.88)])
+
+
+def g_pin(pen):
+    pen.line([(0.5, 0.12), (0.5, 0.5)])
+    pen.ring(0.5, 0.62, 0.12)
+    pen.line([(0.5, 0.74), (0.5, 0.9)])
+
+
 GLYPHS = {"nfc": g_nfc, "rfid": g_rfid, "ir": g_ir, "light": g_light, "sos": g_sos, "level": g_level,
-          "compass": g_compass, "tone": g_tone, "led": g_led, "screen": g_screen, "tag": g_tag, "wave": g_wave}
+          "compass": g_compass, "tone": g_tone, "led": g_led, "screen": g_screen, "tag": g_tag, "wave": g_wave,
+          "folder": g_folder, "file": g_file, "mic": g_mic, "play": g_play, "stop": g_stop, "trash": g_trash,
+          "plus": g_plus, "check": g_check, "wifi": g_wifi, "ble": g_ble, "chip": g_chip, "usb": g_usb,
+          "sensor": g_sensor, "edit": g_edit, "copy": g_copy, "card": g_card, "search": g_search, "pin": g_pin}
 
 
 def render(name, n):

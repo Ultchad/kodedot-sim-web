@@ -140,6 +140,14 @@ void kit_replace(kit_t *kit, kit_build_fn_t fn, void *arg);
 bool kit_back(kit_t *kit);
 
 /**
+ * @brief Go back to a given depth in one step, building only the page it ends on.
+ * @param kit   The kit.
+ * @param depth The depth to end at, 1 for the first page.
+ * @return true when pages were left.
+ */
+bool kit_pop_to(kit_t *kit, uint8_t depth);
+
+/**
  * @brief Go back to the first page and show it again.
  * @param kit The kit.
  */

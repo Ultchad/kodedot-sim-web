@@ -406,6 +406,20 @@ bool kit_back(kit_t *kit)
     return left;
 }
 
+bool kit_pop_to(kit_t *kit, uint8_t depth)
+{
+    bool left = false;
+
+    if ( kit->open && (1U <= depth) && (depth < kit->depth) )
+    {
+        kit->depth = depth;
+        kit->sel   = -1;
+        kit_show(kit, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT);
+        left = true;
+    }
+    return left;
+}
+
 void kit_home(kit_t *kit)
 {
     if ( kit->open && (0U < kit->depth) )
