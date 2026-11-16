@@ -51,7 +51,7 @@ export function DeviceStatusCard() {
       <div className={wrap} data-testid="device-crash">
         <div className={card} role="alert" {...layer} {...stop}>
           <ScrollArea className="min-h-0 flex-1 p-5">
-            <h3 className="text-[19px] leading-snug">{t('overlay.crash.title')}</h3>
+            <h3 className="text-[19px] leading-snug">{name ? t('overlay.crash.title', { app: name }) : t('overlay.crash.title.none')}</h3>
             <p className="mb-0 mt-1 text-[13.5px] leading-snug text-ink2 [overflow-wrap:anywhere]" data-testid="crash-reason">
               {t('overlay.crash.reason', { reason: detail.reason ?? '?' })}
             </p>

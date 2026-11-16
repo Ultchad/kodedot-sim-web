@@ -12,6 +12,7 @@ const outDir = join(web, 'public', 'apps');
 const APPS = [
   {
     id: 'kodeos',
+    name: 'kodeOS', // the package calls itself "kodeos"
     description: {
       en: 'The operating system of the Kode Dot: lock screen, app list and settings.',
       'pt-BR': 'O sistema operacional do Kode Dot: tela de bloqueio, lista de apps e ajustes.',
@@ -71,7 +72,7 @@ for (const a of APPS) {
   apps.push({
     id: a.id,
     file: `${a.id}.dotbench`,
-    name: info.display_name ?? info.name ?? a.id,
+    name: a.name ?? info.display_name ?? info.name ?? a.id,
     description: a.description,
     size: statSync(to).size,
     version: info.version ?? '',

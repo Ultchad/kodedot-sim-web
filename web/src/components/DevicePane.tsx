@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { poseOf, MOTION_KIND } from '../bench/motion';
+import { customModel } from '../device3d/customModel';
 import { useBenchState } from '../state/bench';
 import { useI18n } from '../i18n';
 import { isPhone } from '../lib/layout';
@@ -12,6 +13,7 @@ import { DeviceStatusCard } from './DeviceStatusCard';
 import { Icon } from './Glyphs';
 import { ModelOffer } from './ModelControls';
 import { NoticeBanner } from './Notice';
+import { useSystemRunning } from './TopBar';
 
 const Device3D = lazy(() => import('./Device3D'));
 
@@ -125,6 +127,10 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
 
   const showToolbar = !phone || viewMode === '3d';
   const show3d = viewMode === '3d' && !host.glFailed;
+  // the bundled model is fetched while the 3D code itself is still loading, so the two arrive together
+  useEffect(() => {
+    if (show3d) void customModel.ensureBundled();
+  }, [show3d]);
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t('device.region')}>
@@ -214,6 +220,8 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
 export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | 'panel' }) {
   const { t } = useI18n();
   const { welcome, dismissWelcome, requestApps, bundles } = useHost();
+  // the Dot starts with its system: the hint then says how to get past the lock screen
+  const os = useSystemRunning();
   useEffect(() => {
     if (welcome && bundles.length > 0) dismissWelcome();
   }, [welcome, bundles.length, dismissWelcome]);
@@ -223,7 +231,7 @@ export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | '
       <aside className={`anim-rise shrink-0 ${variant === 'panel' ? 'px-3 pb-2' : 'px-3'}`} aria-label={t('welcome.title')} data-testid="welcome">
         <div className="inner flex items-center gap-2 py-1.5 pl-4 pr-1.5">
           <p className="m-0 min-w-0 flex-1 text-[13.5px] leading-snug">
-            <strong className="font-semibold">{t('welcome.title')}</strong> {t(variant === 'panel' ? 'welcome.body.side' : 'welcome.body.phone')}
+            <strong className="font-semibold">{t('welcome.title')}</strong> {t(variant === 'panel' ? (os ? 'welcome.body.os.side' : 'welcome.body.side') : os ? 'welcome.body.os.phone' : 'welcome.body.phone')}
           </p>
           <button type="button" className="btn btn-sm btn-primary shrink-0" onClick={dismissWelcome} data-testid="welcome-dismiss">
             {t('welcome.dismiss')}
@@ -236,7 +244,7 @@ export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | '
     <aside className="anim-rise shrink-0 pb-1 pt-2" aria-label={t('welcome.title')} data-testid="welcome">
       <div className="inner mx-auto flex max-w-[44rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <p className="m-0 min-w-[14rem] flex-1 text-[14px] leading-snug">
-          <strong className="font-semibold">{t('welcome.title')}</strong> {t('welcome.body')}
+          <strong className="font-semibold">{t('welcome.title')}</strong> {t(os ? 'welcome.body.os' : 'welcome.body')}
         </p>
         <div className="flex shrink-0 gap-2">
           <button type="button" className="btn btn-sm" onClick={requestApps} data-testid="welcome-open">

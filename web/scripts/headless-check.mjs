@@ -362,8 +362,8 @@ try {
     })());
     check('document title names the product and its descriptor in the page language', (await page.title()) === 'KodeDot Sim · Simulador de apps para Kode Dot', await page.title());
     await setLang(page, 'en');
-    check('wordmark and title say KodeDot Sim', (await page.title()) === 'KodeDot Sim · A simulator for Kode Dot apps' && (await page.$eval('[data-testid=brand]', (e) => e.textContent.trim())) === 'KodeDot Sim');
-    check('settings name the product with its descriptor and carry no notices', await inMenu(page, 'settings-menu', () => page.$eval('[data-testid=about]', (e) => e.textContent.trim() === 'KodeDot Sim · A simulator for Kode Dot apps')));
+    check('wordmark and title say KodeDot Sim', (await page.title()) === 'KodeDot Sim · A Kode Dot simulator in your browser' && (await page.$eval('[data-testid=brand]', (e) => e.textContent.trim())) === 'KodeDot Sim');
+    check('settings name the product with its descriptor and carry no notices', await inMenu(page, 'settings-menu', () => page.$eval('[data-testid=about]', (e) => e.textContent.trim() === 'KodeDot Sim · A Kode Dot simulator in your browser')));
     await page.click('[data-testid=left-tab-bench]');
 
     // tabs follow the ARIA pattern: arrows move and select, and do not reach the D-pad
@@ -669,12 +669,14 @@ try {
     await page.waitForSelector('[data-testid=status-state]');
     const ttff = await waitRealFrame(page);
     const ttffTotal = Date.now() - t0;
-    check('real: first visit starts the display_lvgl demo by itself and shows a real frame', ttff >= 0, `time to first real frame ${ttffTotal} ms from navigation`);
-    console.log(`METRIC time-to-first-frame (navigation to non-uniform LVGL frame): ${ttffTotal} ms`);
-    check('real: status bar names the app "Display"', (await page.$eval('[data-testid=status-app]', (e) => e.textContent)) === 'Display');
+    check('real: first visit starts kodeOS by itself and shows a real frame', ttff >= 0, `time to first real frame ${ttffTotal} ms from navigation`);
+    console.log(`METRIC time-to-first-frame (navigation to kodeOS's first non-uniform frame): ${ttffTotal} ms`);
+    check('real: status bar and App menu name the system "kodeOS"', (await page.$eval('[data-testid=status-app]', (e) => e.textContent)) === 'kodeOS' && /kodeOS/.test(await page.$eval('[data-testid=apps-menu]', (e) => e.textContent)), `${await page.$eval('[data-testid=status-app]', (e) => e.textContent)} / ${await page.$eval('[data-testid=apps-menu]', (e) => e.textContent)}`);
     check('real: mock toggle is off by default and labelled as a test device', await inMenu(page, 'device-menu', async () => (await page.$eval('[data-testid=mock-toggle]', (e) => e.checked)) === false && /Test device/.test(await page.$eval('label:has([data-testid=mock-toggle])', (e) => e.textContent))));
     check('real: an idle app reads as a steady screen, not as a low frame rate', /steady/.test(await page.$eval('[data-testid=status-fps]', (e) => e.textContent)) && !/FPS/.test(await page.$eval('[data-testid=status-bar]', (e) => e.textContent)), await page.$eval('[data-testid=status-fps]', (e) => `${e.textContent} (${e.dataset.fps}/s)`));
     check('real: console lines are clean: one time column, no firmware prefix, no ISO stamp', await page.$eval('[data-testid=console-log]', (e) => !/!I |\d{4}-\d\d-\d\dT/.test(e.textContent) && e.querySelectorAll('time').length > 3));
+    const hintText = await page.$eval('[data-testid=welcome]', (e) => e.textContent).catch(() => '');
+    check('real: the first-visit hint speaks about the system: kodeOS and how to unlock it', /kodeOS/.test(hintText) && /unlock/.test(hintText) && /\.dotbench/.test(hintText), hintText);
     check('real: the first-visit hint is shown and leaves for good', (await page.$('[data-testid=welcome]')) !== null && (await page.click('[data-testid=welcome-dismiss]').then(() => sleep(100)).then(() => page.$('[data-testid=welcome]'))) === null);
     check('real: boot log line reaches the console panel', await logHas(page, /display_lvgl|app_main/));
     check('real: no boot overlay or crash card once running', !(await page.$('[data-testid=device-booting]')) && !(await page.$('[data-testid=device-crash]')));
@@ -706,7 +708,7 @@ try {
 
     // switch to buttons_led from the picker
     await page.click('[data-testid=apps-menu]');
-    check('real: picker lists the built-in apps', (await page.$$('[data-testid=builtin-list] li')).length >= 2);
+    check('real: picker lists the system (as kodeOS) and the built-in apps', (await page.$$('[data-testid=builtin-list] li')).length >= 2 && /^kodeOS/.test(await page.$eval('[data-testid=system-list] li', (e) => e.textContent)));
     await page.click('[data-testid=builtin-buttons_led]');
     await page.keyboard.press('Escape');
     const tLed = await ledGreen(page);
@@ -873,7 +875,7 @@ try {
     await page.keyboard.press('Escape');
     const overlay = await drop('shell.glb');
     await sleep(250);
-    check('model: the drop overlay says what happens to each kind of file', /\.dotbench app/.test(overlay) && /\.glb 3D model/.test(overlay) && /Any other file is left alone/.test(overlay), overlay);
+    check('model: the drop overlay says what happens to each kind of file', /\.dotbench app/.test(overlay) && /\.glb or \.gltf 3D model/.test(overlay) && /Any other file is left alone/.test(overlay), overlay);
     check('model: a dropped .glb asks before it is used', !!(await page.$('[data-testid=model-offer]')) && (await modelState()) === 'absent' && (await page.evaluate(() => document.activeElement?.dataset.testid)) === 'model-offer-accept');
     await page.keyboard.press('Escape');
     await sleep(150);
@@ -915,7 +917,7 @@ try {
     await page.keyboard.press('Escape');
     await drop('holiday.jpeg');
     await sleep(200);
-    check('model: any other dropped file is declined politely, naming both kinds it accepts', /holiday\.jpeg cannot be opened here\. Drop a \.dotbench app or a \.glb 3D model\./.test(await noticeText()), await noticeText());
+    check('model: any other dropped file is declined politely, naming both kinds it accepts', /holiday\.jpeg cannot be opened here\. Drop a \.dotbench app or a \.glb or \.gltf 3D model\./.test(await noticeText()), await noticeText());
     await ctx.close();
   }
 

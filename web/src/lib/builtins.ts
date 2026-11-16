@@ -13,6 +13,13 @@ export const BUILTIN_PREFIX = 'builtin:';
 /** The system. Started automatically when the page opens. */
 export const DEFAULT_BUILTIN_ID = 'kodeos';
 
+/** The name people read. The system's package calls itself "kodeos"; its name is written kodeOS. */
+export function displayAppName(name: string): string {
+  return /^kodeos$/i.test(name.trim()) ? 'kodeOS' : name;
+}
+/** True for the system (by package name or built-in key), whatever the letter case. */
+export const isSystemName = (name: string | null | undefined): boolean => !!name && /^(builtin:)?kodeos$/i.test(name.trim());
+
 export const builtinKey = (id: string) => BUILTIN_PREFIX + id;
 export const isBuiltinKey = (key: string | null): key is string => !!key && key.startsWith(BUILTIN_PREFIX);
 

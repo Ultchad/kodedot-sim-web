@@ -3,7 +3,7 @@
     {
       "id": "kodeos",
       "file": "kodeos.dotbench",
-      "name": "kodeos",
+      "name": "kodeOS",
       "description": {
         "en": "The operating system of the Kode Dot: lock screen, app list and settings.",
         "pt-BR": "O sistema operacional do Kode Dot: tela de bloqueio, lista de apps e ajustes.",

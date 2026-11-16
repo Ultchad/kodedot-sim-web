@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
+import { isSystemName } from '../lib/builtins';
 import { appLabel, useHost } from '../state/host';
 import { useObservable } from '../state/hooks';
 import { AppsList } from './AppsList';
@@ -36,7 +37,15 @@ export function useCurrentAppName(): string | null {
   const { device, selectedId, bundles, builtins } = useHost();
   const app = useObservable(device.appName);
   const sel = bundles.find((b) => b.id === selectedId) ?? builtins.find((b) => `builtin:${b.id}` === selectedId);
-  return app ?? (sel ? appLabel(sel.name) : null);
+  const raw = app ?? sel?.name ?? null;
+  return raw ? appLabel(raw) : null;
+}
+
+/** True while what is loaded is the system itself (kodeOS), not an app. */
+export function useSystemRunning(): boolean {
+  const { device, selectedId } = useHost();
+  const app = useObservable(device.appName);
+  return isSystemName(app ?? selectedId);
 }
 
 function AppPicker() {

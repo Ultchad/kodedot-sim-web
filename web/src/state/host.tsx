@@ -7,7 +7,7 @@ import { UnsupportedRuntimeError, isRealDevice } from '../device/wasm';
 import { useI18n, type TKey } from '../i18n';
 import type { Vars } from '../i18n/core';
 import { BundleStore, type BundleMeta } from '../lib/bundles';
-import { builtinKey, fetchBuiltinBytes, isBuiltinKey, loadBuiltins, pickStartApp, type BuiltinApp } from '../lib/builtins';
+import { builtinKey, displayAppName, fetchBuiltinBytes, isBuiltinKey, loadBuiltins, pickStartApp, type BuiltinApp } from '../lib/builtins';
 import { InputController } from '../lib/input';
 import { isEditableTarget, keyToButton, ownsArrowKeys } from '../lib/keys';
 import { isPhone, useLayoutMode, type LayoutMode } from '../lib/layout';
@@ -95,8 +95,8 @@ export const useHost = (): Host => {
 
 let noticeSeq = 0;
 
-/** Display name of a saved bundle: its file name without the extension. */
-export const appLabel = (name: string): string => name.replace(/\.dotbench$/i, '');
+/** Display name of an app: a saved bundle's file name without the extension; the system reads kodeOS. */
+export const appLabel = (name: string): string => displayAppName(name.replace(/\.dotbench$/i, ''));
 
 export function HostProvider({ children }: { children: ReactNode }) {
   const { t, setLocale } = useI18n();

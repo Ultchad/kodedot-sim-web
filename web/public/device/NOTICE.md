@@ -4,6 +4,6 @@
 (`components/kui/sim/device/`, commit `c9568a3`), by Kode, licensed under
 GPL-3.0-or-later.
 
-The Kode Dot name and likeness are trademarks of Kode. They are used here for
-personal use only. If this site is ever made public, replace the name and the
-artwork.
+`model.glb` is Kode's 3D model of the device: see `NOTICE-model.md`.
+
+Kode Dot is Kode's product; its name and design are Kode's.

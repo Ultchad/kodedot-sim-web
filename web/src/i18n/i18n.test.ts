@@ -66,8 +66,8 @@ describe('translate', () => {
     expect(translate('es', 'console.paused', { count: 15000 })).toBe('15.000 líneas nuevas'); // numbers follow the language
   });
   it('names the product descriptor in each language', () => {
-    expect(translate('en', 'app.descriptor')).toBe('A simulator for Kode Dot apps');
-    expect(translate('pt-BR', 'app.descriptor')).toBe('Simulador de apps do Kode Dot');
-    expect(translate('es', 'app.descriptor')).toBe('Simulador de apps para Kode Dot');
+    expect(translate('en', 'app.descriptor')).toBe('A Kode Dot simulator in your browser');
+    expect(translate('pt-BR', 'app.descriptor')).toBe('Um simulador do Kode Dot no seu navegador');
+    expect(translate('es', 'app.descriptor')).toBe('Un simulador del Kode Dot en tu navegador');
   });
 });
