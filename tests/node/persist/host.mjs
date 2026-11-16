@@ -75,7 +75,7 @@ export class Bench {
   async open() { if (!this.opened) { await this.pm.open(); this.opened = true; } return this; }
 
   /** Power-on (reason 1) or reset (2/3): returns the running program handle. */
-  async boot(pkgFile, { reason = RESET.POWERON, powerOn = reason === RESET.POWERON } = {}) {
+  async boot(pkgFile, { reason = RESET.POWERON, powerOn = reason === RESET.POWERON, factory } = {}) {
     await this.open();
     const { appJson, mod, dir: pkgDir, manifest } = await loadPkg(pkgFile);
     const logs = [];
@@ -91,7 +91,7 @@ export class Bench {
     if (powerOn) this.pm.dropRetained();
     this.pm.restoreInto(M);
     this.pm.attach(M);
-    installFactory(M, packageFactory(pkgDir, manifest));
+    installFactory(M, factory !== undefined ? factory : packageFactory(pkgDir, manifest));
     const text = [];
     const drain = () => {
       const cap = 8192, buf = M._malloc(cap);
