@@ -264,7 +264,7 @@ export class AppsRegion {
     }
     const seq = dir.e.reduce((m, e) => Math.max(m, e.seq), 0) + 1;
     // the directory first, so the flash the victims held is free before the write (as flash_finish orders it); then the image
-    this.commit(dir);
+    if (plan.evict.length || same || dir.count !== this.dir.count) this.commit(dir);   // victims leave the directory before their flash is reused
     this.flash.erase(plan.offset, alignUp(image.length));
     this.flash.program(plan.offset, image);
     const back = this.flash.read(plan.offset, image.length);
