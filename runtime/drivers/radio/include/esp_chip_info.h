@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DOTBENCH_ESP_CHIP_INFO_H
+#define DOTBENCH_ESP_CHIP_INFO_H
+typedef enum {
+    CHIP_ESP32 = 1, CHIP_ESP32S2 = 2, CHIP_ESP32S3 = 9, CHIP_ESP32C3 = 5, CHIP_ESP32C2 = 12, CHIP_ESP32C6 = 13,
+    CHIP_ESP32H2 = 16, CHIP_ESP32P4 = 18, CHIP_ESP32C61 = 20, CHIP_ESP32C5 = 23, CHIP_POSIX_LINUX = 999,
+} esp_chip_model_t;
+#endif

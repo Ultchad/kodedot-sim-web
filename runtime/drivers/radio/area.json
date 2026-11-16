@@ -1,0 +1,18 @@
+{
+  "area": "radio",
+  "description": "Radio core: the ESP32-C5 co-processor behind esp-hosted (SDIO link, peer-data services SELF/VAULT/ID/BTKEYS/SNIFF, firmware version, power/fault states) faked beneath the SDK's real kdrv_radio / kdrv_c5 / kdrv_c5svc / AO_Radio; the host bridge shared by wifi, net, BLE and IR",
+  "sdkconfig": {
+    "CONFIG_KODEOS_RADIO": "y",
+    "CONFIG_ESP_HOSTED_ENABLED": "y",
+    "CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS": "1500"
+  },
+  "sources": [
+    "*.c"
+  ],
+  "exports": [
+    "dbh_layout"
+  ],
+  "js": [
+    "radio.js"
+  ]
+}
