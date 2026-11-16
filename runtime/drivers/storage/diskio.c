@@ -4,20 +4,30 @@
  * written stays written, the one in flight is not (sector writes are atomic here; a multi-sector write
  * stops between sectors). */
 #include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <stdatomic.h>
 #include "fatfs/ff.h"
 #include "fatfs/diskio.h"
 #include "dotbench_persist.h"
 #include "dotbench_vfs.h"
 
-static uint8_t s_flash[DBV_FLASH_BYTES] __attribute__((aligned(64)));
-static uint8_t s_sd[DBV_SD_MAX_MB << 20] __attribute__((aligned(64)));
+/* Neither .bss nor calloc: with shared memory the linker initialises .bss with a memory.fill and calloc clears, which commits
+ * every page (34 MiB at each boot, and still committed after a restart). sbrk() hands out fresh wasm pages that nothing has
+ * written: zero, and uncommitted until a file or sector is actually stored in them. */
+static uint8_t *s_flash, *s_sd;
+static uint8_t *zalloc64(size_t n)
+{
+    void *p = sbrk((intptr_t)(n + 64));
+    return (p == (void *)-1) ? NULL : (uint8_t *)(((uintptr_t)p + 63u) & ~(uintptr_t)63u);
+}
 static dbp_region_t *r_flash, *r_sd;
 
 __attribute__((constructor(120))) static void disk_ctor(void)
 {
-    r_flash = dbp_register("flash-fs", s_flash, sizeof s_flash, 0);
-    r_sd    = dbp_register("sd-card",  s_sd,    sizeof s_sd,    0);
+    s_flash = zalloc64(DBV_FLASH_BYTES); s_sd = zalloc64((size_t)DBV_SD_MAX_MB << 20);
+    r_flash = dbp_register("flash-fs", s_flash, DBV_FLASH_BYTES, 0);
+    r_sd    = dbp_register("sd-card",  s_sd,    (uint32_t)DBV_SD_MAX_MB << 20, 0);
 }
 
 static uint32_t sd_cap_mb(void)
