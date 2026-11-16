@@ -52,3 +52,7 @@ Screenshots (`docs/boot-shots/`): 01 launcher first boot, 02 Kody Kart title, 03
 ## Risks
 
 Cold builds are slow under load; kodeOS cold boot in Chrome about 10-20 s; the Node boot suite takes about 2 minutes.
+
+## Regression runs (this branch, base before the integ/persist test hardening)
+
+`tests/node/run.sh`: 442 ok lines; acceptance, audio, haptic, sd, nvs, persist, rtos pass. Three load-sensitive checks failed when two suites ran at once (storage examples button presses, system/restart rss growth, time/clock); the rss one fails identically on integ/persist, the storage and time ones pass when run alone, and the storage one is the flake integ/persist already hardened (`pressUntil`). `tests/node/kodeos/run.sh`: 13 ok (the empty-launcher check still passes). Run the boot, kodeOS and Chrome suites on a quiet machine.
