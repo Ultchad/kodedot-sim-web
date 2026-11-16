@@ -1,7 +1,12 @@
 {
   "area": "rfid",
-  "description": "125 kHz front end (stubbed except init)",
-  "supersedes": {
-    "components/kdrv/rfid/src/kdrv_rfid_lf.c": "stubbed: 125 kHz front end (stage 2)"
-  }
+  "description": "125 kHz RFID: the real kdrv_rfid_lf.c runs on faked ESP-IDF peripherals (ADC-continuous, LEDC, PARLIO, PCNT, LDO) over virtual EM4100 cards, T5577 tags and door readers",
+  "sources": ["*.c"],
+  "exports": [
+    "rfid_world_reset", "rfid_obj_create", "rfid_obj_remove", "rfid_obj_near", "rfid_obj_is_near", "rfid_obj_leave_after",
+    "rfid_card_set", "rfid_t5577_set", "rfid_t5577_get", "rfid_obj_id", "rfid_reader_set", "rfid_reader_get",
+    "rfid_fault_set", "rfid_state", "rfid_poll", "rfid_ev_pop", "rfid_frame"
+  ],
+  "js": ["rfid.js"],
+  "test_apps": ["sdk:examples/rfid_read", "area:../../../tests/node/rfid/apps/rfid_api"]
 }
