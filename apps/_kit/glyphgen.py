@@ -26,6 +26,7 @@ class Pen:
         self.im = Image.new("L", (self.n, self.n), 0)
         self.d = ImageDraw.Draw(self.im)
         self.w = max(2, int(round(STROKE * self.n)))
+        self.fill = 255
 
     def p(self, v):
         return v * self.n
@@ -33,9 +34,9 @@ class Pen:
     def line(self, pts, w=None):
         w = w or self.w
         pts = [(self.p(x), self.p(y)) for x, y in pts]
-        self.d.line(pts, fill=255, width=w, joint="curve")
+        self.d.line(pts, fill=self.fill, width=w, joint="curve")
         for x, y in (pts[0], pts[-1]):
-            self.d.ellipse((x - w / 2, y - w / 2, x + w / 2, y + w / 2), fill=255)
+            self.d.ellipse((x - w / 2, y - w / 2, x + w / 2, y + w / 2), fill=self.fill)
 
     def arc(self, cx, cy, r, a0, a1, w=None):
         w = w or self.w
@@ -50,16 +51,16 @@ class Pen:
         w = w or self.w
         c = (self.p(cx), self.p(cy))
         rr = self.p(r)
-        self.d.ellipse((c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr), outline=255, width=w)
+        self.d.ellipse((c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr), outline=self.fill, width=w)
 
     def disc(self, cx, cy, r):
         c = (self.p(cx), self.p(cy))
         rr = self.p(r)
-        self.d.ellipse((c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr), fill=255)
+        self.d.ellipse((c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr), fill=self.fill)
 
     def rrect(self, x0, y0, x1, y1, r, w=None):
         w = w or self.w
-        self.d.rounded_rectangle((self.p(x0), self.p(y0), self.p(x1), self.p(y1)), radius=self.p(r), outline=255, width=w)
+        self.d.rounded_rectangle((self.p(x0), self.p(y0), self.p(x1), self.p(y1)), radius=self.p(r), outline=self.fill, width=w)
 
     def out(self, n):
         return self.im.resize((n, n), Image.LANCZOS)
@@ -250,11 +251,76 @@ def g_pin(pen):
     pen.line([(0.5, 0.74), (0.5, 0.9)])
 
 
+def _wifi_n(pen, n):
+    for i, r in enumerate((0.18, 0.34, 0.5)):
+        pen.fill = 255 if i < n else 70
+        pen.arc(0.5, 0.8, r, -135, -45)
+    pen.fill = 255
+    pen.disc(0.5, 0.8, 0.05)
+
+
+def g_wifi1(pen):
+    _wifi_n(pen, 1)
+
+
+def g_wifi2(pen):
+    _wifi_n(pen, 2)
+
+
+def g_wifi3(pen):
+    _wifi_n(pen, 3)
+
+
+def g_power(pen):
+    pen.arc(0.5, 0.52, 0.34, -60, 240)
+    pen.line([(0.5, 0.1), (0.5, 0.5)])
+
+
+def g_lock(pen):
+    pen.rrect(0.2, 0.44, 0.8, 0.88, 0.08)
+    pen.arc(0.5, 0.44, 0.18, 180, 360)
+    pen.line([(0.32, 0.44), (0.32, 0.34)])
+    pen.line([(0.68, 0.44), (0.68, 0.34)])
+    pen.disc(0.5, 0.66, 0.04)
+
+
+def g_refresh(pen):
+    pen.arc(0.5, 0.5, 0.34, -40, 250)
+    pen.line([(0.18, 0.1), (0.2, 0.34), (0.42, 0.3)])
+
+
+def g_bars(pen):
+    for i, h in enumerate((0.25, 0.45, 0.65, 0.85)):
+        x = 0.16 + i * 0.2
+        pen.line([(x, 0.9), (x, 0.9 - h * 0.8)])
+
+
+def g_signal(pen):
+    pen.disc(0.5, 0.5, 0.07)
+    for r in (0.22, 0.38):
+        pen.arc(0.5, 0.5, r, -50, 50)
+        pen.arc(0.5, 0.5, r, 130, 230)
+
+
+def g_wave_sq(pen):
+    pen.line([(0.1, 0.7), (0.1, 0.3), (0.35, 0.3), (0.35, 0.7), (0.6, 0.7), (0.6, 0.3), (0.9, 0.3)])
+
+
+def g_bolt(pen):
+    pen.line([(0.58, 0.08), (0.3, 0.54), (0.5, 0.54), (0.42, 0.92), (0.72, 0.42), (0.52, 0.42), (0.58, 0.08)])
+
+
+def g_term(pen):
+    pen.rrect(0.1, 0.18, 0.9, 0.82, 0.1)
+    pen.line([(0.26, 0.4), (0.4, 0.5), (0.26, 0.6)])
+    pen.line([(0.48, 0.64), (0.68, 0.64)])
+
+
 GLYPHS = {"nfc": g_nfc, "rfid": g_rfid, "ir": g_ir, "light": g_light, "sos": g_sos, "level": g_level,
           "compass": g_compass, "tone": g_tone, "led": g_led, "screen": g_screen, "tag": g_tag, "wave": g_wave,
           "folder": g_folder, "file": g_file, "mic": g_mic, "play": g_play, "stop": g_stop, "trash": g_trash,
           "plus": g_plus, "check": g_check, "wifi": g_wifi, "ble": g_ble, "chip": g_chip, "usb": g_usb,
-          "sensor": g_sensor, "edit": g_edit, "copy": g_copy, "card": g_card, "search": g_search, "pin": g_pin}
+          "sensor": g_sensor, "wifi1": g_wifi1, "wifi2": g_wifi2, "wifi3": g_wifi3, "power": g_power, "lock": g_lock, "refresh": g_refresh, "bars": g_bars, "signal": g_signal, "wave_sq": g_wave_sq, "bolt": g_bolt, "term": g_term, "edit": g_edit, "copy": g_copy, "card": g_card, "search": g_search, "pin": g_pin}
 
 
 def render(name, n):
