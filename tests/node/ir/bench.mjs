@@ -85,8 +85,12 @@ export async function bootIr(pkg, opts = {}) {
   };
   /** Send a raw train through kode_ir_send_raw: txadd in pieces (the console line is short), then txraw. Resolves with the RES text. */
   a.txRaw = async (durations, carrier = 38000) => {
-    for (let i = 0; i < durations.length; i += 40) a.type('function name="txadd" arg="' + durations.slice(i, i + 40).join(",") + '"');
-    await sleep(60);
+    // The console takes one line at a time: let each txadd line be consumed (its "ok" prompt) before the next, or lines are lost.
+    for (let i = 0; i < durations.length; i += 12) {
+      const seen = a.logText().split(">ok").length;
+      a.type('function name="txadd" arg="' + durations.slice(i, i + 12).join(",") + '"');
+      await a.waitFor(() => a.logText().split(">ok").length > seen, 3000, "txadd consumed");
+    }
     return a.fn("txraw", String(carrier));
   };
   /** Start a console function without waiting (for a window the test fills in itself). Resolves with the RES text. */
