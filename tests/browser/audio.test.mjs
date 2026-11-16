@@ -51,8 +51,10 @@ window.T = {
     // pre-fill the ring (the reader starts after the worklet's prebuffer, so give it plenty)
     u32[H(0x24)] = 0; u32[H(0x20)] = 0; ph = 0;
     const n = new AudioWorkletNode(oac, "dotbench-audio-out", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { buffer: sab, base: BASE, latencyMs: 50 } });
-    push(11000, 1000, 10000);   // the processor starts reading at "now" (its construction), so write after it exists; <= 5 x the 50 ms target or it skips ahead
     n.connect(oac.destination);
+    // the processor is built on the render thread and starts reading at "now": suspend after the first quantum (it exists then),
+    // write the ring while suspended, resume. <= 5 x the 50 ms target of data or the reader skips ahead.
+    oac.suspend(128 / 48000).then(() => { push(11000, 1000, 10000); oac.resume(); });
     const buf = await oac.startRendering();
     return Array.from(buf.getChannelData(0));
   },
@@ -151,7 +153,7 @@ await session(["--autoplay-policy=no-user-gesture-required"], async (page, error
   await check("OfflineAudioContext renders the worklet over a pre-filled ring: 1 kHz at the written amplitude", async () => {
     const x = await page.ev(() => T.offline());
     let pk = 0, nz = 0; for (const v of x) { pk = Math.max(pk, Math.abs(v)); if (v !== 0) nz++; }
-    assert.ok(nz > x.length * 0.9, "non-zero samples " + nz + " of " + x.length);
+    assert.ok(nz > (x.length - 400) * 0.9, "non-zero samples " + nz + " of " + x.length);
     assert.ok(Math.abs(pk - 10000 / 32768) < 0.02, "peak " + pk);
   });
 });
