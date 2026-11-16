@@ -1,0 +1,51 @@
+  -rwxr-xr-x 1 root root 2146 Nov 16 18:56 build/blink.wasm
+  -rwxr-xr-x 1 root root 11645 Nov 16 18:56 build/i2c_slave.wasm
+  -rwxr-xr-x 1 root root 11392 Nov 16 18:57 build/esp32_extras.wasm
+  -rwxr-xr-x 1 root root 11456 Nov 16 18:57 build/perf.wasm
+  -rwxr-xr-x 1 root root 2030 Nov 16 18:57 build/busy.wasm
+stepped: events MODE(pin2,1)@0us WRITE(pin2,1)@0us WRITE(pin2,0)@1000000us WRITE(pin2,1)@2000000us WRITE(pin2,0)@3000000us WRITE(pin2,1)@4000000us WRITE(pin2,0)@5000000us WRITE(pin2,1)@6000000us
+stepped OK: 7 edges, every interval exactly 1000000 us; 6 virtual s ran in 96 ms wall
+realtime: 7 edges, intervals(us)=1000221,1004360,1000205,1000214,1000195,1000201
+realtime: interval error us min=195 max=4360
+realtime OK (all intervals within 5 ms of 1 s)
+serial after boot: "i2c slave ready at 0x42\r\n"
+write_read(0x42,[1],4) -> { ack: true, data: [ 33, 50, 67, 84 ] }
+probe 0x50 -> { ack: false, data: [] }
+serial after transactions:
+onReceive len=1 reg=1
+onRequest reg=1 (#1)
+onReceive len=1 reg=4
+onRequest reg=4 (#2)
+onReceive len=3 reg=2
+  write regs[2]=0xAA
+  write regs[3]=0xBB
+onReceive len=1 reg=2
+onRequest reg=2 (#3)
+onRequest reg=2 (#4)
+
+i2c slave OK
+heartbeat 1 -> 1 (frozen: true); main thread stayed responsive
+terminate() returned after 28.4 ms
+-rwxr-xr-x 1 root root 11515 Nov 16 18:57 /home/claude/dotbench/spikes/arduino/build/com.example.esp32-lm75.wasm
+== LM75-style sensor
+  ok step 1: {"advance_ms":100}
+  ok step 2: {"expect_serial":"LM75 sensor ready at 0x48, 22.50 C"}
+  ok step 3: register read like kode_i2c_write_read(0x48, {0}, 1, buf, 2): 22.5 C = 5760 = 0x1680
+  ok step 4: {"set_field":{"temperature":-10.25}}
+  ok step 5: {"i2c":{"addr":72,"write":[0],"read":2,"expect":[245,192]}}
+  ok step 6: a part at another address does not answer
+  ok step 7: config register is read/write
+  ok step 8: {"i2c":{"addr":72,"write":[1],"read":1,"expect":[96]}}
+  ok step 9: {"expect_output":{"name":"reads","value":3}}
+all scenario steps passed
+spawn -> setup() done and parked: 155.0 ms (first worker, includes Node worker start)
+I2C write_read round trip via mailbox: 50 us each (2000 transactions, 99 ms)
+8 workers up and parked: 318 ms, RSS +78 MB (Node, includes one V8 isolate per worker)
+8 blinkers, 10 virtual s stepped: 12,12,12,12,12,12,12,12 events each
+blink      plain   2146 B   asyncify   3998 B
+i2c_slave  plain  11645 B   asyncify  17312 B
+perf       plain  11456 B   asyncify  16867 B
+worker    : PERF compute=50777 us prints=8542 us
+asyncify  : PERF compute=110524 us prints=4889 us
+asyncify  : slave read while sleeping -> [33,50,67,84] (expected [33,50,67,84])
+asyncify  : serial: "i2c slave ready at 0x42\r\nonReceive len=1 reg=1\nonRequest reg=1 (#1)\n"

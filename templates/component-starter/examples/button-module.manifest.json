@@ -1,0 +1,27 @@
+{
+  "$schema": "../manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "com.example.button-module",
+  "name": { "en": "Push button to ground", "pt-BR": "Botão para o terra", "es": "Pulsador a tierra" },
+  "version": "1.0.0",
+  "author": { "name": "Your Name" },
+  "license": "MIT",
+  "description": {
+    "en": "A momentary switch between OUT and GND. Wire OUT to a GPIO and enable the pull-up in your app (or add a pull-up part).",
+    "pt-BR": "Uma chave momentânea entre OUT e GND. Ligue OUT a um GPIO e ative o pull-up no app (ou adicione um pull-up).",
+    "es": "Un pulsador entre OUT y GND. Conecta OUT a un GPIO y activa el pull-up en tu app (o añade un pull-up)."
+  },
+  "category": "input",
+  "picture": { "file": "picture-button.svg", "width": 160, "height": 120 },
+  "pins": [
+    { "name": "OUT", "kind": "io",     "pos": { "x": 40,  "y": 104 } },
+    { "name": "GND", "kind": "ground", "pos": { "x": 120, "y": 104 } }
+  ],
+  "fields": [ { "name": "pressed", "type": "boolean", "label": { "en": "Pressed", "pt-BR": "Pressionado", "es": "Pulsado" }, "default": false } ],
+  "controls": [ { "field": "pressed", "region": { "x": 40, "y": 20, "w": 80, "h": 60 }, "mode": "momentary" } ],
+  "visuals": [ { "id": "cap", "effect": "fill", "x": 60, "y": 30, "w": 40, "h": 40, "color": "#dd3333", "source": { "field": "pressed" } } ],
+  "behaviour": {
+    "type": "declarative", "engine": 1,
+    "elements": [ { "type": "switch", "a": "OUT", "b": "GND", "closed": { "field": "pressed" }, "bounce_ms": 4 } ]
+  }
+}

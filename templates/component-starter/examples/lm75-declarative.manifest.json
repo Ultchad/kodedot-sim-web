@@ -1,0 +1,43 @@
+{
+  "$schema": "../manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "com.example.lm75-breakout",
+  "name": { "en": "LM75 temperature breakout", "pt-BR": "Módulo de temperatura LM75", "es": "Módulo de temperatura LM75" },
+  "version": "1.0.0",
+  "author": { "name": "Your Name" },
+  "license": "MIT",
+  "description": {
+    "en": "A fixed-function I2C temperature sensor with on-board pull-ups. No code: its registers come from the manifest.",
+    "pt-BR": "Um sensor de temperatura I2C de função fixa, com pull-ups na placa. Sem código: os registradores vêm do manifesto.",
+    "es": "Un sensor de temperatura I2C de función fija, con pull-ups en la placa. Sin código: los registros vienen del manifiesto."
+  },
+  "category": "sensor",
+  "picture": { "file": "picture-lm75.svg", "width": 240, "height": 160 },
+  "pins": [
+    { "name": "VCC", "kind": "power_in", "pos": { "x": 30,  "y": 140 }, "min_mv": 2800, "max_mv": 5500, "typ_ma": 0.3 },
+    { "name": "GND", "kind": "ground",   "pos": { "x": 90,  "y": 140 } },
+    { "name": "SDA", "kind": "io", "pos": { "x": 150, "y": 140 }, "pullup_ohms": 10000, "pull_rail": "VCC", "abs_max_mv": 5500 },
+    { "name": "SCL", "kind": "io", "pos": { "x": 210, "y": 140 }, "pullup_ohms": 10000, "pull_rail": "VCC", "abs_max_mv": 5500 }
+  ],
+  "fields": [
+    { "name": "temperature", "type": "number", "label": { "en": "Temperature", "pt-BR": "Temperatura", "es": "Temperatura" },
+      "min": -55, "max": 125, "step": 0.5, "unit": "°C", "default": 25, "ui": "slider" },
+    { "name": "address", "type": "enum", "label": { "en": "I2C address", "pt-BR": "Endereço I2C", "es": "Dirección I2C" }, "default": 72,
+      "values": [ { "value": 72, "label": { "en": "0x48" } }, { "value": 73, "label": { "en": "0x49" } } ] }
+  ],
+  "visuals": [
+    { "id": "power_led", "effect": "glow", "x": 120, "y": 40, "r": 8, "color": "#ff3b30", "source": { "pin": "VCC" } }
+  ],
+  "behaviour": {
+    "type": "declarative", "engine": 1,
+    "elements": [
+      { "type": "i2c_slave", "sda": "SDA", "scl": "SCL", "address": { "field": "address" }, "pointer_bytes": 1, "auto_increment": false,
+        "registers": [
+          { "reg": 0, "size": 2, "access": "ro", "value": { "field": "temperature", "scale": 256, "signed": true, "endian": "big" } },
+          { "reg": 1, "size": 1, "access": "rw", "default": 0 },
+          { "reg": 2, "size": 2, "access": "rw", "default": 19200 },
+          { "reg": 3, "size": 2, "access": "rw", "default": 20480 }
+        ] }
+    ]
+  }
+}

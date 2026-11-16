@@ -1,0 +1,197 @@
+{
+  "$schema": "./manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "com.example.esp32-lm75",
+  "name": {
+    "en": "ESP32 temperature sensor",
+    "pt-BR": "Sensor de temperatura ESP32",
+    "es": "Sensor de temperatura ESP32"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "Your Name",
+    "url": "https://example.com"
+  },
+  "license": "MIT",
+  "description": {
+    "en": "An ESP32 running real Arduino code that behaves like an LM75 temperature sensor on I2C. Set the temperature in the property panel; the Kode Dot reads it with kode_i2c_write_read().",
+    "pt-BR": "Um ESP32 rodando código Arduino de verdade que se comporta como um sensor de temperatura LM75 no I2C. Ajuste a temperatura no painel; o Kode Dot lê com kode_i2c_write_read().",
+    "es": "Un ESP32 que ejecuta código Arduino real y se comporta como un sensor de temperatura LM75 en I2C. Ajusta la temperatura en el panel; el Kode Dot la lee con kode_i2c_write_read()."
+  },
+  "category": "mcu",
+  "tags": [
+    "esp32",
+    "i2c",
+    "sensor",
+    "arduino"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 400,
+    "height": 260
+  },
+  "pins": [
+    {
+      "name": "V33",
+      "kind": "power_in",
+      "pos": {
+        "x": 40,
+        "y": 238
+      },
+      "label": {
+        "en": "3V3"
+      },
+      "min_mv": 3000,
+      "max_mv": 3600,
+      "typ_ma": 40
+    },
+    {
+      "name": "GND",
+      "kind": "ground",
+      "pos": {
+        "x": 100,
+        "y": 238
+      },
+      "label": {
+        "en": "GND"
+      }
+    },
+    {
+      "name": "SDA",
+      "kind": "io",
+      "gpio": 21,
+      "pos": {
+        "x": 160,
+        "y": 238
+      },
+      "label": {
+        "en": "SDA"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "SCL",
+      "kind": "io",
+      "gpio": 22,
+      "pos": {
+        "x": 220,
+        "y": 238
+      },
+      "label": {
+        "en": "SCL"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "INT",
+      "kind": "io",
+      "gpio": 4,
+      "pos": {
+        "x": 280,
+        "y": 238
+      },
+      "label": {
+        "en": "INT"
+      },
+      "abs_max_mv": 3600
+    }
+  ],
+  "fields": [
+    {
+      "name": "temperature",
+      "type": "number",
+      "label": {
+        "en": "Temperature",
+        "pt-BR": "Temperatura",
+        "es": "Temperatura"
+      },
+      "min": -40,
+      "max": 125,
+      "step": 0.25,
+      "unit": "°C",
+      "default": 22.5,
+      "ui": "slider"
+    },
+    {
+      "name": "address",
+      "type": "enum",
+      "label": {
+        "en": "I2C address",
+        "pt-BR": "Endereço I2C",
+        "es": "Dirección I2C"
+      },
+      "default": 72,
+      "values": [
+        {
+          "value": 72,
+          "label": {
+            "en": "0x48"
+          }
+        },
+        {
+          "value": 73,
+          "label": {
+            "en": "0x49"
+          }
+        },
+        {
+          "value": 74,
+          "label": {
+            "en": "0x4A"
+          }
+        },
+        {
+          "value": 75,
+          "label": {
+            "en": "0x4B"
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "reads",
+      "type": "number",
+      "label": {
+        "en": "Reads served",
+        "pt-BR": "Leituras atendidas",
+        "es": "Lecturas atendidas"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "act_led",
+      "effect": "glow",
+      "x": 330,
+      "y": 60,
+      "r": 9,
+      "color": "#3ddc84",
+      "source": {
+        "gpio": 2
+      }
+    },
+    {
+      "id": "reads_text",
+      "effect": "text",
+      "x": 200,
+      "y": 150,
+      "w": 160,
+      "h": 30,
+      "source": {
+        "output": "reads"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "wasm",
+    "entry": "behaviour.wasm",
+    "abi": 1,
+    "memory_kb": 1024,
+    "stack_kb": 64,
+    "sources": [
+      "src/main.ino"
+    ]
+  }
+}

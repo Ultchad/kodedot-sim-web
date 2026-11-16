@@ -1,0 +1,15 @@
+{
+  "name": "LM75-style sensor",
+  "description": "Run with: dotbench part test .   (the spike: node spikes/arduino/run_scenario.mjs templates/component-starter)",
+  "steps": [
+    { "advance_ms": 100 },
+    { "expect_serial": "LM75 sensor ready at 0x48, 22.50 C" },
+    { "comment": "register read like kode_i2c_write_read(0x48, {0}, 1, buf, 2): 22.5 C = 5760 = 0x1680", "i2c": { "addr": 72, "write": [0], "read": 2, "expect": [22, 128] } },
+    { "set_field": { "temperature": -10.25 } },
+    { "i2c": { "addr": 72, "write": [0], "read": 2, "expect": [245, 192] } },
+    { "comment": "a part at another address does not answer", "i2c": { "addr": 73, "write": [0], "read": 2, "expect_nack": true } },
+    { "comment": "config register is read/write", "i2c": { "addr": 72, "write": [1, 96], "read": 0 } },
+    { "i2c": { "addr": 72, "write": [1], "read": 1, "expect": [96] } },
+    { "expect_output": { "name": "reads", "value": 3 } }
+  ]
+}
