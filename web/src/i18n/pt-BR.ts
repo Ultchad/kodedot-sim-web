@@ -101,9 +101,9 @@ export const ptBR: Messages = {
   'action.shake': 'Chacoalhar',
 
   'sensors.title': 'Sensores deste celular',
-  'sensors.off': 'Usar os sensores de movimento deste aparelho',
-  'sensors.on': 'Sensores ligados: toque para parar',
-  'sensors.hint': 'Desligado por padrão. A inclinação alimenta pitch, roll e heading; chacoalhar o celular envia um chacoalhão.',
+  'sensors.off': 'Usar os sensores de movimento deste celular',
+  'sensors.on': 'Sensores de movimento ligados',
+  'sensors.hint': 'Incline e gire o celular e o Dot sente; sacuda para enviar uma sacudida.',
   'sensors.unsupported': 'Este navegador não expõe sensores de movimento.',
   'sensors.denied': 'Permissão negada. No iPhone: Ajustes > Safari > Acesso a Movimento e Orientação, e recarregue a página.',
   'sensors.permissionError': 'Não foi possível pedir permissão aos sensores. Precisa de um toque direto e de uma página segura (HTTPS).',
@@ -262,4 +262,6 @@ export const ptBR: Messages = {
   'welcome.body.os': 'Ele roda o kodeOS: deslize para o lado na tela para desbloquear. T, B e as setas apertam os botões. Solte um arquivo .dotbench aqui para rodar o seu app.',
   'welcome.body.os.phone': 'Deslize para o lado na tela para desbloquear o kodeOS. Apps, bancada e console ficam na barra abaixo.',
   'welcome.body.os.side': 'Deslize para o lado na tela para desbloquear o kodeOS. Apps, bancada e console ficam neste painel.',
+  'model.another': 'Escolher outro arquivo…',
+  'settings.phone': 'Este celular como o Dot',
 };

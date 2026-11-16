@@ -16,10 +16,11 @@ loads and draws quickly in a web page:
   two;
 - screen: the picture baked on the glass is replaced by a flat `screen`
   surface on which the simulator draws the live screen;
-- geometry: 144817 triangles become 46608 (meshoptimizer); the back
+- geometry: 144817 triangles become 48706 (meshoptimizer); the back
   cover, the glass, the light guide, the button inlays and the side window keep
-  every triangle;
+  every triangle, and the shell's edges round the glass and the controls stay
+  in place;
 - materials: plain metallic-roughness materials with Kode's colours; the
   shared colour palette becomes one material per colour;
 - textures: the pin labels and the back cover's normal map, at 1024 px;
-- compression: meshopt; 1005 kB become 410 kB.
+- compression: meshopt; 1005 kB become 416 kB.

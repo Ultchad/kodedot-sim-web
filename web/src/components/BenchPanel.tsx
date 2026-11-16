@@ -14,16 +14,17 @@ const DND_TYPE = 'application/x-dotbench-object';
 const SOON = 'soon';
 type BenchTab = AreaId | typeof SOON;
 
-export function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+/** `compact`: the tab row right above already names the section (phone sheet), so the title is kept for screen readers only. */
+export function SectionTitle({ title, subtitle, compact = false }: { title: string; subtitle: string; compact?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <h2 className="text-[24px] leading-tight">{title}</h2>
+      <h2 className={compact ? 'sr-only' : 'text-[24px] leading-tight'}>{title}</h2>
       <p className="m-0 text-[14px] leading-snug text-ink2">{subtitle}</p>
     </div>
   );
 }
 
-export function BenchPanel() {
+export function BenchPanel({ compact = false }: { compact?: boolean }) {
   const { t } = useI18n();
   const host = useHost();
   const state = useBenchState(host.bench);
@@ -43,7 +44,7 @@ export function BenchPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3" data-testid="bench-panel">
-      <SectionTitle title={t('nav.bench')} subtitle={t('bench.subtitle')} />
+      <SectionTitle title={t('nav.bench')} subtitle={t('bench.subtitle')} compact={compact} />
 
       <div {...tabs.list} aria-label={t('bench.areas')} className="flex flex-wrap gap-1.5">
         {working.map((a) => {
@@ -307,26 +308,45 @@ function Field({ def, obj }: { def: FieldDef; obj: BenchObject }) {
   );
 }
 
-/** Real phone sensors as the source of tilt. Only offered where they can exist: touch devices that expose the events. */
-function SensorControls() {
-  const { t } = useI18n();
-  const { sensorsOn, toggleSensors, sensorError, layout } = useHost();
+/** True where real motion sensors can exist: touch devices whose browser exposes the events. */
+export function useSensorsOffered(): boolean {
+  const { layout } = useHost();
   const coarse = useCoarsePointer();
   const supported = typeof window !== 'undefined' && 'DeviceOrientationEvent' in window;
-  if (!supported || !(coarse || isPhone(layout))) return null;
+  return supported && (coarse || isPhone(layout));
+}
+
+/** The switch that makes this phone's own motion sensors the Dot's: tilt and shake the phone, the Dot feels it. */
+export function SensorSwitch({ testid = 'sensors-toggle' }: { testid?: string }) {
+  const { t } = useI18n();
+  const { sensorsOn, toggleSensors, sensorError } = useHost();
   return (
-    <div className="inner flex flex-col gap-2 p-4" data-testid="sensors-card">
-      <h3 className="text-[17px]">{t('sensors.title')}</h3>
-      <label className="flex cursor-pointer items-center gap-3 text-[14px] font-semibold">
-        <input type="checkbox" className="switch" checked={sensorsOn} onChange={() => void toggleSensors()} data-testid="sensors-toggle" />
-        {t(sensorsOn ? 'sensors.on' : 'sensors.off')}
+    <>
+      <label className="flex cursor-pointer items-center gap-3 text-[14px]">
+        <input type="checkbox" className="switch" checked={sensorsOn} onChange={() => void toggleSensors()} data-testid={testid} />
+        <span className="min-w-0">
+          <span className="font-semibold">{t(sensorsOn ? 'sensors.on' : 'sensors.off')}</span>
+          <span className="block text-[13px] leading-snug text-ink2">{t('sensors.hint')}</span>
+        </span>
       </label>
-      <p className="m-0 text-[13.5px] leading-snug text-ink2">{t('sensors.hint')}</p>
       {sensorError && (
         <p role="alert" className="m-0 text-[13.5px] font-semibold text-redtext">
           {t(sensorError)}
         </p>
       )}
+    </>
+  );
+}
+
+/** Real phone sensors as the source of tilt, in the Motion area. */
+function SensorControls() {
+  const { t } = useI18n();
+  const offered = useSensorsOffered();
+  if (!offered) return null;
+  return (
+    <div className="inner flex flex-col gap-2 p-4" data-testid="sensors-card">
+      <h3 className="text-[17px]">{t('sensors.title')}</h3>
+      <SensorSwitch />
     </div>
   );
 }

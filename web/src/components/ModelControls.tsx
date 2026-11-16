@@ -26,6 +26,7 @@ export function ModelControls({ onDone }: { onDone?: () => void }) {
     if (o.custom && v.kind !== 'custom') return file.current?.click(); // nothing loaded yet: choosing "my own" asks for the file
     void model.choose(o.id);
   };
+  const choices = options.length > 1;
   const warnings = v.kind === 'custom' || v.kind === 'error' ? v.warnings : [];
   const busy = v.kind === 'loading';
   return (
@@ -33,7 +34,7 @@ export function ModelControls({ onDone }: { onDone?: () => void }) {
       <span className="tag" id="model-title">
         {t('model.title')}
       </span>
-      {options.length > 1 && (
+      {choices && (
         <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="model-title" data-testid="model-options">
           {options.map((o) => (
             <button key={o.id} type="button" className="chip" aria-pressed={o.id === selected} disabled={busy} onClick={() => pick(o)} data-testid={`model-option-${o.id}`}>
@@ -42,43 +43,49 @@ export function ModelControls({ onDone }: { onDone?: () => void }) {
           ))}
         </div>
       )}
-      <div className="inner flex min-h-11 items-center gap-2.5 px-3.5 py-2" role="status">
-        {busy ? (
-          <>
-            <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-primary" />
-            <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold" title={v.name}>
-              {t('model.loading', { name: v.name || '.glb' })}
+      {/* what is on show: said by the chips themselves for the built-in models, spelled out for a file */}
+      {(busy || v.kind === 'custom' || !choices) && (
+        <div className="inner flex min-h-11 items-center gap-2.5 px-3.5 py-2" role="status">
+          {busy ? (
+            <>
+              <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-primary" />
+              <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold" title={v.name}>
+                {t('model.loading', { name: v.name || '.glb' })}
+              </span>
+            </>
+          ) : v.kind === 'custom' ? (
+            <>
+              <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold" title={v.name} data-testid="model-name">
+                {v.name}
+              </span>
+              {v.sizeBytes !== null && <span className="shrink-0 text-[12.5px] text-ink2">{fmt.bytes(v.sizeBytes)}</span>}
+            </>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold" data-testid="model-name">
+              {current && !current.custom ? labelOf(current) : t('model.builtin')}
             </span>
-          </>
-        ) : v.kind === 'custom' ? (
-          <>
-            <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold" title={v.name} data-testid="model-name">
-              {v.name}
-            </span>
-            {v.sizeBytes !== null && <span className="shrink-0 text-[12.5px] text-ink2">{fmt.bytes(v.sizeBytes)}</span>}
-          </>
-        ) : (
-          <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold" data-testid="model-name">
-            {current && !current.custom ? labelOf(current) : t('model.builtin')}
-          </span>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       {v.kind === 'error' && (
         <p role="alert" className="m-0 px-1 text-[13.5px] leading-snug text-redtext [overflow-wrap:anywhere]" data-testid="model-error">
           <strong className="font-semibold">{t('model.error', { name: v.name || '.glb' })}</strong> {v.message} {t('model.error.fallback')}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn btn-sm" disabled={busy} onClick={() => file.current?.click()} data-testid="model-pick">
-          <Icon name="cube" size={17} />
-          {t('model.use')}
-        </button>
-        {options.length < 2 && (v.kind === 'custom' || v.kind === 'error') && (
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => void model.reset()} data-testid="model-reset">
-            {t('model.reset')}
+      {/* with the chips, "My own…" asks for the file; this button is then only for swapping a loaded file */}
+      {(!choices || v.kind === 'custom') && (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-sm" disabled={busy} onClick={() => file.current?.click()} data-testid="model-pick">
+            <Icon name="cube" size={17} />
+            {t(v.kind === 'custom' ? 'model.another' : 'model.use')}
           </button>
-        )}
-      </div>
+          {!choices && (v.kind === 'custom' || v.kind === 'error') && (
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => void model.reset()} data-testid="model-reset">
+              {t('model.reset')}
+            </button>
+          )}
+        </div>
+      )}
       <input
         ref={file}
         type="file"

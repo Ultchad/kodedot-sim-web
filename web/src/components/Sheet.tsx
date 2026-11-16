@@ -4,6 +4,7 @@ import { useLayer } from '../lib/layers';
 import { detentHeights, snapDetent, type Detent } from '../lib/sheet';
 import { useHost } from '../state/host';
 import { AppsList } from './AppsList';
+import { SensorSwitch, useSensorsOffered } from './BenchPanel';
 import { DeviceActions } from './DeviceMenu';
 import { WelcomeHint } from './DevicePane';
 import { ConsolePanel } from './ConsolePanel';
@@ -136,7 +137,7 @@ export function Sheet({ landscape, onInset }: { landscape: boolean; onInset(px: 
             <div className="flex flex-wrap gap-2">
               <RunButtons labels="always" />
             </div>
-            <AppsList onRun={landscape ? undefined : () => setDetent('peek')} />
+            <AppsList compact onRun={landscape ? undefined : () => setDetent('peek')} />
           </div>
         </ScrollArea>
       )}
@@ -249,9 +250,22 @@ export function Sheet({ landscape, onInset }: { landscape: boolean; onInset(px: 
 function Settings() {
   const { t } = useI18n();
   const { viewMode, setViewMode, glFailed, wakeLock, setWakeLock } = useHost();
+  const sensors = useSensorsOffered();
   return (
     <ScrollArea className="-mx-1 min-h-0 flex-1 px-1 py-1" label={t('nav.settings')}>
       <div className="flex flex-col gap-5">
+        {/* device mode: this phone stands in for the Dot, with its own sensors and screen */}
+        <div className="flex flex-col gap-3" data-testid="phone-as-dot">
+          <span className="tag">{t('settings.phone')}</span>
+          {sensors && <SensorSwitch testid="settings-sensors" />}
+          <label className="flex cursor-pointer items-center gap-3 text-[14px]">
+            <input type="checkbox" className="switch" checked={wakeLock} onChange={(e) => setWakeLock(e.target.checked)} />
+            <span className="min-w-0">
+              <span className="font-semibold">{t('settings.wake')}</span>
+              <span className="block text-[13px] leading-snug text-ink2">{t('settings.wake.hint')}</span>
+            </span>
+          </label>
+        </div>
         <div className="flex flex-col gap-1.5">
           <span className="tag">{t('device.view')}</span>
           <div className="seg self-start" role="group" aria-label={t('device.view')}>
@@ -271,13 +285,6 @@ function Settings() {
           <span className="tag">{t('settings.appearance')}</span>
           <ThemeChoice />
         </div>
-        <label className="flex cursor-pointer items-center gap-3 text-[14px]">
-          <input type="checkbox" className="switch" checked={wakeLock} onChange={(e) => setWakeLock(e.target.checked)} />
-          <span className="min-w-0">
-            <span className="font-semibold">{t('settings.wake')}</span>
-            <span className="block text-[13px] leading-snug text-ink2">{t('settings.wake.hint')}</span>
-          </span>
-        </label>
         <ModelControls />
         <DeviceActions />
         <MockToggle />

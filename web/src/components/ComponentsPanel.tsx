@@ -7,7 +7,7 @@ import { ScrollArea } from './ui';
  * Reserved information architecture for the "Components" section. Honest
  * placeholders: nothing here is functional yet.
  */
-export function ComponentsPanel() {
+export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
   const { t } = useI18n();
   const entries: { id: string; title: string; desc: string; tile: string; ink: string; icon: IconName }[] = [
     { id: 'library', title: t('components.library'), desc: t('components.library.desc'), tile: 'var(--tile-amber)', ink: '#191919', icon: 'copy' },
@@ -15,7 +15,7 @@ export function ComponentsPanel() {
   ];
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3" data-testid="components-panel">
-      <SectionTitle title={t('nav.components')} subtitle={t('components.subtitle')} />
+      <SectionTitle title={t('nav.components')} subtitle={t('components.subtitle')} compact={compact} />
       <ScrollArea className="-mx-2 min-h-0 flex-1 px-2 py-1" label={t('nav.components')}>
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {entries.map((e) => (

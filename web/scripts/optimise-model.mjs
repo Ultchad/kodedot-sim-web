@@ -23,7 +23,9 @@
 //   5. simplifies with meshoptimizer, part by part, to the triangle budget,
 //      weighing the normals in so that flat faces stay flat (the glass, the
 //      light guide, the inlays, the side window and the back cover with its
-//      debossed mark keep every triangle; the controls lose few);
+//      debossed mark keep every triangle; the controls lose few; the shell's
+//      vertices next to the glass, the controls, the light guide and the side
+//      window stay in place, so every outline is as modelled);
 //   6. replaces clear coat / anisotropy / specular / IOR by plain
 //      metallic-roughness materials with the maker's colours; turns the shared
 //      colour palette into one plain material per colour (no texture look-up);
@@ -324,22 +326,62 @@ function plan(entry, kind) {
  * Simplifies with the normals weighed in: a collapse that would drag a fillet's normal onto a flat face (which then
  * shades as a visible facet) costs more than one that keeps faces flat and fillets round.
  */
-function simplifyKeepingNormals(prim, ratio, error) {
+function simplifyKeepingNormals(prim, ratio, error, lock = null) {
   const idx = Uint32Array.from(prim.getIndices().getArray());
   const pos = Float32Array.from(prim.getAttribute('POSITION').getArray());
   const nrm = prim.getAttribute('NORMAL');
   const target = Math.max(3, Math.floor((idx.length / 3) * Math.min(1, ratio)) * 3);
   const [out] = nrm
-    ? MeshoptSimplifier.simplifyWithAttributes(idx, pos, 3, Float32Array.from(nrm.getArray()), 3, [NORMAL_WEIGHT, NORMAL_WEIGHT, NORMAL_WEIGHT], null, target, error, [])
+    ? MeshoptSimplifier.simplifyWithAttributes(idx, pos, 3, Float32Array.from(nrm.getArray()), 3, [NORMAL_WEIGHT, NORMAL_WEIGHT, NORMAL_WEIGHT], lock, target, error, [])
     : MeshoptSimplifier.simplify(idx, pos, 3, target, error, []);
   prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(out));
   compactPrimitive(prim);
+}
+/**
+ * Where the shell meets another visible part (the glass, a control, the light guide, the side window), its edge
+ * stays exactly as modelled: the vertices of the shell within SEAM_MM of such a part are locked. A simplified rim
+ * would no longer follow the part it surrounds, and the eye goes straight to those outlines.
+ */
+const SEAM_MM = 0.6;
+/** Only the rim that shows: the wells the controls sit in go deeper than anyone can see. */
+const SEAM_DEPTH_MM = 1.2;
+const seamCells = new Set();
+const windowCells = new Set();
+const cellOf = (x, y, z) => `${Math.floor(x / SEAM_MM)},${Math.floor(y / SEAM_MM)},${Math.floor(z / SEAM_MM)}`;
+for (const kind of ['glass', 'led', 'top', 'bottom', 'dpad']) for (const e of groups[kind]) {
+  const a = e.prim.getAttribute('POSITION').getArray();
+  for (let i = 0; i < a.length; i += 3) seamCells.add(cellOf(a[i], a[i + 1], a[i + 2]));
+}
+for (const e of groups.static) if (e.matName === 'side_window_glass') {
+  const a = e.prim.getAttribute('POSITION').getArray();
+  for (let i = 0; i < a.length; i += 3) windowCells.add(cellOf(a[i], a[i + 1], a[i + 2]));
+}
+function seamLock(prim) {
+  const a = prim.getAttribute('POSITION').getArray();
+  const lock = new Uint8Array(a.length / 3);
+  let n = 0;
+  for (let v = 0; v < lock.length; v++) {
+    const x = a[v * 3], y = a[v * 3 + 1], z = a[v * 3 + 2];
+    search: for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+      const cell = cellOf(x + dx * SEAM_MM, y + dy * SEAM_MM, z + dz * SEAM_MM);
+      if ((z > A.frontZ - SEAM_DEPTH_MM && seamCells.has(cell)) || windowCells.has(cell)) {
+        lock[v] = 1;
+        n++;
+        break search;
+      }
+    }
+  }
+  return { lock, count: n };
 }
 function simplifyGroup(kind) {
   for (const e of groups[kind]) {
     weldPrimitive(e.prim, {});
     const p = plan(e, kind);
-    if (p) simplifyKeepingNormals(e.prim, p.ratio * SCALE, p.error);
+    if (p) {
+      const seam = kind === 'static' && /main_white_body/.test(e.matName) ? seamLock(e.prim) : null;
+      if (seam) e.locked = seam.count;
+      simplifyKeepingNormals(e.prim, p.ratio * SCALE, p.error, seam?.lock ?? null);
+    }
     e.after = triCount(e.prim);
   }
 }
@@ -449,7 +491,7 @@ mkdirSync(dirname(outFile), { recursive: true });
 const bytes = await io.writeBinary(doc);
 writeFileSync(outFile, bytes);
 
-const line = (kind) => groups[kind].map((e) => `${e.name} [${e.matName}] ${e.source} -> ${e.after}`).join('; ');
+const line = (kind) => groups[kind].map((e) => `${e.name} [${e.matName}] ${e.source} -> ${e.after}${e.locked ? ` (${e.locked} seam vertices kept in place)` : ''}`).join('; ');
 console.log('simplified (triangles before -> after):');
 for (const kind of Object.keys(groups)) console.log(`  ${kind}: ${line(kind)}`);
 console.log(`optimised: ${triangles} triangles (was ${sourceTriangles}), ${vertices} vertices, ${drawCalls} primitives (draw calls), ${doc.getRoot().listMaterials().length} materials, ${doc.getRoot().listTextures().length} textures`);
@@ -476,7 +518,8 @@ loads and draws quickly in a web page:
   surface on which the simulator draws the live screen;
 - geometry: ${sourceTriangles} triangles become ${triangles} (meshoptimizer); the back
   cover, the glass, the light guide, the button inlays and the side window keep
-  every triangle;
+  every triangle, and the shell's edges round the glass and the controls stay
+  in place;
 - materials: plain metallic-roughness materials with Kode's colours; the
   shared colour palette becomes one material per colour;
 - textures: the pin labels and the back cover's normal map, at 1024 px;

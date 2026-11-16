@@ -94,7 +94,7 @@ function DeviceMenu() {
         {t('device.menu')}
         <Icon name="chevronDown" size={16} className="text-ink2" />
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} label={t('device.menu')} width="21rem" align="end" testid="device-popover">
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} label={t('device.menu')} width="22.5rem" align="end" testid="device-popover">
         <div className="flex flex-col gap-4">
           <ModelControls onDone={() => setOpen(false)} />
           <DeviceActions onDone={() => setOpen(false)} />

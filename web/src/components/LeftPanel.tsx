@@ -31,7 +31,7 @@ export function LeftPanel({ onClose, closeLabel, bare = false }: { onClose?: () 
         )}
       </div>
       <div {...tabs.panel(tab)} key={tab} className="anim-fade flex min-h-0 flex-1 flex-col">
-        {tab === 'bench' ? <BenchPanel /> : <ComponentsPanel />}
+        {tab === 'bench' ? <BenchPanel compact={bare} /> : <ComponentsPanel compact={bare} />}
       </div>
     </section>
   );

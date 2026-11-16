@@ -11,7 +11,7 @@ import { useConfirm } from './ui';
  * the bundled apps. The system keeps a section of its own: later, apps will be installed into it from here.
  * Used in the top-bar picker and in the phone sheet. `onRun` lets the picker close once an app was chosen.
  */
-export function AppsList({ onRun }: { onRun?: () => void }) {
+export function AppsList({ onRun, compact = false }: { onRun?: () => void; compact?: boolean }) {
   const { t, fmt, locale } = useI18n();
   const { bundles, builtins, selectedId, runBundle, addBundleFile } = useHost();
   const file = useRef<HTMLInputElement>(null);
@@ -39,7 +39,8 @@ export function AppsList({ onRun }: { onRun?: () => void }) {
   };
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-[20px]">{t('apps.title')}</h2>
+      {/* compact (phone sheet): the tab right above already says "Apps" */}
+      <h2 className={compact ? 'sr-only' : 'text-[20px]'}>{t('apps.title')}</h2>
 
       {system.length > 0 && (
         <section aria-label={t('apps.system')} className="flex flex-col gap-2">

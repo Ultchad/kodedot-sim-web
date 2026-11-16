@@ -101,9 +101,9 @@ export const es: Messages = {
   'action.shake': 'Agitar',
 
   'sensors.title': 'Sensores de este teléfono',
-  'sensors.off': 'Usar los sensores de movimiento de este dispositivo',
-  'sensors.on': 'Sensores activados: toca para detener',
-  'sensors.hint': 'Desactivado por defecto. La inclinación alimenta pitch, roll y heading; agitar el teléfono envía una sacudida.',
+  'sensors.off': 'Usar los sensores de movimiento de este teléfono',
+  'sensors.on': 'Sensores de movimiento activados',
+  'sensors.hint': 'Inclina y gira el teléfono y el Dot lo nota; agítalo para enviar una sacudida.',
   'sensors.unsupported': 'Este navegador no expone sensores de movimiento.',
   'sensors.denied': 'Permiso denegado. En iPhone: Ajustes > Safari > Acceso a movimiento y orientación, y recarga la página.',
   'sensors.permissionError': 'No se pudo pedir permiso a los sensores. Necesita un toque directo y una página segura (HTTPS).',
@@ -262,4 +262,6 @@ export const es: Messages = {
   'welcome.body.os': 'Ejecuta kodeOS: desliza hacia un lado en la pantalla para desbloquear. T, B y las flechas pulsan los botones. Suelta un archivo .dotbench aquí para ejecutar tu app.',
   'welcome.body.os.phone': 'Desliza hacia un lado en la pantalla para desbloquear kodeOS. Apps, banco de pruebas y consola están en la barra de abajo.',
   'welcome.body.os.side': 'Desliza hacia un lado en la pantalla para desbloquear kodeOS. Apps, banco de pruebas y consola están en este panel.',
+  'model.another': 'Elegir otro archivo…',
+  'settings.phone': 'Este teléfono como el Dot',
 };

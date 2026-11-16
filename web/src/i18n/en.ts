@@ -100,9 +100,9 @@ export const en = {
   'action.shake': 'Shake',
 
   'sensors.title': 'This phone\'s sensors',
-  'sensors.off': 'Use this device\'s motion sensors',
-  'sensors.on': 'Sensors on: tap to stop',
-  'sensors.hint': 'Off by default. Tilt feeds pitch, roll and heading; shaking the phone sends a shake.',
+  'sensors.off': 'Use this phone\'s motion sensors',
+  'sensors.on': 'Motion sensors on',
+  'sensors.hint': 'Tilt and turn the phone and the Dot feels it; shake it to send a shake.',
   'sensors.unsupported': 'This browser does not expose motion sensors.',
   'sensors.denied': 'Permission denied. On iPhone: Settings > Safari > Motion & Orientation Access, then reload the page.',
   'sensors.permissionError': 'Could not ask for sensor permission. It needs a direct tap and a secure (HTTPS) page.',
@@ -261,4 +261,6 @@ export const en = {
   'welcome.body.os': 'It runs kodeOS: swipe sideways on the screen to unlock. T, B and the arrow keys press the buttons. Drop a .dotbench file here to run your own app.',
   'welcome.body.os.phone': 'Swipe sideways on its screen to unlock kodeOS. Apps, bench and console are in the bar below.',
   'welcome.body.os.side': 'Swipe sideways on its screen to unlock kodeOS. Apps, bench and console are in this panel.',
+  'model.another': 'Choose another file…',
+  'settings.phone': 'This phone as the Dot',
 } as const satisfies Record<string, string>;

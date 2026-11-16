@@ -147,7 +147,8 @@ async function glassPoint(page, sx, sy) {
   return [r.left + ((sx + 0.5) / 410) * r.width, r.top + ((sy + 0.5) / 502) * r.height];
 }
 const logHas = (page, re) => page.$eval('[data-testid=console-log]', (e) => e.textContent).then((t) => re.test(t));
-const sig = (page, clip) => page.screenshot({ clip, encoding: 'base64' });
+// captureBeyondViewport off: the default lets the browser change the emulated viewport for a clipped shot, which the page sees as a resize
+const sig = (page, clip) => page.screenshot({ clip, encoding: 'base64', captureBeyondViewport: false });
 
 // Find horizontal overflow offenders (elements whose content is wider than the box and not scrollable/ellipsized).
 async function overflowOffenders(page) {
@@ -210,12 +211,13 @@ try {
     const g0 = await page.evaluate(() => window.__dotbench3d.project('glass:205,251'));
     const clip = { x: Math.max(0, g0.x - 120), y: Math.max(0, g0.y - 150), width: 240, height: 300 };
     const sA = await sig(page, clip);
-    await sleep(900);
+    // software GL draws this scene a few times a second: wait for a handful of frames rather than a fixed time
+    await until(() => page.evaluate((v, f) => window.__dotbench3d.textureVersion() >= v + 4 && window.__dotbench3d.rendered() >= f + 4, v0, f0), 8000, 100);
     const sB = await sig(page, clip);
     const v1 = await page.evaluate(() => window.__dotbench3d.textureVersion());
     const f1 = await page.evaluate(() => window.__dotbench3d.rendered());
-    check('3D screen texture updates over time', v1 > v0 + 5, `texture.version ${v0} -> ${v1}`);
-    check('3D scene re-renders as frames arrive', f1 > f0 + 5, `gl frames ${f0} -> ${f1}`);
+    check('3D screen texture updates over time', v1 >= v0 + 4, `texture.version ${v0} -> ${v1}`);
+    check('3D scene re-renders as frames arrive', f1 >= f0 + 4, `gl frames ${f0} -> ${f1}`);
     check('3D canvas pixels change over time', sA !== sB);
     const fps = await fpsOf(page);
     const fpsText = await page.$eval('[data-testid=status-fps]', (e) => e.textContent);
@@ -900,7 +902,7 @@ try {
     await page.evaluate(() => window.__dotbench.ui.fakeModel({ status: 'none', builtin: 'kode', bundled: 'ready', performance: true }));
     await sleep(150);
     const optLabels = () => page.$$eval('[data-testid=model-options] button', (els) => els.map((e) => `${e.textContent}${e.getAttribute('aria-pressed') === 'true' ? '*' : ''}`).join('|'));
-    check('model: Kode model, Simple model and My own are offered, the one in use is marked', (await optLabels()) === 'Kode model*|Simple model|My own…' && (await page.$eval('[data-testid=model-name]', (e) => e.textContent)) === 'Kode model', await optLabels());
+    check('model: Kode model, Simple model and My own are offered, the one in use is marked', (await optLabels()) === 'Kode model*|Simple model|My own…' && !(await page.$('[data-testid=model-name]')) && !(await page.$('[data-testid=model-pick]')), await optLabels());
     await page.click('[data-testid=model-option-simple]');
     await sleep(150);
     check('model: choosing Simple model switches to it', (await page.evaluate(() => window.__dotbench.model.getState().builtin)) === 'simple' && (await optLabels()) === 'Kode model|Simple model*|My own…');
