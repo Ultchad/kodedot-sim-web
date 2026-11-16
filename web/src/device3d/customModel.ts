@@ -3,13 +3,15 @@
  *
  *   - "kode"   the device maker's model, bundled at /device/model.glb (the default when the file is there)
  *   - "simple" the procedural model built in code (always available; the automatic fallback)
- *   - a model the user loaded from his own computer: kept in this browser only
+ *   - a model the user loaded from his own computer (.glb, or a .gltf with
+ *     everything embedded): kept in this browser only
  *     (IndexedDB), never uploaded anywhere, shown instead of the other two until removed
  *
  * This file is light on purpose (the page imports it for its menu): three.js
  * and the loaders live in ./prepare, imported only when a model is parsed.
  * Nothing here throws into the page: failures end up in the state.
  */
+import { toGlb } from './container';
 import type { PreparedModel } from './prepare';
 
 export type BuiltinChoice = 'kode' | 'simple';
@@ -195,7 +197,7 @@ class ModelStore {
     this.set({ status: 'loading', name: label, sizeBytes: file.size, error: undefined, warnings: undefined });
     try {
       if (file.size > MAX_MODEL_BYTES) throw new Error(`The file is ${megabytes(file.size)}; the limit is ${megabytes(MAX_MODEL_BYTES)}.`);
-      const bytes = await file.arrayBuffer();
+      const bytes = toGlb(await file.arrayBuffer()); // a self-contained .gltf becomes a .glb here
       const bad = validateGlb(bytes);
       if (bad) throw new Error(bad);
       const model = await this.parse(bytes);

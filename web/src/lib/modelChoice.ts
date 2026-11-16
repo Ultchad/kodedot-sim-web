@@ -87,10 +87,10 @@ export function optionsOf(state: CustomModelState | null | undefined): { options
 
 export type DropKind = 'app' | 'model' | 'other';
 
-/** What a dropped or picked file is, by its name: a .dotbench app, a .glb model, or something the page cannot use. */
+/** What a dropped or picked file is, by its name: a .dotbench app, a .glb or .gltf model, or something the page cannot use. */
 export function classifyFile(name: string): DropKind {
   if (/\.dotbench$/i.test(name)) return 'app';
-  if (/\.glb$/i.test(name)) return 'model';
+  if (/\.(glb|gltf)$/i.test(name)) return 'model';
   return 'other';
 }
 

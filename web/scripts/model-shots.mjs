@@ -436,7 +436,7 @@ try {
       await page.goto(`${base}/?debug&still&model=simple`, { waitUntil: 'networkidle0' });
       await page.waitForFunction(() => !!window.__stand, { timeout: 20000 });
       const notGlb = await page.evaluate(() => window.__stand.loadModel(btoa('<!doctype html><html>not a model</html>'), 'page.glb'));
-      check('custom: something that is not a GLB is refused with a readable message', notGlb.status === 'error' && /not a GLB/.test(notGlb.error ?? ''), notGlb.error);
+      check('custom: something that is not a GLB is refused with a readable message', notGlb.status === 'error' && /neither a \.glb nor a \.gltf/.test(notGlb.error ?? ''), notGlb.error);
       const shown = await page.evaluate(() => window.__dotbench3d.info().model);
       check('custom: after a refusal the built-in model is on show', shown === 'simple', shown);
       const tooBig = await page.evaluate(async () => {

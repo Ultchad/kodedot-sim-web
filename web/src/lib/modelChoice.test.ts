@@ -76,8 +76,9 @@ describe('classifyFile', () => {
     expect(classifyFile('blink.dotbench')).toBe('app');
     expect(classifyFile('My App.DOTBENCH')).toBe('app');
     expect(classifyFile('shell.glb')).toBe('model');
+    expect(classifyFile('Shell.GLTF')).toBe('model');
     expect(classifyFile('Shell.GLB')).toBe('model');
-    expect(classifyFile('shell.gltf')).toBe('other');
+    expect(classifyFile('shell.obj')).toBe('other');
     expect(classifyFile('photo.jpeg')).toBe('other');
     expect(classifyFile('glb')).toBe('other');
     expect(classifyFile('')).toBe('other');

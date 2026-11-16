@@ -82,7 +82,7 @@ export function ModelControls({ onDone }: { onDone?: () => void }) {
       <input
         ref={file}
         type="file"
-        accept=".glb,model/gltf-binary"
+        accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
         hidden
         data-testid="model-file-input"
         onChange={(e) => {
