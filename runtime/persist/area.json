@@ -1,0 +1,21 @@
+{
+  "area": "persist",
+  "description": "Persistent-region service: named byte regions in shared memory with dirty tracking, mirrored by the host (IndexedDB / Node directory). Host side: runtime/web-adapter/persist*.js",
+  "exports": [
+    "dbpx_count",
+    "dbpx_name",
+    "dbpx_ptr",
+    "dbpx_size",
+    "dbpx_flags",
+    "dbpx_bits",
+    "dbpx_gen",
+    "dbpx_index_of",
+    "dbp_cut_after",
+    "dbp_cut_fired",
+    "dbp_cut_clear"
+  ],
+  "test_apps": [
+    "sdk:examples/console_actions",
+    "sdk:examples/storage"
+  ]
+}

@@ -1,5 +1,14 @@
 {
   "area": "time",
-  "description": "settimeofday / wall clock offset (khal_time itself is the real SDK file)",
-  "exports": ["kweb_time_offset_ms", "kweb_time_set_offset_ms"]
+  "description": "settimeofday, wall clock offset kept in region dev-state, localtime_r that honours the device TZ (khal_time itself is the real SDK file); time.js",
+  "exports": [
+    "kweb_time_offset_ms",
+    "kweb_time_set_offset_ms"
+  ],
+  "js": [
+    "time.js"
+  ],
+  "test_apps": [
+    "sdk:examples/console_actions"
+  ]
 }

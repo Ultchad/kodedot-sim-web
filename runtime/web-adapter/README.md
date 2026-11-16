@@ -48,7 +48,10 @@ dev.stop(); await dev.restart();                         // stop = terminate all
 | `lines`, `clearLog()`, `sendConsole(line)` | bounded line buffer (2000), ANSI and `!I ` prefixes stripped; the firmware's own echo of the typed line is dropped |
 | `time()` | device clock in epoch ms (host clock + the offset the firmware set; survives restarts) |
 | `area(name)` | the JS object the area's glue returned (`null` if none/not running), recreated at every boot |
-| `exportPersist()` / `importPersist(map)` / `factoryReset()` | persistent regions as `Map<name, Uint8Array>`, for the page to mirror to IndexedDB (not done by the adapter) |
+| `exportPersist()` / `importPersist(map)` / `factoryReset()` | persistent regions as `Map<name, Uint8Array>` (whole regions; legacy API, still works); `factoryReset()` also erases the durable copy and returns a promise |
+| `new DotbenchDevice({ persist: backend })` | mirror every persistent region (NVS, files, SD card, clock) to a backend: `IdbBackend` (`persist-idb.js`, IndexedDB) in a page, `NodeDirBackend` (`persist-node.js`) under Node, none = memory only. Loaded before the first boot, debounced flush while running, final flush at stop/restart, best-effort at `pagehide`/hidden |
+| `persist`, `flushPersist()`, `eraseDevice()` | status `{backend, loaded, flushes, bytes, lastError, incompatible}`; flush now; "erase device" (stops, forgets every region in memory and in the durable store) |
+| `exportDeviceFile()` / `importDeviceFile(bytes)` | the whole device as one sparse file (all regions + header); import needs the device stopped. Details: docs/STATUS-persistence.md |
 | `workerCount`, `wasmMemoryBytes` | diagnostics |
 
 Main-thread reads never block: they are plain loads from shared memory (`copyFrame`, `led`, ...), a non-blocking SPSC

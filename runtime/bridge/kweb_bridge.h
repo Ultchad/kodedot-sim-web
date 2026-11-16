@@ -151,7 +151,7 @@ void kweb_restart(uint32_t reason, const char *target) __attribute__((noreturn))
 /* Memory that must survive a restart (the keep store, NVS, later: SD image, ...). Register
  * a fixed buffer from a constructor; the host copies every region out before it tears the
  * program down and back in before the next one starts, and may mirror them to IndexedDB. */
-#define KWEB_PERSIST_MAX 8
+#define KWEB_PERSIST_MAX 16
 void kweb_persist_register(const char *name, void *ptr, uint32_t size);
 uint32_t kweb_persist_count(void);
 const char *kweb_persist_name(uint32_t i);
