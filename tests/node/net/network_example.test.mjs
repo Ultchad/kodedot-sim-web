@@ -71,10 +71,12 @@ m = a.mark(); await a.press(BOT);
 const again = await a.waitLog(/status (\d+), body (\d+) bytes/, 10000, m);
 check(again[1] === "200", "GET: after the host is back the next press works", again[0]);
 home.host("example.com", { ip: "93.184.216.34", routes: { "*": { status: 503, body: "maintenance" } } });
+await sleep(400);   // the SDK's button debounce drops an edge that follows the previous release by tens of ms (harness path, not the radio)
 m = a.mark(); await a.press(BOT);
 const e503 = await a.waitLog(/status (\d+), body (\d+) bytes, (\d+) of them kept/, 10000, m);
 check(e503[1] === "503" && e503[2] === "11", "GET: a 503 is an answer: status 503 and its body", e503[0]);
 home.host("example.com", { ip: "93.184.216.34", routes: { "*": { body: "z".repeat(30000) } } });
+await sleep(400);
 m = a.mark(); await a.press(BOT);
 const big = await a.waitLog(/status (\d+), body (\d+) bytes, (\d+) of them kept/, 10000, m);
 check(big[1] === "200" && big[2] === "30000" && Number(big[3]) < 30000, "GET: a body larger than the example's buffer is counted in full and kept in part", big[0]);
