@@ -11,14 +11,27 @@ const FACTORY_PREFIX = "factory/storage/";
  *  @param {Map<string, Uint8Array>} files  package entries (name -> bytes)
  *  @param {{factory?: {volume?: string, files?: {path: string}[]}}} manifest */
 export function factoryBlob(files, manifest) {
+  const e = factoryEntries(files, manifest);
+  return e.length ? packFactory(e) : null;
+}
+
+/** The package's factory files as [{path, data}] (empty when it has none). */
+export function factoryEntries(files, manifest) {
   const f = manifest?.factory;
-  if (!f || (f.volume ?? "storage") !== "storage" || !Array.isArray(f.files) || !f.files.length) return null;
+  if (!f || (f.volume ?? "storage") !== "storage" || !Array.isArray(f.files) || !f.files.length) return [];
+  return f.files.map(({ path }) => {
+    const data = files.get(FACTORY_PREFIX + path);
+    if (!data) throw new Error("package lists factory file " + path + " but does not contain it");
+    return { path, data };
+  });
+}
+
+/** Flat archive vfs.c reads: per file u16 path length, path, u32 data length, data. */
+export function packFactory(entries) {
   const enc = new TextEncoder();
   const parts = [];
   let total = 0;
-  for (const { path } of f.files) {
-    const data = files.get(FACTORY_PREFIX + path);
-    if (!data) throw new Error("package lists factory file " + path + " but does not contain it");
+  for (const { path, data } of entries) {
     const p = enc.encode(path);
     if (!p.length || p.length > 200) throw new Error("factory path too long: " + path);
     const head = new Uint8Array(2 + p.length + 4);

@@ -334,6 +334,49 @@ export class PersistManager {
   }
   _error(e) { this.lastError = e; this.onEvent("error", { error: e }); }
 
+  // ---- raw region access (the host editing a region: the apps region's directory, the bundle store)
+  /** Read `len` bytes of a region as stored (what the firmware's buffer holds). While a module is attached and has the region,
+   *  the live memory is read; otherwise the host image (zeros where nothing is stored). Does not need the region to exist. */
+  regionRead(name, off, len) {
+    const t = this._M && this._table?.find((x) => x.name === name);
+    if (t) return M_u8(this._M).slice(t.ptr + off, t.ptr + off + len);
+    const r = this.image.regions.get(name), out = new Uint8Array(len);
+    if (!r) return out;
+    for (let c = Math.floor(off / CHUNK); c * CHUNK < off + len; c++) {
+      const ch = r.chunks.get(c); if (!ch) continue;
+      const from = Math.max(off, c * CHUNK), to = Math.min(off + len, c * CHUNK + ch.length);
+      if (to > from) out.set(ch.subarray(from - c * CHUNK, to - c * CHUNK), from - off);
+    }
+    return out;
+  }
+  /** Write bytes into a region (host side). While a module is attached and has the region, its live memory is written (the next
+   *  harvest/scan then agrees with the image: a stale copy can never overwrite the edit) and the touched chunks are taken into the
+   *  image at once. Otherwise only the image changes. `size` creates a host-only region (one the firmware does not register) or
+   *  sizes a region not yet known; the durable store gets the change with the next flush. */
+  regionWrite(name, off, bytes, size = 0) {
+    const t = this._M && this._table?.find((x) => x.name === name);
+    if (t) {
+      if (off + bytes.length > t.size) throw new Error("regionWrite past the end of " + name);
+      M_u8(this._M).set(bytes, t.ptr + off);
+      const r = this.image.region(t.name, t.size, t.flags);
+      for (let c = Math.floor(off / CHUNK); c * CHUNK < off + bytes.length; c++) this._takeChunk(t, r, c);
+      return;
+    }
+    let r = this.image.regions.get(name);
+    if (!r) { if (!size) throw new Error("region " + name + " is unknown: give its size"); r = this.image.region(name, size, LEGACY_FLAGS[name] ?? 0); }
+    if (off + bytes.length > r.size) throw new Error("regionWrite past the end of " + name);
+    for (let c = Math.floor(off / CHUNK); c * CHUNK < off + bytes.length; c++) {
+      const base = c * CHUNK, len = Math.min(CHUNK, r.size - base);
+      const cur = r.chunks.get(c) ? r.chunks.get(c).slice() : new Uint8Array(len);
+      const from = Math.max(off, base), to = Math.min(off + bytes.length, base + len);
+      cur.set(bytes.subarray(from - off, to - off), from - base);
+      if (isZero(cur, 0, len)) { if (r.chunks.delete(c) && !(r.flags & FLAG_RETAIN)) this._put(name, c, null); }
+      else { r.chunks.set(c, cur); if (!(r.flags & FLAG_RETAIN)) this._put(name, c, cur); }
+    }
+  }
+  /** Is anything stored for the region (host image)? Only meaningful while stopped. */
+  regionUsed(name) { return (this.image.regions.get(name)?.chunks.size ?? 0) > 0; }
+
   /** Detach from the module (after finalize). */
   detach() { this._M = null; this._table = null; this._dirtySince = 0; }
 
