@@ -1,0 +1,14 @@
+{
+  "area": "ir",
+  "description": "Infrared: the real knec.c codec, AO_Ir and kode_ir_* run above a fake kdrv_ir (raw symbol trains both ways, 38 kHz, up to 256 symbols); the page's TV and Remote bench objects feed and hear it",
+  "supersedes": {
+    "components/kdrv/ir/src/kdrv_ir.c": "web fake: runtime/drivers/ir answers the six-function kdrv_ir.h from bench objects instead of request/reply over the esp-hosted link to the C5 (kir_wire). knec.c, ir_ao.c and ir_verbs.c stay the SDK's."
+  },
+  "sources": ["*.c"],
+  "exports": [
+    "ir_set", "ir_get", "ir_stats", "ir_reset", "ir_tx_pop", "ir_rx_inject",
+    "ir_blob_ptr", "ir_blob_len", "ir_blob_commit"
+  ],
+  "js": ["ir.js"],
+  "test_apps": ["sdk:examples/ir_remote", "area:../../../tests/node/ir/apps/ir_api"]
+}
