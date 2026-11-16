@@ -8,26 +8,39 @@
 #include <string.h>
 #include <time.h>
 #include "kweb_bridge.h"
+#include "dotbench_persist.h"
 #include "nfc_bench.h"
 
 #define STORE_MAGIC 0x4E464331u   /* "NFC1" */
 #define EV_RING 128u
 
 static atomic_flag g_lk = ATOMIC_FLAG_INIT;
-static nfc_store_t g_store;
+/* The store lives in the persistent region "nfc" (runtime/persist: mirrored to the host's durable storage with the other
+ * regions). A region is a whole number of 4 KiB chunks, so the buffer is rounded up. */
+#define NFC_REGION_BYTES ((sizeof(nfc_store_t) + 4095u) & ~4095u)
+static uint8_t g_region[NFC_REGION_BYTES] __attribute__((aligned(64)));
+#define g_store (*(nfc_store_t *)(void *)g_region)
+static dbp_region_t *g_reg;
 static uint32_t g_ev[EV_RING][4];
 static uint32_t g_ev_head, g_ev_tail, g_ev_lost;
 
 __attribute__((constructor(120))) static void nfc_store_register(void)
 {
-    kweb_persist_register("nfc", &g_store, sizeof g_store);
+    g_reg = dbp_register("nfc", g_region, sizeof g_region, 0);
 }
 
 void nfc_lock(void)
 {
     while (atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) sched_yield();
 }
-void nfc_unlock(void) { atomic_flag_clear_explicit(&g_lk, memory_order_release); }
+/* Every section that holds the lock may have changed the store (the fake driver writes tag memory, the page edits objects):
+ * mark the whole region dirty once the lock is released. The host compares each dirty chunk with what it already holds, so
+ * a section that changed nothing costs a compare, not a write. */
+void nfc_unlock(void)
+{
+    atomic_flag_clear_explicit(&g_lk, memory_order_release);
+    if (g_reg) dbp_dirty(g_reg, 0, sizeof g_region);
+}
 
 uint32_t nfc_now_ms(void)
 {

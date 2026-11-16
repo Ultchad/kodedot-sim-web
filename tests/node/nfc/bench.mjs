@@ -1,3 +1,4 @@
+import os from "node:os";
 // Shared helper for the NFC tests: boots an app and attaches the area's REAL JS glue (runtime/drivers/nfc/nfc.js)
 // to the Node instance, with a context shaped like the browser adapter's (same calls, same events).
 import assert from "node:assert/strict";
@@ -35,7 +36,7 @@ export async function bootReady(app, ready, opts = {}, ms = 45000) {
   let last;
   for (let i = 0; i < 4; i++) {
     const a = await bootNfc(app, opts);
-    try { await until(a, () => a.logText().includes(ready), ms, app + " booting"); return a; } catch (e) { last = e; a.shutdown(); }
+    try { await until(a, () => a.logText().includes(ready), ms, app + " booting"); return a; } catch (e) { last = e; console.log("note - STALL diag: attempt " + i + " pthreads=" + Object.keys(a.M.PThread.pthreads).length + " unused=" + a.M.PThread.unusedWorkers.length + " running=" + a.M.PThread.runningWorkers?.length + " mem=" + (process.memoryUsage().rss >> 20) + "MB load=" + os.loadavg()[0].toFixed(1) + "\n" + a.logText().split("\n").slice(-6).join("\n")); a.shutdown(); }
   }
   throw last;
 }

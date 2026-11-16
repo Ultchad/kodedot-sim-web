@@ -110,5 +110,5 @@ Restart: firmware calls `kweb_restart(reason, target)` (`khal_restart`, `esp_res
 page, then parks the calling thread forever. The page tears down every worker (`PThread.terminateAllThreads`)
 and boots again: instantiate with `noInitialRun`, write the boot block and the persistent regions into the fresh
 memory, then `callMain`. Persistent regions are registered in C with `kweb_persist_register(name, ptr, size)`
-(max `KWEB_PERSIST_MAX` = 8); a power-on clears "keep" (RTC RAM) and keeps "nvs" (flash); any other restart keeps both.
+(max `KWEB_PERSIST_MAX` = 16); a power-on clears "keep" (RTC RAM) and keeps "nvs" (flash); any other restart keeps both.
 The Node reference of this sequence is `tests/node/harness.mjs`, the browser one `runtime/web-adapter/`.

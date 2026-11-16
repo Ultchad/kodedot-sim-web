@@ -18,7 +18,7 @@ Owner: Murilo. Talk to him in Brazilian Portuguese, plainly, without em dashes. 
 
 ## Layout
 
-- `runtime/` C side: `rtos/` (FreeRTOS API on Emscripten pthreads), `idf/` (minimal ESP-IDF surface), `bridge/` (shared state between firmware and page), `drivers/<area>/` (one folder per hardware area with an `area.json` manifest), `web-adapter/` (framework-free JS that loads and runs a `.dotbench` package in a page).
+- `runtime/` C side: `rtos/` (FreeRTOS API on Emscripten pthreads), `idf/` (minimal ESP-IDF surface), `bridge/` (shared state between firmware and page), `persist/` (the persistent-region service: `dbp_register`, dirty bits, power-cut injection; the host side is `web-adapter/persist*.js`), `drivers/<area>/` (one folder per hardware area with an `area.json` manifest), `web-adapter/` (framework-free JS that loads and runs a `.dotbench` package in a page; `persist*.js` mirrors regions to IndexedDB, `factory.js` hands a package's first-boot files to the storage driver). Two build roles: `app` (default) and `kodeos` (`tools/dotbench build <KodeOS dir> --role kodeos`; test: `tests/node/kodeos/run.sh`); an area's `roles` key says which firmware it belongs to.
 - `tools/dotbench` build tool: `sdk` (precompile), `build <app-dir>` (produces `<name>.dotbench`), `seed` (copy a build dir).
 - `tests/node/` and `tests/browser/` automated tests (Node workers; headless Chrome).
 - `web/` the page: Vite + React + TypeScript + Tailwind. 3D device view (three.js), 2D view, bench, console, i18n.

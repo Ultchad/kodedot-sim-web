@@ -35,6 +35,7 @@ All keys but `area` are optional.
 | `sdkconfig` | `{ "CONFIG_X": "y" }` Kconfig values applied after the web defaults |
 | `js` | glue files, packaged as `glue/<area>/<file>` in the `.dotbench` |
 | `test_apps` | apps the area's tests need: `"sdk:examples/<name>"` or `"area:<path>"` |
+| `roles` | build roles the area belongs to: `["app"]`, `["kodeos"]`, or both (default). `dotbench build/sdk --role kodeos` builds the OS firmware; an area that serves one firmware only (e.g. `kodeos_boot`: stubs and stand-ins kodeOS needs) lists just that role, so none of it reaches an app. Two areas of the same role superseding one SDK file is a build error naming both. |
 
 Two areas superseding the same file is a build error. A bad manifest stops the build with its path.
 
@@ -162,17 +163,48 @@ DOTBENCH_BUILD=/tmp/mine tests/node/run.sh <area> # rebuilds only what your file
 ```
 Without seeding, the first `dotbench sdk` of a new dir compiles everything (minutes on 2 cores).
 
-## 10. Persistence hooks
+## 10. Persistence: the persistent-region service
 
-Built: **in-memory persistent regions** the host copies across restarts of the same page session: `"keep"`
-(1 MiB, RTC RAM: cleared at power-on, kept on reset) and `"nvs"` (128 KiB flash arena, kept always). Register your
-own fixed buffer in C with `kweb_persist_register("name", ptr, size)` (name <= 15 chars, max 8 regions, size must not
-change between builds). Tested by `tests/node/system/restart.test.mjs`.
+Everything that must survive a restart, a power cycle or a page reload is a **region**: a fixed buffer in the firmware's
+memory that the host mirrors to durable storage (IndexedDB in the page, a directory under Node). Settings (NVS), the
+internal and SD file systems, the clock and the NFC bench objects are regions. Design and numbers:
+`docs/STATUS-persistence.md`; the whole-device view: `docs/STATUS-integration.md`.
 
-**Not built: IndexedDB.** The adapter exposes `exportPersist()`/`importPersist(map)`; mirroring them to IndexedDB (on
-stop/restart/`pagehide`, reading before `start()`) is page work. A hard crash of the tab loses changes since the last
-export. Plan: the page mirrors after every restart and on a 5 s timer, versioned by `manifest.abi_version`. SD-card
-images (stage 4) are larger than a region and will need an async path (OPFS) through area glue; not designed yet.
+**Registering a region** (C, from a constructor; header `runtime/bridge/dotbench_persist.h`, already on the include path):
+
+```c
+static uint8_t g_store[8 * 4096] __attribute__((aligned(64)));            /* size: a multiple of 4096; address 8-aligned */
+static dbp_region_t *g_reg;
+__attribute__((constructor(120))) static void reg(void) { g_reg = dbp_register("my-area", g_store, sizeof g_store, 0); }
+/* write:  dbp_write(g_reg, off, src, len)        or   memcpy(g_store + off, ...); dbp_dirty(g_reg, off, len);   (mark AFTER writing) */
+```
+
+Rules: name <= 15 chars and unique; at most 16 regions in total (`DBP_MAX_REGIONS`; `KWEB_PERSIST_MAX` is 16 too); the size is part of
+the format: a build that registers another size starts that region empty (event `region-ignored`), so choose it once; flag
+`DBP_FLAG_RETAIN` makes a RAM-like region (cleared at power-on, kept on reset, never sent to durable storage: "keep"). Memory is not free:
+the wasm heap is a fixed 96 MB and about 35 MiB of it is already static regions (the SD card alone is 32 MiB). The old
+`kweb_persist_register(name, ptr, size)` still works (the host saves such a region in full at stop/restart only, with no
+dirty bits); new code should use `dbp_register`, which also keeps the old table in step for regions up to 1 MiB.
+
+**When is data flushed?** The host loads the saved bytes into the fresh memory before `main()`. While the device runs, a
+region's dirty bits (one per 4 KiB chunk, set by `dbp_write`/`dbp_dirty`) and one generation counter are polled by the adapter;
+dirty chunks are compared with what the host already holds and only the changed ones are committed (one IndexedDB
+transaction per flush). A flush starts 800 ms after the last write, or after 5 s of continuous writing; it always completes at
+`stop()`, `restart()`, `eraseDevice()` and is attempted at `pagehide`/`visibilitychange`. A hard tab kill loses at most the
+debounce window. A writer that never marks dirty bits is still saved at stop/restart (full compare) but not in between.
+`dbp_cut_after(n)` / `dbp_cut_fired()` injects a power cut for tests (the write that straddles n bytes is torn, later ones are dropped).
+
+**Higher level services built on it** (use these instead of a region of your own when they fit): `kode_setting_*` / NVS
+(`khal_nvs_web.c`, 64 KiB crash-safe log), files on `/storage` and `/sdcard` through the SDK's own `kdrv_storage` (real FatFs), the clock
+(`dev-state` holds the RTC offset). From the page: `device.area("storage")` (file API), `sd`, `nvs`, `time`; whole device:
+`flushPersist()`, `eraseDevice()`, `exportDeviceFile()`, `importDeviceFile()`.
+
+**Factory content.** A package may carry `factory/storage/**` (listed in `manifest.json` under `factory`): the storage driver copies it onto
+the internal volume once, when it formats a blank volume at mount time (fresh device, "erase device"). An existing volume is never touched;
+a package without a factory tree just gets an empty formatted volume. See STATUS-integration.md section 4.
+
+Tests: `tests/node/persist/host.mjs` (`Bench`: a device on a directory, any number of boots, `run.stop()` commits like the adapter),
+`tests/node/{persist,nvs,storage,sd,time}`, `tests/browser/persist.test.mjs`.
 
 ## 11. Definition of done
 

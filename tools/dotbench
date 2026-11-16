@@ -33,6 +33,7 @@ from dblib import sources as S          # noqa: E402
 from dblib import toolchain as T        # noqa: E402
 from dblib import areas as A            # noqa: E402
 from dblib import kodeos as K          # noqa: E402
+from dblib import appdata as AD        # noqa: E402
 
 PINNED_SDK_COMMIT = "c9568a3"
 
@@ -214,11 +215,6 @@ def cmd_sdk(a):
     if not (gen / "areas_gen.c").exists() or (gen / "areas_gen.c").read_text() != gsrc:
         (gen / "areas_gen.c").write_text(gsrc)
     groups["rt"].append((gen / "areas_gen.c", obj / "rt" / "areas_gen.c.o", fl))
-    if role == "kodeos":
-        fsrc = K.gen_factory_c(K.factory_files(sdk, kos))
-        if not (gen / "kodeos_factory.c").exists() or (gen / "kodeos_factory.c").read_text() != fsrc:
-            (gen / "kodeos_factory.c").write_text(fsrc)
-        groups["rt"].append((gen / "kodeos_factory.c", obj / "rt" / "kodeos_factory.c.o", fl))
     failed = []
     for g in [g for g in ("rt", "sdk", "lvgl", "third") if g in groups]:
         failed += T.compile_all(groups[g], nproc, g)
@@ -378,9 +374,8 @@ def cmd_build(a):
         m = re.search(r"^version:\s*\"?([\w.\-]+)", yml.read_text(), re.M)
         if m:
             version = m.group(1)
-    if role == "kodeos":
-        m = re.search(r'set\(PROJECT_VER\s+"([^"]+)"', (appdir / "CMakeLists.txt").read_text())
-        version = m.group(1) if m else version
+    version = AD.project_version(appdir, version)      # set(PROJECT_VER "...") of the CMakeLists wins, as on the board
+    board = AD.board_folder(appdir, kodeos_dir(a), "") if role == "app" else None
     icon = appdir / "icon.png"
     icon_out = outdir / "icon.png"
     if icon.exists():
@@ -395,6 +390,8 @@ def cmd_build(a):
                 "memory_mb": mem, "exports": exports, "state_export": "_kweb_state",
                 "areas": {a.name: {"glue": ["glue/%s/%s" % (a.name, pathlib.Path(g).name) for g in a.js]}
                           for a in areas if a.js}}
+    if board:
+        manifest["board"] = {"app_json": "board/app.json", "icon": "board/icon.k64" if board[1] else None}
     factory = []
     if role == "kodeos":
         manifest["role"] = "kodeos"
@@ -413,6 +410,10 @@ def cmd_build(a):
                 z.write(a.dir / g, "glue/%s/%s" % (a.name, pathlib.Path(g).name))
         z.writestr("appdata/app.json", json.dumps(app_json, indent=1))
         z.write(icon_out, "icon.png")
+        if board:
+            z.writestr("board/app.json", board[0])
+            if board[1]:
+                z.writestr("board/icon.k64", board[1])
         for rel, src in factory:
             z.write(src, "factory/storage/" + rel)
         z.writestr("manifest.json", json.dumps(manifest, indent=1))

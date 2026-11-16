@@ -1,7 +1,35 @@
 {
   "area": "storage",
-  "description": "FATFS (stubbed)",
+  "description": "Internal file storage: FatFs (R0.16, vendored) over persistent region 'flash-fs' (2 MiB = partitions.csv storage); POSIX redirect for kdrv_storage.c; page-side file API (storage.js)",
   "supersedes": {
-    "components/kdrv/storage/src/kdrv_fs.c": "stubbed: FATFS (stage 1 files / stage 4 microSD)"
-  }
+    "components/kdrv/storage/src/kdrv_fs.c": "web: FatFs on region 'flash-fs' (runtime/drivers/storage/kdrv_fs_web.c)"
+  },
+  "sources": [
+    "*.c",
+    "fatfs/ff.c",
+    "fatfs/ffunicode.c"
+  ],
+  "exports": [
+    "dbfs_seed_set",
+    "dbfs_scratch",
+    "dbfs_scratch_size",
+    "dbfs_page_mounted",
+    "dbfs_page_list",
+    "dbfs_page_stat",
+    "dbfs_page_read",
+    "dbfs_page_write",
+    "dbfs_page_truncate",
+    "dbfs_page_remove",
+    "dbfs_page_mkdir",
+    "dbfs_page_rename",
+    "dbfs_page_usage",
+    "dbfs_page_format"
+  ],
+  "js": [
+    "storage.js"
+  ],
+  "test_apps": [
+    "sdk:examples/storage",
+    "sdk:examples/console_actions"
+  ]
 }

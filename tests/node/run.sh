@@ -27,9 +27,10 @@ echo "== dotbench sdk"
 # apps to build: the examples + each selected area's test_apps (from its area.json)
 apps=("$sdk/examples/buttons_led" "$sdk/examples/display_lvgl")
 for a in "${areas[@]}"; do
-  mf="$root/runtime/drivers/$a/area.json"
+  mf="$root/runtime/drivers/$a/area.json"; adir="$root/runtime/drivers/$a"
+  [ -f "$mf" ] || { mf="$root/runtime/$a/area.json"; adir="$root/runtime/$a"; }   # runtime/<area> (persist, ...)
   [ -f "$mf" ] || { echo "no such area: $a" >&2; exit 2; }
-  while IFS= read -r p; do [ -n "$p" ] && apps+=("$p"); done < <(python3 - "$mf" "$sdk" "$root/runtime/drivers/$a" <<'PY'
+  while IFS= read -r p; do [ -n "$p" ] && apps+=("$p"); done < <(python3 - "$mf" "$sdk" "$adir" <<'PY'
 import json, sys
 m, sdk, d = sys.argv[1:4]
 for t in json.load(open(m)).get("test_apps", []):
