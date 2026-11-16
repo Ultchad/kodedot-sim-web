@@ -1,0 +1,4 @@
+{
+  "os": "kodeos",
+  "factory": ["kody_kart", "display_lvgl", "buttons_led"]
+}

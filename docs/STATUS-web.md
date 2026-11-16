@@ -178,3 +178,20 @@ S3
 - kodeOS prints many "dotbench: kdrv_… not implemented" lines at boot: they fill the console on first run (runtime side, not the page).
 - The before/after set in `web/screenshots/ux/`: `before-*` (earlier reviewer, 370 shots), `after-*` (this pass).
 
+## Apps inside kodeOS (2026-11-16, after the system layer was merged)
+
+The page no longer runs one program at a time. It holds one `DotbenchSystem` (runtime/web-adapter) through `web/src/device/wasm.ts` (`SystemDevice`): the Dot always boots kodeOS, apps are installed into it and opened from its own list, and the system layer plays the bootloader between programs. The page never handles a restart: it listens to `program` (what runs) and `apps` (what is installed) and keeps reading frames, outputs and logs from the same object.
+
+- Persistence: `IdbBackend` with its own database, `kodedot-system` (settings, files, installed apps and their packages survive a reload).
+- `web/scripts/prepare-apps.mjs` is data-driven: `web/scripts/factory-apps.json` (`{"os": "kodeos", "factory": ["kody_kart", "display_lvgl", "buttons_led"]}`) names the packages under `../build/apps/<name>/<name>.dotbench`; it copies them to `public/apps/` and writes `public/apps/factory.json` (`{"format":1,"apps":[...]}`), which the page hands to the system layer for the first boot of an empty Dot. One more factory app = build it, add its name to the list. `public/apps/index.json` is gone.
+- The top-bar "Apps" menu (phone: the Apps tab) is the Dot's app manager: what runs now (kodeOS or the app) with Home, the installed apps (open, remove after a confirmation), "Install a .dotbench…" (file picker, or drop the file anywhere: install, then open), and a factory reset behind a confirmation. Restart is a reset of the Dot (kodeOS comes up), Stop switches it off.
+- Removed: the "default built-in app" (`lib/builtins.ts`, `pickStartApp`), the page's own store of saved bundles (`lib/bundles.ts`; packages saved by the old page are not migrated: install them again), the legacy region export (`lib/devicefile.ts`; Export/Import device now uses the system's whole-device file, apps included).
+- First-run hint: unlock by swiping sideways, open the app list, tap an app, hold the bottom button to come back, drop a .dotbench to install (en, pt-BR, es).
+- Checked by `npm run build && node scripts/system-check.mjs` (headless Chrome, a fresh profile, the real page; screenshots `web/screenshots/system-*.png`): kodeOS boots with Kody Kart, Display and Buttons + LED; a tap on Kody Kart in kodeOS's own list opens it and its title screen shows; holding the bottom button returns to kodeOS; a package installed from the page appears and opens; a reload keeps the four apps; open from the manager, Home, remove, factory reset, Stop/Start and the 3D view work; no page errors.
+
+Rough edges (known, not the page's to fix):
+- kodeOS's own details card shows a tiny size for an app (the image in the apps region is synthesised).
+- Installing or removing an app restarts kodeOS once (it re-reads its directory).
+- Holding the bottom button returned to kodeOS after about 1.8 to 2.2 s of wall time in headless Chrome, not 3.0 s (the Node suite measures 3.0 s); the same through the mouse, the keyboard and the API, so it is below the page.
+- Back from an app, kodeOS shows its app list, not the lock screen.
+

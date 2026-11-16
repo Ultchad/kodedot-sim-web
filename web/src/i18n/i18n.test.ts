@@ -47,11 +47,11 @@ describe('detectLocale', () => {
 
 describe('translate', () => {
   it('interpolates and picks plurals', () => {
-    expect(translate('en', 'apps.count', { count: 1 })).toContain('1 saved app,');
-    expect(translate('en', 'apps.count', { count: 3 })).toContain('3 saved apps');
-    expect(translate('pt-BR', 'apps.count', { count: 0 })).toContain('0 app salvo');
-    expect(translate('pt-BR', 'apps.count', { count: 2 })).toContain('apps salvos');
-    expect(translate('es', 'apps.run', { name: 'x.dotbench' })).toBe('Ejecutar x.dotbench');
+    expect(translate('en', 'model.details', { count: 1 })).toBe('Details: 1 note');
+    expect(translate('en', 'model.details', { count: 3 })).toBe('Details: 3 notes');
+    expect(translate('pt-BR', 'model.details', { count: 0 })).toBe('Detalhes: 0 observação');
+    expect(translate('pt-BR', 'model.details', { count: 2 })).toBe('Detalhes: 2 observações');
+    expect(translate('es', 'apps.run', { name: 'Kody Kart' })).toBe('Abrir Kody Kart');
   });
   it('formats numbers with the locale and leaves unknown placeholders alone', () => {
     expect(interpolate('{n} and {x}', { n: 1234.5 }, 'pt-BR')).toBe('1.234,5 and {x}');
