@@ -1,7 +1,35 @@
 {
   "area": "nfc",
-  "description": "ST25R3916 NFC front end (stubbed)",
+  "description": "NFC: virtual tags, cards and readers behind a fake kdrv_st25r3916 (the real AO_Nfc, kode_nfc_*, NDEF, Type-2/4 and Mifare Classic code run above it)",
   "supersedes": {
-    "components/kdrv/nfc/src/kdrv_st25r3916.c": "stubbed: ST25R3916B NFC front end (stage 2)"
-  }
+    "components/kdrv/nfc/src/kdrv_st25r3916.c": "web fake: runtime/drivers/nfc answers the whole kdrv_st25r3916.h from bench objects instead of an ST25R3916B + RFAL over SPI"
+  },
+  "exports": [
+    "nfc_obj_create",
+    "nfc_obj_destroy",
+    "nfc_obj_set_identity",
+    "nfc_obj_set_memory",
+    "nfc_obj_set_mem_len",
+    "nfc_obj_set_flags",
+    "nfc_obj_set_param",
+    "nfc_obj_near",
+    "nfc_obj_info",
+    "nfc_obj_read_blob",
+    "nfc_reader_read",
+    "nfc_state",
+    "nfc_event_pop",
+    "nfc_event_lost",
+    "nfc_chip_fitted",
+    "nfc_reset_bench"
+  ],
+  "sdkconfig": {
+    "CONFIG_KODEOS_NFC": "y"
+  },
+  "js": [
+    "nfc.js"
+  ],
+  "test_apps": [
+    "sdk:examples/nfc_read",
+    "area:../../../tests/node/nfc/apps/nfc_api"
+  ]
 }
