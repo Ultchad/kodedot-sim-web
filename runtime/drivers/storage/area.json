@@ -10,6 +10,7 @@
     "fatfs/ffunicode.c"
   ],
   "exports": [
+    "dbfs_seed_set",
     "dbfs_scratch",
     "dbfs_scratch_size",
     "dbfs_page_mounted",

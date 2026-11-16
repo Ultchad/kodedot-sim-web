@@ -94,6 +94,54 @@ int dbv_mounted(int v)
     return 1;
 }
 
+
+/* ---- factory content ------------------------------------------------------------------------------------
+ * A package may carry a factory tree for the internal volume (kodeOS: Kody's pack). The host copies it into the
+ * wasm memory before main() (dbfs_seed_set: runtime/web-adapter/factory.js) as a flat archive:
+ *     repeat { u16 path_len, path (no leading '/'), u32 size, bytes }      (little endian)
+ * mount_locked() applies it exactly once per formatted volume: when it has just run mkfs on a BLANK internal volume
+ * (a fresh device, "erase device", a damaged volume). A volume that mounts is never touched, and an explicit
+ * format (dbv_format: page or firmware) is an empty volume on purpose. */
+static const uint8_t *s_seed;
+static uint32_t s_seed_len;
+static struct { int files, errs; uint32_t bytes; } s_seed_res;
+
+EMSCRIPTEN_KEEPALIVE void dbfs_seed_set(const uint8_t *p, uint32_t len) { s_seed = p; s_seed_len = p ? len : 0; }
+
+static void seed_locked(int v)
+{
+    memset(&s_seed_res, 0, sizeof s_seed_res);
+    if (v != DBV_FLASH || !s_seed || s_seed_len < 6) return;
+    uint32_t o = 0;
+    while (o + 2 <= s_seed_len) {
+        uint32_t pl = s_seed[o] | (s_seed[o + 1] << 8);
+        if (o + 2 + pl + 4 > s_seed_len || pl == 0 || pl > 200) { s_seed_res.errs++; break; }
+        char path[256] = "0:/";
+        memcpy(path + 3, s_seed + o + 2, pl); path[3 + pl] = 0;
+        uint32_t sz = s_seed[o + 2 + pl] | (s_seed[o + 3 + pl] << 8) | (s_seed[o + 4 + pl] << 16) | ((uint32_t)s_seed[o + 5 + pl] << 24);
+        const uint8_t *data = s_seed + o + 6 + pl;
+        if ((uint64_t)o + 6 + pl + sz > s_seed_len) { s_seed_res.errs++; break; }
+        o += 6 + pl + sz;
+        for (char *q = path + 3; *q; q++) {           /* parent directories */
+            if (*q == '/') { *q = 0; f_mkdir(path); *q = '/'; }
+        }
+        FIL f;
+        if (f_open(&f, path, FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) { s_seed_res.errs++; continue; }
+        UINT w = 0;
+        FRESULT r = sz ? f_write(&f, data, sz, &w) : FR_OK;
+        FRESULT c = f_close(&f);
+        if (r != FR_OK || c != FR_OK || w != sz) { s_seed_res.errs++; continue; }
+        s_seed_res.files++; s_seed_res.bytes += sz;
+    }
+}
+/* What the last format-time seeding did (files copied, bytes, errors). */
+void dbv_seed_result(int *files, uint32_t *bytes, int *errs)
+{
+    if (files) *files = s_seed_res.files;
+    if (bytes) *bytes = s_seed_res.bytes;
+    if (errs) *errs = s_seed_res.errs;
+}
+
 static int mount_locked(int v, int fmt, int *formatted)
 {
     if (formatted) *formatted = 0;
@@ -108,7 +156,7 @@ static int mount_locked(int v, int fmt, int *formatted)
         if (!work) return FR_NOT_ENOUGH_CORE;
         r = f_mkfs(k_drive[v], &opt, work, 4096);
         free(work);
-        if (r == FR_OK) { r = f_mount(&s_fs[v], k_drive[v], 1); if (formatted) *formatted = 1; }
+        if (r == FR_OK) { r = f_mount(&s_fs[v], k_drive[v], 1); if (formatted) *formatted = 1; if (r == FR_OK) seed_locked(v); }
     }
     if (r != FR_OK) { f_mount(NULL, k_drive[v], 0); return r; }
     s_mnt[v] = 1;

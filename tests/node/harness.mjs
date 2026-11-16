@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { factoryBlob, installFactory } from "../../runtime/web-adapter/factory.js";
 
 // kweb_state_t byte offsets (runtime/bridge/README.md)
 export const OFF = {
@@ -38,6 +39,14 @@ async function load(pkgFile) {
   extracted.set(key, r);
   return r;
 }
+
+/** The package's factory tree for /storage as the flat archive the storage driver seeds a blank volume from (null: none). */
+export function packageFactory(dir, manifest) {
+  const files = new Map();
+  for (const { path: p } of manifest.factory?.files ?? []) files.set("factory/storage/" + p, new Uint8Array(fs.readFileSync(path.join(dir, "factory/storage", p))));
+  return factoryBlob(files, manifest);
+}
+export { installFactory };
 
 const RESET = { POWERON: 1, EXTERNAL: 2, SOFTWARE: 3, PANIC: 4 };
 export { RESET };
@@ -75,6 +84,7 @@ export async function boot(pkgFile, opts = {}) {
     const saved = opts.persist?.get(name);
     if (saved && saved.length === M._kweb_persist_size(i)) M.HEAPU8.set(saved, M._kweb_persist_ptr(i));
   }
+  installFactory(M, packageFactory(dir, manifest));
   const text = [];
   const drain = () => {
     const cap = 8192, buf = M._malloc(cap);

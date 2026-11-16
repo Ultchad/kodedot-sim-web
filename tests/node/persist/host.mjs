@@ -7,7 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { OFF, RESET, sleep } from "../harness.mjs";
+import { OFF, RESET, sleep, packageFactory, installFactory } from "../harness.mjs";
 import { PersistManager } from "../../../runtime/web-adapter/persist.js";
 import { NodeDirBackend } from "../../../runtime/web-adapter/persist-node.js";
 
@@ -77,7 +77,7 @@ export class Bench {
   /** Power-on (reason 1) or reset (2/3): returns the running program handle. */
   async boot(pkgFile, { reason = RESET.POWERON, powerOn = reason === RESET.POWERON } = {}) {
     await this.open();
-    const { appJson, mod } = await loadPkg(pkgFile);
+    const { appJson, mod, dir: pkgDir, manifest } = await loadPkg(pkgFile);
     const logs = [];
     const M = await mod.default({ noInitialRun: true, print: (s) => logs.push("[stdout] " + s), printErr: (s) => logs.push("[stderr] " + s) });
     const statePtr = M._kweb_state();
@@ -91,6 +91,7 @@ export class Bench {
     if (powerOn) this.pm.dropRetained();
     this.pm.restoreInto(M);
     this.pm.attach(M);
+    installFactory(M, packageFactory(pkgDir, manifest));
     const text = [];
     const drain = () => {
       const cap = 8192, buf = M._malloc(cap);
@@ -116,6 +117,11 @@ export class Bench {
       restartRequested: () => (u32(OFF.events) & 1) !== 0,
       restartReason: () => u32(OFF.restartReason),
       button: (id, d) => M._kweb_button(id, d ? 1 : 0),
+      touch: (x, y, d) => M._kweb_touch(x, y, d ? 1 : 0),
+      i32: (off) => dv().getInt32(statePtr + off, true),
+      frameSeq: () => u32(OFF.frameSeq),
+      framebuffer: () => { const off = statePtr + u32(OFF.fbOffset); return M.HEAPU8.slice(off, off + u32(OFF.fbStride) * u32(OFF.fbH)); },
+      shutdown: () => run.stop({ save: false }),
       /** Type a line on the firmware console (like dev.sendConsole). */
       console(line) {
         const bytes = Buffer.from(line + "\n"); const p = M._malloc(bytes.length);

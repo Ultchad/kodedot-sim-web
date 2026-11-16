@@ -35,6 +35,10 @@ export async function bootAudio(pkg) {
   const shutdown = a.shutdown;
   a.shutdown = () => { clearInterval(timer); shutdown(); };
   a.audio = audio; a.events = events; a.glue = mod;
+  // the page-side file API of the storage area (real FatFs volumes under the firmware): /storage and /sdcard
+  const stor = await import(pathToFileURL(a.dir + "/glue/storage/storage.js").href);
+  a.fs = stor.default({ ...ctx, emit: () => {} });
+  a.fsGlue = stor;
   a.hdr = (name) => new DataView(M.HEAPU8.buffer).getUint32(audio.sharedPtr + mod.LAYOUT[name], true);
 
   // ---- console ----

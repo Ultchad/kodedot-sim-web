@@ -22,6 +22,11 @@ const char *kdrv_fs_mount(void)
         r = dbv_mount(DBV_FLASH, 1, &formatted);
     }
     if (r != 0) { KLOG_E(TAG, "mount of 'storage' failed (%d)", r); return NULL; }
+    if (formatted) {
+        int nf = 0, ne = 0; uint32_t nb = 0;
+        dbv_seed_result(&nf, &nb, &ne);
+        if (nf || ne) KLOG_I(TAG, "factory content: %d files, %uB copied to /storage%s", nf, (unsigned)nb, ne ? " (with errors)" : "");
+    }
     uint64_t total = 0, freeb = 0;
     if (kdrv_fs_usage(&total, &freeb) == KODE_OK)
         KLOG_I(TAG, "storage mounted at /storage (%lluKB free of %lluKB)", freeb / 1024ULL, total / 1024ULL);

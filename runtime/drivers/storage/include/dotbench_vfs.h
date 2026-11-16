@@ -26,6 +26,7 @@ int      dbv_mounted(int vol);
 int      dbv_format(int vol);                           /* mkfs and mount; 0 ok, else FRESULT; unmounted on failure */
 int      dbv_info(int vol, uint64_t *total, uint64_t *free_bytes);  /* 0 ok, -1 not mounted / error */
 uint32_t dbv_cluster_bytes(int vol);
+void     dbv_seed_result(int *files, uint32_t *bytes, int *errs);   /* factory content applied by the last format-on-mount */
 
 /* sector layer */
 int      dbd_sd_present(void);                          /* card inserted */

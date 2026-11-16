@@ -214,11 +214,6 @@ def cmd_sdk(a):
     if not (gen / "areas_gen.c").exists() or (gen / "areas_gen.c").read_text() != gsrc:
         (gen / "areas_gen.c").write_text(gsrc)
     groups["rt"].append((gen / "areas_gen.c", obj / "rt" / "areas_gen.c.o", fl))
-    if role == "kodeos":
-        fsrc = K.gen_factory_c(K.factory_files(sdk, kos))
-        if not (gen / "kodeos_factory.c").exists() or (gen / "kodeos_factory.c").read_text() != fsrc:
-            (gen / "kodeos_factory.c").write_text(fsrc)
-        groups["rt"].append((gen / "kodeos_factory.c", obj / "rt" / "kodeos_factory.c.o", fl))
     failed = []
     for g in [g for g in ("rt", "sdk", "lvgl", "third") if g in groups]:
         failed += T.compile_all(groups[g], nproc, g)

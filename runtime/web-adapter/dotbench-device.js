@@ -2,6 +2,7 @@
 // Framework-free ES module, no bundler needed. See README.md.
 import { readZip } from "./zip.js";
 import { PersistManager } from "./persist.js";
+import { factoryBlob, installFactory } from "./factory.js";
 
 /** Byte offsets into the shared kweb_state_t (runtime/bridge/README.md). */
 export const OFF = {
@@ -120,7 +121,7 @@ export class DotbenchDevice {
       }
     }
     const mod = await import(/* @vite-ignore */ mainUrl);
-    this._pkg = { manifest, appJson, urls, wasmModule, factory: mod.default, glue, bytes };
+    this._pkg = { manifest, appJson, urls, wasmModule, factory: mod.default, glue, bytes, factoryTree: factoryBlob(files, manifest) };
     this._setStatus("idle");
   }
 
@@ -196,6 +197,7 @@ export class DotbenchDevice {
     const hadClock = (this._pm.image.regions.get("dev-state")?.chunks.size ?? 0) > 0;   // the RTC offset lives in dev-state
     this._pm.restoreInto(M);
     this._pm.attach(M);
+    installFactory(M, pkg.factoryTree);                  // first-boot content of /storage (applied only to a blank volume)
     inst.words = new Int32Array(M.HEAPU8.buffer, statePtr, 0x40);        // header .. boot block as Int32 (for Atomics)
     inst.restartSeen = Atomics.load(inst.words, OFF.restartSeq >> 2);
     for (const [area, mods] of Object.entries(pkg.glue)) {
