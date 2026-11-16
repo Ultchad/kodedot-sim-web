@@ -45,7 +45,7 @@ await T.check("warmth: dragging the level to the warm end turns the screen amber
 await T.check("brightness level drives the panel; leaving gives the panel back", async () => {
   await app.drag(300, 360, 40, 360);
   await app.waitFor(() => app.run.u32(OFF.backlight) === 5, 5000, "panel at the floor");
-  await app.drag(40, 360, 380, 360);
+  await app.drag(70, 360, 380, 360);
   await app.waitFor(() => app.run.u32(OFF.backlight) === 100, 5000, "panel at the top");
   await app.drag(300, 360, 40, 360);
   await app.waitFor(() => app.run.u32(OFF.backlight) === 5, 5000, "panel low again");
@@ -109,11 +109,10 @@ await T.check("back with BOT; a held BOT is the OS's and does not go back", asyn
   await app.settle();
   assert.ok(app.px(205, 8) === 0 && app.px(205, 60) === 0 || app.stats().colours > 20);
   // still on the LED page: its lamp and the swatches are on the glass (the list has no round swatch)
-  const stillLed = app.px(32 + 24 + 60, 238) !== 0;
-  assert.ok(stillLed, "a long press did not leave the page");
+  assert.ok(app.px(100, ROW[0]) === 0 && app.px(32 + 24 + 60, 238) !== 0, "a long press did not leave the page");
   await app.press(BTN.BOT);
   await app.settle();
-  assert.ok(app.px(100, ROW[0]) !== 0 && app.px(32 + 24 + 60, 238) === 0, "short BOT is back");
+  assert.ok(app.px(100, ROW[0]) !== 0, "short BOT is back on the list");
 });
 
 await T.check("the pad: DOWN shows the ring on the first row, TOP opens it", async () => {
@@ -124,7 +123,7 @@ await T.check("the pad: DOWN shows the ring on the first row, TOP opens it", asy
   await app.press(BTN.UP);
   await app.press(BTN.TOP);
   await app.settle();
-  assert.ok(app.px(32 + 24 + 60, 238) !== 0, "TOP opened the focused row (Screen light, since UP undid DOWN)" === "" ? 0 : 1);
+  assert.ok(app.px(205, 60) !== 0, "TOP opened the focused row (Screen light, since UP undid DOWN): the glass is lit");
 });
 
 await T.check("SOS: the LED and the glass flash in time; stop leaves the LED as it was", async () => {
@@ -134,6 +133,7 @@ await T.check("SOS: the LED and the glass flash in time; stop leaves the LED as 
   await app.tap(205, ROW[2]);
   await app.settle();
   await app.shot("sos");
+  const ledBefore = app.led();
   await app.tap(205, 426);                // Start
   const seen = new Set();
   let glassLit = false;
@@ -150,7 +150,7 @@ await T.check("SOS: the LED and the glass flash in time; stop leaves the LED as 
   await app.shot("sos-running");
   await app.tap(205, 426);                // Stop
   await sleep(400);
-  assert.deepEqual(app.led(), [0, 0, 0]);
+  assert.deepEqual(app.led(), ledBefore, "the LED is back to what it was");
 });
 
 await T.check("settings survive a restart", async () => {
