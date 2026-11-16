@@ -1,0 +1,19 @@
+{
+  "area": "kodeos_boot",
+  "description": "kodeOS role only: stubs for hardware kodeOS needs and temporary stand-ins so it links and boots (docs/STATUS-kodeos.md)",
+  "roles": ["kodeos"],
+  "supersedes": {
+    "components/kdrv/compose/src/kdrv_compose.c": "stubbed in the kodeos role: PPA blend engine (needs driver/ppa.h); owner: display/compose",
+    "components/kdrv/mirror/src/kdrv_jpeg.c": "stubbed in the kodeos role: JPEG encoder engine (driver/jpeg_encode.h); owner: mirror/console",
+    "components/kdrv/mirror/src/kdrv_ppa.c": "stubbed in the kodeos role: PPA engine for the mirror; owner: mirror/console",
+    "components/kdrv/radio/src/kdrv_radio.c": "stubbed in the kodeos role: esp-hosted link to the C5 (esp_event.h, esp_hosted.h); owner: radio",
+    "components/kdrv/radio/src/kdrv_radio_rpc.c": "stubbed in the kodeos role: esp-hosted RPC; owner: radio",
+    "components/kdrv/radio/src/kdrv_c5.c": "stubbed in the kodeos role: C5 reset/boot control (esp_chip_info.h); owner: radio",
+    "components/kdrv/radio/src/kdrv_wifi.c": "stubbed in the kodeos role: Wi-Fi through esp_wifi/esp_event; owner: radio",
+    "components/kdrv/radio/src/kdrv_net.c": "stubbed in the kodeos role: lwIP/esp_netif sockets; owner: radio",
+    "components/kdrv/radio/src/kdrv_ble.c": "stubbed in the kodeos role: NimBLE host over esp-hosted; owner: radio",
+    "components/kdrv/ov5640/src/kdrv_ov5640.c": "stubbed in the kodeos role: station camera on J3 (driver/gpio.h); owner: exp (stage 5)",
+    "components/kdrv/station/src/kdrv_station_i2c.c": "stubbed in the kodeos role: E5 station I2C (driver/i2c_master.h); owner: exp (stage 5)",
+    "components/kdrv/station/src/kdrv_dock_loop.c": "stubbed in the kodeos role: E5 dock loop (driver/gpio.h); owner: exp (stage 5)"
+  }
+}

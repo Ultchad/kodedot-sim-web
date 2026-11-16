@@ -1,0 +1,48 @@
+# dotbench "kodeos" role: web overrides applied AFTER kbsp/sdkconfig.board and kodeOS's own
+# sdkconfig.defaults (so kodeOS keeps BOOT_ROLE_OS, RADIO, BT, SCHEDULER, THORVG, ...).
+# Derived from runtime/idf/sdkconfig.web.defaults with the app-role block removed (the OS is not an app).
+# Every line that is not in that file is a deviation recorded in docs/STATUS-kodeos.md.
+
+# ---- ESP-IDF symbols the SDK sources read ---------------------------------
+CONFIG_IDF_TARGET_ESP32P4=y
+CONFIG_LIBC_PICOLIBC=y
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_FREERTOS_UNICORE=n
+CONFIG_FREERTOS_SMP=n
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# ---- LVGL: the board's build (kbsp/sdkconfig.board) with these differences ----
+# One thread renders: LV_OS_NONE and one draw unit instead of FreeRTOS tasks
+# (the device runs two draw units; here that would cost two more Web Workers
+# for no change in the picture). Everything else is the board's.
+CONFIG_LV_OS_FREERTOS=n
+CONFIG_LV_OS_NONE=y
+CONFIG_LV_DRAW_SW_DRAW_UNIT_CNT=1
+# Every Montserrat size LVGL ships. They are separate objects in a static
+# archive: an app only links the ones it names (display_lvgl uses 14, 28, 48).
+CONFIG_LV_FONT_MONTSERRAT_8=y
+CONFIG_LV_FONT_MONTSERRAT_10=y
+CONFIG_LV_FONT_MONTSERRAT_12=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_16=y
+CONFIG_LV_FONT_MONTSERRAT_18=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+CONFIG_LV_FONT_MONTSERRAT_22=y
+CONFIG_LV_FONT_MONTSERRAT_24=y
+CONFIG_LV_FONT_MONTSERRAT_26=y
+CONFIG_LV_FONT_MONTSERRAT_28=y
+CONFIG_LV_FONT_MONTSERRAT_30=y
+CONFIG_LV_FONT_MONTSERRAT_32=y
+CONFIG_LV_FONT_MONTSERRAT_34=y
+CONFIG_LV_FONT_MONTSERRAT_36=y
+CONFIG_LV_FONT_MONTSERRAT_38=y
+CONFIG_LV_FONT_MONTSERRAT_40=y
+CONFIG_LV_FONT_MONTSERRAT_42=y
+CONFIG_LV_FONT_MONTSERRAT_44=y
+CONFIG_LV_FONT_MONTSERRAT_46=y
+CONFIG_LV_FONT_MONTSERRAT_48=y
+
+# ---- kodeOS-only deviations ---------------------------------------------------
+# LVGL's bundled lodepng provides the zlib inflate that khal_zlib_decompress needs (the device uses the ESP ROM's
+# tinfl; Emscripten has no libz offline). It also compiles lodepng's PNG decoder into LVGL: harmless.
+CONFIG_LV_USE_LODEPNG=y

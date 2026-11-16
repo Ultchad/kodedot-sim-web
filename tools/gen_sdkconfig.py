@@ -307,18 +307,23 @@ class Kconfig:
                     v = v[1:-1]
                 new[name] = v
             # selects
+            # (to a fixpoint: a select can enable a symbol that itself selects another, e.g.
+            # LV_USE_LOTTIE -> LV_USE_VECTOR_GRAPHIC -> LV_USE_MATRIX)
             sel = {}
-            for name in names:
-                sym = self.syms[name]
-                for tgt, cond, _src in sym.selects:
-                    if new.get(name) == "y" and ev(cond) == "y":
-                        sel[tgt] = "y"
-            for tgt in sel:
-                if tgt in new and self.syms[tgt].type == "bool":
-                    new[tgt] = "y"
-            for tgt in sel:
-                if tgt not in new:
-                    new[tgt] = "y"
+            while True:
+                grew = False
+                for name in names:
+                    sym = self.syms[name]
+                    for tgt, cond, _src in sym.selects:
+                        if new.get(name) == "y" and ev(cond) == "y" and tgt not in sel:
+                            sel[tgt] = "y"
+                            if tgt in new and self.syms[tgt].type == "bool":
+                                new[tgt] = "y"
+                            elif tgt not in new:
+                                new[tgt] = "y"
+                            grew = True
+                if not grew:
+                    break
             if new == val:
                 break
             val = new

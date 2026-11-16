@@ -6,6 +6,11 @@
   dotbench seed OLD_BUILD_DIR       copy an existing build dir into --build (new worktree starts warm)
   dotbench areas                    list hardware areas (runtime/drivers/*/area.json)
 
+Role "kodeos" (kodeOS, the operating system, instead of an app):
+  dotbench sdk --role kodeos                    SDK + LVGL + ThorVG + runtime for the OS role into <build>/kodeos/
+  dotbench build KODEOS_DIR --role kodeos       also kgui and kodeOS's main, link, package kodeos.dotbench
+  --kodeos / DOTBENCH_KODEOS  kodeOS checkout (default /home/claude/src/KodeOS)
+
 Paths come from arguments or environment variables:
   --sdk   / DOTBENCH_SDK    kode-sdk checkout          (default /home/claude/src/kode-sdk)
   --lvgl  / DOTBENCH_LVGL   LVGL checkout              (default <sdk>/../third/lvgl)
@@ -27,6 +32,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from dblib import sources as S          # noqa: E402
 from dblib import toolchain as T        # noqa: E402
 from dblib import areas as A            # noqa: E402
+from dblib import kodeos as K          # noqa: E402
 
 PINNED_SDK_COMMIT = "c9568a3"
 
@@ -55,26 +61,36 @@ def sdk_commit(sdk):
 
 # ---- configuration ---------------------------------------------------------------
 
-def ensure_config(sdk, lvgl, build, areas):
+def ensure_config(sdk, lvgl, build, areas, kos=None):
+    """kos: the kodeOS checkout for the "kodeos" role (its sdkconfig.defaults and kgui's Kconfig), else None."""
     build.mkdir(parents=True, exist_ok=True)
     adef = build / "areas.sdkconfig.defaults"
     txt = A.area_sdkconfig(areas)
     if not adef.exists() or adef.read_text() != txt:
         adef.write_text(txt)
     hdr, js = build / "sdkconfig.h", build / "sdkconfig.json"
-    inputs = [ROOT / "tools/gen_sdkconfig.py", ROOT / "runtime/idf/sdkconfig.web.defaults",
-              sdk / "components/kbsp/sdkconfig.board", lvgl / "Kconfig"]
+    if kos is None:
+        role_defaults = [ROOT / "runtime/idf/sdkconfig.web.defaults"]
+        role_kconfig = []
+    else:
+        role_defaults = [K.os_defaults(kos), K.web_defaults(ROOT)]
+        role_kconfig = K.kconfigs(kos)
+    inputs = [ROOT / "tools/gen_sdkconfig.py"] + role_defaults + [sdk / "components/kbsp/sdkconfig.board", lvgl / "Kconfig"]
+    inputs += role_kconfig
     inputs += sorted(sdk.glob("components/**/Kconfig*")) + [adef]
     stamp = build / "sdkconfig.stamp"
     h = T.file_hash(inputs)
     if not (hdr.exists() and js.exists() and stamp.exists() and stamp.read_text() == h):
-        subprocess.run([sys.executable, str(ROOT / "tools/gen_sdkconfig.py"), "--sdk", str(sdk),
-                        "--kconfig", str(lvgl / "Kconfig"),
-                        "--defaults", str(sdk / "components/kbsp/sdkconfig.board"),
-                        "--defaults", str(ROOT / "runtime/idf/sdkconfig.web.defaults"),
-                        "--defaults", str(adef),
-                        "--out-h", str(hdr), "--out-config", str(build / "sdkconfig"),
-                        "--json", str(js)], check=True)
+        cmd = [sys.executable, str(ROOT / "tools/gen_sdkconfig.py"), "--sdk", str(sdk),
+               "--kconfig", str(lvgl / "Kconfig")]
+        for k in role_kconfig:
+            cmd += ["--kconfig", str(k)]
+        cmd += ["--defaults", str(sdk / "components/kbsp/sdkconfig.board")]
+        for d in role_defaults:
+            cmd += ["--defaults", str(d)]
+        cmd += ["--defaults", str(adef), "--out-h", str(hdr), "--out-config", str(build / "sdkconfig"),
+                "--json", str(js)]
+        subprocess.run(cmd, check=True)
         stamp.write_text(h)
     commit = sdk_commit(sdk)
     vh = build / "kode_sdk_version.h"
@@ -87,6 +103,11 @@ def ensure_config(sdk, lvgl, build, areas):
 
 # ---- compile flags -----------------------------------------------------------------
 
+# Role extras (set by the kodeos role only; empty for apps, so app flags are unchanged)
+PRIV_EXTRA = {}       # component -> extra private include globs
+INC_EXTRA = []        # extra absolute include dirs (third_party/cJSON, kgui)
+
+
 def include_dirs(sdk, lvgl, build, comp=None):
     inc = []
     for p in S.PUBLIC_INCLUDES:
@@ -94,8 +115,9 @@ def include_dirs(sdk, lvgl, build, comp=None):
     for g in S.PUBLIC_GLOBS:
         inc += sorted(sdk.glob(g))
     priv = []
-    for g in S.PRIVATE_GLOBS.get(comp, []):
+    for g in S.PRIVATE_GLOBS.get(comp, []) + PRIV_EXTRA.get(comp, []):
         priv += sorted(sdk.glob(g))
+    inc += INC_EXTRA
     rt = [ROOT / "runtime/rtos/include", ROOT / "runtime/idf/include", ROOT / "runtime/bridge",
           ROOT / "runtime/drivers/include", build]
     rt += sorted(p for p in (ROOT / "runtime/drivers").glob("*/include") if p.is_dir())
@@ -124,26 +146,66 @@ def gen_areas_c(areas):
 
 # ---- dotbench sdk --------------------------------------------------------------------
 
+def kodeos_dir(a):
+    return pathlib.Path(a.kodeos or os.environ.get("DOTBENCH_KODEOS", K.DEFAULT_KODEOS)).resolve()
+
+
+def setup_role(a, build):
+    """The role of this invocation: (role, kodeOS dir or None, the build dir of that role's library set).
+    The app role keeps <build> itself; the kodeos role has its own self-contained <build>/kodeos."""
+    role = getattr(a, "role", "app")
+    if role != "kodeos":
+        return "app", None, build
+    kos = kodeos_dir(a)
+    if not (kos / "components/kgui/CMakeLists.txt").exists():
+        sys.exit("dotbench: %s is not a kodeOS checkout (components/kgui missing)" % kos)
+    PRIV_EXTRA.update(K.EXTRA_PRIVATE_GLOBS)
+    INC_EXTRA[:] = [ROOT / "third_party/cJSON"]
+    rbuild = build / "kodeos"
+    rbuild.mkdir(exist_ok=True)
+    return "kodeos", kos, rbuild
+
+
 def cmd_sdk(a):
-    sdk, lvgl, emsdk, build = paths(a)
+    sdk, lvgl, emsdk, base_build = paths(a)
     T.activate_emsdk(emsdk)
-    areas = A.load_areas(ROOT)
+    role, kos, build = setup_role(a, base_build)
+    areas = A.load_areas(ROOT, role)
     replaced = A.superseded(areas)
-    cfg = ensure_config(sdk, lvgl, build, areas)
+    if role == "kodeos":
+        replaced = {f: r for f, r in replaced.items() if f not in K.UNSUPERSEDE}
+    cfg = ensure_config(sdk, lvgl, build, areas, kos)
     obj = build / "obj"
     nproc = a.jobs or os.cpu_count() or 2
     srcs = S.sdk_sources(sdk, cfg)
+    if role == "kodeos":
+        for comp, files in K.extra_sdk_sources(sdk, cfg).items():
+            srcs[comp] = srcs.get(comp, []) + files
     n_real = 0
     groups = {"sdk": [], "lvgl": [], "rt": []}
+    if role == "kodeos":
+        groups["third"] = []
     for comp, files in srcs.items():
         fl = flags_for(sdk, lvgl, build, comp)
         for f in S.apply_replaced(files, replaced):
             o = obj / "sdk" / (f.replace("/", "__") + ".o")
-            groups["sdk"].append((sdk / f, o, fl))
+            groups["sdk"].append((sdk / f, o, fl + (["-ffp-contract=off"] if f.endswith(K.NO_FP_CONTRACT) else [])))
             n_real += 1
     fl = flags_for(sdk, lvgl, build, None)
     for f in S.lvgl_sources(lvgl, cfg):
         groups["lvgl"].append((lvgl / f, obj / "lvgl" / (f.replace("/", "__") + ".o"), fl))
+    if role == "kodeos":
+        # ThorVG (C++): the vector backend and the Lottie player of Kody. Flags as kui/CMakeLists.txt
+        # gives them: LVGL's own config without ThorVG's threads, no exceptions, no RTTI.
+        cxx = ["-std=gnu++17", "-pthread", "-O2", "-w", "-fno-exceptions", "-fno-rtti", "-include", "stdio.h", "-include", "stdlib.h",
+               "-ffunction-sections", "-fdata-sections", "-DESP_PLATFORM", "-DLV_LVGL_H_INCLUDE_SIMPLE",
+               "-DDOTBENCH=1", "-include", str(sdk / "components/kui/thorvg/kui_tvg_config.h")]
+        cxx += ["-I" + str(i) for i in include_dirs(sdk, lvgl, build, None)]
+        cxx += ["-I" + str(lvgl / "src/libs/thorvg")]
+        for f in K.thorvg_sources(lvgl, cfg):
+            groups["lvgl"].append((lvgl / f, obj / "lvgl" / (f.replace("/", "__") + ".o"), cxx))
+        for f in K.cjson_sources(ROOT):
+            groups["third"].append((f, obj / "third" / (f.name + ".o"), fl))
     for f in S.runtime_sources(ROOT, areas):
         groups["rt"].append((ROOT / f, obj / "rt" / (f.replace("/", "__") + ".o"), fl))
     gen = build / "gen"
@@ -153,7 +215,7 @@ def cmd_sdk(a):
         (gen / "areas_gen.c").write_text(gsrc)
     groups["rt"].append((gen / "areas_gen.c", obj / "rt" / "areas_gen.c.o", fl))
     failed = []
-    for g in ("rt", "sdk", "lvgl"):
+    for g in [g for g in ("rt", "sdk", "lvgl", "third") if g in groups]:
         failed += T.compile_all(groups[g], nproc, g)
     if failed:
         print("dotbench sdk: %d file(s) failed" % len(failed), file=sys.stderr)
@@ -174,15 +236,19 @@ def cmd_sdk(a):
         return 1
     lib = build / "lib"
     lib.mkdir(exist_ok=True)
-    for name, jobs in (("libdotbench_sdk.a", groups["sdk"]), ("libdotbench_lvgl.a", groups["lvgl"]),
-                       ("libdotbench_rt.a", groups["rt"]), ("libdotbench_stubs.a", stub_jobs)):
+    archives = [("libdotbench_sdk.a", groups["sdk"]), ("libdotbench_lvgl.a", groups["lvgl"]),
+                ("libdotbench_rt.a", groups["rt"]), ("libdotbench_stubs.a", stub_jobs)]
+    if "third" in groups:
+        archives.append(("libdotbench_third.a", groups["third"]))
+    for name, jobs in archives:
         T.make_archive(lib / name, [j[1] for j in jobs])
     meta = {"sdk_commit": sdk_commit(sdk), "emscripten": T.emcc_version(),
             "real_sdk_files": n_real, "lvgl_files": len(groups["lvgl"]),
             "stub_functions": sum(p.read_text().count("DOTBENCH_UNIMPLEMENTED(") for p in stubdir.glob("*.c")),
             "areas": [a.name for a in areas], "replaced": replaced}
+    meta["role"] = role
     (build / "sdk-meta.json").write_text(json.dumps(meta, indent=1))
-    T.save_hash_cache(build / "hashcache.json")
+    T.save_hash_cache(base_build / "hashcache.json")
     print("dotbench sdk: done (%d real SDK files, %d LVGL files, %d stub functions)"
           % (n_real, len(groups["lvgl"]), meta["stub_functions"]))
     return 0
@@ -227,15 +293,27 @@ def png_placeholder(path, size=64):
 
 
 def cmd_build(a):
-    sdk, lvgl, emsdk, build = paths(a)
+    sdk, lvgl, emsdk, base_build = paths(a)
     T.activate_emsdk(emsdk)
     appdir = pathlib.Path(a.app).resolve()
+    role, kos, build = setup_role(a, base_build)
+    if role == "kodeos":
+        if appdir != kos and not a.kodeos:
+            kos = appdir
+            a.kodeos = str(appdir)
+            role, kos, build = setup_role(a, base_build)
+        rc = cmd_sdk(a)      # incremental: only what changed is compiled
+        if rc:
+            return rc
     lib = build / "lib"
-    libs = [lib / n for n in ("libdotbench_sdk.a", "libdotbench_lvgl.a", "libdotbench_rt.a", "libdotbench_stubs.a")]
+    names = ["libdotbench_sdk.a", "libdotbench_lvgl.a", "libdotbench_rt.a", "libdotbench_stubs.a"]
+    if role == "kodeos":
+        names.append("libdotbench_third.a")
+    libs = [lib / n for n in names]
     if not all(p.exists() for p in libs):
         sys.exit("dotbench: run `dotbench sdk` first (static libraries missing in %s)" % lib)
-    areas = A.load_areas(ROOT)
-    ensure_config(sdk, lvgl, build, areas)
+    areas = A.load_areas(ROOT, role)
+    cfg = ensure_config(sdk, lvgl, build, areas, kos)
     name = app_name(appdir)
     reg = parse_component(appdir)
     main = appdir / "main"
@@ -243,21 +321,31 @@ def cmd_build(a):
     for d in reg.get("SRC_DIRS", []):
         srcs += sorted((main / d).glob("*.c"))
     incs = [main / d for d in reg.get("INCLUDE_DIRS", ["."]) + reg.get("PRIV_INCLUDE_DIRS", [])]
-    outdir = pathlib.Path(a.output).resolve() if a.output else build / "apps" / name
+    outdir = pathlib.Path(a.output).resolve() if a.output else base_build / "apps" / name
     outdir.mkdir(parents=True, exist_ok=True)
     objdir = build / "obj" / "app" / name
     fl = flags_for(sdk, lvgl, build, None, "-O2") + ["-I" + str(i) for i in incs]
+    if role == "kodeos":
+        fl = fl + ["-I" + str(i) for i in K.kgui_includes(kos)]       # main.c includes kgui.h
     jobs = [(s, objdir / (s.name + ".o"), fl) for s in srcs]
+    if role == "kodeos":
+        # kgui: kodeOS's own component (components/kgui), compiled like main
+        kfl = flags_for(sdk, lvgl, build, None, "-O2") + ["-I" + str(i) for i in K.kgui_includes(kos)] + K.compat_flags(ROOT)
+        for s in K.kgui_sources(kos, cfg):
+            rel = s.relative_to(kos / "components/kgui").as_posix().replace("/", "__")
+            jobs.append((s, build / "obj" / "kgui" / (rel + ".o"), kfl))
     if T.compile_all(jobs, a.jobs or os.cpu_count() or 2, "app " + name):
         return 1
     exports = A.exports(areas)
-    mem = a.memory_mb
+    mem = a.memory_mb or (K.MEMORY_MB if role == "kodeos" else 96)
+    pool = a.pool or (K.POOL if role == "kodeos" else 32)
     js = outdir / (name + ".js")
-    link = ["emcc"] + [str(j[1]) for j in jobs] + [str(p) for p in libs] + [
+    tool = "em++" if role == "kodeos" else "emcc"   # C++ (ThorVG) needs libc++ on the link line
+    link = [tool] + [str(j[1]) for j in jobs] + [str(p) for p in libs] + [
         "-o", str(js), "-pthread", "-O2", "-sPROXY_TO_PTHREAD", "-sMODULARIZE", "-sEXPORT_ES6",
         "-sEXPORT_NAME=createDotbench", "-sENVIRONMENT=web,worker,node",
-        "-sINITIAL_MEMORY=%dMB" % mem, "-sALLOW_MEMORY_GROWTH=0", "-sSTACK_SIZE=1MB",
-        "-sDEFAULT_PTHREAD_STACK_SIZE=256KB", "-sPTHREAD_POOL_SIZE=%d" % a.pool, "-sEXIT_RUNTIME=0",
+        "-sINITIAL_MEMORY=%dMB" % mem, "-sALLOW_MEMORY_GROWTH=0", "-sSTACK_SIZE=%s" % (K.MAIN_STACK if role == "kodeos" else "1MB"),
+        "-sDEFAULT_PTHREAD_STACK_SIZE=256KB", "-sPTHREAD_POOL_SIZE=%d" % pool, "-sEXIT_RUNTIME=0",
         "-sEXPORTED_FUNCTIONS=" + ",".join(exports),
         "-sEXPORTED_RUNTIME_METHODS=PThread,callMain,HEAPU8,HEAP32,HEAPU32,wasmMemory,ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8",
         "-sERROR_ON_UNDEFINED_SYMBOLS=%d" % (0 if a.allow_undefined else 1),
@@ -265,6 +353,8 @@ def cmd_build(a):
     ]
     if a.allow_undefined:
         link.append("-Wl,--unresolved-symbols=ignore-all")
+    if role == "kodeos" or a.map:
+        link.append("-Wl,-Map=" + str(outdir / (name + ".map")))     # which stubs the firmware really references
     r = subprocess.run(link, capture_output=True, text=True)
     sys.stderr.write(r.stderr[-6000:])
     if r.returncode:
@@ -281,6 +371,9 @@ def cmd_build(a):
         m = re.search(r"^version:\s*\"?([\w.\-]+)", yml.read_text(), re.M)
         if m:
             version = m.group(1)
+    if role == "kodeos":
+        m = re.search(r'set\(PROJECT_VER\s+"([^"]+)"', (appdir / "CMakeLists.txt").read_text())
+        version = m.group(1) if m else version
     icon = appdir / "icon.png"
     icon_out = outdir / "icon.png"
     if icon.exists():
@@ -295,6 +388,13 @@ def cmd_build(a):
                 "memory_mb": mem, "exports": exports, "state_export": "_kweb_state",
                 "areas": {a.name: {"glue": ["glue/%s/%s" % (a.name, pathlib.Path(g).name) for g in a.js]}
                           for a in areas if a.js}}
+    factory = []
+    if role == "kodeos":
+        manifest["role"] = "kodeos"
+        manifest["pool_size"] = pool
+        manifest["kodeos_commit"] = K.git_commit(kos)
+        factory = K.factory_files(sdk, kos)
+        manifest["factory"] = {"volume": "storage", "files": K.factory_manifest(factory)}
     pkg = outdir / (name + ".dotbench")
     with zipfile.ZipFile(pkg, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(js, name + ".js")
@@ -306,8 +406,10 @@ def cmd_build(a):
                 z.write(a.dir / g, "glue/%s/%s" % (a.name, pathlib.Path(g).name))
         z.writestr("appdata/app.json", json.dumps(app_json, indent=1))
         z.write(icon_out, "icon.png")
+        for rel, src in factory:
+            z.write(src, "factory/storage/" + rel)
         z.writestr("manifest.json", json.dumps(manifest, indent=1))
-    T.save_hash_cache(build / "hashcache.json")
+    T.save_hash_cache(base_build / "hashcache.json")
     print("dotbench build: %s (%d bytes)" % (pkg, pkg.stat().st_size))
     return 0
 
@@ -362,9 +464,11 @@ def cmd_areas(a):
 def main():
     ap = argparse.ArgumentParser(prog="dotbench", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sdk"); ap.add_argument("--lvgl"); ap.add_argument("--emsdk"); ap.add_argument("--build")
+    ap.add_argument("--kodeos", help="kodeOS checkout for --role kodeos (env DOTBENCH_KODEOS)")
     ap.add_argument("-j", "--jobs", type=int)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("sdk")
+    sdk_p = sub.add_parser("sdk")
+    sdk_p.add_argument("--role", choices=("app", "kodeos"), default="app")
     sd = sub.add_parser("seed", help="copy an existing build dir into --build (fast start for a new worktree)")
     sd.add_argument("source")
     ar = sub.add_parser("areas", help="list the hardware areas discovered under runtime/drivers")
@@ -372,8 +476,11 @@ def main():
     b = sub.add_parser("build")
     b.add_argument("app")
     b.add_argument("-o", "--output")
-    b.add_argument("--memory-mb", type=int, default=96)
-    b.add_argument("--pool", type=int, default=32)
+    b.add_argument("--role", choices=("app", "kodeos"), default="app",
+                   help="app (default) or kodeos: build kodeOS itself (APPDIR is the kodeOS checkout)")
+    b.add_argument("--memory-mb", type=int, default=None, help="wasm memory, MB (default 96; 160 for --role kodeos)")
+    b.add_argument("--pool", type=int, default=None, help="pthread pool size (default 32; kodeos: see dblib/kodeos.py)")
+    b.add_argument("--map", action="store_true", help="also write a linker map next to the output (kodeos always does)")
     b.add_argument("--allow-undefined", action="store_true", help="link with unresolved symbols ignored (diagnostics)")
     a = ap.parse_args()
     return {"sdk": cmd_sdk, "build": cmd_build, "seed": cmd_seed, "areas": cmd_areas}[a.cmd](a)
