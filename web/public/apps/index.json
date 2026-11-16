@@ -14,6 +14,19 @@
       "sdkCommit": "c9568a3"
     },
     {
+      "id": "kody_kart",
+      "file": "kody_kart.dotbench",
+      "name": "Kody Kart",
+      "description": {
+        "en": "Kody races his cousins on three Mode 7 circuits. Made by Kode.",
+        "pt-BR": "O Kody corre contra os primos em três circuitos Mode 7. Feito pela Kode.",
+        "es": "Kody corre contra sus primos en tres circuitos Mode 7. Hecho por Kode."
+      },
+      "size": 272725,
+      "version": "0.0.0",
+      "sdkCommit": "c9568a3"
+    },
+    {
       "id": "display_lvgl",
       "file": "display_lvgl.dotbench",
       "name": "Display",
