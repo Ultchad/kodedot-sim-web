@@ -104,6 +104,7 @@ await check("a swipe left on the face opens the launcher: empty state, no apps",
 });
 
 await check("a setting written in this boot (the time zone) is stored", async () => {
+  assert.ok(!a.logText().includes(ZONE), "the zone was there on a blank device");
   a.console(`config key="zone" value="${ZONE}"`);
   await a.waitFor(() => a.logText().includes("zone: " + ZONE + " (stored)"), 15000, "zone stored");
 });
@@ -118,10 +119,11 @@ await check("restart: the volume is not seeded again and the pack is read from i
   assert.ok(!b.logText().includes("factory content:"), "the factory tree was applied to an existing volume");
   assert.match(b.logText(), /storage mounted at \/storage/);
 });
-await check("restart: the setting written in the previous boot is there", async () => {
+await check("restart: the setting written in the previous boot is there (AO_Boot loads it from NVS at boot, before any command)", async () => {
+  assert.match(b.logText(), new RegExp("zone: " + ZONE.replace(/[<>]/g, "\\$&") + " \\(stored\\)"), "AO_Boot did not find the stored zone");
+  const n0 = b.logText().split(ZONE).length;
   b.console(`config key="zone"`);
-  await b.waitFor(() => b.logText().includes(ZONE), 15000, "zone read back");
-  assert.ok(!/zone: .*\(stored\)/.test(b.logText()), "the zone was re-stored instead of read");
+  await b.waitFor(() => b.logText().split(ZONE).length > n0, 15000, "`config key=\"zone\"` answers with the stored zone");
 });
 await check("restart: a file the user put on the volume survived next to the factory tree", async () => {
   const { default: storage } = await import("../../../runtime/drivers/storage/storage.js");
@@ -142,8 +144,7 @@ await check("power cycle: setting and files are still there, volume not re-seede
   const { default: storage } = await import("../../../runtime/drivers/storage/storage.js");
   const { glueCtx } = await import("../persist/host.mjs");
   assert.equal(storage(glueCtx(c.M)).readText("/storage/note.txt"), "hello from boot 2");
-  c.console(`config key="zone"`);
-  await c.waitFor(() => c.logText().includes(ZONE), 15000, "zone read back");
+  await c.waitFor(() => c.logText().includes("zone: " + ZONE), 15000, "AO_Boot loads the stored zone");
 });
 await c.stop();
 
@@ -157,6 +158,7 @@ await check("after 'erase device': the volume is blank again, so formatted and s
   const { glueCtx } = await import("../persist/host.mjs");
   const fsApi = storage(glueCtx(d.M));
   assert.equal(fsApi.stat("/storage/note.txt").exists, false);
+  await d.waitFor(() => d.logText().includes("kgui first frame"), 60000, "first frame");
   d.console(`config key="zone"`);
   await sleep(1500);
   assert.ok(!d.logText().includes(ZONE), "the zone survived an erase");
