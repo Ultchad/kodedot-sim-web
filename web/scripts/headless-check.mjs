@@ -362,7 +362,7 @@ try {
       await page.click('[data-testid=left-tab-components]');
       return (await page.$$('[data-testid=components-panel] li')).length === 2;
     })());
-    check('document title names the product and its descriptor in the page language', (await page.title()) === 'KodeDot Sim · Simulador de apps para Kode Dot', await page.title());
+    check('document title names the product and its descriptor in the page language', (await page.title()) === 'KodeDot Sim · Un simulador del Kode Dot en tu navegador', await page.title());
     await setLang(page, 'en');
     check('wordmark and title say KodeDot Sim', (await page.title()) === 'KodeDot Sim · A Kode Dot simulator in your browser' && (await page.$eval('[data-testid=brand]', (e) => e.textContent.trim())) === 'KodeDot Sim');
     check('settings name the product with its descriptor and carry no notices', await inMenu(page, 'settings-menu', () => page.$eval('[data-testid=about]', (e) => e.textContent.trim() === 'KodeDot Sim · A Kode Dot simulator in your browser')));
@@ -676,7 +676,7 @@ try {
     check('real: status bar and App menu name the system "kodeOS"', (await page.$eval('[data-testid=status-app]', (e) => e.textContent)) === 'kodeOS' && /kodeOS/.test(await page.$eval('[data-testid=apps-menu]', (e) => e.textContent)), `${await page.$eval('[data-testid=status-app]', (e) => e.textContent)} / ${await page.$eval('[data-testid=apps-menu]', (e) => e.textContent)}`);
     check('real: mock toggle is off by default and labelled as a test device', await inMenu(page, 'device-menu', async () => (await page.$eval('[data-testid=mock-toggle]', (e) => e.checked)) === false && /Test device/.test(await page.$eval('label:has([data-testid=mock-toggle])', (e) => e.textContent))));
     check('real: an idle app reads as a steady screen, not as a low frame rate', /steady/.test(await page.$eval('[data-testid=status-fps]', (e) => e.textContent)) && !/FPS/.test(await page.$eval('[data-testid=status-bar]', (e) => e.textContent)), await page.$eval('[data-testid=status-fps]', (e) => `${e.textContent} (${e.dataset.fps}/s)`));
-    check('real: console lines are clean: one time column, no firmware prefix, no ISO stamp', await page.$eval('[data-testid=console-log]', (e) => !/!I |\d{4}-\d\d-\d\dT/.test(e.textContent) && e.querySelectorAll('time').length > 3));
+    check('real: console lines are clean: one time column, no firmware prefix, no ISO stamp', await page.$eval('[data-testid=console-log]', (e) => !/![INWED] |\d{4}-\d\d-\d\dT/.test(e.textContent) && e.querySelectorAll('time').length > 3));
     const hintText = await page.$eval('[data-testid=welcome]', (e) => e.textContent).catch(() => '');
     check('real: the first-visit hint speaks about the system: kodeOS and how to unlock it', /kodeOS/.test(hintText) && /unlock/.test(hintText) && /\.dotbench/.test(hintText), hintText);
     check('real: the first-visit hint is shown and leaves for good', (await page.$('[data-testid=welcome]')) !== null && (await page.click('[data-testid=welcome-dismiss]').then(() => sleep(100)).then(() => page.$('[data-testid=welcome]'))) === null);
@@ -830,7 +830,7 @@ try {
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid=device-unsupported]', { timeout: 20000 }).catch(() => {});
     const txt = await page.$eval('[data-testid=device-unsupported]', (e) => e.textContent).catch(() => '');
-    check('unsupported browser (phone): a friendly card names the cause', /cannot run apps/.test(txt) && /cross-origin isolated/.test(txt), txt.slice(0, 120));
+    check('unsupported browser (phone): a friendly card names the cause', /cannot run the Dot/.test(txt) && /cross-origin isolated/.test(txt), txt.slice(0, 120));
     check('unsupported browser (phone): nothing crashed, no overflow', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({ path: join(shots, 'phone-unsupported.png') });
     await ctx.close();

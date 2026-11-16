@@ -2,7 +2,7 @@ import type { LogLevel } from '../device/types';
 
 /**
  * Firmware log lines arrive with their own decoration: a shell prompt glued in front ("kode> "), a level marker
- * ("!I ", "!W ", "!E ", "!D ") and an ISO timestamp. The console shows one compact time column and the bare message,
+ * ("!I ", "!N " for notices, "!W ", "!E ", "!D ") and an ISO timestamp. The console shows one compact time column and the bare message,
  * so this splits a raw line into its parts. Pure: unit-tested in logline.test.ts.
  */
 export interface CleanLine {
@@ -14,7 +14,7 @@ export interface CleanLine {
   level: LogLevel | null;
 }
 
-const MARKER: Record<string, LogLevel> = { I: 'info', W: 'warn', E: 'error', D: 'debug', V: 'debug' };
+const MARKER: Record<string, LogLevel> = { I: 'info', N: 'info', W: 'warn', E: 'error', D: 'debug', V: 'debug' };
 const ISO = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?)\s+/;
 
 export function cleanLogLine(raw: string): CleanLine {
@@ -24,7 +24,7 @@ export function cleanLogLine(raw: string): CleanLine {
   // a prompt printed just before an asynchronous log line: drop it (a prompt followed by anything else stays)
   const prompt = /^[\w.-]{1,16}>\s+(?=![A-Z]\s|\d{4}-\d{2}-\d{2}T)/.exec(s);
   if (prompt) s = s.slice(prompt[0].length);
-  const marker = /^!([IWEDV])\s+/.exec(s);
+  const marker = /^!([INWEDV])\s+/.exec(s);
   if (marker) {
     level = MARKER[marker[1]];
     s = s.slice(marker[0].length);

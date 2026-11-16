@@ -35,3 +35,9 @@ describe('effectiveLevel', () => {
     expect(effectiveLevel('error', null)).toBe('error');
   });
 });
+
+describe('notice marker', () => {
+  it('reads "!N" (notice) as an info line and drops the marker and the stamp', () => {
+    expect(cleanLogLine('!N 2026-11-16T22:41:35.687Z kgui assets: source=fat')).toEqual({ text: 'kgui assets: source=fat', time: Date.parse('2026-11-16T22:41:35.687Z'), level: 'info' });
+  });
+});
