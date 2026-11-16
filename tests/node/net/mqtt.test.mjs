@@ -117,9 +117,10 @@ ws.broker.publish(TIN, "", { retain: true });   // clear it
 // ---- the router goes away: AO_Net stops the client; back on, it reconnects ----
 m = a.mark(); home.powerOff();
 await a.waitLog(/broker (down|connecting) \(/, 10000, m);
-check(ws.broker.clients().length === 0 || true, "router off: the client is gone");
+await until(() => ws.broker.clients().length === 0, "broker sees the client leave");
+check(ws.broker.clients().length === 0, "router off: the client is gone from the broker");
 await sleep(600);
-home.powerOn();
+m = a.mark(); home.powerOn();
 await listening(m);
 check(a.net.mqttClients().some((c) => c.state === "up"), "router back: the board rejoined and the client is up again", a.net.mqttClients());
 n0 = published.length; p = await pub(TOP, "top again");
