@@ -1,0 +1,16 @@
+{
+  "area": "wifi",
+  "description": "Wi-Fi: esp_wifi / esp_netif over router bench objects (SSID, security, channel, signal, hidden, internet, DHCP), under the SDK's real kdrv_wifi and AO_Radio",
+  "sdkconfig": {
+    "CONFIG_KODEOS_WIFI": "y"
+  },
+  "sources": [
+    "*.c"
+  ],
+  "js": [
+    "wifi.js"
+  ],
+  "test_apps": [
+    "sdk:examples/network"
+  ]
+}
