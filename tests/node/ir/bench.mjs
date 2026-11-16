@@ -1,5 +1,6 @@
 // Shared helpers of the IR tests: boot an app, attach the real glue (runtime/drivers/ir/ir.js as packaged in the .dotbench) to the booted
 // module the way the browser adapter does, and drive the app's console.
+import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { boot, pkgPath, sleep } from "../harness.mjs";
 
@@ -30,10 +31,17 @@ export async function bootIr(pkg, opts = {}) {
   };
   const mod = await import(pathToFileURL(a.dir + "/glue/ir/ir.js").href);
   const ir = mod.default(ctx);
+  // With the radio area merged, CONFIG_KODEOS_RADIO is on: AO_Ir waits for the C5 link, which only exists while the radio glue is attached.
+  let radio = null;
+  const hasRadio = fs.existsSync(a.dir + "/glue/radio/radio.js");
+  if (hasRadio && opts.radio !== false) {
+    radio = (await import(pathToFileURL(a.dir + "/glue/radio/radio.js").href)).default(ctx);
+    radio.fastTiming?.();
+  }
   const timer = setInterval(() => ticks.forEach((cb) => cb()), 20);
   const shutdown = a.shutdown;
-  a.shutdown = () => { clearInterval(timer); ir.dispose(); shutdown(); };
-  a.ir = ir; a.events = events; a.glue = mod; a.call = ctx.call;
+  a.shutdown = () => { clearInterval(timer); ir.dispose(); radio?.dispose?.(); shutdown(); };
+  a.ir = ir; a.radio = radio; a.hasRadio = hasRadio; a.events = events; a.glue = mod; a.call = ctx.call;
 
   // ---- console ----
   a.type = (line) => {
@@ -61,6 +69,26 @@ export async function bootIr(pkg, opts = {}) {
     const line = "function name=\"" + name + "\"" + (arg === undefined ? "" : " arg=" + (typeof arg === "string" ? JSON.stringify(arg) : arg));
     return a.cmd(line, new RegExp("^(" + name + "|busy)\\b"), ms);
   };
+  /** kode_ir_receive_raw as the app logs it: { count, carrier, all (durations as the SDK gives them), us (without the idle 0), endsZero } or null. */
+  a.parseRaw = (lines) => {
+    const head = /^rxraw count=(\d+) carrier=(\d+)/.exec(lines.find((l) => l.startsWith("rxraw count=")) ?? "");
+    if (!head) return null;
+    const all = [];
+    for (const l of lines) { const m = /^rxdata at=(\d+) us=([\d,]+)$/.exec(l); if (m) all.push(...m[2].split(",").map(Number)); }
+    return { count: +head[1], carrier: +head[2], all, endsZero: all.at(-1) === 0, us: all.at(-1) === 0 ? all.slice(0, -1) : all };
+  };
+  /** The latest rxraw answer, parsed (see parseRaw). */
+  a.rawResult = () => {
+    const lines = a.res().map((l) => l.slice(l.indexOf("RES ") + 4));
+    const i = lines.map((l) => l.startsWith("rxhead")).lastIndexOf(true);
+    return a.parseRaw(i < 0 ? lines.slice(-1) : lines.slice(i + 1));
+  };
+  /** Send a raw train through kode_ir_send_raw: txadd in pieces (the console line is short), then txraw. Resolves with the RES text. */
+  a.txRaw = async (durations, carrier = 38000) => {
+    for (let i = 0; i < durations.length; i += 40) a.type('function name="txadd" arg="' + durations.slice(i, i + 40).join(",") + '"');
+    await sleep(60);
+    return a.fn("txraw", String(carrier));
+  };
   /** Start a console function without waiting (for a window the test fills in itself). Resolves with the RES text. */
   a.fnAsync = (name, arg, ms) => a.fn(name, arg, ms);
   /** Wait until the app's receiver is armed, i.e. AO_Ir is listening. */
@@ -78,4 +106,12 @@ export async function bootIr(pkg, opts = {}) {
   a.stubLines = () => (a.logText() + "\n" + a.logs.join("\n")).split("\n").filter((l) => /not implemented/.test(l));
   if (pkg === "ir_api") await a.waitFor(() => a.logText().includes("ir_api up"), 20000, "app boot");
   return a;
+}
+
+/** The public kode_ir_* calls are compiled out of a firmware without CONFIG_KODEOS_RADIO, which only the radio area turns on. */
+export function needRadio(a, name) {
+  if (a.hasRadio) return;
+  console.log(name + ": SKIPPED (the radio area is not in this tree: kode_ir_* needs CONFIG_KODEOS_RADIO and the C5 link it provides)");
+  a.shutdown();
+  process.exit(0);
 }

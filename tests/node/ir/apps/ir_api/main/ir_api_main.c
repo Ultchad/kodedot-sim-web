@@ -4,7 +4,7 @@
  *   send "nec;ADDR;CMD" | sendp "proto;ADDR;CMD"   kode_ir_send(protocol, addr, cmd)
  *   recv ms | last                                  kode_ir_receive(ms) | kode_ir_last()
  *   rxraw ms                                        kode_ir_receive_raw(ms): count, carrier, durations
- *   txraw "CARRIER;d1,d2,..."                       kode_ir_send_raw
+ *   txraw "CARRIER;d1,d2,..." | txadd "d,d,.." then txraw "CARRIER"   kode_ir_send_raw (long trains: txadd in pieces)
  *   cat "path"                                     kode_file_read(path) with newlines shown as |
  *   capstart "path" | capstop | sendfile "path"     capture to a file / play it back
  * and every "ir_received" event is logged as "RES event source=.. value=.. text=..". */
@@ -25,6 +25,8 @@ KODE_APP_MANIFEST("IR API", "test");
 typedef struct { volatile int cmd; int32_t ms; char text[1200]; } slot_t;
 enum { C_NONE = 0, C_SEND, C_RECV, C_LAST, C_RXRAW, C_TXRAW, C_CAPSTART, C_CAPSTOP, C_SENDFILE, C_CAT };
 static slot_t g_slot;
+static uint16_t g_tx[KODE_IR_RAW_MAX];   /* the raw train being built by txadd, sent by txraw */
+static uint32_t g_txn;
 
 static void res_code(const char *what, kode_ir_code_t c)
 {
@@ -36,7 +38,6 @@ static void task_main(void *arg)
 {
     (void)arg;
     static char line[KODE_IR_RAW_MAX * 6 + 64];
-    static uint16_t us[KODE_IR_RAW_MAX];
     for (;;) {
         int cmd = g_slot.cmd;
         if (cmd == C_NONE) { vTaskDelay(5); continue; }
@@ -57,21 +58,29 @@ static void task_main(void *arg)
         case C_RXRAW: {
             const kode_ir_raw_t *r = kode_ir_receive_raw((uint32_t)s->ms);
             if (r && r->count) {
-                int o = snprintf(line, sizeof line, "RES rxraw count=%u carrier=%u us=", (unsigned)r->count, (unsigned)r->carrier_hz);
-                for (uint32_t i = 0; i < r->count && o < (int)sizeof line - 8; i++) o += snprintf(line + o, sizeof line - (size_t)o, "%s%u", i ? "," : "", (unsigned)r->us[i]);
-                KLOG_N(TAG, "%s", line);
+                KLOG_N(TAG, "RES rxhead count=%u carrier=%u", (unsigned)r->count, (unsigned)r->carrier_hz);
+                for (uint32_t i = 0; i < r->count; i += 24) {   /* the logger cuts a line at about 250 characters */
+                    int o = snprintf(line, sizeof line, "RES rxdata at=%u us=", (unsigned)i);
+                    for (uint32_t k = i; k < r->count && k < i + 24; k++) o += snprintf(line + o, sizeof line - (size_t)o, "%s%u", k > i ? "," : "", (unsigned)r->us[k]);
+                    KLOG_N(TAG, "%s", line);
+                }
+                KLOG_N(TAG, "RES rxraw count=%u carrier=%u", (unsigned)r->count, (unsigned)r->carrier_hz);
             } else KLOG_N(TAG, "RES rxraw count=0 err=%s", kode_error());
             break;
         }
         case C_TXRAW: {
             char *semi = strchr(s->text, ';');
-            uint32_t carrier = 38000, n = 0;
-            char *p = s->text;
-            if (semi) { *semi = 0; carrier = (uint32_t)atoi(s->text); p = semi + 1; }
-            while (*p && n < KODE_IR_RAW_MAX) { us[n++] = (uint16_t)strtoul(p, &p, 10); if (*p == ',') p++; }
-            bool ok = kode_ir_send_raw(us, n, carrier);
-            if (ok) KLOG_N(TAG, "RES txraw ok=1 n=%u", (unsigned)n);
+            uint32_t carrier = (uint32_t)atoi(s->text);
+            if (carrier == 0) carrier = 38000;
+            if (semi) {   /* "carrier;d1,d2,..." replaces the buffer */
+                char *p = semi + 1;
+                g_txn = 0;
+                while (*p && g_txn < KODE_IR_RAW_MAX) { g_tx[g_txn++] = (uint16_t)strtoul(p, &p, 10); if (*p == ',') p++; }
+            }
+            bool ok = kode_ir_send_raw(g_tx, g_txn, carrier);
+            if (ok) KLOG_N(TAG, "RES txraw ok=1 n=%u", (unsigned)g_txn);
             else KLOG_N(TAG, "RES txraw ok=0 err=%s", kode_error());
+            g_txn = 0;
             break;
         }
         case C_CAPSTART: { bool ok = kode_ir_capture_start(s->text); if (ok) KLOG_N(TAG, "RES capstart ok=1"); else KLOG_N(TAG, "RES capstart ok=0 err=%s", kode_error()); break; }
@@ -102,6 +111,13 @@ static kode_status_t f_recv(const kode_value_t *a) { return post(C_RECV, a->i, N
 static kode_status_t f_last(const kode_value_t *a) { (void)a; return post(C_LAST, 0, NULL); }
 static kode_status_t f_rxraw(const kode_value_t *a) { return post(C_RXRAW, a->i, NULL); }
 static kode_status_t f_txraw(const kode_value_t *a) { return post(C_TXRAW, 0, a->s); }
+static kode_status_t f_txadd(const kode_value_t *a)   /* appends durations; does not block, no RES line */
+{
+    const char *p = a->s;
+    if (g_slot.cmd != C_NONE) return KODE_DENIED;
+    while (*p && g_txn < KODE_IR_RAW_MAX) { g_tx[g_txn++] = (uint16_t)strtoul(p, (char **)&p, 10); if (*p == ',') p++; }
+    return KODE_OK;
+}
 static kode_status_t f_capstart(const kode_value_t *a) { return post(C_CAPSTART, 0, a->s); }
 static kode_status_t f_capstop(const kode_value_t *a) { (void)a; return post(C_CAPSTOP, 0, NULL); }
 static kode_status_t f_sendfile(const kode_value_t *a) { return post(C_SENDFILE, 0, a->s); }
@@ -113,6 +129,7 @@ static const kode_function_t FUNCTIONS[] = {
     { .name = "last", .run = f_last, .desc = "kode_ir_last()" },
     { .name = "rxraw", .arg = KODE_TYPE_INT, .min = 0, .max = 600000, .run = f_rxraw, .desc = "kode_ir_receive_raw(ms)" },
     { .name = "txraw", .arg = KODE_TYPE_STRING, .run = f_txraw, .desc = "kode_ir_send_raw(\"carrier;us,us,...\")" },
+    { .name = "txadd", .arg = KODE_TYPE_STRING, .run = f_txadd, .desc = "add durations to the raw train" },
     { .name = "capstart", .arg = KODE_TYPE_STRING, .run = f_capstart, .desc = "kode_ir_capture_start(path)" },
     { .name = "capstop", .run = f_capstop, .desc = "kode_ir_capture_stop()" },
     { .name = "cat", .arg = KODE_TYPE_STRING, .run = f_cat, .desc = "kode_file_read(path), newlines shown as |" },

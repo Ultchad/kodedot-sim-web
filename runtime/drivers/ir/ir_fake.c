@@ -27,6 +27,10 @@
 #include "dotbench_persist.h"
 #include "kdrv_ir.h"
 #include "kode_log.h"
+#include "sdkconfig.h"
+#if CONFIG_KODEOS_RADIO
+#include "kdrv_radio.h"
+#endif
 
 #define TAG "dotbench.ir"
 
@@ -77,6 +81,7 @@ static struct {
     size_t echo_n;
     kdrv_ir_symbol_t echo[KDRV_IR_TX_MAX_SYMBOLS];
     int cb_pending;
+    bool was_c5;
     uint32_t stat[IRS_COUNT];
 } g = { .cfg = { [IRK_LINK] = 1, [IRK_RX_FITTED] = 1, [IRK_REST_HIGH] = 1 } };
 
@@ -92,6 +97,20 @@ static uint32_t now_ms(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint32_t)(ts.tv_sec * 1000u + ts.tv_nsec / 1000000u);
+}
+
+/* Whether the block is reachable now (lock held). As on the board the block is behind the C5 link: with CONFIG_KODEOS_RADIO the
+ * link is the radio's (kdrv_radio_link_up(): a plain read), and a link that comes up means the C5 was just reset, so its receiver is
+ * not armed and nothing is in flight: what the real driver's link-up callback does. cfg[IRK_LINK] is the bench's own "IR block down". */
+static bool link_ok(void)
+{
+#if CONFIG_KODEOS_RADIO
+    bool c5 = kdrv_radio_link_up();
+    if (c5 && !g.was_c5) { g.armed = false; g.ready = false; g.tx_busy = false; g.rx_len = 0; }
+    g.was_c5 = c5;
+    if (!c5) return false;
+#endif
+    return g.cfg[IRK_LINK] != 0;
 }
 
 static void wake(void)
@@ -134,7 +153,7 @@ static void store_capture(const kdrv_ir_symbol_t *s, size_t n, uint32_t stretch)
 
 static bool receiver_hears_locked(void)
 {
-    return g.init && g.cfg[IRK_LINK] && !g.cfg[IRK_RX_DEAF] && g.cfg[IRK_RX_FITTED];
+    return g.init && link_ok() && !g.cfg[IRK_RX_DEAF] && g.cfg[IRK_RX_FITTED];
 }
 
 /* The thread that plays the C5 link's: calls the owner's callback, and delivers the echo of an own send at the end of its frame. */
@@ -199,7 +218,7 @@ kode_status_t kdrv_ir_rx_idle(bool *high)
     if (!high) return KODE_DENIED;
     lock();
     kode_status_t rc = KODE_DENIED;
-    if (g.init && g.cfg[IRK_LINK]) {
+    if (g.init && link_ok()) {
         *high = g.cfg[IRK_REST_HIGH] != 0;
         rc = KODE_OK;
     }
@@ -212,7 +231,7 @@ kode_status_t kdrv_ir_rx_present(bool *present)
     if (!present) return KODE_DENIED;
     lock();
     kode_status_t rc = KODE_DENIED;
-    if (g.init && g.cfg[IRK_LINK]) {
+    if (g.init && link_ok()) {
         *present = g.cfg[IRK_RX_FITTED] != 0;
         /* the probe re-arms the receiver on its way out and loses whatever was waiting */
         g.ready = false;
@@ -227,7 +246,7 @@ kode_status_t kdrv_ir_send(const kdrv_ir_symbol_t *sym, size_t n, uint32_t carri
 {
     if (!sym || n == 0 || n > KDRV_IR_TX_MAX_SYMBOLS || carrier_hz == 0) return KODE_DENIED;
     lock();
-    if (!g.init || !g.cfg[IRK_LINK]) { g.stat[IRS_SEND_REFUSED]++; unlock(); return KODE_DENIED; }
+    if (!g.init || !link_ok()) { g.stat[IRS_SEND_REFUSED]++; unlock(); return KODE_DENIED; }
     uint32_t now = now_ms();
     if (g.tx_busy && (int32_t)(now - g.tx_end_ms) < 0) { g.stat[IRS_SEND_REFUSED]++; unlock(); return KODE_DENIED; }
 
@@ -284,7 +303,7 @@ kode_status_t kdrv_ir_rx_arm(void)
 {
     lock();
     kode_status_t rc;
-    if (!g.init || !g.cfg[IRK_LINK]) rc = KODE_DENIED;
+    if (!g.init || !link_ok()) rc = KODE_DENIED;
     else if (g.armed) rc = KODE_ERROR;      /* a capture is in flight */
     else {
         g.rx_len = 0;
@@ -311,7 +330,7 @@ EMSCRIPTEN_KEEPALIVE int ir_rx_inject(const uint16_t *us, int n, uint32_t carrie
     int rc;
     lock();
     if (!g.init) { g.stat[IRS_DROP_NOINIT]++; rc = -4; }
-    else if (!g.cfg[IRK_LINK]) { g.stat[IRS_DROP_LINK]++; rc = -1; }
+    else if (!link_ok()) { g.stat[IRS_DROP_LINK]++; rc = -1; }
     else if (g.cfg[IRK_RX_DEAF] || !g.cfg[IRK_RX_FITTED]) { g.stat[IRS_DROP_DEAF]++; rc = -2; }
     else if (carrier_hz < RX_BAND_LO || carrier_hz > RX_BAND_HI) { g.stat[IRS_DROP_CARRIER]++; rc = -3; }
     else if (!g.armed) { g.stat[IRS_DROP_UNARMED]++; rc = 0; }

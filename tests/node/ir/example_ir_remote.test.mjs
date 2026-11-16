@@ -5,7 +5,6 @@ import { BTN } from "../harness.mjs";
 
 const a = await bootIr("ir_remote");
 await a.waitFor(() => a.logText().includes("up; the top button learns a remote key"), 20000, "example up");
-await a.waitArmed();
 const logs = () => a.logText();
 const press = async (id) => { a.button(id, true); await sleep(80); a.button(id, false); };
 const tv = a.ir.tv({ name: "TV" });
@@ -20,6 +19,7 @@ check(a.ir.state().sends === 0, "nothing learned: nothing was sent");
 // 2. learn Power from the Remote
 await press(BTN.TOP);
 await a.waitFor(() => /listening for 10 s/.test(logs()), 10000, "listening");
+await a.waitArmed();   // the first request of a boot brings the C5 link up (AO_Radio), then AO_Ir arms the receiver
 let r = await rem.press("Power");
 check(r.ok, "the Remote's Power frame reached the Dot", r);
 await a.waitFor(() => /learned NEC addr=0xFB04 cmd=0x0008/.test(logs()), 10000, "learned");
@@ -76,6 +76,14 @@ r = await rem.hold("Power", 330);
 check(r.frames.length >= 3, "hold sent the first frame and repeat frames", r.frames.length);
 await a.waitFor(() => /learned NEC addr=0xFB04 cmd=0x0008/.test(logs().split("listening for 10 s").at(-1)), 10000, "learned after hold");
 check(true, "the first frame of a hold was learned");
+
+// 7. nobody there: the learning window ends with AO_Ir's own KODE_TIMEOUT, exactly (kode_sys_ir_capture, no blocking wrapper in between)
+await sleep(200);
+await press(BTN.TOP);
+const t0 = Date.now();
+await a.waitFor(() => /nothing heard in 10 s/.test(logs()), 20000, "learning window timeout");
+const dt = Date.now() - t0;
+check(dt >= 9500 && dt < 14000, "silence: the 10 s learning window ends with 'nothing heard in 10 s' (KODE_TIMEOUT)", dt + " ms");
 
 check(a.stubLines().filter((l) => /ir_|knec|rmt|radio/i.test(l)).length === 0, "no 'dotbench: ... not implemented' stub fired for an IR function", a.stubLines().slice(0, 5));
 done(a, "example_ir_remote");
