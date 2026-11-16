@@ -10,8 +10,8 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../device/types';
 export type DeviceSpec = typeof specJson;
 export const SPEC: DeviceSpec = specJson;
 
-/** ESTIMATE: thickness is not in the data. Used only for the 3D body depth. */
-export const DEVICE_THICKNESS_MM_ESTIMATE = 12;
+/** ESTIMATE from reference pictures (not in the data): overall depth of the body in mm. Used only for the 3D model. */
+export const DEVICE_THICKNESS_MM_ESTIMATE = 19;
 /** ESTIMATE measured by eye on the render's alpha edge (about 48 px at 12.39 px/mm). */
 export const BODY_CORNER_RADIUS_MM_ESTIMATE = 4.0;
 /** ESTIMATE from the render: coloured cap diameter / outer ring diameter (the JSON gives the ring). */

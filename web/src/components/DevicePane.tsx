@@ -1,14 +1,16 @@
-import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react';
+import { Component, Suspense, lazy, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { poseOf, MOTION_KIND } from '../bench/motion';
 import { useBenchState } from '../state/bench';
 import { useI18n } from '../i18n';
 import { isPhone } from '../lib/layout';
-import { KEY_HINT } from '../lib/keys';
 import { ZERO_POSE } from '../lib/pose';
 import { loadPref, savePref } from '../lib/prefs';
 import { useHost } from '../state/host';
-import { useObservable } from '../state/hooks';
+import type { PanelId, PanelPlacement } from '../lib/layout';
 import { Device2D } from './Device2D';
+import { DeviceStatusCard } from './DeviceStatusCard';
+import { Icon } from './Glyphs';
+import { NoticeBanner } from './Notice';
 
 const Device3D = lazy(() => import('./Device3D'));
 
@@ -50,17 +52,59 @@ class Boundary extends Component<{ onError(): void; children: ReactNode }, { fai
   }
 }
 
-type Zoom2D = 'fit' | 1 | 2 | 3;
+/**
+ * The 3D canvas releases its WebGL context when it unmounts (switching to 2D). That is not a failure, so "context lost"
+ * only counts while this wrapper is mounted.
+ */
+function Live3D(props: ComponentProps<typeof Device3D>) {
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  return (
+    <Device3D
+      {...props}
+      onContextLost={() => {
+        if (alive.current) props.onContextLost();
+      }}
+    />
+  );
+}
 
-export function DevicePane() {
+type Zoom2D = 'fit' | 1 | 2 | 3;
+const ZOOMS: readonly Zoom2D[] = ['fit', 1, 2, 3];
+
+export interface PanelControl {
+  open: boolean;
+  placement: PanelPlacement;
+  toggle(): void;
+}
+
+/** Opens or closes a side card. It sits at the end of the stage toolbar on the card's own side. */
+function PanelToggle({ id, ctl }: { id: PanelId; ctl: PanelControl }) {
+  const { t } = useI18n();
+  const label = t(id === 'bench' ? 'nav.bench' : 'nav.console');
+  const hint = t(ctl.open ? 'panel.hide' : 'panel.show', { panel: label });
+  return (
+    <button type="button" className="chip" aria-expanded={ctl.open} aria-controls={`panel-${id}`} aria-label={hint} title={hint} onClick={ctl.toggle} data-testid={`drawer-${id}`}>
+      <Icon name={id === 'bench' ? 'panelLeft' : 'panelRight'} className={id === 'console' ? 'order-2' : ''} />
+      <span className={ctl.open ? 'hidden @[680px]:inline' : ''}>{label}</span>
+    </button>
+  );
+}
+
+export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> }) {
   const { t } = useI18n();
   const host = useHost();
   const { layout, viewMode, device, painter } = host;
   const phone = isPhone(layout);
   const reduced = useReducedMotion();
   const [zoom2d, setZoom2d] = useState<Zoom2D>(() => {
-    const z = loadPref<unknown>('dotbench.zoom2d', 1);
-    return z === 'fit' || z === 2 || z === 3 ? z : 1;
+    const z = loadPref<unknown>('dotbench.zoom2d', 'fit');
+    return z === 1 || z === 2 || z === 3 ? z : 'fit';
   });
   const [resetSignal, setResetSignal] = useState(0);
 
@@ -84,53 +128,59 @@ export function DevicePane() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t('device.region')}>
       {showToolbar && (
-        <div className="flex flex-wrap items-center justify-center gap-2 border-b border-line px-3 py-2" role="toolbar" aria-label={t('device.view')}>
-          <div className="flex" role="group" aria-label={t('device.view')}>
-            <button type="button" className="btn rounded-r-none" aria-pressed={show3d} disabled={host.glFailed} onClick={() => host.setViewMode('3d')} data-testid="view-3d">
-              3D
-            </button>
-            <button type="button" className="btn -ml-px rounded-l-none" aria-pressed={!show3d} onClick={() => host.setViewMode('2d')} data-testid="view-2d">
-              2D
-            </button>
-          </div>
-          {show3d ? (
-            <>
-              <button type="button" className="btn" onClick={() => setResetSignal((n) => n + 1)} data-testid="recenter">
-                {t('device.recenter')}
+        <div className={`@container flex shrink-0 items-center gap-2 ${phone ? 'justify-center px-2 py-2' : 'relative z-[35] h-[60px] px-2'}`} role="toolbar" aria-label={t('device.view')} style={phone ? { paddingTop: 'max(8px, env(safe-area-inset-top))' } : undefined}>
+          {panels && <PanelToggle id="bench" ctl={panels.bench} />}
+          <div className={`flex min-w-0 items-center justify-center gap-2 ${phone ? '' : 'flex-1'}`}>
+            <div className="seg" role="group" aria-label={t('device.view')}>
+              <button type="button" className="chip" aria-pressed={show3d} disabled={host.glFailed} title={host.glFailed ? t('device.glFallback') : undefined} onClick={() => host.setViewMode('3d')} data-testid="view-3d">
+                3D
               </button>
-              <label className="flex cursor-pointer items-center gap-2 text-[12px] text-ink2">
-                <input
-                  type="checkbox"
-                  checked={host.tiltLink}
-                  data-testid="tilt-link"
-                  onChange={(e) => {
-                    host.setTiltLink(e.target.checked);
-                    if (e.target.checked && !host.bench.activeIn('motion')) host.applyPose(ZERO_POSE);
-                  }}
-                  className="accent-[var(--accent)]"
-                />
-                {t('device.tilt')}
-              </label>
-            </>
-          ) : (
-            !phone && (
-              <div className="flex" role="group" aria-label={t('device.zoom')}>
-                {([1, 2, 3, 'fit'] as const).map((z, i) => (
-                  <button key={z} type="button" aria-pressed={zoom2d === z} className={`btn ${i ? '-ml-px' : ''} ${i === 0 ? 'rounded-r-none' : i === 3 ? 'rounded-l-none' : 'rounded-none'}`} onClick={() => pickZoom(z)}>
-                    {z === 'fit' ? t('device.fit') : `${z}×`}
-                  </button>
-                ))}
-              </div>
-            )
-          )}
+              <button type="button" className="chip" aria-pressed={!show3d} onClick={() => host.setViewMode('2d')} data-testid="view-2d">
+                2D
+              </button>
+            </div>
+            {show3d ? (
+              <>
+                <button type="button" className="chip" onClick={() => setResetSignal((n) => n + 1)} data-testid="recenter" aria-label={t('device.recenter')} title={t('device.recenter')}>
+                  <Icon name="recenter" />
+                  <span className="hidden @[600px]:inline">{t('device.recenter')}</span>
+                </button>
+                <label className="pill h-[var(--compact-h)] cursor-pointer !gap-2 !pl-1.5" title={t('device.tilt.hint')}>
+                  <input
+                    type="checkbox"
+                    className="switch"
+                    checked={host.tiltLink}
+                    data-testid="tilt-link"
+                    aria-label={t('device.tilt.hint')}
+                    onChange={(e) => {
+                      host.setTiltLink(e.target.checked);
+                      if (e.target.checked && !host.bench.activeIn('motion')) host.applyPose(ZERO_POSE);
+                    }}
+                  />
+                  <span className="font-semibold">{t('device.tilt')}</span>
+                </label>
+              </>
+            ) : (
+              !phone && (
+                <div className="seg" role="group" aria-label={t('device.zoom')} data-testid="zoom-group">
+                  {ZOOMS.map((z) => (
+                    <button key={z} type="button" aria-pressed={zoom2d === z} className="chip" title={z === 'fit' ? t('device.fit.hint') : t('device.zoom.hint', { zoom: z })} onClick={() => pickZoom(z)} data-testid={`zoom-${z}`}>
+                      {z === 'fit' ? t('device.fit') : `${z}×`}
+                    </button>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+          {panels && <PanelToggle id="console" ctl={panels.console} />}
         </div>
       )}
 
-      <div className="relative flex min-h-0 min-w-0 flex-1" style={phone ? { padding: 'env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)' } : undefined}>
+      <div className="relative flex min-h-0 min-w-0 flex-1" data-testid="stage" style={phone ? { padding: `${showToolbar ? '0px' : 'env(safe-area-inset-top)'} env(safe-area-inset-right) 0 env(safe-area-inset-left)` } : undefined}>
         {show3d ? (
           <Boundary onError={() => host.reportGlFailure('unavailable')}>
-            <Suspense fallback={<div className="m-auto font-mono text-[11px] text-ink3">{t('device.loading3d')}</div>}>
-              <Device3D
+            <Suspense fallback={<div className="m-auto text-[14px] text-ink2">{t('device.loading3d')}</div>}>
+              <Live3D
                 device={device}
                 input={host.input}
                 painter={painter}
@@ -144,51 +194,57 @@ export function DevicePane() {
             </Suspense>
           </Boundary>
         ) : (
-          <Device2D zoom={phone ? 'fit' : zoom2d} crop={phone} />
+          <Device2D zoom={phone ? 'fit' : zoom2d} crop={phone} inset={phone ? 0 : 8} />
         )}
+        <DeviceStatusCard />
+        <NoticeBanner />
       </div>
-
-      {!phone && <Hud show3d={show3d} />}
+      {!phone && <WelcomeHint />}
     </section>
   );
 }
 
-function Hud({ show3d }: { show3d: boolean }) {
-  const { t, fmt } = useI18n();
-  const { device } = useHost();
-  const led = useObservable(device.led);
-  const haptic = useObservable(device.haptic);
-  const backlight = useObservable(device.backlight);
-  const panelOn = useObservable(device.panelOn);
-  const on = led.r + led.g + led.b > 0;
-  const rgb = `rgb(${led.r}, ${led.g}, ${led.b})`;
+/**
+ * First visit only: says that the device is live, how to run an app of one's own and where the bench is. It never
+ * covers the device: under it on desktop, on top of the bottom bar on a phone, inside the side panel in phone landscape.
+ * Gone for good with "Got it", or once an own app was loaded.
+ */
+export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | 'panel' }) {
+  const { t } = useI18n();
+  const { welcome, dismissWelcome, requestApps, bundles } = useHost();
+  useEffect(() => {
+    if (welcome && bundles.length > 0) dismissWelcome();
+  }, [welcome, bundles.length, dismissWelcome]);
+  if (!welcome) return null;
+  if (variant !== 'desk') {
+    return (
+      <aside className={`anim-rise shrink-0 ${variant === 'panel' ? 'px-3 pb-2' : 'px-3'}`} aria-label={t('welcome.title')} data-testid="welcome">
+        <div className="inner flex items-center gap-2 py-1.5 pl-4 pr-1.5">
+          <p className="m-0 min-w-0 flex-1 text-[13.5px] leading-snug">
+            <strong className="font-semibold">{t('welcome.title')}</strong> {t(variant === 'panel' ? 'welcome.body.side' : 'welcome.body.phone')}
+          </p>
+          <button type="button" className="btn btn-sm btn-primary shrink-0" onClick={dismissWelcome} data-testid="welcome-dismiss">
+            {t('welcome.dismiss')}
+          </button>
+        </div>
+      </aside>
+    );
+  }
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 border-t border-line px-3 py-2 font-mono text-[11px] text-ink2">
-      <span className="flex items-center gap-2" title={t('hud.led')}>
-        <span className="eyebrow">{t('hud.led')}</span>
-        <span
-          data-testid="led"
-          data-color={rgb}
-          role="img"
-          aria-label={`${t('hud.led')} ${on ? rgb : t('hud.off')}`}
-          className="inline-block h-3 w-3 rounded-full border border-line2"
-          style={{ background: on ? rgb : 'transparent', boxShadow: on ? `0 0 10px 2px ${rgb}` : 'none' }}
-        />
-      </span>
-      <span className="flex items-center gap-2">
-        <span className="eyebrow">{t('hud.haptic')}</span>
-        <span className="relative h-1.5 w-14 overflow-hidden rounded-full bg-panel2" role="meter" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Number(haptic.toFixed(2))} aria-label={t('hud.haptic')}>
-          <span className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${haptic * 100}%` }} />
-        </span>
-      </span>
-      <span className="flex items-center gap-2">
-        <span className="eyebrow">{t('hud.backlight')}</span>
-        <span data-testid="backlight">{panelOn ? `${fmt.number(backlight)}%` : t('hud.off')}</span>
-      </span>
-      <span className="hidden text-ink3 xl:inline">
-        {t('hud.keys', { top: KEY_HINT.top, bottom: KEY_HINT.bottom, arrows: '← ↑ ↓ →' })}
-        {show3d ? ` · ${t('device.hint3d')}` : ''}
-      </span>
-    </div>
+    <aside className="anim-rise shrink-0 pb-1 pt-2" aria-label={t('welcome.title')} data-testid="welcome">
+      <div className="inner mx-auto flex max-w-[44rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+        <p className="m-0 min-w-[14rem] flex-1 text-[14px] leading-snug">
+          <strong className="font-semibold">{t('welcome.title')}</strong> {t('welcome.body')}
+        </p>
+        <div className="flex shrink-0 gap-2">
+          <button type="button" className="btn btn-sm" onClick={requestApps} data-testid="welcome-open">
+            {t('welcome.open')}
+          </button>
+          <button type="button" className="btn btn-sm btn-primary" onClick={dismissWelcome} data-testid="welcome-dismiss">
+            {t('welcome.dismiss')}
+          </button>
+        </div>
+      </div>
+    </aside>
   );
 }

@@ -2,7 +2,7 @@ import type { MotionPose } from '../device/motion';
 
 const DEG = Math.PI / 180;
 
-export const ORBIT_LIMITS = { pitch: 60, roll: 135 } as const;
+export const ORBIT_LIMITS = { pitch: 80, roll: 180 } as const;
 
 /**
  * Model orientation for a pose. Neutral (0,0,0) is the device upright, facing the viewer.

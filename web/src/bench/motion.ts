@@ -24,9 +24,9 @@ export const motionKind: KindDef = {
   defaults: { pitch: 0, roll: 0, heading: 0 },
   actions: [{ key: 'shake', labelKey: 'action.shake' }],
   sync(device, active) {
-    device.areas.motion?.setPose(active ? clampPose(poseOf(active)) : null);
+    device.areas.motion?.setPose?.(active ? clampPose(poseOf(active)) : null);
   },
   run(device, _obj, action) {
-    if (action === 'shake') device.areas.motion?.shake();
+    if (action === 'shake') device.areas.motion?.shake?.();
   },
 };

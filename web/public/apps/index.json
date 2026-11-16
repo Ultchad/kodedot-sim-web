@@ -1,0 +1,30 @@
+{
+  "apps": [
+    {
+      "id": "display_lvgl",
+      "file": "display_lvgl.dotbench",
+      "name": "Display",
+      "description": {
+        "en": "A touch demo that draws a small LVGL interface on the screen. Tap and drag on the glass.",
+        "pt-BR": "Uma demonstração de toque que desenha uma pequena interface LVGL na tela. Toque e arraste no vidro.",
+        "es": "Una demostración táctil que dibuja una pequeña interfaz LVGL en la pantalla. Toca y arrastra sobre el cristal."
+      },
+      "size": 422690,
+      "version": "0.0.0",
+      "sdkCommit": "c9568a3"
+    },
+    {
+      "id": "buttons_led",
+      "file": "buttons_led.dotbench",
+      "name": "Buttons + LED",
+      "description": {
+        "en": "Press the top button to switch the LED between green and red.",
+        "pt-BR": "Aperte o botão de cima para alternar o LED entre verde e vermelho.",
+        "es": "Pulsa el botón superior para cambiar el LED entre verde y rojo."
+      },
+      "size": 141713,
+      "version": "0.0.0",
+      "sdkCommit": "c9568a3"
+    }
+  ]
+}

@@ -60,11 +60,16 @@ export function translate(locale: Locale, key: TKey, vars?: Vars): string {
 export function makeFormatters(locale: Locale) {
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' });
   const time = new Intl.DateTimeFormat(locale, { timeStyle: 'medium' });
+  // log lines: a fixed-width 24-hour clock in every language, so the column stays narrow and aligned
+  const clock = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+  const full = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, hourCycle: 'h23' });
   const num = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const num2 = new Intl.NumberFormat(locale, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
   return {
     dateTime: (ms: number) => dateTime.format(ms),
     time: (ms: number) => time.format(ms),
+    clock: (ms: number) => clock.format(ms),
+    dateTimeFull: (ms: number) => full.format(ms),
     number: (n: number) => new Intl.NumberFormat(locale).format(n),
     bytes: (n: number) => {
       if (n < 1024) return `${new Intl.NumberFormat(locale).format(n)} B`;

@@ -56,4 +56,19 @@ describe('translate', () => {
   it('formats numbers with the locale and leaves unknown placeholders alone', () => {
     expect(interpolate('{n} and {x}', { n: 1234.5 }, 'pt-BR')).toBe('1.234,5 and {x}');
   });
+
+  it('counts new console lines with the right plural in every language', () => {
+    expect(translate('en', 'console.paused', { count: 1 })).toBe('1 new line');
+    expect(translate('en', 'console.paused', { count: 12 })).toBe('12 new lines');
+    expect(translate('pt-BR', 'console.paused', { count: 1 })).toBe('1 linha nova');
+    expect(translate('pt-BR', 'console.paused', { count: 3 })).toBe('3 linhas novas');
+    expect(translate('es', 'console.paused', { count: 1 })).toBe('1 línea nueva');
+    expect(translate('es', 'console.paused', { count: 15000 })).toBe('15.000 líneas nuevas'); // numbers follow the language
+  });
+  it('names the product descriptor in each language', () => {
+    expect(translate('en', 'app.descriptor')).toBe('A simulator for Kode Dot apps');
+    expect(translate('pt-BR', 'app.unofficial')).toBe('Não oficial. Sem vínculo com a Kode.');
+    expect(translate('pt-BR', 'app.descriptor')).toBe('Simulador de apps do Kode Dot');
+    expect(translate('es', 'app.descriptor')).toBe('Simulador de apps para Kode Dot');
+  });
 });

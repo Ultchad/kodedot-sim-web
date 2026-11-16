@@ -31,6 +31,16 @@ export function isEditableTarget(t: unknown): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
 }
 
+/**
+ * True when the focused widget needs the arrow keys for itself (tabs, menus, sliders, scroll regions), so they must not
+ * reach the D-pad. Widgets opt in with the role they already carry, or with `data-arrow-keys`.
+ */
+export function ownsArrowKeys(t: unknown): boolean {
+  const el = t as { closest?: (sel: string) => unknown } | null;
+  if (!el || typeof el.closest !== 'function') return false;
+  return !!el.closest('[role=tablist], [role=menu], [role=slider], [role=separator], [data-arrow-keys]');
+}
+
 export const KEY_HINT: Record<ButtonId, string> = {
   top: 'T',
   bottom: 'B',

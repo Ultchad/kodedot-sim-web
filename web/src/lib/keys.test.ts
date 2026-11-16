@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isEditableTarget, keyToButton } from './keys';
+import { isEditableTarget, keyToButton, ownsArrowKeys } from './keys';
 
 describe('keyToButton', () => {
   it('maps T, B and arrows', () => {
@@ -27,5 +27,16 @@ describe('isEditableTarget', () => {
     expect(isEditableTarget({ tagName: 'DIV', isContentEditable: true })).toBe(true);
     expect(isEditableTarget({ tagName: 'BUTTON' })).toBe(false);
     expect(isEditableTarget(null)).toBe(false);
+  });
+});
+
+describe('ownsArrowKeys', () => {
+  it('is true inside widgets that use the arrows themselves', () => {
+    const inTabs = { closest: (sel: string) => (sel.includes('[role=tablist]') ? {} : null) };
+    const plain = { closest: () => null };
+    expect(ownsArrowKeys(inTabs)).toBe(true);
+    expect(ownsArrowKeys(plain)).toBe(false);
+    expect(ownsArrowKeys(null)).toBe(false);
+    expect(ownsArrowKeys({})).toBe(false);
   });
 });

@@ -1,75 +1,137 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
-import { useHost } from '../state/host';
+import { appLabel, useHost } from '../state/host';
 import { useObservable } from '../state/hooks';
 import { AppsList } from './AppsList';
-import { LanguageSelect, MockToggle, RunButtons, ThemeButton } from './Controls';
+import { DeviceActions } from './DeviceMenu';
+import { LanguageSelect, MockToggle, RunButtons, ThemeChoice } from './Controls';
+import { Icon } from './Glyphs';
+import { Popover } from './ui';
+
+/** The product's name as shown to people, the same in every language. Internal identifiers (.dotbench packages, storage keys) keep the old name for now. */
+export const PRODUCT_NAME = 'KodeDot Sim';
 
 export function Brand() {
   return (
-    <span className="flex items-center gap-2 font-mono text-[13px] font-semibold tracking-tight">
-      <svg width="16" height="16" viewBox="0 0 32 32" aria-hidden>
-        <rect x="9" y="4" width="14" height="24" rx="3.5" fill="none" stroke="currentColor" strokeWidth="2.4" />
-        <circle cx="16" cy="22" r="2.4" fill="var(--accent)" />
-      </svg>
-      dotbench
-    </span>
+    // plain text in the heading face: a name, not a logo
+    <h1 className="shrink-0 whitespace-nowrap text-[24px] leading-none" data-testid="brand">
+      {PRODUCT_NAME}
+    </h1>
   );
 }
 
-export function TopBar({ drawers }: { drawers?: { bench: boolean; console: boolean; toggle(which: 'bench' | 'console'): void } }) {
+/** One quiet line that says what this page is. */
+export function About() {
   const { t } = useI18n();
-  const { device, selectedId, bundles } = useHost();
-  const app = useObservable(device.appName);
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: PointerEvent) => {
-      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('pointerdown', away);
-    document.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('pointerdown', away);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [open]);
-
-  const sel = bundles.find((b) => b.id === selectedId);
-
   return (
-    <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-panel px-3 py-2" data-testid="top-bar">
-      <Brand />
-      {drawers && (
-        <button type="button" className="btn" aria-pressed={drawers.bench} onClick={() => drawers.toggle('bench')} data-testid="drawer-bench">
-          {t('nav.bench')}
-        </button>
-      )}
-      <div ref={wrap} className="relative">
-        <button type="button" className="btn max-w-[16rem]" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)} data-testid="apps-menu">
-          <span className="eyebrow">{t('nav.apps')}</span>
-          <span className="truncate">{sel?.name ?? app ?? t('apps.none')}</span>
-          <span aria-hidden>▾</span>
-        </button>
-        {open && (
-          <div role="dialog" aria-label={t('apps.title')} className="absolute left-0 top-full z-40 mt-1 w-80 max-w-[92vw] rounded-lg border border-line2 bg-panel p-3 shadow-xl" data-testid="apps-popover">
-            <AppsList />
+    <p className="m-0 text-[13px] leading-snug text-ink2" data-testid="about">
+      <strong className="font-semibold text-ink">{PRODUCT_NAME}</strong> · {t('app.descriptor')}
+      <span className="mt-0.5 block text-[12.5px]">{t('app.unofficial')}</span>
+    </p>
+  );
+}
+
+/** Name shown for what is loaded: the app's own name once it runs, else the saved file's name. */
+export function useCurrentAppName(): string | null {
+  const { device, selectedId, bundles, builtins } = useHost();
+  const app = useObservable(device.appName);
+  const sel = bundles.find((b) => b.id === selectedId) ?? builtins.find((b) => `builtin:${b.id}` === selectedId);
+  return app ?? (sel ? appLabel(sel.name) : null);
+}
+
+function AppPicker() {
+  const { t } = useI18n();
+  const { appsRequest } = useHost();
+  const name = useCurrentAppName();
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  const seen = useRef(appsRequest);
+  useEffect(() => {
+    if (appsRequest !== seen.current) {
+      seen.current = appsRequest;
+      setOpen(true);
+    }
+  }, [appsRequest]);
+  return (
+    <>
+      <button
+        ref={btn}
+        type="button"
+        className="btn min-w-0 !shrink max-w-[19rem]"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        title={t('apps.pickerHint', { name: name ?? t('apps.none') })}
+        onClick={() => setOpen((o) => !o)}
+        data-testid="apps-menu"
+      >
+        <span className="font-medium text-ink2">{t('apps.pickerLabel')}</span>
+        <span className="truncate">{name ?? t('apps.none')}</span>
+        <Icon name="chevronDown" size={16} className="text-ink2" />
+      </button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} label={t('apps.title')} width="23rem" testid="apps-popover">
+        <AppsList onRun={() => setOpen(false)} />
+      </Popover>
+    </>
+  );
+}
+
+function DeviceMenu() {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  return (
+    <>
+      <button ref={btn} type="button" className="btn" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)} data-testid="device-menu">
+        {t('device.menu')}
+        <Icon name="chevronDown" size={16} className="text-ink2" />
+      </button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} label={t('device.menu')} width="21rem" align="end" testid="device-popover">
+        <div className="flex flex-col gap-4">
+          <DeviceActions onDone={() => setOpen(false)} />
+          <MockToggle />
+        </div>
+      </Popover>
+    </>
+  );
+}
+
+function SettingsMenu() {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  return (
+    <>
+      <button ref={btn} type="button" className="btn btn-icon" aria-expanded={open} aria-haspopup="dialog" aria-label={t('nav.settings')} title={t('nav.settings')} onClick={() => setOpen((o) => !o)} data-testid="settings-menu">
+        <Icon name="settings" size={20} />
+      </button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} label={t('nav.settings')} width="17rem" align="end" testid="settings-popover">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <span className="tag">{t('lang.label')}</span>
+            <LanguageSelect />
           </div>
-        )}
-      </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="tag">{t('settings.appearance')}</span>
+            <ThemeChoice />
+          </div>
+          <About />
+        </div>
+      </Popover>
+    </>
+  );
+}
+
+/** One row, never wraps: brand, the app and its run controls on the left; device and page settings on the right. */
+export function TopBar() {
+  return (
+    <header className="flex h-[68px] shrink-0 items-center gap-2 px-4" data-testid="top-bar">
+      <Brand />
+      <div className="w-1 shrink-0" />
+      <AppPicker />
       <RunButtons />
-      <div className="flex-1" />
-      <MockToggle />
-      <LanguageSelect />
-      <ThemeButton />
-      {drawers && (
-        <button type="button" className="btn" aria-pressed={drawers.console} onClick={() => drawers.toggle('console')} data-testid="drawer-console">
-          {t('nav.console')}
-        </button>
-      )}
+      <div className="min-w-0 flex-1" />
+      <DeviceMenu />
+      <SettingsMenu />
     </header>
   );
 }

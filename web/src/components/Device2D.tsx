@@ -27,9 +27,11 @@ interface Props {
   zoom: number | 'fit';
   /** Crop the render's transparent margin so the body touches the edges (phone). */
   crop?: boolean;
+  /** Extra room (CSS px) kept free around the device in Fit, e.g. for the bar under it on phones. */
+  inset?: number;
 }
 
-export function Device2D({ zoom, crop = false }: Props) {
+export function Device2D({ zoom, crop = false, inset = 0 }: Props) {
   const { t } = useI18n();
   const { device, input, painter } = useHost();
   const status = useObservable(device.status);
@@ -50,8 +52,19 @@ export function Device2D({ zoom, crop = false }: Props) {
   }, []);
 
   const target = crop ? { x: M.bodyPx.x, y: M.bodyPx.y, w: M.bodyPx.w, h: M.bodyPx.h } : { x: 0, y: 0, w: M.imgW, h: M.imgH };
-  const scale = zoom === 'fit' ? Math.max(0.05, Math.min(box.w / target.w, box.h / target.h)) : zoom;
+  const scale = zoom === 'fit' ? Math.max(0.05, Math.min((box.w - inset * 2) / target.w, (box.h - inset * 2) / target.h)) : zoom;
   const px = (v: number) => v * scale; // device px -> CSS px
+  // A fixed zoom can be larger than the stage: then the stage pans like a map and opens centred on the screen.
+  const pans = zoom !== 'fit' && box.w > 0 && (px(target.w) > box.w + 0.5 || px(target.h) > box.h + 0.5);
+  useLayoutEffect(() => {
+    const el = outerRef.current;
+    if (!el || !pans) return;
+    const cx = px(M.screenPx.x - target.x + M.screenPx.w / 2);
+    const cy = px(M.screenPx.y - target.y + M.screenPx.h / 2);
+    el.scrollLeft = Math.max(0, cx - el.clientWidth / 2);
+    el.scrollTop = Math.max(0, cy - el.clientHeight / 2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pans, scale]);
 
   // mount the shared screen canvas into the glass
   const glassRef = useRef<HTMLDivElement>(null);
@@ -89,14 +102,20 @@ export function Device2D({ zoom, crop = false }: Props) {
   const cornerR = px(M.screenMm.r * M.ppm);
 
   return (
-    <div ref={outerRef} className="device-surface relative flex min-h-0 min-w-0 flex-1 overflow-auto scroll-thin" data-testid="device-2d">
+    <div
+      ref={outerRef}
+      className={`device-surface relative flex min-h-0 min-w-0 flex-1 ${pans ? 'device-pan' : 'overflow-hidden'}`}
+      data-testid="device-2d"
+      data-pans={pans}
+      {...(pans ? { tabIndex: 0, role: 'region', 'aria-label': t('device.panRegion'), 'data-arrow-keys': '' } : {})}
+    >
       <div className="relative m-auto shrink-0" style={{ width: px(target.w), height: px(target.h) }} data-testid="device-2d-body">
         <img
           src={IMG_SRC}
           alt=""
           draggable={false}
           className="pointer-events-none absolute max-w-none select-none"
-          style={{ left: -px(target.x), top: -px(target.y), width: px(M.imgW), height: px(M.imgH) }}
+          style={{ left: -px(target.x), top: -px(target.y), width: px(M.imgW), height: px(M.imgH), filter: crop ? undefined : 'drop-shadow(0 18px 22px rgba(70,45,20,0.28))' }}
         />
 
         {/* glass */}
@@ -105,7 +124,7 @@ export function Device2D({ zoom, crop = false }: Props) {
           role="img"
           aria-label={t('device.screen')}
           data-testid="glass"
-          className="absolute overflow-hidden bg-black"
+          className="absolute cursor-pointer overflow-hidden bg-black"
           style={{ left: px(M.screenPx.x - target.x), top: px(M.screenPx.y - target.y), width: px(M.screenPx.w), height: px(M.screenPx.h), borderRadius: cornerR, touchAction: 'none' }}
           onPointerDown={glassDown}
           onPointerMove={glassMove}
@@ -115,11 +134,8 @@ export function Device2D({ zoom, crop = false }: Props) {
         >
           {/* backlight / panel off: a black veil (no CSS filter: it tiles badly on scaled canvases) */}
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-black" style={{ opacity: panelOn ? 1 - backlightFactor(backlight) : 1 }} />
-          {(status === 'idle' || status === 'crashed') && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/55 px-4 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-white/70">
-              {t(status === 'idle' ? 'device.overlay.idle' : 'device.overlay.crashed')}
-            </div>
-          )}
+          {/* a stopped or crashed app leaves its last picture, dimmed; the card that explains it floats over the stage */}
+          {(status === 'idle' || status === 'crashed') && <div aria-hidden className="anim-fade pointer-events-none absolute inset-0 bg-black/60" data-testid="glass-dim" />}
         </div>
 
         {/* LED light guide */}
@@ -175,7 +191,7 @@ function RoundButton({ id, cx, cy, d, scale, pressed }: { id: ButtonId; cx: numb
       aria-pressed={pressed}
       aria-keyshortcuts={KEY_HINT[id]}
       title={`${t(BTN_LABEL[id])} (${KEY_HINT[id]})`}
-      className="absolute rounded-full bg-transparent p-0"
+      className="device-hit absolute rounded-full border-0 bg-transparent p-0"
       style={{ left: cx * scale - hit / 2, top: cy * scale - hit / 2, width: hit, height: hit, touchAction: 'none' }}
       onPointerDown={down}
       onPointerUp={up}
@@ -188,7 +204,7 @@ function RoundButton({ id, cx, cy, d, scale, pressed }: { id: ButtonId; cx: numb
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute rounded-full transition-[transform,box-shadow,background] duration-75"
+        className="pointer-events-none absolute rounded-full transition-[transform,box-shadow,background] duration-100"
         style={{
           left: (hit - visible) / 2,
           top: (hit - visible) / 2,
@@ -196,7 +212,7 @@ function RoundButton({ id, cx, cy, d, scale, pressed }: { id: ButtonId; cx: numb
           height: visible,
           transform: pressed ? 'scale(0.94)' : 'none',
           background: pressed ? 'radial-gradient(circle, rgba(0,0,0,0.35), rgba(0,0,0,0.12) 70%)' : 'transparent',
-          boxShadow: pressed ? 'inset 0 4px 10px rgba(0,0,0,0.65), 0 0 0 2px var(--accent)' : 'none',
+          boxShadow: pressed ? 'inset 0 4px 10px rgba(0,0,0,0.65), 0 0 0 2px var(--link)' : undefined,
         }}
       />
     </button>
@@ -211,6 +227,7 @@ function DPad({ cx, cy, scale, pressed }: { cx: number; cy: number; scale: numbe
   const span = SPEC.dpad_px.span;
   const arm = inflate(SPEC.dpad_px.arm_w, scale);
   const cur = useRef<Map<number, Dir | null>>(new Map());
+  const [hover, setHover] = useState<Dir | null>(null);
 
   const setDir = (pointerId: number, next: Dir | null) => {
     const prev = cur.current.get(pointerId) ?? null;
@@ -238,7 +255,8 @@ function DPad({ cx, cy, scale, pressed }: { cx: number; cy: number; scale: numbe
     <div
       data-testid="dpad"
       className="absolute"
-      style={{ left: cx * scale - box / 2, top: cy * scale - box / 2, width: box, height: box, touchAction: 'none' }}
+      style={{ left: cx * scale - box / 2, top: cy * scale - box / 2, width: box, height: box, touchAction: 'none', cursor: hover ? 'pointer' : undefined }}
+      onPointerLeave={() => setHover(null)}
       onPointerDown={(e) => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -246,6 +264,7 @@ function DPad({ cx, cy, scale, pressed }: { cx: number; cy: number; scale: numbe
       }}
       onPointerMove={(e) => {
         if (cur.current.has(e.pointerId)) setDir(e.pointerId, dirAt(e));
+        else if (e.pointerType === 'mouse') setHover(dirAt(e));
       }}
       onPointerUp={(e) => {
         setDir(e.pointerId, null);
@@ -273,8 +292,12 @@ function DPad({ cx, cy, scale, pressed }: { cx: number; cy: number; scale: numbe
             aria-pressed={on}
             aria-keyshortcuts={`Arrow${id[0].toUpperCase()}${id.slice(1)}`}
             title={`${t(BTN_LABEL[id])} (${KEY_HINT[id]})`}
-            className="pointer-events-none absolute rounded-md bg-transparent p-0"
-            style={{ ...style, background: on ? 'rgba(255,255,255,0.16)' : 'transparent', boxShadow: on ? 'inset 0 3px 8px rgba(0,0,0,0.6), 0 0 0 2px var(--accent)' : 'none' }}
+            className="pointer-events-none absolute rounded-md border-0 bg-transparent p-0 transition-[background,box-shadow] duration-100"
+            style={{
+              ...style,
+              background: on ? 'rgba(255,255,255,0.16)' : 'transparent',
+              boxShadow: on ? 'inset 0 3px 8px rgba(0,0,0,0.6), 0 0 0 2px var(--link)' : hover === id ? '0 0 0 2px color-mix(in srgb, var(--link) 70%, transparent)' : 'none',
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();

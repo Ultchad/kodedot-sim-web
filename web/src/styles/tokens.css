@@ -1,0 +1,106 @@
+/*
+ * Design tokens: the single place where colours, radii and type are defined.
+ * Language: warm, soft, tonal layering (beige on beige), pills and big radii.
+ * Values measured from the device maker's sites (see docs/STATUS-web.md); text
+ * greys are darkened where the measured grey failed WCAG AA.
+ */
+:root,
+[data-theme='light'] {
+  --bg: #c2bab3; /* app background */
+  --card: #ded7cd; /* panels and cards */
+  --raised: rgba(255, 255, 255, 0.92); /* inputs, rows inside cards */
+  --raised-soft: rgba(255, 255, 255, 0.5); /* chips, pills, inner cards */
+  --hair: #c2bab0;
+  --ink: #191919;
+  --ink2: #4a4742; /* strong secondary */
+  --ink3: #4a4742; /* secondary (measured #6E6A64 is 3.8:1 on cards, too low) */
+  --primary: #ffac00;
+  --primary-ink: #191919;
+  --link: #028ac2; /* focus and decorative blue */
+  --link-text: #01608e; /* blue for text on beige (AA) */
+  --red: #c9303d; /* device red, destructive fills */
+  --red-text: #a3232f; /* red for text on beige (AA) */
+  --ok: #16a34a;
+  --ok-text: #0d5f2f;
+  --warn: #d97706;
+  --err: #dc2626;
+  --dark: #191919; /* dark surfaces: console, selected chips */
+  --dark-text: #e8e8e8;
+  --dark-dim: #8a8a8a;
+  --chip-on-bg: #191919;
+  --chip-on-fg: #e8e8e8;
+  --shadow-card: none;
+  --shadow-pop: 0 12px 32px rgba(60, 40, 20, 0.18); /* the one shadow: floating layers (popovers, drawers, toasts) */
+  --scrim: rgba(40, 30, 20, 0.28);
+  --stage-shadow: rgba(75, 55, 35, 0.32);
+  /* Focus ring: the blue accent (#028AC2) darkened until it reaches 3:1 on the beige surfaces; on dark surfaces the light blue is used (.on-dark). */
+  --focus: #01608e;
+  --focus-on-dark: #4db8e8;
+  --focus-inverse: #4db8e8; /* on the inverted surfaces (selected rows, toasts) */
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #191919;
+  --card: #262422;
+  --raised: rgba(255, 255, 255, 0.1);
+  --raised-soft: rgba(255, 255, 255, 0.06);
+  --hair: #3a3733;
+  --ink: #e8e8e8;
+  --ink2: #c4bfb7;
+  --ink3: #9a958d;
+  --primary: #ffac00;
+  --primary-ink: #191919;
+  --link: #028ac2;
+  --link-text: #4db8e8;
+  --red: #c9303d;
+  --red-text: #ff8a93;
+  --ok: #16a34a;
+  --ok-text: #4ade80;
+  --warn: #d97706;
+  --err: #dc2626;
+  --dark: #121212; /* console card is darker than the cards around it */
+  --dark-text: #e8e8e8;
+  --dark-dim: #8a8a8a;
+  --chip-on-bg: #e8e8e8;
+  --chip-on-fg: #191919;
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.45);
+  --stage-shadow: rgba(0, 0, 0, 0.55);
+  --focus: #4db8e8;
+  --focus-on-dark: #4db8e8;
+  --focus-inverse: #01608e;
+  color-scheme: dark;
+}
+
+/* Icon tile colours (area glyphs), same in both themes. */
+:root {
+  --tile-blue: #028ac2;
+  --tile-red: #c9303d;
+  --tile-amber: #ffac00;
+  --tile-dark: #191919;
+  --tile-green: #16a34a;
+
+  /* Radii: 24 cards and floating layers, 16 rows and inner cards, 12 tiles, 999 controls. */
+  --radius-card: 24px;
+  --radius-row: 16px;
+  --radius-tile: 12px;
+  /* Heights: 44 main controls and fields, 36 compact controls (44 on touch screens), 32 read-outs (not interactive). */
+  --control-h: 44px;
+  --compact-h: 36px;
+  --readout-h: 32px;
+  /* Motion: quick, eased, switched off under prefers-reduced-motion (index.css). */
+  --dur-fast: 150ms;
+  --dur: 220ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --font-heading: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'DM Sans', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono-log: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Touch screens: every compact control grows to a 44 px target. */
+@media (pointer: coarse) {
+  :root {
+    --compact-h: 44px;
+  }
+}
