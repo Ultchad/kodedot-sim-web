@@ -336,6 +336,8 @@ export default function create(ctx) {
       } else if (router.internet) s = await viaFetch(router, req, noredir, timeout);
       else { w.note(`http: ${url} unreachable: the router has no internet and no local host '${u.hostname}'`); emit("unreachable", { url, why: "no internet" }); return E_CONNECT; }
       if (s.error) return s.error === "timeout" ? E_FETCH_HEADER : E_CONNECT;
+      if (current() !== router) { s.close?.(); w.note(`http: ${url}: the network went away before the answer arrived`); emit("unreachable", { url, why: "network lost" }); return E_CONNECT; }
+      s.router = router;
       sessions.set(id, s);
       log.status = s.status; log.via = s.via; log.responseHeaders = s.headers;
       emit("http", { method, url, status: s.status, via: s.via });
@@ -354,7 +356,7 @@ export default function create(ctx) {
     "net.http_read": async (rd) => {
       const id = rd.u32(), max = rd.u32(), ms = rd.u32();
       const s = sessions.get(id);
-      if (!s) return { rc: 0, out: Uint8Array.from([2]) };
+      if (!s || current() !== s.router) { if (s) { s.close?.(); sessions.delete(id); } return { rc: 0, out: Uint8Array.from([2]) }; }
       const r = await s.pull(Math.min(max, 16384), Math.max(ms, 1));
       if (r.state !== 0 && s.status !== undefined) { /* final */ }
       return { rc: 0, out: Uint8Array.from([r.state, ...r.data]) };
