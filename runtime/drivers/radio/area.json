@@ -14,5 +14,8 @@
   ],
   "js": [
     "radio.js"
+  ],
+  "test_apps": [
+    "sdk:examples/network"
   ]
 }

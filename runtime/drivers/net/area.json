@@ -11,5 +11,9 @@
   ],
   "js": [
     "net.js"
+  ],
+  "test_apps": [
+    "sdk:examples/network",
+    "sdk:examples/mqtt"
   ]
 }

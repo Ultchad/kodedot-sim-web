@@ -9,6 +9,7 @@
 //        a body without an explicit status honours Range (206 / 416). Requests carry { method, url, host, port, path, query, headers (lower case), body: Uint8Array }.
 //        https:// and http:// to a local host both work. Local hosts answer even with router.internet = false, and override the real internet when it is on.
 //   router.udpPeer(ip, port, (bytes, info) => void) -> peer { received[], send(bytes) }     bench side of UDP (the SDK only ever sends; see STATUS-radio.md)
+//   router.host(name, { upstream: "http://127.0.0.1:8080" })   forward to a real server; router.mapBroker(host, port, "ws://127.0.0.1:9001")   map an mqtt:// endpoint to a real WS broker
 //   router.enableBroker({ users?: {name: pass}, hosts?: [names] }) -> broker      the in-page MQTT broker. Default endpoint when internet is off.
 // api: lastHttp(), httpLog, corsLog, udpLog, brokerOf(router), setFetch(fn), setWebSocket(cls), mqttUrl(uri)
 // events (area:net:<type>): http {method,url,status,via}  cors {url,origin}  unreachable {url,why}  mqtt {state}  udp {to,port,bytes,peer}  ping {ip,ok}
@@ -326,7 +327,11 @@ export default function create(ctx) {
       let s;
       if (entry && (!entry.ports || entry.ports.includes(req.port))) {
         if (entry.down) { emit("unreachable", { url, why: "host down" }); return E_CONNECT; }
-        s = await viaLocal(router, entry, req, timeout);
+        if (entry.upstream) {   // a local host that forwards to a real server (a test server on 127.0.0.1): the name and port are the firmware's, the bytes are the server's
+          const up = new URL(entry.upstream);
+          const fwd = { ...req, url: up.origin + u.pathname + u.search };
+          s = await viaFetch(router, fwd, noredir, timeout);
+        } else s = await viaLocal(router, entry, req, timeout);
         if (entry.latencyMs) await w.sleep(entry.latencyMs);
       } else if (router.internet) s = await viaFetch(router, req, noredir, timeout);
       else { w.note(`http: ${url} unreachable: the router has no internet and no local host '${u.hostname}'`); emit("unreachable", { url, why: "no internet" }); return E_CONNECT; }
@@ -450,7 +455,9 @@ export default function create(ctx) {
       const gen = ++this.gen;
       this.state = "connecting";
       const router = current();
-      const t = api.mqttUrl(this.uri);
+      let t = api.mqttUrl(this.uri);
+      const mapped = t && router?.brokerMap?.get(`${t.host}:${t.port}`);
+      if (mapped) t = { ...api.mqttUrl(mapped), host: t.host, port: t.port, mapped: true };
       const fail = (type, code = 0, why = "") => {
         if (gen !== this.gen) return;
         this.log("fail " + why); w.note(`mqtt ${this.uri}: ${why}`);
@@ -487,7 +494,7 @@ export default function create(ctx) {
         this.conn = null; this.state = "idle";
         if (was) { this.log("lost"); this.ev(2); this.redial(); } else if (this.state === "connecting") { /* handled by fail */ }
       };
-      const broker = brokerFor(router, t.host);
+      const broker = t.mapped ? null : brokerFor(router, t.host);
       if (broker) {
         // in-page: packets travel as objects, but only after a macrotask hop so the broker never re-enters the caller
         let handler;
@@ -498,7 +505,7 @@ export default function create(ctx) {
         setTimeout(() => handler.packet(hello), 0);
         return;
       }
-      if (!router.internet) { setTimeout(() => fail(1, 0, "no internet and no in-page broker"), 0); return; }
+      if (!router.internet && !t.mapped) { setTimeout(() => fail(1, 0, "no internet and no in-page broker"), 0); return; }
       const WS = api.WebSocketImpl || globalThis.WebSocket;
       if (!WS) { setTimeout(() => fail(1, 0, "no WebSocket in this environment"), 0); return; }
       let ws;
@@ -560,6 +567,8 @@ export default function create(ctx) {
       host(name, spec = {}) { const e = { ...spec, name: name.toLowerCase() }; this.hosts.set(e.name, e); if (e.ip) { try { ip2u32(e.ip); } catch { throw new Error("bad ip"); } } return e; },
       removeHost(name) { this.hosts.delete(name.toLowerCase()); },
       udpPeer(ip, port, handler) { const p = { ip, port, handler, received: [], send(bytes) { w.note(`udp peer ${ip}:${port} sent ${bytes.length} bytes to the device: the SDK has no UDP receive path, dropped`); api.udpLog.push({ undelivered: true, ip, port, data: bytes }); } }; this.udpPeers.push(p); return p; },
+      /** Send mqtt://host:port to a real WebSocket broker at wsUrl (e.g. a test broker on 127.0.0.1), whatever the internet switch says. */
+      mapBroker(host, port, wsUrl) { (this.brokerMap ||= new Map()).set(`${host}:${port}`, wsUrl); },
       enableBroker(opts = {}) { this.broker?.close?.(); this.broker = new Broker(opts); return this.broker; },
     });
     w.wifi?.listen?.(() => {});
