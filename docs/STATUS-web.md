@@ -1,6 +1,6 @@
 # STATUS: web (page)
 
-State: complete against the brief, using the mock. The WebAssembly adapter is a placeholder.
+State: the page runs the real firmware (kodeOS by default) through the web adapter, shows Kode's own 3D model of the device (optimised) and has been through a UI review at eight viewports. The newest state is in the last section, "Model and review pass"; older sections are kept as history and may describe earlier behaviour.
 
 ## Run
 ```
@@ -9,8 +9,11 @@ npm install
 npm run dev          # Vite dev server, COOP/COEP headers on
 npm run build        # tsc --noEmit + vite build
 npm run preview      # serves dist with the same headers
-npm test             # Vitest (46 tests)
-npm run build && node scripts/headless-check.mjs   # headless Chrome, 82 checks, writes web/screenshots/
+npm test             # Vitest (158 tests)
+npm run build && node scripts/smoke.mjs            # 1 minute: kodeOS reaches its lock screen in 2D and 3D, no page errors
+npm run build && node scripts/headless-check.mjs   # headless Chrome, about 215 checks incl. the layout audit (15 minutes), writes web/screenshots/
+npm run build && node scripts/layout-audit.mjs [viewport ...]   # the layout audit alone
+npm run build && node scripts/ux-shots.mjs after   # review screenshots into web/screenshots/ux/
 ```
 Deploy: `web/vercel.json` sends `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` on every route.
 Debug hooks (`window.__dotbench`, `window.__dotbench3d`) exist only when the URL has `?debug`.
@@ -67,8 +70,7 @@ Tokens in `src/styles/tokens.css` (light + `[data-theme=dark]`), primitives in `
 - Screen: `ScreenPainter.canvas` (410x502) is a CanvasTexture on the glass mesh; `painter.onFrame` sets `needsUpdate`. LED: `device.led` is read per frame and drives the light-guide material (emissive) and a point light. Backlight/panelOn dim the screen material.
 - Input: glass hit -> UV -> `uvToScreen` -> `input.touchDown/Move/Up` (-> `setTouch`); controls call `input.press/release(id, 'p3:<pointerId>')` (-> `setButton`). Pressable ids: `top`, `bottom`, `up`, `down`, `left`, `right` (D-pad arm from `dpadDirection` on the hit point). Background and body drag orbits.
 - Debug hook (only with `?debug`): `window.__dotbench3d` {project('top'|'bottom'|'dpad:<dir>'|'glass:x,y'), textureVersion, rendered, pose, setPoseDebug, scene}.
-- GLB override: `components/glbModel.ts` (`loadGlbModel`, nodes screen, btn_top, btn_bottom, dpad_*, led) is wired into Device3D; loading and rendering were checked with a synthetic GLB, the press path was not.
-- Half-done in the model files: see the coordinator report (lib/bodyModel.ts SDF body, Device3D.tsx; bezel 1.9 mm and body colour tweaks applied but not reviewed visually).
+- Models: see "Model and review pass" below and `web/public/device/MODEL.md` (`components/glbModel.ts` is gone; `src/device3d/customModel.ts` decides which model is shown).
 
 ## Real apps (web-adapter integration)
 - `npm run prepare:assets` (runs before dev/build/preview/test/headless): `scripts/sync-adapter.mjs` copies `runtime/web-adapter/*.js` into git-ignored `src/generated/web-adapter/`; `scripts/prepare-apps.mjs` copies the two example `.dotbench` into git-ignored `public/apps/` with `index.json` (names, en/pt-BR/es descriptions, size, sdk commit). Fails with build instructions if packages are missing. NOTE: `build/` and `public/apps/` are git-ignored, so Vercel needs the packages built or committed.
@@ -145,3 +147,34 @@ S3
 50. Read-outs under the device plus the status bar are two rows of pills (about 90 px) that the device could use.
 51. The device does not look clickable: no pointer cursor on its buttons, no hover state.
 52. Web fonts swap in after first paint (text reflows).
+
+## Model and review pass (2026-11-16)
+
+### The device model
+- Default: `web/public/device/model.glb`, Kode's own model from its site, made by `web/scripts/optimise-model.mjs` from the original (kept outside the repository). Credit: `web/public/device/NOTICE-model.md`.
+- What the optimiser does: frame in mm, documented node names (`screen`, `btn_top`, `btn_bottom`, `dpad`, `led`), the two round buttons cut apart, a flat `screen` surface for the live picture, simplification with the normals weighed in and the shell's rims next to the glass, the controls, the light guide and the side window locked, the shared palette texture turned into plain materials, baked normal maps dropped except the back cover's, meshopt compression.
+- Measured: 144,817 -> 48,706 triangles; 1005 kB -> 416 kB; 13 materials with clear coat/anisotropy/specular -> 16 plain materials, 25 draw calls in the page. Frame time on SwiftShader (software GL, 760 x 900, back to back, best of six runs): original file with its own materials 883 ms, optimised 286 ms (the simple model 209 ms; measured with the 46.6k build, the final 48.7k build measures the same within noise: 247 to 277 ms in the model stand). Software GL is bound by pixel shading, so this is a relative figure only; no real GPU or phone was measured.
+- Rendering is on demand: `frameloop="demand"`, a frame is drawn only when the picture, the pose, a control or the LED changes (checked: 0 frames in 1.5 s with a still picture), never while the tab or the canvas is hidden. A firmware frame only re-uploads the 410 x 502 screen texture.
+- Loading: the GLB is fetched while the lazy 3D chunk loads (`DevicePane`), decoded by the meshopt decoder that is part of that chunk (no Draco download for the bundled file).
+- Selector (Device menu; phone: Settings): "Kode model" (default), "Simple model" (procedural, also the automatic fallback when the GLB is missing or broken or the browser has WebGL 1 only), "My own…" (.glb, or a .gltf with everything embedded, repacked to GLB in memory by `src/device3d/container.ts`; kept in IndexedDB; also by dropping the file on the page, which asks first). A file that fails while another own model is on show leaves that model in place.
+- Input on every model: glass -> touch at the pixel under the pointer (0 px error at 7 points, face-on and turned), the two round buttons and the four D-pad directions press and visibly move; parts are found by node, mesh or material names with shape-and-position fallbacks (`src/device3d/analyse.ts`, unit-tested).
+- Checks: `node scripts/model-shots.mjs --kode` (all pass; shots in `web/screenshots/model-kode-*.png`), `--custom <file>` for the own-model path, `scripts/smoke.mjs`.
+- Link preview: `node scripts/og/make-og.mjs` writes `web/screenshots/og-device.png` (the Kode model with kodeOS's lock screen, 2x, on #C2BAB3) and `web/public/og.png` from `scripts/og/og.html`.
+
+### Review fixes in this pass
+- The system reads "kodeOS" everywhere (App menu, status bar, cards); it has its own "System" section at the top of the App menu, apart from "Your apps" and "Built-in apps" (room for "install into the Dot").
+- First run speaks about an operating system: "This Dot is live. It runs kodeOS: swipe sideways on the screen to unlock…"; idle, crash, console-empty, mock and unsupported-browser texts no longer assume a demo app (en, pt-BR, es; typed, tested for equal keys and variables). The hint hides while the Dot is stopped or crashed.
+- 2D <-> 3D: the 3D view stays mounted (hidden, drawing nothing) once shown on desktop and tablet, so going back is one frame instead of a new WebGL context; the view fades in.
+- A selected chip under the pointer was white text on white (hover overrode the selected look): fixed; hover looks now apply only to pointers that can hover, so nothing stays "hovered" after a tap on a phone.
+- Cut off: the Spanish "add to the bench" button ran out of its card at 1024 px (label shortened, the button now wraps inside the card); the 3D device touched both edges of a phone screen (more side margin); the ground shadow ended in a hard line at the stage edge (it fades).
+- Device menu: the three model choices on one row; the file name row and the file button only when a file is in play.
+- Phone ("device mode"): the sheet no longer repeats the tab's name as a heading; Settings starts with "This phone as the Dot" (use this phone's motion sensors, keep the screen awake).
+- No notices or disclaimers in the UI; `public/device/NOTICE.md` and `NOTICE-model.md` are plain credits.
+- Layout audit (`scripts/layout-audit.mjs`: clipped, covered, overlapping, undersized, low contrast; 8 viewports x 2 themes x 3 languages, 796 scene audits): see the last run noted below.
+
+### Not verified, weak
+- No real phone or GPU: frame rate, iOS sensor permission, vibration, wake lock, safe areas remain unverified.
+- A user who loads Kode's ORIGINAL file as "My own…" sees the bezel round the glass grey: its colours come from a palette texture, which the page's "glossy black" detection cannot read (the bundled file has plain materials and is right).
+- kodeOS prints many "dotbench: kdrv_… not implemented" lines at boot: they fill the console on first run (runtime side, not the page).
+- The before/after set in `web/screenshots/ux/`: `before-*` (earlier reviewer, 370 shots), `after-*` (this pass).
+

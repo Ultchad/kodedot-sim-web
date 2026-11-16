@@ -9,7 +9,9 @@
  *
  * This file is light on purpose (the page imports it for its menu): three.js
  * and the loaders live in ./prepare, imported only when a model is parsed.
- * Nothing here throws into the page: failures end up in the state.
+ * Failures end up in the state. The one exception: load() rejects when a new
+ * file is unusable while another model of the user's is on show (that model
+ * stays; the rejection carries the reason).
  */
 import { toGlb } from './container';
 import type { PreparedModel } from './prepare';
@@ -194,6 +196,8 @@ class ModelStore {
   async load(file: File | Blob, name?: string): Promise<void> {
     const label = (name ?? (file as File).name ?? 'model.glb').trim() || 'model.glb';
     const gen = ++this.generation;
+    // a model already in use stays in use if the new file turns out to be unusable
+    const before = this.state.status === 'ready' && this.custom ? { status: 'ready' as const, name: this.state.name, sizeBytes: this.state.sizeBytes, warnings: this.state.warnings } : null;
     this.set({ status: 'loading', name: label, sizeBytes: file.size, error: undefined, warnings: undefined });
     try {
       if (file.size > MAX_MODEL_BYTES) throw new Error(`The file is ${megabytes(file.size)}; the limit is ${megabytes(MAX_MODEL_BYTES)}.`);
@@ -212,7 +216,12 @@ class ModelStore {
       this.set({ status: 'ready', name: label, sizeBytes: bytes.byteLength, warnings });
     } catch (e) {
       if (gen !== this.generation) return;
-      // the previous model, if any, is gone from view: the built-in one shows
+      if (before) {
+        // back to the model that was on show (it is still the one stored); the caller gets the reason
+        this.set({ ...before, error: undefined });
+        throw new Error(message(e));
+      }
+      // nothing of the user's was on show: the built-in model stays, the state carries the reason
       this.swapCustom(null, null);
       this.set({ status: 'error', name: label, error: message(e), warnings: undefined });
     }
