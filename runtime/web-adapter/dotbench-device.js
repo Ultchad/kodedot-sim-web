@@ -1,6 +1,7 @@
 // dotbench web adapter: runs a .dotbench package (Kode Dot firmware compiled to WebAssembly) in a page.
 // Framework-free ES module, no bundler needed. See README.md.
 import { readZip } from "./zip.js";
+import { PersistManager } from "./persist.js";
 
 /** Byte offsets into the shared kweb_state_t (runtime/bridge/README.md). */
 export const OFF = {
@@ -41,7 +42,10 @@ export class DotbenchDevice {
     this._listeners = new Map();
     this._pkg = null;
     this._inst = null;
-    this._persist = new Map();
+    // Persistent regions (NVS, files, SD card, device state): mirrored by the PersistManager. opts.persist is a
+    // backend (persist-idb.js IdbBackend in a page, persist-node.js NodeDirBackend under Node); none = memory only.
+    this._pm = new PersistManager({ backend: this.opts.persist ?? null, onEvent: (t, d) => this._emit("persist:" + t, d) });
+    this._pmOpen = null;
     this._bootCount = 0;
     this._lines = [];
     this._lineId = 0;
@@ -50,6 +54,12 @@ export class DotbenchDevice {
     this._timer = null;
     this._gen = 0;
     this._rtcOffsetMs = 0;   // the device's RTC survives resets; it is the host clock plus this
+    // Save when the page is going away or hidden (best effort: an async backend may not finish on pagehide).
+    if (typeof window !== "undefined" && typeof document !== "undefined") {
+      this._onHide = () => { if (this._inst) this.flushPersist(); };
+      window.addEventListener("pagehide", this._onHide);
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") this._onHide(); });
+    }
   }
 
   // ---------------------------------------------------------------- events
@@ -118,7 +128,7 @@ export class DotbenchDevice {
   async start(opts = {}) {
     if (!this._pkg) throw new Error("nothing loaded");
     if (this._inst) this._teardown();
-    this._persist.delete("keep");
+    this._pm.dropRetained();
     await this._boot(opts.reason ?? RESET.POWERON);
   }
 
@@ -137,6 +147,7 @@ export class DotbenchDevice {
 
   dispose() {
     this.stop();
+    if (this._onHide) window.removeEventListener("pagehide", this._onHide);
     this._release();
     this._listeners.clear();
   }
@@ -152,6 +163,7 @@ export class DotbenchDevice {
     const gen = ++this._gen;
     this._setStatus("booting");
     const pkg = this._pkg;
+    await (this._pmOpen ??= this._pm.open());           // saved device state is read once, before the first boot
     let M;
     try {
       M = await pkg.factory({
@@ -181,17 +193,15 @@ export class DotbenchDevice {
     const putStr = (off, s) => { M.HEAPU8.fill(0, statePtr + off, statePtr + off + 32); M.HEAPU8.set(enc.encode(s).subarray(0, 31), statePtr + off); };
     putStr(OFF.bootName, pkg.appJson.name);
     putStr(OFF.bootVersion, pkg.appJson.version);
-    for (let i = 0; i < M._kweb_persist_count(); i++) {
-      const name = cstr(M.HEAPU8, M._kweb_persist_name(i), 16);
-      const saved = this._persist.get(name);
-      if (saved && saved.length === M._kweb_persist_size(i)) M.HEAPU8.set(saved, M._kweb_persist_ptr(i));
-    }
+    const hadClock = (this._pm.image.regions.get("dev-state")?.chunks.size ?? 0) > 0;   // the RTC offset lives in dev-state
+    this._pm.restoreInto(M);
+    this._pm.attach(M);
     inst.words = new Int32Array(M.HEAPU8.buffer, statePtr, 0x40);        // header .. boot block as Int32 (for Atomics)
     inst.restartSeen = Atomics.load(inst.words, OFF.restartSeq >> 2);
     for (const [area, mods] of Object.entries(pkg.glue)) {
       inst.glue[area] = mods.map((m) => m.default(this._glueContext(area, inst)));
     }
-    M._kweb_time_set_offset_ms(this._rtcOffsetMs);
+    if (!hadClock && this._rtcOffsetMs) M._kweb_time_set_offset_ms(this._rtcOffsetMs);
     M.callMain([]);
     this._setStatus("running");
     this._startPolling();
@@ -223,28 +233,51 @@ export class DotbenchDevice {
     this._drainText(inst);
     this._flushPartial();
     const M = inst.M;
-    this._persist = this._snapshot(inst);
     this._rtcOffsetMs = M._kweb_time_offset_ms();
     M.PThread.terminateAllThreads();
     try { Atomics.notify(M.HEAP32, M._pthread_self() >> 2); } catch { /* mailbox wait already gone */ }
     inst.dead = true;
+    this._pm.finalize();                                // full compare of every region, then commit (async)
   }
 
-  _snapshot(inst) {
-    const M = inst.M, m = new Map(this._persist);
-    for (let i = 0; i < M._kweb_persist_count(); i++) {
-      const p = M._kweb_persist_ptr(i), n = M._kweb_persist_size(i);
-      m.set(cstr(M.HEAPU8, M._kweb_persist_name(i), 16), M.HEAPU8.slice(p, p + n));
-    }
-    return m;
-  }
+  _snapshot(inst) { this._pm.scanAll(); return this._pm.exportMap(); }
 
   /** Persistent regions (name -> bytes) as of the last stop/restart, for the page to mirror to IndexedDB. */
-  exportPersist() { return this._inst ? this._snapshot(this._inst) : new Map(this._persist); }
-  /** Seed persistent regions (e.g. read back from IndexedDB) before start(). */
-  importPersist(map) { this._persist = new Map(map); }
-  /** Forget NVS & co, as a factory reset would. */
-  factoryReset() { this._persist.clear(); }
+  exportPersist() { return this._inst ? this._snapshot(this._inst) : this._pm.exportMap(); }
+  /** Seed persistent regions (Map<name, Uint8Array>) before start(). */
+  importPersist(map) { this._pm.importMap(map); }
+  /** Forget NVS, files, SD and the clock, as a factory reset would (also erases the durable copy). */
+  factoryReset() { return this._pm.erase(); }
+
+  // ------------------------------------------------------------- persistence (runtime/persist, docs/STATUS-persistence.md)
+  /** {backend, loaded, flushes, bytes, lastError, incompatible}: bytes = what is held in the mirror image. */
+  get persist() {
+    const pm = this._pm;
+    return { backend: !!pm.backend, loaded: pm.loaded, flushes: pm.flushes, bytes: pm.image.bytesStored(), lastError: pm.lastError, incompatible: pm.incompatible };
+  }
+  /** Flush now (dirty chunks of the running device) and wait for the backend. Call on pagehide/visibilitychange; start() does not need it. */
+  flushPersist() { this._pm.harvest(); return this._pm.flush(); }
+  /** Erase device: stop, forget every persistent region (NVS, files, SD, clock) in the mirror AND in the durable store. */
+  async eraseDevice() {
+    if (this._inst) this._teardown();
+    this._rtcOffsetMs = 0;
+    await this._pm.erase();
+    this._pmOpen = Promise.resolve();
+    if (this._pkg) this._setStatus("idle");
+    this._emit("persist:erased", {});
+  }
+  /** The whole device as one file (Uint8Array): every persistent region plus a header. Works while running. */
+  exportDeviceFile(extra = {}) {
+    if (this._inst) this._pm.scanAll();
+    return this._pm.exportDeviceFile(extra);
+  }
+  /** Replace the whole device with a file from exportDeviceFile(). The device must be stopped. Resolves when stored. */
+  async importDeviceFile(bytes) {
+    if (this._inst) throw new Error("stop the device before importing a device file");
+    await (this._pmOpen ??= this._pm.open());
+    this._pm.importDeviceFile(bytes);
+    return this._pm.commitAll();
+  }
 
   _crash(reason) {
     if (!this._inst) return;
@@ -277,6 +310,7 @@ export class DotbenchDevice {
     if (!inst || inst.dead) return;
     this._drainText(inst);
     for (const cb of inst.ticks ?? []) cb();
+    this._pm.tick();
     const w = inst.words;
     const seq = Atomics.load(w, OFF.restartSeq >> 2);
     if (seq !== inst.restartSeen) {
@@ -308,7 +342,7 @@ export class DotbenchDevice {
       try {
         if (target && this.opts.resolveTarget) {
           const bytes = await this.opts.resolveTarget(target);
-          if (bytes) { this._teardown(); const keep = this._persist; await this.load(bytes); this._persist = keep; await this._boot(code); return; }
+          if (bytes) { this._teardown(); await this.load(bytes); await this._boot(code); return; }
         }
         this._teardown();
         await this._boot(code);

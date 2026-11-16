@@ -5,9 +5,12 @@
 #include <stdint.h>
 #include <sys/time.h>
 #include <emscripten.h>
+#include "dotbench_persist.h"
 
 extern int __real_gettimeofday(struct timeval *tv, void *tz);
-static volatile int64_t g_offset_us;
+/* The offset lives in persistent region "dev-state" so the device clock survives reset, power-on and a
+ * page reload (like an RTC with a battery); the page keeps no second copy. */
+#define g_offset_us (dbp_devstate()->rtc_offset_us)
 
 int settimeofday(const struct timeval *tv, const struct timezone *tz)
 {
@@ -18,6 +21,7 @@ int settimeofday(const struct timeval *tv, const struct timezone *tz)
     int64_t host = (int64_t)now.tv_sec * 1000000 + now.tv_usec;
     int64_t want = (int64_t)tv->tv_sec * 1000000 + tv->tv_usec;
     g_offset_us = want - host;
+    dbp_devstate_changed();
     return 0;
 }
 
@@ -34,4 +38,4 @@ int __wrap_gettimeofday(struct timeval *tv, void *tz)
 
 /* Page side: device clock = host clock + this offset (ms). The page keeps it across restarts like an RTC. */
 EMSCRIPTEN_KEEPALIVE double kweb_time_offset_ms(void) { return (double)g_offset_us / 1000.0; }
-EMSCRIPTEN_KEEPALIVE void kweb_time_set_offset_ms(double ms) { g_offset_us = (int64_t)(ms * 1000.0); }
+EMSCRIPTEN_KEEPALIVE void kweb_time_set_offset_ms(double ms) { g_offset_us = (int64_t)(ms * 1000.0); dbp_devstate_changed(); }

@@ -1,7 +1,23 @@
 {
   "area": "nvs",
-  "description": "khal_nvs over a flat arena that survives restarts (persist region 'nvs')",
+  "description": "khal_nvs on a persistent region ('nvs', 64 KiB = the nvs partition): CRC-protected record log, typed entries, tombstones, page compaction; page-side editor exports (nvs.js)",
   "supersedes": {
-    "components/khal/nvs/src/khal_nvs_esp.c": "web fake: runtime/drivers/nvs (in-memory key-value store)"
-  }
+    "components/khal/nvs/src/khal_nvs_esp.c": "web fake: runtime/drivers/nvs (record log on persistent region 'nvs')"
+  },
+  "exports": [
+    "dbnvs_list",
+    "dbnvs_get",
+    "dbnvs_type",
+    "dbnvs_set",
+    "dbnvs_erase",
+    "dbnvs_erase_ns",
+    "dbnvs_wipe",
+    "dbnvs_usage"
+  ],
+  "js": [
+    "nvs.js"
+  ],
+  "test_apps": [
+    "sdk:examples/console_actions"
+  ]
 }
