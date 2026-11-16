@@ -17,7 +17,7 @@
 //   rem.sendRaw([9000, 4500, 560, ...], 38000);             // any train; rem.addButton("Sony", { raw: [...], carrier: 40000 })
 //   tv.state()  -> { power, volume, channel, muted, last: {...} }     tv.log() -> entries (newest last)     tv.raw() -> last non-NEC train
 //   tv.aim(false) / rem.aim(false)                          // "pointing at the Dot": yes / no
-//   tv.remove() / rem.remove() / ir.remove(id)              // objects come and go at run time; ids are "tv1", "remote1", ...
+//   tv.remove() / rem.remove() / ir.remove(id)              // objects come and go at run time; ids are kind + a running number shared by both kinds: "tv1", "remote2", "tv3", ...
 //   ir.objects()  ir.get(id)  ir.state()  ir.configure({ link, rxDeaf, txDark, rxFitted, restHigh, echo, agcUs })  ir.config()  ir.poll()
 // Events (page side: dev.on("area:ir:<type>", cb)); each is emitted as it happens:
 //   tx {seq, n, carrier, durUs, nec:{addr,cmd}|null, heardBy:[ids]}      the Dot transmitted

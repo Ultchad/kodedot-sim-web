@@ -86,7 +86,7 @@ await sleep(300);
 rem.addButton("Far", { raw: sirc, carrier: 56000 });
 const before = a.ir.state().dropped.carrier;
 r = await rem.press("Far");
-check(!r.ok && r.code === -3, "a 56 kHz remote is not heard by the Dot's receiver", r);
+check(!r.ok && r.frames[0].code === -3, "a 56 kHz remote is not heard by the Dot's receiver", r);
 check(a.ir.state().dropped.carrier === before + 1, "(counted as a carrier drop)");
 await a.txRaw(sirc, 56000);
 await a.waitFor(() => tv.raw().carrier === 56000, 3000, "56 kHz seen by TV");
