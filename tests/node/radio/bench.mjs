@@ -61,6 +61,18 @@ export async function bootRadio(pkg, opts = {}) {
     const t0 = Date.now();
     for (;;) { const e = events.slice(from).find(pred); if (e) return e; if (Date.now() - t0 > ms) throw new Error("no event; got " + JSON.stringify(events.slice(from, from + 20))); await sleep(25); }
   };
+  /** Type a console command; resolve once its ">ok" / ">err" line is in: { ok, err, lines (the ">|" result lines), text }. */
+  a.cmd = async (line, ms = 10000) => {
+    const m = a.mark(); a.type(line);
+    const t0 = Date.now();
+    for (;;) {
+      const t = a.logText().slice(m);
+      const x = /^>(ok|err[^\n]*)$/m.exec(t);
+      if (x) return { ok: x[1] === "ok", err: x[1] === "ok" ? null : x[1], lines: t.split("\n").filter((l) => l.startsWith(">|")).map((l) => l.slice(2)), text: t };
+      if (Date.now() - t0 > ms) throw new Error(`no >ok/>err after '${line}'\n` + t);
+      await sleep(25);
+    }
+  };
   /** Press a button and release it (UP 0 DOWN 1 LEFT 2 RIGHT 3 TOP 4 BOT 5). */
   a.press = async (id, ms = 80) => { a.button(id, true); await sleep(ms); a.button(id, false); await sleep(30); };
   return a;
