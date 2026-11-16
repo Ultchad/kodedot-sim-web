@@ -18,7 +18,7 @@ command -v emcc >/dev/null 2>&1 || { . "$emsdk/emsdk_env.sh" >/dev/null 2>&1; }
 if [ "${1:-}" = "--rebuild" ]; then shift; rm -rf "$build/lib" "$build/obj"; fi
 areas=("$@")
 if [ ${#areas[@]} -eq 0 ]; then
-  mapfile -t areas < <(cd "$here" && for d in */; do d="${d%/}"; [ "$d" != acceptance ] && ls "$d"/*.test.mjs "$d"/*/*.test.mjs >/dev/null 2>&1 && echo "$d"; done)
+  mapfile -t areas < <(cd "$here" && for d in */; do d="${d%/}"; [ "$d" != acceptance ] && [ -n "$(ls "$d"/*.test.mjs "$d"/*/*.test.mjs 2>/dev/null)" ] && echo "$d"; done)
 fi
 
 echo "== dotbench sdk"
