@@ -10,6 +10,11 @@ extern "C" {
 #define ESP_IMAGE_HEADER_MAGIC 0xE9
 #define ESP_IMAGE_MAX_SEGMENTS 16
 #define ESP_ERR_IMAGE_INVALID 0x2000
+/* Chip ids: kdrv_radio.c checks the C5's image header against ESP_CHIP_ID_ESP32C5 (the radio area used to carry its own
+ * copy of this header; the two were merged here because the include path holds exactly one esp_image_format.h). */
+typedef enum { ESP_CHIP_ID_ESP32 = 0, ESP_CHIP_ID_ESP32S2 = 2, ESP_CHIP_ID_ESP32C3 = 5, ESP_CHIP_ID_ESP32S3 = 9,
+               ESP_CHIP_ID_ESP32C2 = 12, ESP_CHIP_ID_ESP32C6 = 13, ESP_CHIP_ID_ESP32H2 = 16, ESP_CHIP_ID_ESP32P4 = 18,
+               ESP_CHIP_ID_ESP32C5 = 23, ESP_CHIP_ID_INVALID = 0xFFFF } __attribute__((packed)) esp_chip_id_t;
 typedef struct {
     uint8_t magic;
     uint8_t segment_count;
@@ -18,7 +23,7 @@ typedef struct {
     uint32_t entry_addr;
     uint8_t wp_pin;
     uint8_t spi_pin_drv[3];
-    uint16_t chip_id;
+    esp_chip_id_t chip_id;
     uint8_t min_chip_rev;
     uint16_t min_chip_rev_full;
     uint16_t max_chip_rev_full;
