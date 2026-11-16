@@ -1,6 +1,19 @@
 {
   "apps": [
     {
+      "id": "kodeos",
+      "file": "kodeos.dotbench",
+      "name": "kodeos",
+      "description": {
+        "en": "The operating system of the Kode Dot: lock screen, app list and settings.",
+        "pt-BR": "O sistema operacional do Kode Dot: tela de bloqueio, lista de apps e ajustes.",
+        "es": "El sistema operativo del Kode Dot: pantalla de bloqueo, lista de apps y ajustes."
+      },
+      "size": 1533084,
+      "version": "0.1.1",
+      "sdkCommit": "c9568a3"
+    },
+    {
       "id": "display_lvgl",
       "file": "display_lvgl.dotbench",
       "name": "Display",
@@ -9,7 +22,7 @@
         "pt-BR": "Uma demonstração de toque que desenha uma pequena interface LVGL na tela. Toque e arraste no vidro.",
         "es": "Una demostración táctil que dibuja una pequeña interfaz LVGL en la pantalla. Toca y arrastra sobre el cristal."
       },
-      "size": 422690,
+      "size": 441051,
       "version": "0.0.0",
       "sdkCommit": "c9568a3"
     },
@@ -22,7 +35,7 @@
         "pt-BR": "Aperte o botão de cima para alternar o LED entre verde e vermelho.",
         "es": "Pulsa el botón superior para cambiar el LED entre verde y rojo."
       },
-      "size": 141713,
+      "size": 159884,
       "version": "0.0.0",
       "sdkCommit": "c9568a3"
     }

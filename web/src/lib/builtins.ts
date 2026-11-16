@@ -10,8 +10,8 @@ export interface BuiltinApp {
 }
 
 export const BUILTIN_PREFIX = 'builtin:';
-/** Started automatically on the first visit. */
-export const DEFAULT_BUILTIN_ID = 'display_lvgl';
+/** The system. Started automatically when the page opens. */
+export const DEFAULT_BUILTIN_ID = 'kodeos';
 
 export const builtinKey = (id: string) => BUILTIN_PREFIX + id;
 export const isBuiltinKey = (key: string | null): key is string => !!key && key.startsWith(BUILTIN_PREFIX);
@@ -42,11 +42,17 @@ export async function fetchBuiltinBytes(app: BuiltinApp, fetchFn: typeof fetch =
   return r.arrayBuffer();
 }
 
-/** Which app to start when the page opens: the remembered one if it still exists, else the default demo. */
+/**
+ * Which app to start when the page opens. The system (kodeOS) is home: it starts every time it is bundled.
+ * The exception is the user's own app, which keeps starting while they are working on it.
+ */
 export function pickStartApp(remembered: string | null, builtins: BuiltinApp[], userIds: string[]): string | null {
+  const home = builtins.find((b) => b.id === DEFAULT_BUILTIN_ID);
   if (remembered) {
-    if (isBuiltinKey(remembered) ? builtins.some((b) => builtinKey(b.id) === remembered) : userIds.includes(remembered)) return remembered;
+    if (isBuiltinKey(remembered)) {
+      if (!home && builtins.some((b) => builtinKey(b.id) === remembered)) return remembered;
+    } else if (userIds.includes(remembered)) return remembered;
   }
-  const def = builtins.find((b) => b.id === DEFAULT_BUILTIN_ID) ?? builtins[0];
-  return def ? builtinKey(def.id) : null;
+  const start = home ?? builtins[0];
+  return start ? builtinKey(start.id) : null;
 }

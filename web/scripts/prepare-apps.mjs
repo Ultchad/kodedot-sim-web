@@ -11,6 +11,14 @@ const outDir = join(web, 'public', 'apps');
 /** Descriptions shown in the app picker (the packages carry no localised text). */
 const APPS = [
   {
+    id: 'kodeos',
+    description: {
+      en: 'The operating system of the Kode Dot: lock screen, app list and settings.',
+      'pt-BR': 'O sistema operacional do Kode Dot: tela de bloqueio, lista de apps e ajustes.',
+      es: 'El sistema operativo del Kode Dot: pantalla de bloqueo, lista de apps y ajustes.',
+    },
+  },
+  {
     id: 'display_lvgl',
     description: {
       en: 'A touch demo that draws a small LVGL interface on the screen. Tap and drag on the glass.',
