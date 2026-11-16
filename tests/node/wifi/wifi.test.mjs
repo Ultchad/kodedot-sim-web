@@ -107,9 +107,10 @@ const e0 = a.events.length;
 home.setSignal(-67);
 await sleep(300);
 check(a.events.slice(e0).some((e) => e.type === "rssi" && e.dbm === -67), "bench: an rssi event when the signal changes");
-let info2;
-for (let i = 0; i < 8; i++) { info2 = await a.cmd("wifi_info"); if (/rssi=-67/.test(info2.lines.join())) break; await sleep(500); }
-check(/rssi=-67/.test(info2.lines.join()), "wifi_info reports the new signal strength", info2.lines);
+// the SDK refreshes its cached reading only when something asks (kodeOS's status UI does, periodically); the C5 answers with the live value
+const ap = await a.world.ops.get("wifi.ap_info")(new a.world.R(new Uint8Array(0)));
+const apRssi = new a.world.R(ap.out); apRssi.lp(); apRssi.bytes(6); apRssi.u8();
+check((apRssi.u8() << 24 >> 24) === -67, "esp_wifi_sta_get_ap_info (what kdrv_wifi_rssi reads) returns the new signal strength");
 home.setSignal(-40);
 
 // leave
