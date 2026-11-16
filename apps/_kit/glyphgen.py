@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Line glyphs for the starter apps, as A8 LVGL images, and each app's icon.png.
+
+Flat, one stroke, round caps, drawn 8x and shrunk, like kui's own line glyphs.
+usage: glyphgen.py <app dir> <glyph name>...   writes main/glyphs.c, main/glyphs.h and appdata/icon.png
+"""
+import math
+import os
+import sys
+from PIL import Image, ImageDraw
+
+SS = 8                      # supersampling
+SIZES = (40, 96)            # the pill slot's and the stage disc's glyph
+STROKE = 0.085              # of the canvas
+
+
+def canvas(n):
+    im = Image.new("L", (n * SS, n * SS), 0)
+    return im, ImageDraw.Draw(im)
+
+
+class Pen:
+    def __init__(self, n):
+        self.n = n * SS
+        self.im = Image.new("L", (self.n, self.n), 0)
+        self.d = ImageDraw.Draw(self.im)
+        self.w = max(2, int(round(STROKE * self.n)))
+
+    def p(self, v):
+        return v * self.n
+
+    def line(self, pts, w=None):
+        w = w or self.w
+        pts = [(self.p(x), self.p(y)) for x, y in pts]
+        self.d.line(pts, fill=255, width=w, joint="curve")
+        for x, y in (pts[0], pts[-1]):
+            self.d.ellipse((x - w / 2, y - w / 2, x + w / 2, y + w / 2), fill=255)
+
+    def arc(self, cx, cy, r, a0, a1, w=None):
+        w = w or self.w
+        pts = []
+        steps = 48
+        for i in range(steps + 1):
+            a = math.radians(a0 + (a1 - a0) * i / steps)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+        self.line(pts, w)
+
+    def ring(self, cx, cy, r, w=None):
+        w = w or self.w
+        c = (self.p(cx), self.p(cy))
+        rr = self.p(r)
+        self.d.ellipse((c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr), outline=255, width=w)
+
+    def disc(self, cx, cy, r):
+        c = (self.p(cx), self.p(cy))
+        rr = self.p(r)
+        self.d.ellipse((c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr), fill=255)
+
+    def rrect(self, x0, y0, x1, y1, r, w=None):
+        w = w or self.w
+        self.d.rounded_rectangle((self.p(x0), self.p(y0), self.p(x1), self.p(y1)), radius=self.p(r), outline=255, width=w)
+
+    def out(self, n):
+        return self.im.resize((n, n), Image.LANCZOS)
+
+
+def g_nfc(pen):
+    for r in (0.15, 0.30, 0.45, 0.60):
+        pen.arc(0.2, 0.5, r, -42, 42)
+    pen.disc(0.2, 0.5, 0.06)
+
+
+def g_rfid(pen):
+    pen.rrect(0.1, 0.26, 0.9, 0.74, 0.1)
+    pen.ring(0.3, 0.5, 0.09)
+    pen.line([(0.52, 0.42), (0.78, 0.42)])
+    pen.line([(0.52, 0.58), (0.7, 0.58)])
+
+
+def g_ir(pen):
+    pen.rrect(0.3, 0.3, 0.62, 0.92, 0.1)
+    pen.ring(0.46, 0.46, 0.04)
+    pen.line([(0.4, 0.68), (0.52, 0.68)])
+    pen.line([(0.4, 0.8), (0.52, 0.8)])
+    pen.arc(0.46, 0.3, 0.2, -135, -45)
+    pen.arc(0.46, 0.3, 0.34, -135, -45)
+
+
+def g_light(pen):
+    pen.ring(0.5, 0.4, 0.26)
+    pen.line([(0.4, 0.72), (0.4, 0.8)])
+    pen.line([(0.6, 0.72), (0.6, 0.8)])
+    pen.line([(0.4, 0.8), (0.6, 0.8)])
+    pen.line([(0.42, 0.9), (0.58, 0.9)])
+
+
+def g_sos(pen):
+    pen.line([(0.5, 0.12), (0.92, 0.84), (0.08, 0.84), (0.5, 0.12)])
+    pen.line([(0.5, 0.4), (0.5, 0.62)])
+    pen.disc(0.5, 0.74, 0.035)
+
+
+def g_level(pen):
+    pen.ring(0.5, 0.5, 0.38)
+    pen.disc(0.58, 0.42, 0.1)
+    pen.line([(0.5, 0.1), (0.5, 0.2)])
+    pen.line([(0.5, 0.8), (0.5, 0.9)])
+    pen.line([(0.1, 0.5), (0.2, 0.5)])
+    pen.line([(0.8, 0.5), (0.9, 0.5)])
+
+
+def g_compass(pen):
+    pen.ring(0.5, 0.5, 0.4)
+    pen.line([(0.5, 0.22), (0.62, 0.5), (0.5, 0.78), (0.38, 0.5), (0.5, 0.22)])
+    pen.disc(0.5, 0.5, 0.04)
+
+
+def g_tone(pen):
+    pts = []
+    for i in range(0, 101):
+        x = 0.08 + 0.84 * i / 100
+        pts.append((x, 0.5 - 0.28 * math.sin(i / 100 * 2 * math.pi * 1.5)))
+    pen.line(pts)
+
+
+def g_led(pen):
+    pen.ring(0.5, 0.5, 0.2)
+    for a in range(0, 360, 45):
+        r0, r1 = 0.32, 0.44
+        x0 = 0.5 + r0 * math.cos(math.radians(a)); y0 = 0.5 + r0 * math.sin(math.radians(a))
+        x1 = 0.5 + r1 * math.cos(math.radians(a)); y1 = 0.5 + r1 * math.sin(math.radians(a))
+        pen.line([(x0, y0), (x1, y1)])
+
+
+def g_screen(pen):
+    pen.rrect(0.22, 0.1, 0.78, 0.9, 0.12)
+    pen.line([(0.42, 0.78), (0.58, 0.78)])
+
+
+def g_tag(pen):
+    pen.rrect(0.14, 0.18, 0.86, 0.82, 0.12)
+    pen.line([(0.28, 0.4), (0.6, 0.4)])
+    pen.line([(0.28, 0.6), (0.48, 0.6)])
+
+
+def g_wave(pen):
+    for i, r in enumerate((0.14, 0.3, 0.46)):
+        pen.arc(0.5, 0.5, r, -50, 50)
+    pen.disc(0.5, 0.5, 0.05)
+
+
+GLYPHS = {"nfc": g_nfc, "rfid": g_rfid, "ir": g_ir, "light": g_light, "sos": g_sos, "level": g_level,
+          "compass": g_compass, "tone": g_tone, "led": g_led, "screen": g_screen, "tag": g_tag, "wave": g_wave}
+
+
+def render(name, n):
+    pen = Pen(n)
+    # keep inside a margin so the stroke never touches the edge
+    GLYPHS[name](pen)
+    return pen.out(n)
+
+
+def emit_c(names):
+    out = ["/* SPDX-License-Identifier: GPL-3.0-or-later */", "/**", " * @file glyphs.c",
+           " * @brief The app's own line glyphs: A8 images of one stroke, recoloured as they are drawn.", " */",
+           '#include "glyphs.h"', "", "#ifndef LV_ATTRIBUTE_MEM_ALIGN", "#define LV_ATTRIBUTE_MEM_ALIGN", "#endif", ""]
+    for name in names:
+        for n in SIZES:
+            im = render(name, n)
+            data = list(im.getdata())
+            sym = f"app_glyph_{name}_{n}"
+            out.append(f"static const LV_ATTRIBUTE_MEM_ALIGN uint8_t {sym}_map[] = {{")
+            for i in range(0, len(data), 40):
+                out.append("    " + ",".join(f"0x{v:02x}" for v in data[i:i + 40]) + ",")
+            out.append("};")
+            out.append("")
+            out.append(f"const lv_image_dsc_t {sym} = {{")
+            out.append("    .header = {")
+            out.append("        .magic = LV_IMAGE_HEADER_MAGIC,")
+            out.append("        .cf = LV_COLOR_FORMAT_A8,")
+            out.append("        .flags = 0,")
+            out.append(f"        .w = {n},")
+            out.append(f"        .h = {n},")
+            out.append(f"        .stride = {n},")
+            out.append("    },")
+            out.append(f"    .data_size = sizeof({sym}_map),")
+            out.append(f"    .data = {sym}_map,")
+            out.append("};")
+            out.append("")
+    return "\n".join(out)
+
+
+def emit_h(names):
+    out = ["/* SPDX-License-Identifier: GPL-3.0-or-later */", "/**", " * @file glyphs.h",
+           " * @brief The app's own line glyphs.", " */", "#ifndef GLYPHS_H_", "#define GLYPHS_H_", "",
+           '#include "lvgl.h"', "", "#ifdef __cplusplus", 'extern "C" {', "#endif", ""]
+    for name in names:
+        for n in SIZES:
+            out.append(f"extern const lv_image_dsc_t app_glyph_{name}_{n}; /**< The {name} glyph, {n} x {n}. */")
+    out += ["", "#ifdef __cplusplus", "}", "#endif", "", "#endif /* GLYPHS_H_ */", ""]
+    return "\n".join(out)
+
+
+def make_icon(path, glyph, color):
+    n = 64
+    big = Image.new("RGBA", (n * 4, n * 4), (0, 0, 0, 0))
+    d = ImageDraw.Draw(big)
+    d.ellipse((0, 0, n * 4 - 1, n * 4 - 1), fill=color)
+    big = big.resize((n, n), Image.LANCZOS)
+    g = render(glyph, 40)
+    mask = Image.new("L", (n, n), 0)
+    mask.paste(g, ((n - 40) // 2, (n - 40) // 2))
+    ink = Image.new("RGBA", (n, n), (222, 215, 205, 255))
+    big.paste(ink, (0, 0), mask)
+    big.save(path)
+
+
+if __name__ == "__main__":
+    app = sys.argv[1]
+    names = sys.argv[2:]
+    with open(os.path.join(app, "main/glyphs.c"), "w") as f:
+        f.write(emit_c(names))
+    with open(os.path.join(app, "main/glyphs.h"), "w") as f:
+        f.write(emit_h(names))
