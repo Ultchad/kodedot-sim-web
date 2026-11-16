@@ -72,8 +72,8 @@ export async function launch(bench, pkg, { name, glue = {}, reason = RESET.POWER
         if (Date.now() - t0 > ms) throw new Error("the screen never settled");
       }
     },
-    async tap(x, y, hold = 90) {
-      run.touch(x, y, true); await sleep(hold); run.touch(x, y, false); await sleep(120);
+    async tap(x, y, hold = 160) {
+      run.touch(x, y, true); await sleep(hold); run.touch(x, y, false); await sleep(220);
     },
     /** Drag from (x0,y0) to (x1,y1) in a few steps. */
     async drag(x0, y0, x1, y1, steps = 8) {
@@ -81,7 +81,7 @@ export async function launch(bench, pkg, { name, glue = {}, reason = RESET.POWER
       for (let i = 1; i <= steps; i++) { run.touch(x0 + ((x1 - x0) * i) / steps, y0 + ((y1 - y0) * i) / steps, true); await sleep(30); }
       run.touch(x1, y1, false); await sleep(150);
     },
-    async press(btn, ms = 120) { run.button(btn, true); await sleep(ms); run.button(btn, false); await sleep(180); },
+    async press(btn, ms = 160) { run.button(btn, true); await sleep(ms); run.button(btn, false); await sleep(240); },
     async hold(btn, ms) { run.button(btn, true); await sleep(ms); run.button(btn, false); await sleep(200); },
     fb: () => run.framebuffer(),
     /** Number of distinct colours and the share of non-black pixels, to assert a screen is not empty. */

@@ -378,6 +378,7 @@ void kit_push(kit_t *kit, kit_build_fn_t fn, void *arg)
         kit->stack[kit->depth].fn  = fn;
         kit->stack[kit->depth].arg = arg;
         kit->depth++;
+        kit->sel = -1;   /* A new page starts with the ring off: the first DOWN lands on its first control. */
         kit_show(kit, LV_SCREEN_LOAD_ANIM_MOVE_LEFT);
     }
 }

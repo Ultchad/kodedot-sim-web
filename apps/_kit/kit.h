@@ -18,7 +18,7 @@ extern "C" {
 
 /* ---- Numbers ---- */
 
-#define KIT_STACK_MAX     6U    /**< Pages one app keeps open at once, the first included. */
+#define KIT_STACK_MAX     12U   /**< Pages one app keeps open at once, the first included. */
 #define KIT_FOCUS_MAX     24U   /**< Controls on one page the pad can reach. */
 #define KIT_BAR_Y         12    /**< Where the title line of the back bar starts. */
 #define KIT_BAR_H         44    /**< The title line's height. */
