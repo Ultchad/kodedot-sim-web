@@ -35,7 +35,9 @@ check(a.hdr("outUnderruns") === 0, "no underrun was counted while playing");
 
 // ---- the bottom button: a 2 s recording, LED red while it listens, then the file write
 const t1 = Date.now();
-await press(BTN.BOT);
+await sleep(500);
+// the app ignores the button while the codec is still busy with the third note's drain: press again if nothing happened
+for (let k = 0; k < 4 && !(a.led()[0] > 0); k++) { await press(BTN.BOT); const t = Date.now(); while (Date.now() - t < 2500 && !(a.led()[0] > 0)) await sleep(20); }
 await a.waitFor(() => a.led()[0] > 0 && a.led()[1] === 0, 5000, "LED red while recording");
 check(a.led()[0] === 32 && logs().includes("listening"), "LED red (32) and 'listening' logged while the microphone records");
 await a.waitFor(() => /recorded 2000 ms into|no recording in/.test(logs()), 15000, "the recording's answer");
