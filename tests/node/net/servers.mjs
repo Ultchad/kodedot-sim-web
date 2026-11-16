@@ -15,7 +15,7 @@ export async function httpServer() {
       const u = new URL(req.url, "http://x");
       const cors = { "access-control-allow-origin": "*", "access-control-expose-headers": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "*" };
       if (req.method === "OPTIONS") { res.writeHead(204, cors); return res.end(); }
-      if (u.pathname === "/hello") { res.writeHead(200, { ...cors, "content-type": "text/html", "x-demo": "yes" }); return res.end("<html>hello from the test server</html>"); }
+      if (u.pathname === "/hello" || u.pathname === "/") { res.writeHead(200, { ...cors, "content-type": "text/html", "x-demo": "yes" }); return res.end("<html>hello from the test server</html>"); }
       if (u.pathname === "/nocors") { res.writeHead(200, { "content-type": "text/plain" }); return res.end("no cors headers here"); }
       if (u.pathname === "/echo") { res.writeHead(200, { ...cors, "content-type": "application/json" }); return res.end(JSON.stringify({ method: req.method, headers: req.headers, body: body.toString() })); }
       if (u.pathname === "/redirect") { res.writeHead(302, { ...cors, location: "/hello" }); return res.end(); }
