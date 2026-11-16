@@ -28,7 +28,7 @@ AO_Storage, the console file verbs. Superseded (reason in each `area.json`): `kh
 | `keep` | 1 MiB (boot_web.c) | RTC RAM | RETAIN: cleared at power-on, never mirrored |
 | `apps` | (boot-model engineer) | | |
 
-Limits: 8 regions (`KWEB_PERSIST_MAX`; 6 used with `apps`), name <= 15 chars, 8-byte aligned buffer, size a multiple of 4096, fixed per
+Limits: 16 regions in the dbp table (`DBP_MAX_REGIONS`); the legacy `kweb_persist_register` table is still 8 (`KWEB_PERSIST_MAX`, shared file: coordinator should raise it to 16), name <= 15 chars, 8-byte aligned buffer, size a multiple of 4096, fixed per
 build (a changed size starts that region empty and emits `region-ignored`), 256 MiB of dirty bitmap in total.
 
 **C API** (`runtime/bridge/dotbench_persist.h`): `dbp_register(name, buf, size, flags)` (from a constructor; idempotent), `dbp_find`, `dbp_buf`,
@@ -105,7 +105,7 @@ __attribute__((constructor(110))) static void apps_reg(void) { dbp_register("app
 /* write: dbp_write(r, off, src, len)   or   memcpy(g_apps + off, ...); dbp_dirty(r, off, len);   (mark AFTER writing) */
 ```
 Include `dotbench_persist.h` (runtime/bridge is on the include path). The host loads the saved bytes before `main()`, mirrors only dirty chunks, and stores nothing for all-zero chunks.
-Budget: 2 slots left (nvs, dev-state, flash-fs, sd-card, keep, apps = 6 of 8); the wasm memory is fixed at 96 MB and ~35 MiB is already static region, so keep `apps` well under 16 MiB. Do not change its size
+Budget: dbp table has room (nvs, dev-state, flash-fs, sd-card, apps + other areas; "keep" and the NFC area's "nfc" are legacy-registered); the wasm memory is fixed at 96 MB and ~35 MiB is already static region, so keep `apps` well under 16 MiB. Do not change its size
 between builds. If installed apps are better kept as files, `/storage` is a real FAT volume (2024 KB).
 
 ## 8. Tests (all under Node unless noted)
@@ -137,3 +137,10 @@ at stop, a file and the clock set from the page too, "erase device" empties Inde
   `_snapshot`; `exportPersist/importPersist/factoryReset` and the new persistence methods (253-288); the OTA reload line. `runtime/web-adapter/README.md`: the API rows.
 * `tests/node/run.sh`: area lookup falls back to `runtime/<area>/area.json` (needed for `tests/node/persist`).
 * New global header dir `runtime/drivers/storage/include/` (the shadow `dirent.h`, `dotbench_vfs.h`) and `runtime/bridge/dotbench_persist.h`.
+
+## 11. To reconcile when merging main
+
+* **How an area registers a region**: `dbp_register("name", buf, size, 0)` from a constructor (section 7); it gets dirty tracking and is mirrored to IndexedDB. Regions registered only with `kweb_persist_register` (NFC `nfc`, `keep`) still work: the host sees them, copies them at stop/restart (full compare), but they have no dirty bits, so they are saved at stop and on the `pagehide` flush only. Recommend the NFC area switch to `dbp_register`. Raise `KWEB_PERSIST_MAX` (kweb_bridge.h) from 8 to 16; the dbp table already holds 16.
+* **kodeOS stand-in**: `runtime/drivers/kodeos_boot/storage_memfs.c` supersedes `kdrv_fs.c` just as `storage/kdrv_fs_web.c` does: two areas superseding one file is a build error, so drop the stand-in (and its MEMFS) when merging. The factory tree (`factory/storage/**`) must be copied onto `/storage` once on first boot: not done here. Suggested: after `kdrv_fs_mount` returns with a fresh format (kdrv_fs_web.c knows `formatted`), call a seeding function that writes the embedded tree through `fopen` on `/storage` (the volume is 2024 KB; the pack is 324 KB), and record a marker file.
+* nvs: main's `khal_nvs_web.c` (128 KiB arena, constructor + kweb_persist_register) conflicts with this branch's rewrite (64 KiB log, `partitions.csv`); keep this branch's. `STATUS-kodeos.md` says settings live in the `nvs` region: same name, so it carries over.
+* Adapter: this branch replaces `_persist` (Map) by a PersistManager in `dotbench-device.js`; resolve any main edits there by hand.

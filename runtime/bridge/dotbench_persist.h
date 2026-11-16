@@ -27,7 +27,7 @@ extern "C" {
 
 #define DBP_CHUNK_SHIFT   12u
 #define DBP_CHUNK         (1u << DBP_CHUNK_SHIFT)   /* dirty-tracking and storage granule, bytes */
-#define DBP_MAX_REGIONS   8u                        /* shared with kweb_persist_register (KWEB_PERSIST_MAX) */
+#define DBP_MAX_REGIONS   16u                       /* the legacy kweb_persist table (KWEB_PERSIST_MAX) should be raised to match */
 #define DBP_FLAG_RETAIN   1u   /* survives a reset, is cleared at power-on, never mirrored to durable storage */
 
 typedef struct dbp_region dbp_region_t;
