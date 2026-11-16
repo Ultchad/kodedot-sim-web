@@ -11,6 +11,22 @@ const outDir = join(web, 'public', 'apps');
 /** Descriptions shown in the app picker (the packages carry no localised text). */
 const APPS = [
   {
+    id: 'kodeos',
+    description: {
+      en: 'The operating system of the Kode Dot: lock screen, app list and settings.',
+      'pt-BR': 'O sistema operacional do Kode Dot: tela de bloqueio, lista de apps e ajustes.',
+      es: 'El sistema operativo del Kode Dot: pantalla de bloqueo, lista de apps y ajustes.',
+    },
+  },
+  {
+    id: 'kody_kart',
+    description: {
+      en: 'Kody races his cousins on three Mode 7 circuits. Made by Kode.',
+      'pt-BR': 'O Kody corre contra os primos em três circuitos Mode 7. Feito pela Kode.',
+      es: 'Kody corre contra sus primos en tres circuitos Mode 7. Hecho por Kode.',
+    },
+  },
+  {
     id: 'display_lvgl',
     description: {
       en: 'A touch demo that draws a small LVGL interface on the screen. Tap and drag on the glass.',

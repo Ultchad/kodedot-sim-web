@@ -12,12 +12,17 @@ describe('builtins', () => {
     expect(describeBuiltin(app('a'), 'es')).toBe('s');
     expect(describeBuiltin(app('a'), 'pt-BR')).toBe('e');
   });
-  it('first visit starts display_lvgl; a remembered app wins while it exists', () => {
-    const list = [app('buttons_led'), app('display_lvgl')];
-    expect(pickStartApp(null, list, [])).toBe(builtinKey('display_lvgl'));
-    expect(pickStartApp(builtinKey('buttons_led'), list, [])).toBe(builtinKey('buttons_led'));
+  it('starts kodeOS when it is bundled; only an app the user loaded wins over it', () => {
+    const list = [app('kodeos'), app('display_lvgl'), app('buttons_led')];
+    expect(pickStartApp(null, list, [])).toBe(builtinKey('kodeos'));
+    expect(pickStartApp(builtinKey('buttons_led'), list, [])).toBe(builtinKey('kodeos'));
     expect(pickStartApp('u1', list, ['u1'])).toBe('u1');
-    expect(pickStartApp('gone', list, ['u1'])).toBe(builtinKey('display_lvgl'));
+    expect(pickStartApp('gone', list, ['u1'])).toBe(builtinKey('kodeos'));
+  });
+  it('without kodeOS a remembered app wins, else the first built-in starts', () => {
+    const list = [app('buttons_led'), app('display_lvgl')];
+    expect(pickStartApp(null, list, [])).toBe(builtinKey('buttons_led'));
+    expect(pickStartApp(builtinKey('display_lvgl'), list, [])).toBe(builtinKey('display_lvgl'));
     expect(pickStartApp(null, [app('only')], [])).toBe(builtinKey('only'));
     expect(pickStartApp(null, [], [])).toBeNull();
   });
