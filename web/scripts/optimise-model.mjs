@@ -1,6 +1,7 @@
 // Makes the bundled device model from the device maker's original model file.
 //
-//   node scripts/optimise-model.mjs <original.glb> [--out <file.glb>] [--budget <triangles>] [--no-notice]
+//   node scripts/optimise-model.mjs <original.glb> [--out <file.glb>] [--budget <triangles>] [--level medium|high]
+//                                   [--normal-weight <n>] [--no-notice]
 //
 // The original is only read (keep it outside the repository). The result goes
 // to web/public/device/model.glb unless --out says otherwise, with a short
@@ -19,12 +20,15 @@
 //   4. adds the `screen` node: a flat rounded rectangle exactly over the lit
 //      area of the glass, with clean planar UVs for the 410 x 502 picture. The
 //      glass keeps its shape but loses the demo picture baked on it;
-//   5. simplifies with meshoptimizer, part by part, to the triangle budget
-//      (the screen, the light guide, the inlays and the side window are left
-//      alone; the controls only lightly);
+//   5. simplifies with meshoptimizer, part by part, to the triangle budget,
+//      weighing the normals in so that flat faces stay flat (the glass, the
+//      light guide, the inlays, the side window and the back cover with its
+//      debossed mark keep every triangle; the controls lose few);
 //   6. replaces clear coat / anisotropy / specular / IOR by plain
-//      metallic-roughness materials with the maker's colours, joins static
-//      parts that then share a material, scales the textures down to what the
+//      metallic-roughness materials with the maker's colours; turns the shared
+//      colour palette into one plain material per colour (no texture look-up);
+//      drops the baked normal maps except the back cover's; joins static
+//      parts that then share a material; scales the textures down to what the
 //      page can show;
 //   7. welds, removes duplicates and leftovers, and writes the file with
 //      meshopt compression (decoded in the page by a few kB of WebAssembly, no
@@ -33,7 +37,7 @@
 // The maker's design is kept as it is, including the mark on the back.
 import { Document, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { compactPrimitive, dedup, getSceneVertexCount, joinPrimitives, meshopt, prune, simplifyPrimitive, VertexCountMethod, weldPrimitive } from '@gltf-transform/functions';
+import { compactPrimitive, dedup, getSceneVertexCount, joinPrimitives, meshopt, prune, VertexCountMethod, weldPrimitive } from '@gltf-transform/functions';
 import draco3d from 'draco3dgltf';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
@@ -52,7 +56,9 @@ const value = (name, fallback) => {
   return v;
 };
 const outFile = resolve(value('--out', join(root, 'public', 'device', 'model.glb')));
-const BUDGET = Number(value('--budget', 40000));
+const BUDGET = Number(value('--budget', 42000));
+const LEVEL = value('--level', 'high');
+const NORMAL_WEIGHT = Number(value('--normal-weight', 1));
 const writeNotice = !args.includes('--no-notice');
 const input = args.find((a) => !a.startsWith('--'));
 if (!input) {
@@ -177,22 +183,74 @@ const copyInfo = (from, to) => to && from && to.setWrapS(from.getWrapS()).setWra
  */
 const TEXTURE_SIDE = { front_body: 1024, back_body: 1024, 'left buttom': 256, 'right button': 256, 'Frame 2147223613': 1024 };
 
+/**
+ * Palette materials: several parts of the original take their colour, metalness and roughness from one tiny shared
+ * texture, every triangle pointing at a single pixel of it. Here each such colour becomes a material of its own with
+ * plain factors: no texture look-up, no texture coordinates, and the page can tell a glossy black part (the bezel
+ * round the glass, the side window) from a metal one by its numbers.
+ */
+const pixelCache = new Map();
+async function pixels(t) {
+  if (!pixelCache.has(t)) {
+    const { data, info } = await sharp(t.getImage()).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    pixelCache.set(t, { data, w: info.width, h: info.height });
+  }
+  return pixelCache.get(t);
+}
+const isPalette = (mat) => /^Palette/.test(mat.getBaseColorTexture()?.getName() ?? '');
+const linear = (v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+/** The palette pixel of every triangle of a primitive (by its first corner), as "x,y" keys. */
+async function paletteKeys(prim, mat) {
+  const tex = await pixels(mat.getBaseColorTexture());
+  const uv = prim.getAttribute('TEXCOORD_0').getArray();
+  const idx = prim.getIndices() ? prim.getIndices().getArray() : null;
+  const count = (idx ? idx.length : uv.length / 2) / 3;
+  const keys = new Array(count);
+  for (let t = 0; t < count; t++) {
+    const v = idx ? idx[t * 3] : t * 3;
+    const x = Math.min(tex.w - 1, Math.max(0, Math.floor(uv[v * 2] * tex.w))), y = Math.min(tex.h - 1, Math.max(0, Math.floor(uv[v * 2 + 1] * tex.h)));
+    keys[t] = `${x},${y}`;
+  }
+  return keys;
+}
+
 const materials = new Map();
-async function material(srcMat, role) {
-  const key = `${srcMat.getName()}|${role}`;
+async function material(srcMat, role, paletteKey = null) {
+  const key = `${srcMat.getName()}|${role}|${paletteKey ?? ''}`;
   if (materials.has(key)) return materials.get(key);
   const ext = (n) => srcMat.getExtension(n);
   const m = doc.createMaterial(srcMat.getName());
   m.setBaseColorFactor(srcMat.getBaseColorFactor()).setMetallicFactor(srcMat.getMetallicFactor()).setRoughnessFactor(srcMat.getRoughnessFactor());
   m.setAlphaMode(srcMat.getAlphaMode()).setAlphaCutoff(srcMat.getAlphaCutoff());
   const side = (t) => TEXTURE_SIDE[t?.getName()] ?? 1024;
-  if (role !== 'glass') {
+  if (paletteKey && role !== 'glass') {
+    const [x, y] = paletteKey.split(',').map(Number);
+    const at = (tex) => tex.data.subarray((y * tex.w + x) * 4, (y * tex.w + x) * 4 + 4);
+    const bc = at(await pixels(srcMat.getBaseColorTexture()));
+    const f = srcMat.getBaseColorFactor();
+    m.setBaseColorFactor([linear(bc[0] / 255) * f[0], linear(bc[1] / 255) * f[1], linear(bc[2] / 255) * f[2], f[3]]);
+    if (srcMat.getMetallicRoughnessTexture()) {
+      const mr = at(await pixels(srcMat.getMetallicRoughnessTexture()));
+      // a few grey levels either side of 0 or 1 are compression noise in the palette, not a half-metal
+      const metal = (mr[2] / 255) * srcMat.getMetallicFactor();
+      m.setMetallicFactor(metal > 0.9 ? 1 : metal < 0.1 ? 0 : metal).setRoughnessFactor(Math.max(0.04, (mr[1] / 255) * srcMat.getRoughnessFactor()));
+    }
+    m.setEmissiveFactor(srcMat.getEmissiveFactor());
+    m.setName(`${srcMat.getName()}_${x}`);
+  } else if (role !== 'glass') {
     const bc = await copyTexture(srcMat.getBaseColorTexture(), side(srcMat.getBaseColorTexture()));
     if (bc) { m.setBaseColorTexture(bc); copyInfo(srcMat.getBaseColorTextureInfo(), m.getBaseColorTextureInfo()); }
     const mr = await copyTexture(srcMat.getMetallicRoughnessTexture(), 1024);
     if (mr) { m.setMetallicRoughnessTexture(mr); copyInfo(srcMat.getMetallicRoughnessTextureInfo(), m.getMetallicRoughnessTextureInfo()); }
-    const nt = await copyTexture(srcMat.getNormalTexture(), side(srcMat.getNormalTexture()));
-    if (nt) { m.setNormalTexture(nt).setNormalScale(srcMat.getNormalScale()); copyInfo(srcMat.getNormalTextureInfo(), m.getNormalTextureInfo()); }
+    // The normal maps are left out, with one exception. The shell's are baked bevels on an automatic unwrap of many
+    // small islands: the geometry already has those fillets, and once triangles are merged across islands the map
+    // shades flat faces wrongly. The buttons' maps are flat. Without them the parts need no texture coordinates.
+    // The exception is the back cover (role 'whole'): its shallow debossed mark reads only with the baked bevels, so
+    // that part keeps every triangle, its texture coordinates and its map.
+    if (role === 'whole') {
+      const nt = await copyTexture(srcMat.getNormalTexture(), side(srcMat.getNormalTexture()));
+      if (nt) { m.setNormalTexture(nt).setNormalScale(srcMat.getNormalScale()); copyInfo(srcMat.getNormalTextureInfo(), m.getNormalTextureInfo()); }
+    }
     m.setEmissiveFactor(srcMat.getEmissiveFactor());
   }
   // the extensions, folded into the plain model
@@ -200,7 +258,7 @@ async function material(srcMat, role) {
   const specular = ext('KHR_materials_specular');
   if (clearcoat && clearcoat.getClearcoatFactor() > 0) m.setRoughnessFactor(Math.min(m.getRoughnessFactor(), 0.1 + clearcoat.getClearcoatRoughnessFactor()));
   // a specular factor of 0 is "no highlight at all": fully rough says the same. In between (the rubbery buttons): soft, wide highlight
-  if (specular && !srcMat.getMetallicRoughnessTexture()) m.setRoughnessFactor(specular.getSpecularFactor() === 0 ? 1 : Math.min(m.getRoughnessFactor(), 0.82));
+  if (specular && (paletteKey ? m.getMetallicFactor() === 0 : !srcMat.getMetallicRoughnessTexture())) m.setRoughnessFactor(specular.getSpecularFactor() === 0 ? 1 : Math.min(m.getRoughnessFactor(), 0.82));
   // back faces are never seen on a closed shell; the original marks everything double-sided
   m.setDoubleSided(srcMat.getAlphaMode() === 'BLEND');
   if (role === 'glass') {
@@ -220,13 +278,30 @@ for (const i of A.led.parts) give(i, 'led');
 for (const id of ['top', 'bottom', 'dpad']) for (const pc of A.controls[id].pieces) give(pc.part, id, pc.triangles);
 
 const groups = { static: [], glass: [], led: [], top: [], bottom: [], dpad: [] };
+const shellParts = parts.filter((p) => /main_white_body/.test(p.mat.getName())).sort((a, b) => triCount(a.prim) - triCount(b.prim));
+const backCover = shellParts.length > 1 && shellParts[0].mat.getNormalTexture() ? shellParts[0] : null;
 for (let i = 0; i < parts.length; i++) {
   const p = parts[i];
+  const isWindow = !!p.mat.getExtension('KHR_materials_clearcoat');
+  // the largest part that is neither shell nor control is the frame inside the shell
+  const inside = !/main_white_body/.test(p.mat.getName()) && triCount(p.prim) > 0.25 * sourceTriangles;
+  // the back cover with the debossed mark: the smaller of the two shell halves
+  const whole = p === backCover;
+  const keys = isPalette(p.mat) ? await paletteKeys(p.prim, p.mat) : null;
   for (const r of role.get(i) ?? [{ kind: 'static', triangles: null }]) {
-    const prim = bake(p, r.triangles);
-    const isWindow = !!p.mat.getExtension('KHR_materials_clearcoat');
-    prim.setMaterial(await material(p.mat, r.kind === 'glass' ? 'glass' : isWindow ? 'window' : 'plain'));
-    groups[r.kind].push({ prim, name: p.node.getName(), matName: p.mat.getName(), source: triCount(prim) });
+    // one piece per palette colour (see above); a part with its own textures or none stays whole
+    const pieces = new Map();
+    if (keys && r.kind !== 'glass') {
+      const list = r.triangles ?? Array.from({ length: keys.length }, (_, t) => t);
+      for (const t of list) pieces.set(keys[t], [...(pieces.get(keys[t]) ?? []), t]);
+    } else pieces.set(null, r.triangles);
+    for (const [paletteKey, triangles] of pieces) {
+      const prim = bake(p, triangles);
+      const m = await material(p.mat, r.kind === 'glass' ? 'glass' : isWindow ? 'window' : whole ? 'whole' : 'plain', paletteKey);
+      prim.setMaterial(m);
+      if (!m.getBaseColorTexture() && !m.getMetallicRoughnessTexture() && !m.getEmissiveTexture() && !m.getNormalTexture()) prim.setAttribute('TEXCOORD_0', null);
+      groups[r.kind].push({ prim, name: p.node.getName(), matName: m.getName(), source: triCount(prim), inside: r.kind === 'static' && inside, whole });
+    }
   }
 }
 
@@ -239,16 +314,32 @@ for (let i = 0; i < parts.length; i++) {
  */
 function plan(entry, kind) {
   const n = entry.source;
-  if (kind === 'glass' || kind === 'led' || n < 600) return null; // the screen surface, the light guide, the inlays, the window: untouched
+  if (kind === 'glass' || kind === 'led' || n < 600 || entry.whole) return null; // the screen surface, the light guide, the inlays, the window: untouched
   if (kind === 'top' || kind === 'bottom' || kind === 'dpad') return { ratio: 0.55, error: 0.0012 };
-  if (/main_white_body/.test(entry.matName)) return { ratio: 0.42, error: 0.0009 }; // the shell: silhouette, fillets, grille, logo
-  return { ratio: 0.2, error: 0.004 }; // dark parts behind the shell (seen only through its openings), contacts
+  if (/main_white_body/.test(entry.matName)) return { ratio: 0.4, error: 0.0009 }; // the front shell: silhouette, fillets, grille
+  if (entry.inside) return { ratio: 0.1, error: 0.006 }; // the frame behind the shell: seen only through the shell's openings
+  return { ratio: 0.2, error: 0.003 }; // screws and contacts: small, round, shiny
+}
+/**
+ * Simplifies with the normals weighed in: a collapse that would drag a fillet's normal onto a flat face (which then
+ * shades as a visible facet) costs more than one that keeps faces flat and fillets round.
+ */
+function simplifyKeepingNormals(prim, ratio, error) {
+  const idx = Uint32Array.from(prim.getIndices().getArray());
+  const pos = Float32Array.from(prim.getAttribute('POSITION').getArray());
+  const nrm = prim.getAttribute('NORMAL');
+  const target = Math.max(3, Math.floor((idx.length / 3) * Math.min(1, ratio)) * 3);
+  const [out] = nrm
+    ? MeshoptSimplifier.simplifyWithAttributes(idx, pos, 3, Float32Array.from(nrm.getArray()), 3, [NORMAL_WEIGHT, NORMAL_WEIGHT, NORMAL_WEIGHT], null, target, error, [])
+    : MeshoptSimplifier.simplify(idx, pos, 3, target, error, []);
+  prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(out));
+  compactPrimitive(prim);
 }
 function simplifyGroup(kind) {
   for (const e of groups[kind]) {
     weldPrimitive(e.prim, {});
     const p = plan(e, kind);
-    if (p) simplifyPrimitive(e.prim, { simplifier: MeshoptSimplifier, ratio: p.ratio * SCALE, error: p.error, lockBorder: false });
+    if (p) simplifyKeepingNormals(e.prim, p.ratio * SCALE, p.error);
     e.after = triCount(e.prim);
   }
 }
@@ -278,6 +369,32 @@ for (let i = 0; i < mats.length; i++) for (let j = i + 1; j < mats.length; j++) 
   byMaterial.delete(mats[j]);
 }
 const body = doc.createMesh('body');
+// a matt black copy of the glass, a touch larger and just under it: where the simplified shell no longer meets the
+// glass exactly, the seam shows this (a shadow line, as on the original) and not the light frame inside
+{
+  const g = groups.glass[0].prim;
+  const src = g.getAttribute('POSITION').getArray();
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < src.length; i += 3) {
+    x0 = Math.min(x0, src[i]); x1 = Math.max(x1, src[i]);
+    y0 = Math.min(y0, src[i + 1]); y1 = Math.max(y1, src[i + 1]);
+  }
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const GROW_MM = 0.45, SINK_MM = 0.3;
+  const kx = 1 + (2 * GROW_MM) / (x1 - x0), ky = 1 + (2 * GROW_MM) / (y1 - y0);
+  const pos = new Float32Array(src.length);
+  for (let i = 0; i < src.length; i += 3) {
+    pos[i] = cx + (src[i] - cx) * kx;
+    pos[i + 1] = cy + (src[i + 1] - cy) * ky;
+    pos[i + 2] = src[i + 2] - SINK_MM;
+  }
+  const prim = doc.createPrimitive()
+    .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(pos))
+    .setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(Float32Array.from(g.getAttribute('NORMAL').getArray())))
+    .setIndices(doc.createAccessor().setType('SCALAR').setArray(Uint32Array.from(g.getIndices().getArray())))
+    .setMaterial(doc.createMaterial('seam').setBaseColorFactor([0.006, 0.006, 0.007, 1]).setRoughnessFactor(1).setMetallicFactor(0));
+  body.addPrimitive(prim);
+}
 for (const [mat, list] of byMaterial) {
   const attrs = (e) => e.prim.listSemantics().sort().join();
   const joinable = list.every((e) => attrs(e) === attrs(list[0]));
@@ -327,7 +444,7 @@ await doc.transform(dedup(), prune({ keepAttributes: false }));
 const triangles = doc.getRoot().listMeshes().reduce((s, m) => s + m.listPrimitives().reduce((q, p) => q + triCount(p), 0), 0);
 const drawCalls = doc.getRoot().listMeshes().reduce((s, m) => s + m.listPrimitives().length, 0);
 const vertices = getSceneVertexCount(scene, VertexCountMethod.UPLOAD);
-await doc.transform(meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+await doc.transform(meshopt({ encoder: MeshoptEncoder, level: LEVEL }));
 mkdirSync(dirname(outFile), { recursive: true });
 const bytes = await io.writeBinary(doc);
 writeFileSync(outFile, bytes);
@@ -339,36 +456,31 @@ console.log(`optimised: ${triangles} triangles (was ${sourceTriangles}), ${verti
 console.log(`written: ${outFile} (${(bytes.byteLength / 1024).toFixed(0)} kB, was ${(statSync(resolve(input)).size / 1024).toFixed(0)} kB); extensions required: ${doc.getRoot().listExtensionsRequired().map((e) => e.extensionName).join(', ')}`);
 
 if (writeNotice) {
-  const notice = `# The bundled device model (model.glb)
+  const notice = `# The Kode Dot 3D model (model.glb)
 
-\`model.glb\` in this folder is the 3D model of the Kode Dot made by its maker,
-Kode (KODE DIY SL), as offered on the maker's web site. It is shown in this
-unofficial simulator as the maker's work, following the maker's statement to
-its community that material from its site may be used for community projects.
-It is the maker's design, not this project's, and is not covered by this
-repository's GPL licence.
+\`model.glb\` is the 3D model of the Kode Dot, made by Kode (KODE DIY SL), the
+maker of the device. It comes from the model shown on Kode's web site and is
+used here as the default device model, with Kode's word to its community that
+material from its site may be used in community projects. The design, the
+shapes, the colours and the mark on the back are Kode's.
 
-The file here is not the original: \`scripts/optimise-model.mjs\` makes it from
-the original so that it loads and draws quickly in a web page. What the script
-changed:
+\`scripts/optimise-model.mjs\` makes this file from Kode's original so that it
+loads and draws quickly in a web page:
 
-- placement: the tilt every node carried is removed, the model is in
-  millimetres, centred, front towards +Z, top edge towards +Y;
-- names: the parts are named \`screen\`, \`btn_top\`, \`btn_bottom\`, \`dpad\`, \`led\`
-  (see MODEL.md); the two round buttons, one mesh in the original, are two;
-- the demo picture baked on the glass is removed (the simulator draws the live
-  screen there) and a flat \`screen\` surface is added over the lit area;
-- geometry: ${sourceTriangles} triangles simplified to ${triangles} with meshoptimizer; the
-  screen surface, the light guide, the button inlays and the side window are
-  untouched;
-- materials: clear coat, anisotropy, specular and IOR are replaced by plain
-  metallic-roughness materials with the same colours and textures;
-- textures: scaled down from 2048 px (the body's maps to 1024 px, the buttons'
-  grain to 256 px);
-- compression: meshopt instead of Draco; ${(statSync(resolve(input)).size / 1024).toFixed(0)} kB became ${(bytes.byteLength / 1024).toFixed(0)} kB.
-
-Nothing of the design was redrawn: shapes, colours and the mark on the back are
-the maker's.
+- placement: the model is in millimetres, centred, front towards +Z, top edge
+  towards +Y;
+- names: the parts are named \`screen\`, \`btn_top\`, \`btn_bottom\`, \`dpad\`,
+  \`led\` (see MODEL.md); the two round buttons, one mesh in the original, are
+  two;
+- screen: the picture baked on the glass is replaced by a flat \`screen\`
+  surface on which the simulator draws the live screen;
+- geometry: ${sourceTriangles} triangles become ${triangles} (meshoptimizer); the back
+  cover, the glass, the light guide, the button inlays and the side window keep
+  every triangle;
+- materials: plain metallic-roughness materials with Kode's colours; the
+  shared colour palette becomes one material per colour;
+- textures: the pin labels and the back cover's normal map, at 1024 px;
+- compression: meshopt; ${(statSync(resolve(input)).size / 1024).toFixed(0)} kB become ${(bytes.byteLength / 1024).toFixed(0)} kB.
 `;
   writeFileSync(join(dirname(outFile), 'NOTICE-model.md'), notice);
   console.log(`written: ${join(dirname(outFile), 'NOTICE-model.md')}`);
