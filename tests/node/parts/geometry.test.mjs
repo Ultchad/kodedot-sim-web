@@ -26,6 +26,10 @@ await test(`geometry of every part (${dirs.length})`, async () => {
     const ref = [...(m.outline ?? []), ...(m.refs ?? []).map((r) => r.mm)].filter((q) => q.x < -0.001 || q.x > b.w_mm + 0.001 || q.y < -0.001 || q.y > b.d_mm + 0.001);
     check(ref.length === 0, `${d}: outline points and reference points are inside the body`, ref.slice(0, 3));
     if (m.category === "prototyping") check(Object.values(m.body.overhang_mm ?? {}).some((v) => v > 0), `${d}: declares an overhang allowance for the dovetail tabs`);
+    // controls and visuals that carry millimetres sit on the body and at their picture position
+    const place = [...(m.controls ?? []).filter((c) => c.mm).map((c) => ({ n: "control " + c.field, mm: c.mm, px: { x: c.region.x + c.region.w / 2, y: c.region.y + c.region.h / 2 } })), ...(m.visuals ?? []).filter((v) => v.mm).map((v) => ({ n: "visual " + v.id, mm: v.mm, px: { x: v.x, y: v.y } }))];
+    const off2 = place.filter((q) => q.mm.x < 0 || q.mm.x > b.w_mm || q.mm.y < 0 || q.mm.y > b.d_mm || Math.abs(q.px.x - q.mm.x * sx) > 1.5 || Math.abs(q.px.y - q.mm.y * sy) > 1.5).map((q) => q.n);
+    check(off2.length === 0, `${d}: controls and visuals with mm are inside the body and match their picture position`, off2);
     const noz = m.pins.filter((p) => typeof p.mm.z !== "number").map((p) => p.name);
     check(noz.length === 0, `${d}: every pin has an explicit contact height mm.z (no terminal above the body: z <= ${b.h_mm})`, noz.slice(0, 4));
     check(bad.length === 0, `${d}: every pin's picture position is its mm times the scale and lies inside the body`, bad.slice(0, 4));

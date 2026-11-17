@@ -300,4 +300,27 @@ void loop() { delay(5); }
   b.dispose();
 });
 
+await test("buttons: reset restarts the sketch, EN restarts, BOOT holds GPIO0 low (S3 and the classic board)", async () => {
+  const b = await mk(), u = await board(b, "uno-r3");   // the default sketch blinks pin 13 every 500 ms
+  await run(b, 600);
+  check(out(b, u, "led") === 1, "the Uno LED is on after the first 500 ms");
+  b.setField(u, "reset", true); await run(b, 5); b.setField(u, "reset", false); await run(b, 100);
+  check(out(b, u, "led") === 0, "pressing reset restarts the sketch: the LED starts again from off", out(b, u, "led"));
+  await run(b, 500);
+  check(out(b, u, "led") === 1, "and blinks again 500 ms after the restart");
+  const s = await board(b, "esp32-s3"), r = b.addPart("dotbench.resistor", { fields: { ohms: 10000 } });
+  b.connect(r + ".A", s + ".V33_1"); b.connect(r + ".B", s + ".IO0"); await run(b, 50);
+  check(b.net(s + ".IO0").mv > 3000, "ESP32-S3: GPIO0 is high through a pull-up", b.net(s + ".IO0").mv);
+  b.setField(s, "boot", true); await run(b, 5);
+  check(b.net(s + ".IO0").mv < 300, "holding BOOT pulls GPIO0 to ground", b.net(s + ".IO0").mv);
+  b.setField(s, "boot", false); await run(b, 5);
+  check(b.net(s + ".IO0").mv > 3000, "and releasing it lets the pull-up win again");
+  await run(b, 600);
+  check(out(b, s, "led") !== undefined, "S3 runs", out(b, s, "led"));
+  const e = b.addPart("dotbench.esp32-blink-echo"); b.setRails({ V33: true }); b.connect(e + ".V33", "device.V33"); b.connect(e + ".GND", "device.GND"); b.connect(e + ".IO0", r + ".B"); await run(b, 100);
+  b.setField(e, "boot", true); await run(b, 5);
+  check(b.net(e + ".IO0").mv < 300, "classic ESP32: BOOT pulls IO0 low as well", b.net(e + ".IO0").mv);
+  b.dispose();
+});
+
 process.exit(finish("boards"));

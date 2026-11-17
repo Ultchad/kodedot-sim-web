@@ -57,12 +57,17 @@ function esp32Classic(m) {
   const k = ESP_SCALE, led = { x: 38, y: 14 }, count = { x: 24, y: 17 };
   m.visuals = m.visuals.map((v) => v.id === "led" ? { ...v, x: Math.round(led.x * k), y: Math.round(led.y * k) } : { ...v, x: Math.round(count.x * k), y: Math.round(count.y * k), w: 110, h: 20 });
   m.outputs = [...m.outputs.filter((o) => !["led", "tx", "rx", "crashed"].includes(o.name)), ...LIFE_OUT];
+  // EN restarts the sketch; BOOT is GPIO0 (IO0) while pressed. Both sit beside the micro-USB at the right end (positions estimated).
+  const BTN = [["en", { x: ESP_W - 6.5, y: 4 }, "restart", {}, { en: "EN (reset)", "pt-BR": "EN (reiniciar)", es: "EN (reiniciar)" }], ["boot", { x: ESP_W - 6.5, y: ESP_D - 4 }, "pull_low", { pin: "IO0" }, { en: "BOOT (GPIO0)", "pt-BR": "BOOT (GPIO0)", es: "BOOT (GPIO0)" }]];
+  m.fields = [...(m.fields ?? []).filter((f) => !BTN.some((b) => b[0] === f.name)), ...BTN.map(([n,, , , lab]) => ({ name: n, type: "boolean", label: lab, default: false }))];
+  m.controls = BTN.map(([n, mm, action, extra, lab]) => ({ field: n, region: { x: Math.round((mm.x - 3) * k * 10) / 10, y: Math.round((mm.y - 3) * k * 10) / 10, w: 6 * k, h: 6 * k }, mode: "momentary", label: lab, mm, action, estimate: true, ...extra }));
   const W = m.picture.width, H = m.picture.height, px = (v) => Math.round(v * k * 10) / 10;
   fs.writeFileSync(path.join(PARTS, m.id.replace("dotbench.", ""), "picture.svg"), `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="6" fill="#1b3a57" stroke="#0e2336" stroke-width="3"/>
 <rect x="${px(2)}" y="${px(6)}" width="${px(18)}" height="${px(15)}" rx="2" fill="#222" stroke="#666" stroke-width="2"/><text x="${px(11)}" y="${px(14.5)}" font-family="monospace" font-size="10" fill="#ddd" text-anchor="middle">ESP32</text>
 <rect x="${px(ESP_W - 6)}" y="${px(10)}" width="${px(6)}" height="${px(8)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/>
 <circle cx="${px(led.x)}" cy="${px(led.y)}" r="${px(0.9)}" fill="#14281d" stroke="#3ddc84" stroke-width="2"/><text x="${px(led.x)}" y="${px(led.y + 3.4)}" font-family="monospace" font-size="8" fill="#9aa6b2" text-anchor="middle">LED 2</text>
+${BTN.map(([n, mm]) => `<rect x="${px(mm.x - 1.5)}" y="${px(mm.y - 1.5)}" width="${px(3)}" height="${px(3)}" rx="1" fill="#b0302a" stroke="#4a1210" stroke-width="2"/><text x="${px(mm.x)}" y="${px(mm.y + 4.6)}" font-family="monospace" font-size="8" fill="#ccc" text-anchor="middle">${n.toUpperCase()}</text>`).join("")}
 ${m.pins.filter((p) => p.kind !== "nc").map((p) => `<circle cx="${p.pos.x}" cy="${p.pos.y}" r="${px(0.5)}" fill="#c9a227" stroke="#7a6416" stroke-width="1.5"/>`).join("")}
 </svg>
 `);

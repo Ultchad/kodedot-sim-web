@@ -42,7 +42,7 @@ export function modules() {
   // ---------------------------------------------------------------- Maker
   { const W = 58, D = 54, sock = T.maker.sockets, pins = [];   // board 58 x 54 mm, holes on 48.8 x 44.9 mm (measured from the store photo against the header, +-1.5 mm)
     sock.forEach((g, k) => pins.push(P("S" + (k + 1), "io", 11 + ODD * k, 4, { face: "top", abs_max_mv: HI, label: { en: `${k + 1}` } })));
-    const groups = [], strips = [["V5_", "V5", 1.8, 10], ["GL_", "GND", 1.8, 24], ["V33_", "V33", 56.2, 10], ["GR_", "GND", 56.2, 24]];   // four 1x4 strips in single file, two per side
+    const groups = [], strips = [["V5_", "V5", 1.8, 17], ["GL_", "GND", 1.8, 31], ["GR_", "GND", 56.2, 17], ["V33_", "V33", 56.2, 31]];   // four 1x4 strips in single file, two per side
     for (const [pre, , x, y] of strips) { const names = []; for (let i = 1; i <= 4; i++) { const n = pre + i; names.push(n); pins.push(P(n, "io", x, y + ODD * (i - 1), { face: "top", abs_max_mv: 60000, label: { en: pre === "V5_" ? "5V" : pre === "V33_" ? "3V3" : "GND" } })); } groups.push({ pins: names }); }
     const bx = (W - 16 * ODD) / 2, rowY = [14, 16.54, 19.08, 21.62, 24.16, 29.24, 31.78, 34.32, 36.86, 39.4], rowN = "abcdefghij";
     for (let c = 1; c <= 17; c++) { const top = [], bot = []; for (let r = 0; r < 10; r++) { const n = rowN[r] + c; pins.push(P(n, "io", bx + ODD * (c - 1), rowY[r], { face: "top", abs_max_mv: 60000, label: null })); (r < 5 ? top : bot).push(n); } groups.push({ pins: top }, { pins: bot }); }
@@ -77,8 +77,8 @@ export function modules() {
         return P(name, "io", at.x, at.y, { ...o, abs_max_mv: name.startsWith("V5") ? 60000 : HI }); } });
     pins.push(...C.pins);
     // screw terminals and the stepper header along the top edge, left to right as on the board: motor B, stepper, motor A (the photo; the order of the pins inside each is assumed)
-    const mo = { MOTB_1: 7.5, MOTB_2: 11.31, MOTA_1: 33.4, MOTA_2: 37.21 }; for (const [n, x] of Object.entries(mo)) pins.push(P(n, "io", x, 5, { face: "top", abs_max_mv: 7000, label: { en: n.replace("_", "") } }));
-    Object.keys(R.stepper_header.map).forEach((n, k) => pins.push(P(n, "io", 18.69 + ODD * k, 5.5, { face: "top", abs_max_mv: 7000, label: { en: n } })));
+    const mo = { MOTB_1: 7.5, MOTB_2: 11.31, MOTA_1: 33.4, MOTA_2: 37.21 }; for (const [n, x] of Object.entries(mo)) pins.push(P(n, "io", x, 2, { face: "top", abs_max_mv: 7000, label: { en: n.replace("_", "") } }));
+    Object.keys(R.stepper_header.map).forEach((n, k) => pins.push(P(n, "io", 18.69 + ODD * k, 2.5, { face: "top", abs_max_mv: 7000, label: { en: n } })));
     const j = (n, x, y, o = {}) => pins.push(P(n, "io", x, y, { face: "top", abs_max_mv: HI, ...o }));
     // female header strips: left edge, top to bottom as silkscreened GND 5V GPIO11 | GND GPIO10 SDA SCL 3V3; right edge GND GPIO18 GPIO17 GPIO16 GPIO15 3V3 (the photo)
     pins.push(P("J402_GND", "io", 3.5, 11.5, { face: "top", abs_max_mv: 60000 }), P("J402_V5", "io", 3.5, 14.04, { face: "top", abs_max_mv: 7000 }), P("J402_SIG", "io", 3.5, 16.58, { face: "top", abs_max_mv: HI }));

@@ -137,6 +137,7 @@ export class Bench {
     if (part.fields[name] === v) return v;
     part.fields[name] = v;
     part.impl?.onField?.(name, v);
+    if (v === true && (part.def.manifest.controls ?? []).some((c) => c.field === name && c.action === "restart")) this.restartPart(instance).catch(() => {});   // a reset or EN button
     this._touch(); this._emit("part", { type: "field", instance, name, value: v });
     return v;
   }
