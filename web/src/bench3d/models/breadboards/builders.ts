@@ -3,7 +3,7 @@
  * real dimensions in millimetres, return what the model needs next. Candidates for the kit are marked KIT.
  */
 import { MeshBuilder, type V3 } from '../../../device3d/meshBuilder';
-import { Matrix4, PAL, Shape, circleLoop, place, type Finish, type Pt } from '../../index';
+import { Matrix4, PAL, Shape, circleLoop, place, type Finish, type ManifestBody, type ManifestPin, type Pt } from '../../index';
 
 // ------------------------------------------------------------------------------------------------- outlines
 /** The loop counter-clockwise in the footprint plane (x, z), whatever way it was given. */
@@ -207,24 +207,26 @@ export function chip(s: Shape, o: At & { l?: number; w?: number; h?: number; fin
 }
 
 /**
- * KIT. The two snap terminals of a 9 V (PP3) battery, standing on a face at height `y`: the small round stud (+) and
- * the larger six-sided crown (-), 12.7 mm apart. `top` is the height their rims reach. Returns the two contact points.
+ * KIT. The two snap terminals of a 9 V (PP3) battery standing on the plate at height `y`: the small hollow stud (+)
+ * and the larger six-sided crown (-). `pos` and `neg` are the contact points (the terminals): their height is where
+ * the rims end.
  */
 export function pp3Snaps(s: Shape, o: { pos: V3; neg: V3; y: number; seg?: number }): void {
   const seg = o.seg ?? 16;
-  const hp = o.pos[1] - o.y, hn = o.neg[1] - o.y;
-  // + : a stud with a rolled lip (5.7 mm over the lip)
-  s.disc(...PAL.steel, o.pos[0], o.pos[2], 3.6, o.y, o.y + 0.35, 0.12, seg, { ao: 1 });
-  s.lathe(...PAL.tin, o.pos[0], o.pos[2], [[2.55, o.y + 0.3], [2.45, o.y + hp * 0.55], [2.85, o.y + hp * 0.78], [2.8, o.y + hp * 0.95], [2.3, o.y + hp], [0, o.y + hp]], seg);
-  s.disc('metal', '#8d9097', o.pos[0], o.pos[2], 1.25, o.y + hp - 0.02, o.y + hp + 0.0, 0, 10, { ao: 1 });
-  // - : a crown of six petals, open in the middle
-  s.disc(...PAL.steel, o.neg[0], o.neg[2], 4.5, o.y, o.y + 0.35, 0.12, seg, { ao: 1 });
-  const hex = (r: number, k = 0): Pt[] => circleLoop(o.neg[0], o.neg[2], r, 6).map(([x, z], i) => [o.neg[0] + (x - o.neg[0]) * (1 + (i % 2) * k), o.neg[2] + (z - o.neg[2]) * (1 + (i % 2) * k)]);
-  s.prism(...PAL.tin, hex(4.0), o.y + 0.3, o.y + hn, 0.5, { ao: 0.9, holes: [circleLoop(o.neg[0], o.neg[2], 2.75, 12)] });
-  s.disc('metal', '#6f7279', o.neg[0], o.neg[2], 2.75, o.y + 0.3, o.y + 0.5, 0, 12, { ao: 1 });
-  // the slits between the petals
+  const y = o.y, hp = o.pos[1] - y, hn = o.neg[1] - y;
+  const [px, , pz] = o.pos, [nx, , nz] = o.neg;
+  // + : a riveted stud with a rolled lip (5.8 mm over the lip) and a dimple in its top
+  s.disc(...PAL.steel, px, pz, 3.9, y, y + 0.4, 0.15, seg, { ao: 1 });
+  s.lathe(...PAL.tin, px, pz, [[2.5, y + 0.35], [2.5, y + hp * 0.5], [2.9, y + hp * 0.72], [2.9, y + hp * 0.9], [2.5, y + hp], [1.35, y + hp], [1.0, y + hp - 0.7], [0, y + hp - 0.7]], seg);
+  // - : a crown of six spring petals round an opening
+  s.disc(...PAL.steel, nx, nz, 4.7, y, y + 0.4, 0.15, seg, { ao: 1 });
+  s.prism(...PAL.tin, circleLoop(nx, nz, 4.1, 6), y + 0.35, y + hn, 0.5, { ao: 0.88, holes: [circleLoop(nx, nz, 2.85, Math.max(8, seg - 4))] });
+  s.disc('metal', '#6a6d74', nx, nz, 2.9, y + 0.35, y + 0.6, 0, Math.max(8, seg - 4), { ao: 1 });
   for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
-    s.with(new Matrix4().makeTranslation(o.neg[0], 0, o.neg[2]).multiply(new Matrix4().makeRotationY(a)), () => s.box('matte', '#2a2b2e', 3.35, 0, 1.3, 0.34, o.y + hn - 0.02, o.y + hn + 0.01, 0.05, 0, { ao: 1 }));
+    const m = new Matrix4().makeTranslation(nx, 0, nz).multiply(new Matrix4().makeRotationY((i / 6) * Math.PI * 2));
+    s.with(m, () => s.box('matte', '#26272a', 3.3, 0, 1.0, 0.36, y + hn - 0.03, y + hn + 0.01, 0.05, 0, { ao: 1 }));
   }
 }
+
+/** A part's manifest as the kit's helpers want it (a JSON import types `face` as a plain string). */
+export const asPart = (manifest: unknown): { id: string; body: ManifestBody; pins: ManifestPin[] } => manifest as { id: string; body: ManifestBody; pins: ManifestPin[] };
