@@ -62,6 +62,8 @@ export interface ExtrudeOptions {
   ao?: number;
   /** Close the underside. */
   cap?: boolean;
+  /** Shade of the walls at their top (default 1): below 1 sets the sides off from the top face, the bevel stays bright. */
+  wall?: number;
 }
 /**
  * KIT. A vertical solid over ANY simple loop, like `Shape.prism` but safe for outlines with notches and slots:
@@ -118,8 +120,8 @@ export function extrude(s: Shape, finish: Finish, outline: Pt[], y0: number, y1:
       mb.quad(a0, a1, b1, b0, [en[i][0] * q, q, en[i][1] * q]);
     }
     if (y1 - b > y0) {
-      const w0 = mb.vertex([loop[i][0], y1 - b, loop[i][1]], [ni[0], 0, ni[1]]);
-      const w1 = mb.vertex([loop[j][0], y1 - b, loop[j][1]], [nj[0], 0, nj[1]]);
+      const w0 = mb.vertex([loop[i][0], y1 - b, loop[i][1]], [ni[0], 0, ni[1]], [0, 0], o.wall ?? 1);
+      const w1 = mb.vertex([loop[j][0], y1 - b, loop[j][1]], [nj[0], 0, nj[1]], [0, 0], o.wall ?? 1);
       const w2 = mb.vertex([loop[j][0], y0, loop[j][1]], [nj[0], 0, nj[1]], [0, 0], ao);
       const w3 = mb.vertex([loop[i][0], y0, loop[i][1]], [ni[0], 0, ni[1]], [0, 0], ao);
       mb.quad(w0, w1, w2, w3, [en[i][0], 0, en[i][1]]);

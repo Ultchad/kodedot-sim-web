@@ -62,7 +62,7 @@ export default defineModel<PartState>({
           text(g, '−', NEG[0], NEG[2] - 2.35, 2.1, { weight: 700 });
           silkBox(g, POS[0] - 1.6, POS[2] - 1.6, NEG[0] - POS[0] + 3.2, 3.2, 0.3, 0.16);
           ['OFF', '3V3', '5V'].forEach((l, i) => text(g, l, SW.x + (i - 1) * TRAVEL, SW.z - 2.95, 1.1, { weight: 700 }));
-          // what it is, and the maker's made-up mark
+          // what it is, and the references of its parts
           text(g, 'PSU', -8.4, -6.15, 1.9, { weight: 800, spacing: 0.2 });
           text(g, '1 A', -4.9, -6.1, 1.0, { weight: 700 });
           text(g, 'PWR', LED.x, LED.z - 1.25, 0.85, { weight: 700 });
@@ -70,15 +70,6 @@ export default defineModel<PartState>({
           text(g, 'C1', -0.7, -3.55, 0.85, { weight: 600 });
           text(g, 'C2', 9.3, 4.45, 0.85, { weight: 600 });
           silkBox(g, REG.x - 3.55, REG.z - 2.05, 7.1, 4.1, 0.25, 0.14);
-          g.strokeStyle = INK.amber;
-          g.lineWidth = 0.22;
-          g.beginPath();
-          g.arc(9.9, 6.2, 0.75, 0, Math.PI * 2);
-          g.stroke();
-          g.fillStyle = INK.amber;
-          g.beginPath();
-          g.arc(9.9, 6.2, 0.3, 0, Math.PI * 2);
-          g.fill();
         },
       }),
       slideKnob({ x: SW.x, z: SW.z, y: top, finish: PAL.plasticWhite }).toObject('knob'),

@@ -1,13 +1,14 @@
 /**
  * 9 V battery (PP3 / 6LR61): 48.5 x 26.5 x 17.5 mm over the snaps (IEC 60086-2), the snaps 12.7 mm apart: the small
- * stud is +, the six-sided crown is -. A lacquered steel jacket with rolled rims, a made-up label ("dotcell").
+ * stud is +, the six-sided crown is -. A lacquered steel jacket with rolled rims and a generic label: a coloured
+ * band with the polarity, the voltage, the chemistry and the size codes; no name and no mark of any maker.
  * Live state: the voltage (field `volts`) is the big numeral of the label and the small one between the snaps, where
  * the part's picture shows it. Hazard: above the manifest's `max_ma` the cell overheats: a red-hot glow that beats
  * faster and stronger up to a dead short.
  */
 import manifest from '../../../../../parts/battery-9v/manifest.json';
 import {
-  FONT, FONT_HEAD, Matrix4, PAL, Shape, bolt, defineModel, drawScreen, footprintOf, frontQuad, glowing, movedQuad, part, partState, print, roundedRectLoop, screen,
+  FONT, FONT_HEAD, Matrix4, PAL, Shape, defineModel, drawScreen, footprintOf, frontQuad, glowing, movedQuad, part, partState, print, roundedRectLoop, screen,
   setLamp, terminalsFromManifest, text, topQuad, type PartState,
 } from '../../index';
 import { asPart, extrude, pp3Snaps } from './builders';
@@ -52,6 +53,29 @@ function drawTop(g: CanvasRenderingContext2D, w: number, h: number): void {
   g.fillText(`${shown(pen.volts)}V`, w / 2, h / 2);
 }
 
+/** The band of the label: a large + and - under their snaps, a fine rule above and below. No name, no mark. */
+function polarity(g: CanvasRenderingContext2D, xPlus: number, xMinus: number, y: number): void {
+  g.strokeStyle = GRAPHITE;
+  g.lineCap = 'round';
+  g.lineWidth = 1.0;
+  g.beginPath();
+  g.moveTo(xPlus - 2.3, y);
+  g.lineTo(xPlus + 2.3, y);
+  g.moveTo(xPlus, y - 2.3);
+  g.lineTo(xPlus, y + 2.3);
+  g.moveTo(xMinus - 2.3, y);
+  g.lineTo(xMinus + 2.3, y);
+  g.stroke();
+  g.lineCap = 'butt';
+  g.lineWidth = 0.3;
+  g.beginPath();
+  for (const dy of [-4.6, 4.6]) {
+    g.moveTo(-11.5, y + dy);
+    g.lineTo(11.5, y + dy);
+  }
+  g.stroke();
+}
+
 export default defineModel<PartState>({
   id: M.id,
   title: '9 V battery (PP3)',
@@ -80,26 +104,8 @@ export default defineModel<PartState>({
         ppm: 14,
         draw(g) {
           const y = (height: number) => mid - height;
-          // on the amber band: polarity under each snap, the maker's mark
-          g.fillStyle = g.strokeStyle = GRAPHITE;
-          g.lineWidth = 0.75;
-          g.lineCap = 'round';
-          for (const [x, plus] of [[POS[0], true], [NEG[0], false]] as const) {
-            g.beginPath();
-            g.moveTo(x - 1.5, y(RIM - 3.6));
-            g.lineTo(x + 1.5, y(RIM - 3.6));
-            if (plus) {
-              g.moveTo(x, y(RIM - 3.6) - 1.5);
-              g.lineTo(x, y(RIM - 3.6) + 1.5);
-            }
-            g.stroke();
-          }
-          text(g, 'dotcell', 1.6, y(BAND + 4.6), 5.6, { weight: 700, font: FONT_HEAD, spacing: -0.1 });
-          g.beginPath();
-          g.arc(-9.3, y(BAND + 4.5), 1.25, 0, Math.PI * 2);
-          g.fill();
-          g.fillStyle = AMBER;
-          bolt(g, -9.3, y(BAND + 4.5), 0.85);
+          // on the amber band: the polarity under each snap, between two fine lines
+          polarity(g, POS[0], NEG[0], y(BAND + (RIM - 1 - BAND) / 2));
           // on the dark body, under the numeral: what it is
           g.fillStyle = AMBER;
           text(g, 'ALKALINE', 0, y(8.4), 2.5, { weight: 700, font: FONT_HEAD, spacing: 0.75 });
@@ -119,15 +125,13 @@ export default defineModel<PartState>({
         ppm: 14,
         draw(g) {
           const y = (height: number) => mid - height;
-          g.fillStyle = GRAPHITE;
-          text(g, 'dotcell', 0, y(BAND + 7.4), 3.6, { weight: 700, font: FONT_HEAD });
-          text(g, 'long life  ·  9 V', 0, y(BAND + 3.3), 1.7, { weight: 600 });
+          // seen from behind the snaps swap sides
+          polarity(g, -POS[0], -NEG[0], y(BAND + (RIM - 1 - BAND) / 2));
           g.fillStyle = 'rgba(245, 238, 222, 0.85)';
           const lines = ['ALKALINE BATTERY', '6LR61 / 6AM6 / PP3', '9 V ⎓  550 mAh', '', 'Do not recharge, short', 'or open. Mind the poles.'];
           lines.forEach((l, i) => text(g, l, -9.6, y(25) + i * 2.5, i < 3 ? 1.75 : 1.45, { weight: i === 0 ? 700 : 500, align: 'left' }));
-          // a row of made-up batch marks at the bottom
           g.fillStyle = 'rgba(245, 238, 222, 0.6)';
-          text(g, 'LOT 26-11  ·  BEST BEFORE 2031', 0, y(4.2), 1.25, { weight: 500, spacing: 0.15 });
+          text(g, 'BEST BEFORE 2031', 0, y(4.2), 1.25, { weight: 500, spacing: 0.15 });
         },
       }),
       // the voltage, drawn per copy: the numeral of the label, and between the snaps as in the part's picture

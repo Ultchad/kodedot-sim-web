@@ -5,8 +5,9 @@
  * What is real geometry and what is print (decided against the budget, measured in the model files):
  * - The holes are GEOMETRY, but not one solid each. The clip under a strip of holes is one trough (chamfer, walls,
  *   two spring leaves of the clip, a dark floor) shared by all the holes of the strip; the plastic between two holes
- *   is a small web standing in the trough. A hole costs 10 triangles and a strip 22 more, so the 830 holes of the
- *   full board are about 10,300 triangles and still have depth, a chamfer and a glint of metal from every angle.
+ *   is a small web bridging the trough: its top and the two lead-in chamfers, nothing under them, so one looks past
+ *   it into the dark of the trough and along the clip. A hole costs 6 triangles and a strip 22 more: the 830 holes
+ *   of the full board are about 7,600 triangles and still have depth, a chamfer and a glint of metal from every angle.
  * - The top face is a few dozen large flat quads laid between the troughs. They overlap each other (same plane, same
  *   colour: nothing to see) and reach 0.03 mm over the mouth of each trough, so no edge of one quad ends in the
  *   middle of another's: no sparkling cracks, without paying for a triangulated face with hundreds of openings.
@@ -20,9 +21,11 @@
 import { MeshBuilder, type V3 } from '../../../device3d/meshBuilder';
 import {
   FONT, INK, PAL, Shape, defineModel, footprintOf, fromManifestMm, print, terminalsFromManifest, text, topQuad,
-  type BuildCtx, type ManifestBody, type ManifestPin, type Object3D, type PartModel, type PartState, type Pt,
+  type BuildCtx, type Finish, type ManifestBody, type ManifestPin, type Object3D, type PartModel, type PartState, type Pt,
 } from '../../index';
 import { extrude, face, roundLoop, type Rect } from './builders';
+
+const BODY_WHITE = '#ebeef1';
 
 /** What the builder reads of parts/breadboard-<size>/manifest.json. */
 export interface BoardManifest {
@@ -33,11 +36,11 @@ export interface BoardManifest {
 }
 
 // ---- the moulding (design values; everything about the holes' places comes from the manifest)
-const BODY = PAL.glossWhite; // ABS has a sheen
+const BODY: Finish = ['gloss', BODY_WHITE]; // ABS has a sheen; a cool white, so the board stands off the warm table
 const INSET = 1.2; // the mouldings stop this far inside the footprint: room for the tabs
-const TAB = 1.2; // how far a dovetail tab stands out
+const TAB = 1.1; // how far a dovetail tab stands out
 const FOAM = 0.9; // the adhesive foam and its backing paper
-const BEVEL = 0.25;
+const BEVEL = 0.32;
 const SEAM_R = 0.55; // the corners of each moulding where two meet: the seam reads as a fine groove down the side
 const RIM = 1.62; // from a moulding's edge to the field of holes: past the slots and the bevel
 const OPEN = 0.83; // half the mouth of a hole (the lead-in chamfer)
@@ -47,6 +50,7 @@ const DEEP = 1.3; // where the dark begins
 const LIP = 0.03; // the top quads reach this far over a trough's mouth
 const TRENCH = 3.0; // width of the centre channel
 const TRENCH_DEEP = 2.6;
+const SEAM = 0.3; // the gap between a rail strip and the terminal block
 
 /** A strip of holes over one clip: hole centres along its axis `u`, at `v` across it. */
 interface Trough {
@@ -166,29 +170,30 @@ function trough(t: Trough, top: number, fine: boolean, white: MeshBuilder, dark:
   const e = OPEN - h, len = Math.hypot(e, cd);
   const ny = e / len, nk = cd / len;
   // shades: the rim, the foot of the chamfer, the foot of the wall (coarse: the countersink goes dark by itself)
-  const s0 = fine ? 0.97 : 0.78, s1 = fine ? 0.8 : 0.1, s2 = 0.2;
+  const s0 = fine ? 0.95 : 0.78, s1 = fine ? 0.7 : 0.1, s2 = 0.1;
   const u0 = t.u[0] - OPEN, u1 = t.u[t.u.length - 1] + OPEN;
   for (const sg of [-1, 1]) {
     face(white, P(u0, sg * OPEN, 0), P(u1, sg * OPEN, 0), P(u1 - e, sg * h, cd), P(u0 + e, sg * h, cd), N(0, ny, -sg * nk), s0, s1);
     if (!fine) continue;
-    face(white, P(u0 + e, sg * h, cd), P(u1 - e, sg * h, cd), P(u1 - e, sg * h, floor), P(u0 + e, sg * h, floor), N(0, 0, -sg), 0.62, s2);
+    face(white, P(u0 + e, sg * h, cd), P(u1 - e, sg * h, cd), P(u1 - e, sg * h, floor), P(u0 + e, sg * h, floor), N(0, 0, -sg), 0.46, s2);
     // a leaf of the spring clip: it leans in towards the middle of the strip
     const g = 0.26, l0 = 0.5, l1 = 1.02, ll = Math.hypot(h - g, l1 - l0);
-    face(metal, P(u0 + e, sg * h, l0), P(u1 - e, sg * h, l0), P(u1 - e, sg * g, l1), P(u0 + e, sg * g, l1), N(0, (h - g) / ll, (-sg * (l1 - l0)) / ll), 0.72, 0.3);
+    face(metal, P(u0 + e, sg * h, l0), P(u1 - e, sg * h, l0), P(u1 - e, sg * g, l1), P(u0 + e, sg * g, l1), N(0, (h - g) / ll, (-sg * (l1 - l0)) / ll), 0.7, 0.24);
   }
   face(dark, P(u0 + e, -h, floor), P(u1 - e, -h, floor), P(u1 - e, h, floor), P(u0 + e, h, floor), [0, 1, 0]);
-  // a wall across the trough at `u`, looking along `dir`: the two ends, and both sides of every web
-  const across = (u: number, dir: number) => {
+  // a chamfer across the trough at `u`, looking along `dir`; the two ends of the trough also get their wall. A web
+  // has none: nobody can see up under it, and past its chamfer the eye meets the dark of the trough
+  const across = (u: number, dir: number, wall: boolean) => {
     face(white, P(u, -OPEN, 0), P(u, OPEN, 0), P(u + dir * e, h, cd), P(u + dir * e, -h, cd), N(dir * nk, ny, 0), s0, s1);
-    if (fine) face(white, P(u + dir * e, -h, cd), P(u + dir * e, h, cd), P(u + dir * e, h, floor), P(u + dir * e, -h, floor), N(dir, 0, 0), 0.62, s2);
+    if (fine && wall) face(white, P(u + dir * e, -h, cd), P(u + dir * e, h, cd), P(u + dir * e, h, floor), P(u + dir * e, -h, floor), N(dir, 0, 0), 0.46, s2);
   };
-  across(u0, 1);
-  across(u1, -1);
+  across(u0, 1, true);
+  across(u1, -1, true);
   for (let i = 0; i + 1 < t.u.length; i++) {
     const a = t.u[i] + OPEN, b = t.u[i + 1] - OPEN;
     face(white, P(a, -OPEN, 0), P(b, -OPEN, 0), P(b, OPEN, 0), P(a, OPEN, 0), [0, 1, 0]);
-    across(a, -1);
-    across(b, 1);
+    across(a, -1, false);
+    across(b, 1, false);
   }
 }
 
@@ -225,14 +230,14 @@ function buildBody(L: Layout, ctx: BuildCtx): Shape {
 
   // the four mouldings that carry holes, each with its field of holes left open in the top
   const pieces: { r: Rect; slotsBack?: number[]; slotsLeft?: number[]; radii: [number, number, number, number]; of: Trough[]; rail: boolean }[] = [
-    { r: { x0: -X, x1: X, z0: -Z, z1: seamTop }, slotsBack: L.tabsX, radii: [1.1, 1.1, SEAM_R, SEAM_R], of: L.rails.filter((t) => t.v < mid), rail: true },
-    { r: { x0: -X, x1: X, z0: seamTop, z1: mid - TRENCH / 2 }, slotsLeft: [L.tabsZ[0]], radii: [SEAM_R, SEAM_R, SEAM_R, SEAM_R], of: L.strips.filter((t) => t.u[0] < mid), rail: false },
-    { r: { x0: -X, x1: X, z0: mid + TRENCH / 2, z1: seamBot }, slotsLeft: [L.tabsZ[1]], radii: [SEAM_R, SEAM_R, SEAM_R, SEAM_R], of: L.strips.filter((t) => t.u[0] > mid), rail: false },
-    { r: { x0: -X, x1: X, z0: seamBot, z1: Z }, radii: [SEAM_R, SEAM_R, 1.1, 1.1], of: L.rails.filter((t) => t.v > mid), rail: true },
+    { r: { x0: -X, x1: X, z0: -Z, z1: seamTop - SEAM / 2 }, slotsBack: L.tabsX, radii: [1.1, 1.1, SEAM_R, SEAM_R], of: L.rails.filter((t) => t.v < mid), rail: true },
+    { r: { x0: -X, x1: X, z0: seamTop + SEAM / 2, z1: mid - TRENCH / 2 }, slotsLeft: [L.tabsZ[0]], radii: [SEAM_R, SEAM_R, SEAM_R, SEAM_R], of: L.strips.filter((t) => t.u[0] < mid), rail: false },
+    { r: { x0: -X, x1: X, z0: mid + TRENCH / 2, z1: seamBot - SEAM / 2 }, slotsLeft: [L.tabsZ[1]], radii: [SEAM_R, SEAM_R, SEAM_R, SEAM_R], of: L.strips.filter((t) => t.u[0] > mid), rail: false },
+    { r: { x0: -X, x1: X, z0: seamBot + SEAM / 2, z1: Z }, radii: [SEAM_R, SEAM_R, 1.1, 1.1], of: L.rails.filter((t) => t.v > mid), rail: true },
   ];
   for (const p of pieces) {
     const field: Rect = { x0: p.r.x0 + RIM, x1: p.r.x1 - RIM, z0: p.r.z0 + (p.slotsBack ? RIM : 0.7), z1: p.r.z1 - 0.7 };
-    extrude(s, BODY, outline(p.r, p), FOAM, top, BEVEL, { hole: field, ao: 0.8 });
+    extrude(s, BODY, outline(p.r, p), FOAM, top, BEVEL, { hole: field, ao: 0.6, wall: 0.9 });
     const rows: { z0: number; z1: number; opens: [number, number][] }[] = [];
     if (p.rail) {
       for (const z of [...new Set(p.of.map((t) => t.v))].sort((a, b) => a - b)) {
@@ -246,28 +251,38 @@ function buildBody(L: Layout, ctx: BuildCtx): Shape {
     for (const t of p.of) trough(t, top, fine, white, dark, metal);
   }
   s.add(BODY[0], BODY[1], white.build());
-  s.add('matte', '#121214', dark.build());
+  s.add('matte', '#08080a', dark.build());
   if (fine) s.add(PAL.steel[0], PAL.steel[1], metal.build());
 
-  // the floor of the centre channel, open at both ends
-  s.box(...BODY, 0, mid, 2 * X - 0.3, TRENCH + 0.2, FOAM, top - TRENCH_DEEP, 0.05, 0, { ao: 0.8 });
+  // the floor of the centre channel, open at both ends, and the shade that gathers in it: darker down the walls
+  s.box(...BODY, 0, mid, 2 * X - 0.3, TRENCH + 0.2, FOAM, top - TRENCH_DEEP, 0.05, 0, { ao: 0.6 });
+  const shade = new MeshBuilder();
+  const fy = top - TRENCH_DEEP + 0.01, x0 = -X + 0.2, x1 = X - 0.2;
+  face(shade, [x0, fy, mid - TRENCH / 2], [x1, fy, mid - TRENCH / 2], [x1, fy, mid + TRENCH / 2], [x0, fy, mid + TRENCH / 2], [0, 1, 0], 0.5);
+  for (const sg of [-1, 1]) {
+    const z = mid + sg * (TRENCH / 2 - 0.01);
+    face(shade, [x0, top - BEVEL, z], [x1, top - BEVEL, z], [x1, fy, z], [x0, fy, z], [0, 0, -sg], 0.84, 0.46);
+  }
+  s.add(BODY[0], BODY[1], shade.build());
+  // the seams: a rail strip is a moulding of its own, a dark line runs between it and the terminal block
+  for (const z of [seamTop, seamBot]) s.box('matte', '#5d6066', 0, z, 2 * X - 0.5, SEAM + 0.2, FOAM, top - 0.75, 0.05, 0, { ao: 0.7 });
 
   // dovetail tabs: on the right edge of the terminal block and along the front rail strip
   const tabTop = top - 1.5;
-  for (const z of L.tabsZ) s.prism(...BODY, dovetail(z, 0).map(([a, k]) => [X - 0.3 + k * (TAB + 0.3), a] as Pt), FOAM, tabTop, 0.2, { ao: 0.8 });
-  for (const x of L.tabsX) s.prism(...BODY, dovetail(x, 0).map(([a, k]) => [a, Z - 0.3 + k * (TAB + 0.3)] as Pt), FOAM, tabTop, 0.2, { ao: 0.8 });
+  for (const z of L.tabsZ) s.prism(...BODY, dovetail(z, 0).map(([a, k]) => [X - 0.3 + k * (TAB + 0.3), a] as Pt), FOAM, tabTop, 0.2, { ao: 0.6 });
+  for (const x of L.tabsX) s.prism(...BODY, dovetail(x, 0).map(([a, k]) => [a, Z - 0.3 + k * (TAB + 0.3)] as Pt), FOAM, tabTop, 0.2, { ao: 0.6 });
   return s;
 }
 
 // ---------------------------------------------------------------------------------------------------- print
-const LEGEND = 'rgba(52, 58, 68, 0.86)';
+const LEGEND = '#23272e';
 
 function legends(L: Layout, g: CanvasRenderingContext2D): void {
   // rail lines with their signs at both ends
   for (const r of L.railRows) {
     const colour = r.plus ? INK.red : INK.blue;
     g.strokeStyle = g.fillStyle = colour;
-    g.lineWidth = 0.42;
+    g.lineWidth = 0.5;
     g.lineCap = 'butt';
     g.beginPath();
     g.moveTo(r.x0 - 1.1, r.lineZ);
@@ -275,7 +290,7 @@ function legends(L: Layout, g: CanvasRenderingContext2D): void {
     g.stroke();
     const sx = Math.min(2.3, (r.x0 + L.X) / 2 + 0.2);
     for (const x of [r.x0 - sx, r.x1 + sx]) {
-      g.lineWidth = 0.34;
+      g.lineWidth = 0.4;
       g.beginPath();
       g.moveTo(x - 0.62, r.z);
       g.lineTo(x + 0.62, r.z);
@@ -291,15 +306,15 @@ function legends(L: Layout, g: CanvasRenderingContext2D): void {
   const z0 = L.rows[0].z, z1 = L.rows[L.rows.length - 1].z;
   for (const c of L.cols) {
     if (c.n !== 1 && c.n % 5 !== 0) continue;
-    text(g, String(c.n), c.x, z0 - 2.05, 1.5, { weight: 700, font: FONT });
-    text(g, String(c.n), c.x, z1 + 2.15, 1.5, { weight: 700, font: FONT });
+    text(g, String(c.n), c.x, z0 - 2.05, 1.6, { weight: 700, font: FONT });
+    text(g, String(c.n), c.x, z1 + 2.15, 1.6, { weight: 700, font: FONT });
   }
   // row letters at both ends
   const x0 = L.cols[0].x, x1 = L.cols[L.cols.length - 1].x;
   const off = Math.min(1.95, (x0 + L.X) / 2 + 0.47);
   for (const r of L.rows) {
-    text(g, r.letter, x0 - off, r.z + 0.05, 1.5, { weight: 700, font: FONT });
-    text(g, r.letter, x1 + off, r.z + 0.05, 1.5, { weight: 700, font: FONT });
+    text(g, r.letter, x0 - off, r.z + 0.05, 1.55, { weight: 700, font: FONT });
+    text(g, r.letter, x1 + off, r.z + 0.05, 1.55, { weight: 700, font: FONT });
   }
 }
 
