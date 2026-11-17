@@ -59,6 +59,7 @@ export async function openModel(browser, base, id, o = {}) {
   if (o.state) params.set('state', o.state);
   if (o.detail) params.set('detail', String(o.detail));
   if (o.bare) params.set('bare', '1');
+  if (o.thumb) params.set('thumb', '1');
   if (o.t !== undefined) params.set('t', String(o.t));
   await page.goto(`${base}/?${params}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__model, { timeout: 30000 });

@@ -49,12 +49,18 @@ let model: PartModel | undefined;
 let object: Object3D | null = null;
 let state: unknown = {};
 let view = { az: 28, pol: 56, zoom: 1, fov: 30, name: 'front' };
+/** thumb=1: the part alone on nothing (no table, no shadow), framed on its real geometry, for scripts/part-thumbs.mjs. */
+const thumb = q.has('thumb');
 const frozen = q.has('t') ? Number(q.get('t')) : null;
 const outline = new LineLoop(new BufferGeometry(), new LineBasicMaterial({ color: 0x028ac2 }));
 const shadow = new Mesh(new PlaneGeometry(1, 1), asDecal(new MeshBasicMaterial({ map: makeShadowTexture(), transparent: true, toneMapped: false, opacity: 0.55 }), 0.15));
 shadow.rotation.x = -Math.PI / 2;
 shadow.position.y = 0.02;
 scene.add(shadow, outline);
+if (thumb) {
+  table.group.visible = false;
+  shadow.visible = false;
+}
 
 function load(id: string, detail = 1): string[] {
   model = MODELS.get(id);
@@ -90,11 +96,63 @@ function setView(name: string): void {
   view = { az: v.az, pol: v.pol, zoom: 1, fov: v.fov ?? 30, name: name in VIEWS ? name : 'front' };
 }
 
+const _v = new Vector3();
+/** Aims and backs the camera off so that the part's real vertices fill the frame with `margin` left round them. */
+function fitToGeometry(az: number, pol: number, margin: number): void {
+  if (!object) return;
+  object.updateWorldMatrix(true, true);
+  const pts: number[] = [];
+  object.traverse((o) => {
+    const m = o as Mesh;
+    if (!m.isMesh || !o.visible) return;
+    const pos = m.geometry.getAttribute('position');
+    if (!pos) return;
+    const mat = (m.material as { blending?: number; opacity?: number }) ?? {};
+    if (mat.blending === 2 || mat.opacity === 0) return; // additive halos are not part of the shape
+    for (let i = 0; i < pos.count; i += 1) {
+      _v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+      pts.push(_v.x, _v.y, _v.z);
+    }
+  });
+  if (!pts.length) return;
+  const dir = new Vector3(Math.sin(pol) * Math.sin(az), Math.cos(pol), Math.sin(pol) * Math.cos(az));
+  const target = new Vector3();
+  for (let i = 0; i < pts.length; i += 3) target.add(_v.set(pts[i], pts[i + 1], pts[i + 2]));
+  target.divideScalar(pts.length / 3);
+  let dist = 400;
+  for (let it = 0; it < 12; it += 1) {
+    camera.position.copy(target).addScaledVector(dir, dist);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(target);
+    camera.near = 1;
+    camera.far = dist * 4 + 2000;
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld(true);
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (let i = 0; i < pts.length; i += 3) {
+      _v.set(pts[i], pts[i + 1], pts[i + 2]).project(camera);
+      x0 = Math.min(x0, _v.x); x1 = Math.max(x1, _v.x); y0 = Math.min(y0, _v.y); y1 = Math.max(y1, _v.y);
+    }
+    // move the aim to the middle of what is seen, then scale the distance so the larger extent fills 1 - margin
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const half = Math.max((x1 - x0) / 2, (y1 - y0) / 2);
+    const tanH = Math.tan((camera.fov * DEG) / 2);
+    const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+    target.addScaledVector(right, cx * dist * tanH * camera.aspect).addScaledVector(up, cy * dist * tanH);
+    dist = Math.max(20, dist * (half / (1 - margin)));
+  }
+  camera.position.copy(target).addScaledVector(dir, dist);
+  camera.lookAt(target);
+  camera.updateProjectionMatrix();
+}
+
 function place(): void {
   const w = window.innerWidth, h = window.innerHeight;
   gl.setSize(w, h, false);
   camera.aspect = w / h;
   camera.fov = view.fov;
+  if (thumb) return fitToGeometry(view.az * DEG, view.pol * DEG, 0.1);
   const fp = model?.footprintMm ?? { w: 40, d: 40, h: 20 };
   const f = { w: fp.w, d: fp.d, h: fp.h + (model?.plugMm ?? 0) }; // raised on its legs
   const pol = view.pol * DEG, az = view.az * DEG;
@@ -181,6 +239,7 @@ canvas.addEventListener('wheel', (e) => {
 
 const errors = load(q.get('model') ?? [...MODELS.keys()][0] ?? '', q.has('detail') ? Number(q.get('detail')) : 1);
 setView(q.get('view') ?? 'front');
+if (thumb) view = { az: 34, pol: 52, zoom: 1, fov: 24, name: 'thumb' }; // three-quarter, from above
 onPrintsRedrawn(() => undefined);
 
 function describe() {
@@ -208,6 +267,23 @@ if (q.has('bare')) caption.style.display = 'none';
       ctx.readPixels(0, 0, 1, 1, ctx.RGBA, ctx.UNSIGNED_BYTE, px);
     }
     return (performance.now() - t) / n;
+  },
+  /** thumb=1 only: the frame so far, drawn at `size` px square (smoothed down from the render) and encoded as WebP with alpha. */
+  async snap(size: number, quality = 0.9): Promise<string> {
+    gl.render(scene, camera);
+    let src: HTMLCanvasElement = canvas;
+    let w = canvas.width;
+    while (w > size) {
+      w = Math.max(size, Math.floor(w / 2));
+      const c = document.createElement('canvas');
+      c.width = c.height = w;
+      const g = c.getContext('2d')!;
+      g.imageSmoothingEnabled = true;
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(src, 0, 0, w, w);
+      src = c;
+    }
+    return src.toDataURL('image/webp', quality);
   },
   ready: () => document.fonts.status === 'loaded',
 };

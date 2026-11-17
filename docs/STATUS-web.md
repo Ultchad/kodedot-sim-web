@@ -902,3 +902,7 @@ pictures in `web/screenshots/workbench2/`), and for the parts `tests/node/parts/
 - Standing with a cable plugged: the cable comes out and nothing tells why.
 - Not tried: a real phone, a real GPU; the magnet's feel was judged from numbers, not from a hand.
 
+
+## Part pictures in the library (feat/part-thumbs)
+
+Each library card shows a picture of the part's own 3D model (also the "on the table" rows and the inspector card). The pictures are made by `node scripts/part-thumbs.mjs` (optional `--only <text>`): it opens the model stand in `thumb=1` mode (no table or shadow, transparent background, three-quarter view from above, framed on the model's real vertices with a 10% margin, the stand's studio light, time frozen), renders at 512 px, smooths down to 128 px and writes lossy WebP with alpha to `web/public/parts-thumbs/<part id>.webp` plus `index.json`. They are committed (39 pictures, about 143 KB); the Vercel build never renders. A library part with no model but a `picture.svg` gets that file copied as `<id>.svg`; any other part is listed under `fallback` and keeps the generic icon, as do parts the visitor imports. Shown at 36 px (the file is 128 for sharpness), `loading="lazy"`, fixed box. Re-run the script after a model changes. Test: `src/parts/thumbs.test.ts`. Weak pictures: the two breadboards (wide and flat, low contrast on cream), and the three ESP32 example boards look alike.
