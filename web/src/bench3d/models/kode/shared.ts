@@ -1,21 +1,22 @@
 /**
  * Shared builders of the Kode module family (the add-on modules that plug onto the Dot's 2x10 expansion header J3).
  *
- * The family's look, read off the owner's reference pictures (never copied): a matte black board whose four corners
- * swell into round ears round the mounting holes, amber silkscreen, black sockets, a 2x10 right-angle pin header at
+ * The family's look, read off the owner's reference pictures (never copied): a matte black rounded-square board
+ * with a gold-ringed mounting hole in each corner, gold silkscreen, black sockets, a 2x10 right-angle pin header at
  * the edge that meets the Dot (the three bare-board modules); a moulded block with a tongue, in the Dot's own
  * plastic, with two whip antennas (the two cased modules, case.ts).
  *
  * HOW A MODULE MEETS THE DOT is the manifest's: `mount.connector` gives where the 2x10 seats (`seat_mm`), which way
  * the pins point and how long they are, and every pin is a terminal with its own height. The models build the
- * connector from those numbers; `mount.placement` tells a host how to turn the part onto the Dot.
+ * connector from those numbers; `mount.placement` tells a host how to turn the part onto the Dot. The board is the
+ * manifest's too: the footprint as far as the connector's seat, drilled where `refs` of kind "hole" say (`moduleBoard`).
  *
  * Candidates for the kit (parts.ts): `outlineBoard` (a board with any outline), `rightAngleHeader`, `socketStrip`
  * and `pinStrip` (lean strips, for boards that lie flat on the table: no tails under the board), `screwBlock`,
  * `chipPassive`, `sot23`, `fpcConnector`, `whipAntenna`, `moulding` (a solid with real fillets from a side profile).
  */
 import { ShapeUtils, Vector2 } from 'three';
-import { Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, type Finish, type ManifestBody, type ManifestPin, type Pt, type V3 } from '../../index';
+import { FONT_MONO, Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, roundedRectLoop, type Finish, type ManifestBody, type ManifestPin, type Pt, type V3 } from '../../index';
 
 // ------------------------------------------------------------------------------------------------- the manifest
 /** What the models of this family read of parts/<id>/manifest.json. */
@@ -35,8 +36,8 @@ export interface KodeManifest {
   groups?: readonly { pins: readonly string[] }[];
   /** The side silhouette of a moulded housing: points (y: depth from the back, z: height), in manifest millimetres. */
   profile?: readonly { y: number; z: number }[];
-  /** Reference points that are not terminals (the antenna jacks of the cased modules). */
-  refs?: readonly { name: string; kind: string; mm: { x: number; y: number; z: number }; length_mm?: number }[];
+  /** Reference points that are not terminals (the mounting holes of the boards, the antenna jacks of the cased modules). */
+  refs?: readonly { name: string; kind: string; mm: { x: number; y: number; z: number }; length_mm?: number; diameter_mm?: number }[];
 }
 /** A JSON import as the manifest type (JSON widens `face` to string). */
 export const asManifest = (m: unknown): KodeManifest => m as KodeManifest;
@@ -73,62 +74,39 @@ const square = (x: number, z: number, a: number): Pt[] => [[x + a, z - a], [x + 
 const rect = (x: number, z: number, w: number, d: number): Pt[] => [[x + w / 2, z - d / 2], [x + w / 2, z + d / 2], [x - w / 2, z + d / 2], [x - w / 2, z - d / 2]];
 
 // -------------------------------------------------------------------------------------------------------- boards
-export interface OutlineOptions {
-  /** The box the outline touches: x0..x1, z0..z1 (z0 is the far edge). */
+/** A module board as the manifest gives it: its outline, where it lies, its mounting holes. */
+export interface ModuleBoard {
+  loop: Pt[];
+  /** The board's box in the model frame: `far` is the edge away from the Dot, `near` the edge the 2x10 leaves from. */
   x0: number;
   x1: number;
-  z0: number;
-  z1: number;
-  /** Radius of the corner ears. */
-  ear: number;
-  /** How far the straight edges stand back from the box: far (-Z), near (+Z) and the two sides. */
-  inset: { far: number; near: number; side: number };
-  /** Radius of the hollow that joins an ear to an edge. */
-  blend?: number;
+  far: number;
+  near: number;
+  /** Height of the top face and of the underside above the table. */
+  top: number;
+  under: number;
+  holes: { x: number; z: number; d: number }[];
 }
 /**
- * The outline of a Kode module board: a rectangle whose corners swell into round ears (each holds a mounting hole),
- * joined to the straight edges by a hollow. Returns the loop and the four ear centres.
+ * The board of a bare module, from its manifest: a rounded square (the store picture shows plain round corners, each
+ * concentric with its mounting hole) as wide as the footprint, from the far edge of the footprint to the connector's
+ * seat, where the 2x10's plastic ends and its pins go on. Its top face is one pitch under the seat (the header's two
+ * rows stand 1.27 and 3.81 mm above the board). The holes are the manifest's `refs` of kind "hole"; a manifest without
+ * them (the Camera: four 3.2 mm holes documented, not where) gets one in each corner, `inset` from both edges.
  */
-export function earOutline(o: OutlineOptions, seg = 5): { loop: Pt[]; ears: Pt[] } {
-  const f = o.blend ?? 3, R = o.ear;
-  // one corner in its own frame: the box corner at (0, 0), the board towards (-, -); u is the first edge met
-  const corner = (insetU: number, insetV: number): Pt[] => {
-    const out: Pt[] = [];
-    const c: Pt = [-R, -R];
-    const leg = (inset: number) => {
-      const a = R - inset + f;
-      return { a, d: Math.sqrt(Math.max(0, (R + f) * (R + f) - a * a)), phi: Math.atan2(Math.sqrt(Math.max(0, (R + f) * (R + f) - a * a)), a) };
-    };
-    const l1 = leg(insetU), l2 = leg(insetV);
-    // hollow from the edge x = -insetU up to the ear
-    const f1: Pt = [-insetU + f, c[1] - l1.d];
-    for (let i = 0; i <= seg; i++) {
-      const t = Math.PI - (l1.phi * i) / seg;
-      out.push([f1[0] + f * Math.cos(t), f1[1] + f * Math.sin(t)]);
-    }
-    // the ear
-    const a0 = -l1.phi, a1 = Math.PI / 2 + l2.phi, n = Math.max(6, Math.round(seg * 2.4));
-    for (let i = 1; i < n; i++) {
-      const t = a0 + ((a1 - a0) * i) / n;
-      out.push([c[0] + R * Math.cos(t), c[1] + R * Math.sin(t)]);
-    }
-    // hollow down to the edge z = -insetV
-    const f2: Pt = [c[0] - l2.d, -insetV + f];
-    for (let i = 0; i <= seg; i++) {
-      const t = l2.phi - Math.PI / 2 - (l2.phi * i) / seg;
-      out.push([f2[0] + f * Math.cos(t), f2[1] + f * Math.sin(t)]);
-    }
-    return out;
-  };
-  const loop: Pt[] = [];
-  const nearRight = corner(o.inset.side, o.inset.near); // box corner (x1, z1): from the right edge round to the near edge
-  const farRight = corner(o.inset.side, o.inset.far);
-  for (const [px, pz] of nearRight) loop.push([o.x1 + px, o.z1 + pz]);
-  for (const [px, pz] of [...nearRight].reverse()) loop.push([o.x0 - px, o.z1 + pz]);
-  for (const [px, pz] of farRight) loop.push([o.x0 - px, o.z0 - pz]);
-  for (const [px, pz] of [...farRight].reverse()) loop.push([o.x1 + px, o.z0 - pz]);
-  return { loop, ears: [[o.x0 + R, o.z0 + R], [o.x1 - R, o.z0 + R], [o.x0 + R, o.z1 - R], [o.x1 - R, o.z1 - R]] };
+export function moduleBoard(m: KodeManifest, o: { thick?: number; inset?: number; seg?: number } = {}): ModuleBoard {
+  const { w_mm: W, d_mm: D } = m.body;
+  const seat = connectorOf(m).seat;
+  const x0 = -W / 2, x1 = W / 2, far = -D / 2, near = seat[2];
+  const top = seat[1] - PITCH, under = Math.max(0, top - (o.thick ?? 1.6));
+  let holes = (m.refs ?? []).filter((r) => r.kind === 'hole').map((r) => ({ x: r.mm.x - W / 2, z: r.mm.y - D / 2, d: r.diameter_mm ?? 3.2 }));
+  if (!holes.length) {
+    const i = o.inset ?? 4.5;
+    holes = [[x0 + i, far + i], [x1 - i, far + i], [x0 + i, near - i], [x1 - i, near - i]].map(([x, z]) => ({ x, z, d: 3.2 }));
+  }
+  // the corners are drawn round the holes: the radius is how far a hole stands from its nearest edge
+  const r = Math.min(...holes.map((h) => Math.min(h.x - x0, x1 - h.x, h.z - far, near - h.z)));
+  return { loop: roundedRectLoop((x0 + x1) / 2, (far + near) / 2, x1 - x0, near - far, r, o.seg ?? 6), x0, x1, far, near, top, under, holes };
 }
 /**
  * A board with any outline: solder mask round an FR4 core, drilled holes with their tinned rings. Returns the height
@@ -138,21 +116,44 @@ export function outlineBoard(s: Shape, o: { loop: Pt[]; y?: number; thick?: numb
   const y = o.y ?? 0, t = o.thick ?? 1.6;
   const holes = (o.holes ?? []).map((h) => circleLoop(h.x, h.z, h.d / 2, 14));
   s.prism(...(o.finish ?? PAL.pcbBlack), o.loop, y, y + t, 0.12, { cap: true, ao: 0.9, holes });
-  for (const h of o.holes ?? []) s.prism(...(o.ring ?? PAL.gold), circleLoop(h.x, h.z, h.d / 2 + 0.6, 18), y + t, y + t + 0.04, 0, { holes: [circleLoop(h.x, h.z, h.d / 2, 14)], ao: 1 });
+  for (const h of o.holes ?? []) s.prism(...(o.ring ?? RING), circleLoop(h.x, h.z, h.d / 2 + 0.4, 18), y + t, y + t + 0.04, 0, { holes: [circleLoop(h.x, h.z, h.d / 2, 14)], ao: 1 });
   return y + t;
 }
 
 // ------------------------------------------------------------------------------------------------------- headers
 /** The boards' silkscreen as the pictures show it: a warm gold, a little softer than the kit's amber ink. */
 export const SILK = '#f0a83e';
+/** The dull gold of the bare rings round the mounting holes and of the fiducials (the picture shows them faint). */
+export const RING: Finish = ['matte', '#a5843a'];
+/**
+ * A legend in the boards' silkscreen hand: a wide, even, heavy monospace (the kit's mono face, thickened with its own
+ * outline, since the page ships it in one weight). Centred on (x, y) unless `align` says otherwise; `size` is the em
+ * in millimetres (capitals stand 0.7 of it); `angle` -PI/2 runs the text up the board.
+ */
+export function silkText(g: CanvasRenderingContext2D, t: string, x: number, y: number, size: number, o: { align?: CanvasTextAlign; angle?: number; colour?: string } = {}): void {
+  g.save();
+  g.translate(x, y);
+  if (o.angle) g.rotate(o.angle);
+  g.font = `400 ${size}px ${FONT_MONO}`;
+  g.textAlign = o.align ?? 'center';
+  g.textBaseline = 'middle';
+  g.fillStyle = g.strokeStyle = o.colour ?? SILK;
+  g.lineWidth = size * 0.085;
+  g.lineJoin = 'round';
+  g.fillText(t, 0, 0);
+  g.strokeText(t, 0, 0);
+  g.restore();
+}
 /** The bright tin of the modules' header pins (the pictures show them almost white). */
 export const PIN_TIN: Finish = ['metal', '#e3e5e9'];
 /**
  * A 2-row right-angle pin header (the modules' J401): the plastic stands on the board with its face at z = `z`, the
- * pins leave along +Z in two layers (1.27 and 3.81 mm above the board) and turn down into gold pads behind the
- * plastic. `n` pins per row along X, centred on `x`; `tail` is how far the legs go below the board's top (a board
+ * pins leave along +Z in two layers (1.27 and 3.81 mm above the board) and turn down into their soldered pads
+ * behind the plastic (grey in the picture: solder, not bare gold). `n` pins per row along X, centred on `x`; `tail` is how far the legs go below the board's top (a board
  * that lies on the table has none below it).
  */
+/** Where a right-angle header's two rows of tails go down into the board, for a seat at z = `seat`: the first row and the second. */
+export const tailRows = (seat: number): [number, number] => [seat - PITCH - 1.3, seat - 2 * PITCH - 1.3];
 export function rightAngleHeader(s: Shape, o: { x: number; y: number; z: number; n: number; length?: number; pins?: Finish; tail?: number }): void {
   const len = o.length ?? 6, pins = o.pins ?? PIN_TIN, a = 0.32, tail = o.tail ?? 2.6;
   s.at(o.x, o.y, o.z, () => {
@@ -164,7 +165,7 @@ export function rightAngleHeader(s: Shape, o: { x: number; y: number; z: number;
         const py = PITCH / 2 + r * PITCH, back = -PITCH - 1.3 - r * PITCH;
         s.with(LYING, () => s.prism(...pins, square(px, -py, a), back - a, len, 0.16, { ao: 1 }));
         s.prism(...pins, square(px, back, a), -tail, py + a, 0.1, { ao: 0.95 });
-        s.prism(...PAL.gold, circleLoop(px, back, 0.95, 8), 0, 0.05, 0, { ao: 1 });
+        s.prism('metal', '#9da0a6', circleLoop(px, back, 0.9, 8), 0, 0.05, 0, { ao: 1 });
       }
     }
   });
@@ -181,8 +182,8 @@ export function socketStrip(s: Shape, o: { x: number; z: number; y: number; n: n
     s.box(...(o.finish ?? PAL.plasticBlack), 0, 0, o.n * PITCH, rows * PITCH, 0, h, 0.3, 0.3, { ao: 0.88 });
     for (let r = 0; r < rows; r++) for (let i = 0; i < o.n; i++) {
       const px = (i - (o.n - 1) / 2) * PITCH, pz = (r - (rows - 1) / 2) * PITCH;
-      s.prism('matte', '#0a0a0b', square(px, pz, 0.68), h, h + 0.03, 0, { ao: 1 });
-      s.prism(...PAL.gold, square(px, pz, 0.27), h + 0.03, h + 0.05, 0, { ao: 1 });
+      s.prism('matte', '#0a0a0b', square(px, pz, 0.84), h, h + 0.03, 0, { ao: 1 });
+      s.prism('metal', '#6e5a2c', square(px, pz, 0.22), h + 0.03, h + 0.05, 0, { ao: 1 }); // the contact, deep in its mouth
     }
   });
 }
@@ -206,11 +207,12 @@ export function stripBetween(a: V3, b: V3): { x: number; z: number; turn: number
 /**
  * A screw terminal block as on the Robotics module: a plain black block, one big bright slotted screw per way on
  * top, the wire entries on the far face (-Z, the board's edge) and the small clamp windows on the near face.
- * `n` ways along X centred on `x`, the screws on the line z = `z`. Sizes follow the pitch (5.08 mm: 7.6 deep, 9.5 high).
+ * `n` ways along X centred on `x`, the screws on the line z = `z`. Sizes follow the pitch (5.08 mm: 7.6 deep, 9.5 high)
+ * unless `h` (the height of the screw heads above the board: give it from the terminals) or `d` say otherwise.
  */
-export function screwBlock(s: Shape, o: { x: number; z: number; y: number; n: number; pitch?: number; finish?: Finish; seg?: number }): { h: number; r: number } {
+export function screwBlock(s: Shape, o: { x: number; z: number; y: number; n: number; pitch?: number; h?: number; d?: number; finish?: Finish; seg?: number }): { h: number; r: number; d: number } {
   const pitch = o.pitch ?? 5.08, w = o.n * pitch, fin = o.finish ?? PAL.plasticBlack;
-  const d = pitch * 1.5, h = pitch * 1.85, r = pitch * 0.31, seg = o.seg ?? 16;
+  const d = o.d ?? pitch * 1.5, h = o.h ?? pitch * 1.85, r = pitch * 0.33, seg = o.seg ?? 16;
   s.at(o.x, o.y, o.z, () => {
     s.box(...fin, 0, 0, w, d, 0, h, 0.35, 0.45, { ao: 0.9 });
     for (let i = 0; i < o.n; i++) {
@@ -229,7 +231,7 @@ export function screwBlock(s: Shape, o: { x: number; z: number; y: number; n: nu
       if (i > 0) s.prism('matte', '#050506', rect(px - pitch / 2, 0, 0.14, d - 0.6), h, h + 0.03, 0, { ao: 1 });
     }
   });
-  return { h, r };
+  return { h, r, d };
 }
 
 // --------------------------------------------------------------------------------------------------- small parts

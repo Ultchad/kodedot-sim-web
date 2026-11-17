@@ -6,24 +6,23 @@
  * research/06-official-modules-spec.md section 4 (what is on the board: an OV5640 autofocus camera in an FD5640
  * module on a 24-way 0.5 mm flat flex J501, a 24 MHz oscillator, the 1.5 V and 2.8 V regulators U501 and U502, the
  * solder jumper JP501, four 3.2 mm holes, the 2x10 right-angle J401). No picture of this module exists among the
- * references: the family's look (black board with eared corners and gold-ringed holes, gold print, bright header
- * pins) is taken from the Maker and Robotics pictures, and where the lens, the flex and the small parts sit is a
- * GUESS. The print is only the documented reference designators: what the real board prints is not known. Sizes of
+ * references: the family's look (black rounded-square board with a gold-ringed hole in each corner, gold print,
+ * bright header pins) is taken from the Maker and Robotics pictures, and where the holes (4.4 mm from the edges), the
+ * lens, the flex and the small parts sit is a GUESS. The print is only the documented reference designators: what the real board prints is not known. Sizes of
  * the parts are their usual ones (camera head 8.5 x 8.5 x 5.5 mm, oscillator 3.2 x 2.5 mm, SOT-23-5 regulators).
  */
 import manifest from '../../../../../parts/kode-camera-shape/manifest.json';
-import { FONT, PAL, PITCH, Shape, defineModel, footprintOf, print, silkBox, terminalsFromManifest, text, topQuad, type Finish, type PartState, type Pt } from '../../index';
-import { SILK, asManifest, chipPassive, connectorOf, earOutline, fpcConnector, outlineBoard, rightAngleHeader, sot23 } from './shared';
+import { FONT, PAL, Shape, defineModel, footprintOf, print, silkBox, terminalsFromManifest, text, topQuad, type Finish, type PartState, type Pt } from '../../index';
+import { SILK, asManifest, chipPassive, connectorOf, fpcConnector, moduleBoard, outlineBoard, rightAngleHeader, sot23 } from './shared';
 
 const M = asManifest(manifest);
 const terminals = terminalsFromManifest(M);
 const { w: W, d: D } = footprintOf(M.body);
 const con = connectorOf(M);
 
-const TOP = con.seat[1] - PITCH; // the header's two rows stand 1.27 and 3.81 mm above the board
-const BOARD_Y = Math.max(0, TOP - 1.6);
-const EDGE = con.seat[2]; // the near edge of the board: J401's plastic ends here, its pins go on
-const OUTLINE = earOutline({ x0: -W / 2, x1: W / 2, z0: -D / 2, z1: EDGE + 0.6, ear: 4.4, inset: { far: 1.2, near: 1.2, side: 1.2 }, blend: 4 });
+const B = moduleBoard(M, { inset: 4.4 }); // the documented 46.6 x 45.5 mm board; its holes are not in the manifest
+const TOP = B.top; // the top face of the board
+const EDGE = B.near; // its near edge: J401's plastic ends here, its pins go on
 /** The parts' own layout was drawn round the middle of a board that ended 2 mm nearer: it is moved as one. */
 const OZ = (-D / 2 + EDGE) / 2 + 1.9;
 
@@ -71,8 +70,8 @@ export default defineModel<PartState>({
   footprintMm: footprintOf(M.body),
   build(ctx) {
     const s = new Shape();
-    outlineBoard(s, { loop: OUTLINE.loop, y: BOARD_Y, holes: OUTLINE.ears.map(([x, z]) => ({ x, z, d: 3.2 })) });
-    rightAngleHeader(s, { x: con.seat[0], y: TOP, z: EDGE, n: 10, length: con.length, tail: TOP - BOARD_Y - 0.05 });
+    outlineBoard(s, { loop: B.loop, y: B.under, thick: TOP - B.under, holes: B.holes });
+    rightAngleHeader(s, { x: con.seat[0], y: TOP, z: EDGE, n: 10, length: con.length, tail: TOP - B.under - 0.05 });
     s.at(0, 0, OZ, () => parts(s, ctx.seg));
 
     const root = s.toObject();
