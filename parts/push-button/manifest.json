@@ -14,9 +14,9 @@
     "es": "Pulsador"
   },
   "description": {
-    "en": "A momentary switch between A and B with 5 ms of contact bounce. Press it on the picture; hold Shift or use the Latch field to keep it down.",
-    "pt-BR": "Uma chave momentânea entre A e B com 5 ms de repique. Pressione na imagem; use o campo Travar para mantê-la apertada.",
-    "es": "Un pulsador entre A y B con 5 ms de rebote. Púlsalo en la imagen; usa el campo Fijar para mantenerlo."
+    "en": "A momentary switch between A and B with 5 ms of contact bounce. Press it on the picture; set the Pressed field to keep it down.",
+    "pt-BR": "Uma chave momentânea entre A e B com 5 ms de repique. Pressione na imagem; use o campo Pressionado para mantê-la apertada.",
+    "es": "Un pulsador entre A y B con 5 ms de rebote. Púlsalo en la imagen; usa el campo Pulsado para mantenerlo."
   },
   "category": "input",
   "tags": [
@@ -57,16 +57,6 @@
         "en": "Pressed",
         "pt-BR": "Pressionado",
         "es": "Pulsado"
-      },
-      "default": false
-    },
-    {
-      "name": "latch",
-      "type": "boolean",
-      "label": {
-        "en": "Latch (stay pressed)",
-        "pt-BR": "Travar (fica apertado)",
-        "es": "Fijar (queda pulsado)"
       },
       "default": false
     }

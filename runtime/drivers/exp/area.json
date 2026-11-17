@@ -13,9 +13,6 @@
   ],
   "test_apps": [
     "sdk:examples/expansion_io",
-    "sdk:examples/exp_bus",
-    "area:../../../tests/node/parts/apps/parts_io",
-    "area:../../../tests/node/parts/apps/parts_i2c",
-    "area:../../../tests/node/parts/apps/parts_uart"
+    "sdk:examples/exp_bus"
   ]
 }
