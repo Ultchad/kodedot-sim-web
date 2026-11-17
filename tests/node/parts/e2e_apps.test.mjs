@@ -75,6 +75,7 @@ await test("parts_uart: the Dot exchanges UART with an ESP32 part running a real
   await r.waitLog(/parts_uart up/, 30000);
   await r.waitLog(/reply \d+: ping \d+\|?/, 20000);
   check(true, "the sketch echoes what the Dot sends");
+  await r.waitLog(/reply [23]: ping [23]/, 10000).catch(() => {});   // wait for the later replies (the first line was just seen)
   const t = r.text();
   check(/reply 2: ping 2/.test(t) || /reply 3: ping 3/.test(t), "replies keep up with the pings", t.split("\n").filter((l) => /reply/.test(l)).slice(0, 4));
   const st = b.state().parts.find((p) => p.instance === e);

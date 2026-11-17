@@ -43,10 +43,15 @@ check(true, "a firmware version set on the bench is what the SDK reports after t
 a.radio.setFirmware(2, 12, 9);
 
 // identity: a real P-256 key, a real CSR, real signatures
+// AO_Radio is still starting Bluetooth for a moment after a link-up and answers identity commands only once that is done: ask again until it
+// answers (the real condition), instead of one fixed sleep that is too long on a quiet machine and too short on a loaded one.
 const getCsr = async () => {
   const mk = a.mark();
-  await a.cmd("ident_csr");
-  await a.waitLog(/csr part=(\d+) of=\1 /, 6000, mk);
+  for (let i = 0; i < 5 && !/csr part=/.test(a.logText().slice(mk)); i++) {
+    await a.cmd("ident_csr");
+    try { await a.waitLog(/csr part=(\d+) of=\1 /, 3000, mk); } catch { /* not served yet: ask again */ }
+  }
+  await a.waitLog(/csr part=(\d+) of=\1 /, 3000, mk);
   return Buffer.concat([...a.logText().slice(mk).matchAll(/csr part=\d+ of=\d+ der="([^"]+)"/g)].map((x) => Buffer.from(x[1], "base64")));
 };
 const der = await getCsr();

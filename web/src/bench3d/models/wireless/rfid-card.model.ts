@@ -29,9 +29,9 @@ export default defineModel<WirelessState>({
           g.roundRect(-36, -9, 3.2, 14, 1.6);
           g.fill();
           g.fillStyle = '#3d3a36';
-          text(g, 'EM4100', -30.5, -5.2, 4.3, { align: 'left', weight: 700 });
+          text(g, '125 kHz', -30.5, -5.2, 4.3, { align: 'left', weight: 700 });
           g.fillStyle = '#6b665e';
-          text(g, '125 kHz', -30.5, 1.2, 3.1, { align: 'left' });
+          text(g, 'ID card', -30.5, 1.2, 3.1, { align: 'left' });
           text(g, '0007820901  119,22357', -36, 19.5, 2.9, { align: 'left', weight: 500, font: FONT_MONO });
         },
       }),

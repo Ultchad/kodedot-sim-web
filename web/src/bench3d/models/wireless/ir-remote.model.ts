@@ -2,7 +2,7 @@
  * Infrared remote: a slim six-button remote (40 x 118 x 12 mm). Its emitter end is its front (+Z): aimed at the Dot it
  * points at it. The buttons are separate caps that go down when pressed; a small lamp shows it is sending.
  */
-import { Shape, defineModel, lamp, part, powerSign, print, rr, setLamp, text, topQuad } from '../../index';
+import { Shape, defineModel, lamp, markControl, part, powerSign, print, rr, setLamp, text, topQuad } from '../../index';
 import { state, type WirelessState } from './state';
 
 /** Where the buttons sit on the face (x, z) and how big they are. The ids are the bench's button names. */
@@ -50,62 +50,70 @@ export default defineModel<WirelessState>({
       }),
       lamp('tx', [0, REMOTE_FACE_Y, 52.5], [1.1, 0.55, 1.1]),
     );
+    // the legends of all six buttons in one print at the height of the caps' tops (a pressed cap sinks under it by less than a millimetre)
+    root.add(
+      print({
+        name: 'legends',
+        quad: topQuad(0, 0, REMOTE_FACE_Y + CAP_H + 0.03, 20, 59),
+        ppm: 9,
+        draw(g) {
+          for (const id of IDS) {
+            const b = REMOTE_BUTTONS[id];
+            g.save();
+            g.translate(b.x, b.z);
+            g.rotate(Math.PI);
+              g.strokeStyle = g.fillStyle = '#ffffff';
+              g.lineCap = 'round';
+              g.lineJoin = 'round';
+              if (id === 'Power') powerSign(g, 0, 0.2, b.r * 0.42, 0.85);
+              else if (id === 'Mute') {
+                g.beginPath();
+                g.moveTo(-2.6, -1);
+                g.lineTo(-1.1, -1);
+                g.lineTo(0.7, -2.4);
+                g.lineTo(0.7, 2.4);
+                g.lineTo(-1.1, 1);
+                g.lineTo(-2.6, 1);
+                g.closePath();
+                g.fill();
+                g.lineWidth = 0.7;
+                g.beginPath();
+                g.moveTo(1.7, -1.2);
+                g.lineTo(3.3, 1.2);
+                g.moveTo(3.3, -1.2);
+                g.lineTo(1.7, 1.2);
+                g.stroke();
+              } else if (id.startsWith('Vol')) {
+                g.lineWidth = 1.0;
+                g.beginPath();
+                g.moveTo(-2.4, 0);
+                g.lineTo(2.4, 0);
+                if (id === 'Vol+') {
+                  g.moveTo(0, -2.4);
+                  g.lineTo(0, 2.4);
+                }
+                g.stroke();
+              } else {
+                const up = id === 'Ch+';
+                g.lineWidth = 1.0;
+                g.beginPath();
+                g.moveTo(-2.5, up ? 1.2 : -1.2);
+                g.lineTo(0, up ? -1.3 : 1.3);
+                g.lineTo(2.5, up ? 1.2 : -1.2);
+                g.stroke();
+              }
+            g.restore();
+          }
+        },
+      }),
+    );
     for (const id of IDS) {
       const b = REMOTE_BUTTONS[id];
       const cap = new Shape();
       cap.disc('soft', b.colour, 0, 0, b.r, 0, CAP_H, 0.55, ctx.seg(22), { ao: 0.85 });
-      const node = cap.toObject(`cap:${id}`);
+      // each cap is a control: held down, it sends its button
+      const node = markControl(cap.toObject(`cap:${id}`), { field: id, mode: 'momentary', values: [false, true] });
       node.position.set(b.x, REMOTE_FACE_Y, b.z);
-      node.add(
-        print({
-          name: id,
-          quad: topQuad(0, 0, CAP_H + 0.02, b.r, b.r),
-          ppm: 14,
-          draw(g) {
-            g.rotate(Math.PI);
-            g.strokeStyle = g.fillStyle = '#ffffff';
-            g.lineCap = 'round';
-            g.lineJoin = 'round';
-            if (id === 'Power') powerSign(g, 0, 0.2, b.r * 0.42, 0.85);
-            else if (id === 'Mute') {
-              g.beginPath();
-              g.moveTo(-2.6, -1);
-              g.lineTo(-1.1, -1);
-              g.lineTo(0.7, -2.4);
-              g.lineTo(0.7, 2.4);
-              g.lineTo(-1.1, 1);
-              g.lineTo(-2.6, 1);
-              g.closePath();
-              g.fill();
-              g.lineWidth = 0.7;
-              g.beginPath();
-              g.moveTo(1.7, -1.2);
-              g.lineTo(3.3, 1.2);
-              g.moveTo(3.3, -1.2);
-              g.lineTo(1.7, 1.2);
-              g.stroke();
-            } else if (id.startsWith('Vol')) {
-              g.lineWidth = 1.0;
-              g.beginPath();
-              g.moveTo(-2.4, 0);
-              g.lineTo(2.4, 0);
-              if (id === 'Vol+') {
-                g.moveTo(0, -2.4);
-                g.lineTo(0, 2.4);
-              }
-              g.stroke();
-            } else {
-              const up = id === 'Ch+';
-              g.lineWidth = 1.0;
-              g.beginPath();
-              g.moveTo(-2.5, up ? 1.2 : -1.2);
-              g.lineTo(0, up ? -1.3 : 1.3);
-              g.lineTo(2.5, up ? 1.2 : -1.2);
-              g.stroke();
-            }
-          },
-        }),
-      );
       root.add(node);
     }
     return root;
