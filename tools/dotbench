@@ -23,6 +23,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -422,6 +423,18 @@ def cmd_build(a):
     return 0
 
 
+def cmd_part(a):
+    """`dotbench part ...` runs tools/dblib/part/cli.mjs on Node (no npm packages). Needs Node 22+ (zlib.crc32)."""
+    node = shutil.which("node")
+    if not node:
+        sys.exit("dotbench part: Node.js 22 or newer is needed (https://nodejs.org)")
+    env = dict(os.environ)
+    if a.emsdk:
+        env["DOTBENCH_EMSDK"] = a.emsdk
+    cli = pathlib.Path(__file__).resolve().parent / "dblib" / "part" / "cli.mjs"
+    return subprocess.call([node, str(cli)] + a.rest, env=env)
+
+
 def cmd_seed(a):
     """Copy an existing build directory into --build and fix the paths inside, so that a new
     worktree starts with every SDK/LVGL object already compiled (staleness is by content hash)."""
@@ -490,8 +503,10 @@ def main():
     b.add_argument("--pool", type=int, default=None, help="pthread pool size (default 32; kodeos: see dblib/kodeos.py)")
     b.add_argument("--map", action="store_true", help="also write a linker map next to the output (kodeos always does)")
     b.add_argument("--allow-undefined", action="store_true", help="link with unresolved symbols ignored (diagnostics)")
+    pt = sub.add_parser("part", help="make parts for the bench: new, check, build, test, inspect (run `dotbench part` for details)")
+    pt.add_argument("rest", nargs=argparse.REMAINDER)
     a = ap.parse_args()
-    return {"sdk": cmd_sdk, "build": cmd_build, "seed": cmd_seed, "areas": cmd_areas}[a.cmd](a)
+    return {"part": cmd_part, "sdk": cmd_sdk, "build": cmd_build, "seed": cmd_seed, "areas": cmd_areas}[a.cmd](a)
 
 
 if __name__ == "__main__":
