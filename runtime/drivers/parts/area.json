@@ -1,0 +1,9 @@
+{
+  "area": "parts",
+  "description": "Part runtime tests: no driver of its own. The bench model and part runtime live in runtime/web-adapter; this area only registers the test apps of tests/node/parts (their firmware halves use the exp area).",
+  "test_apps": [
+    "area:../../../tests/node/parts/apps/parts_io",
+    "area:../../../tests/node/parts/apps/parts_i2c",
+    "area:../../../tests/node/parts/apps/parts_uart"
+  ]
+}

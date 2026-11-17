@@ -1,0 +1,89 @@
+{
+  "name": "RC charge and discharge in virtual time",
+  "steps": [
+    {
+      "set_field": {
+        "uf": 100
+      }
+    },
+    {
+      "comment": "A high, B low: 3.3 V through 118 + 118 ohm into 100 uF, tau = 23.6 ms",
+      "set_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "B",
+        "level": 0
+      }
+    },
+    {
+      "advance_ms": 5
+    },
+    {
+      "comment": "after 5 ms: 3.3 V * (1 - e^-0.21) = 0.63 V",
+      "expect_output": {
+        "name": "volts_mv",
+        "min": 450,
+        "max": 800
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "comment": "about one tau: 2.1 V",
+      "expect_output": {
+        "name": "volts_mv",
+        "min": 1850,
+        "max": 2300
+      }
+    },
+    {
+      "advance_ms": 250
+    },
+    {
+      "comment": "ten taus: full",
+      "expect_output": {
+        "name": "volts_mv",
+        "min": 3200,
+        "max": 3300
+      }
+    },
+    {
+      "comment": "release A: the charge stays (no leak)",
+      "set_pin": {
+        "pin": "A",
+        "level": null
+      }
+    },
+    {
+      "advance_ms": 200
+    },
+    {
+      "expect_output": {
+        "name": "volts_mv",
+        "min": 3100
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "A",
+        "level": 0
+      }
+    },
+    {
+      "advance_ms": 250
+    },
+    {
+      "comment": "both ends low: discharged",
+      "expect_output": {
+        "name": "volts_mv",
+        "min": -50,
+        "max": 50
+      }
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "name": "ESP32 I2C slave",
+  "steps": [
+    {
+      "advance_ms": 50
+    },
+    {
+      "expect_serial": "I2C slave ready at 0x42"
+    },
+    {
+      "comment": "register 0 is the ID",
+      "i2c": {
+        "addr": 66,
+        "write": [
+          0
+        ],
+        "read": 1,
+        "expect": [
+          165
+        ]
+      }
+    },
+    {
+      "comment": "registers 2 and 3 hold 1234 = 0x04D2",
+      "i2c": {
+        "addr": 66,
+        "write": [
+          2
+        ],
+        "read": 2,
+        "expect": [
+          4,
+          210
+        ]
+      }
+    },
+    {
+      "set_field": {
+        "value": 65535
+      }
+    },
+    {
+      "i2c": {
+        "addr": 66,
+        "write": [
+          2
+        ],
+        "read": 2,
+        "expect": [
+          255,
+          255
+        ]
+      }
+    },
+    {
+      "comment": "a read from register 0 runs on: ID, uptime (0 s), value, LED",
+      "i2c": {
+        "addr": 66,
+        "write": [
+          0
+        ],
+        "read": 5,
+        "expect": [
+          165,
+          0,
+          255,
+          255,
+          0
+        ]
+      }
+    },
+    {
+      "comment": "write the LED register, read it back",
+      "i2c": {
+        "addr": 66,
+        "write": [
+          4,
+          1
+        ],
+        "read": 0
+      }
+    },
+    {
+      "i2c": {
+        "addr": 66,
+        "write": [
+          4
+        ],
+        "read": 1,
+        "expect": [
+          1
+        ]
+      }
+    },
+    {
+      "i2c": {
+        "addr": 67,
+        "write": [
+          0
+        ],
+        "read": 1,
+        "expect_nack": true
+      }
+    },
+    {
+      "expect_output": {
+        "name": "reads",
+        "value": 5
+      }
+    }
+  ]
+}

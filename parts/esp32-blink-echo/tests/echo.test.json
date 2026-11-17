@@ -1,0 +1,37 @@
+{
+  "name": "blink and UART echo",
+  "steps": [
+    {
+      "advance_ms": 50
+    },
+    {
+      "expect_serial": "echoing UART1"
+    },
+    {
+      "comment": "greeting on UART1",
+      "expect_uart": {
+        "contains": "ESP32 ready"
+      }
+    },
+    {
+      "uart_send": {
+        "text": "hello dot",
+        "baud": 115200
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "expect_uart": {
+        "contains": "hello dot"
+      }
+    },
+    {
+      "expect_output": {
+        "name": "echoed",
+        "value": 9
+      }
+    }
+  ]
+}

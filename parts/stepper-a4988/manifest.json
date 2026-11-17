@@ -1,0 +1,159 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.stepper-a4988",
+  "name": {
+    "en": "NEMA 17 stepper + A4988",
+    "pt-BR": "Motor de passo NEMA 17 + A4988",
+    "es": "Motor paso a paso NEMA 17 + A4988"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A bipolar NEMA 17 stepper (200 steps per turn) behind an A4988 driver module with step/dir input. Power VMOT (8 to 35 V) and VDD (logic, 3 to 5.5 V) plus GND. Each rising edge on STEP moves the shaft one step, 1/2, 1/4, 1/8 or 1/16 by MS1 MS2 MS3, in the direction of DIR, while EN is low and RST and SLP are high (RST and SLP have pull-ups, EN and MS pins pull-downs). The page reads the position (1/16 steps), angle and a skipping flag (above 2000 full steps/s). Not modelled: coil currents and current limit, torque, resonance.",
+    "pt-BR": "Um motor de passo bipolar NEMA 17 (200 passos por volta) atrás de um módulo driver A4988 com entrada passo/direção. Alimente VMOT (8 a 35 V) e VDD (lógica, 3 a 5,5 V) mais GND. Cada borda de subida em STEP move o eixo um passo, 1/2, 1/4, 1/8 ou 1/16 conforme MS1 MS2 MS3, no sentido de DIR, enquanto EN está baixo e RST e SLP estão altos (RST e SLP têm pull-up, EN e MS têm pull-down). A página lê a posição (1/16 de passo), o ângulo e um sinal de perda de passos (acima de 2000 passos completos/s). Não modelado: correntes das bobinas e limite de corrente, torque, ressonância.",
+    "es": "Un motor paso a paso bipolar NEMA 17 (200 pasos por vuelta) tras un módulo driver A4988 con entrada paso/dirección. Alimenta VMOT (8 a 35 V) y VDD (lógica, 3 a 5,5 V) más GND. Cada flanco de subida en STEP mueve el eje un paso, 1/2, 1/4, 1/8 o 1/16 según MS1 MS2 MS3, en el sentido de DIR, mientras EN está bajo y RST y SLP están altos (RST y SLP tienen pull-up, EN y MS pull-down). La página lee la posición (1/16 de paso), el ángulo y una marca de pérdida de pasos (por encima de 2000 pasos completos/s). No modelado: corrientes de bobina y límite de corriente, par, resonancia."
+  },
+  "category": "actuator",
+  "tags": [
+    "stepper",
+    "nema17",
+    "a4988",
+    "step-dir",
+    "motor"
+  ],
+  "keywords": {
+    "en": [
+      "stepper",
+      "nema17",
+      "a4988",
+      "step",
+      "dir",
+      "cnc",
+      "3d printer"
+    ],
+    "pt-BR": [
+      "motor de passo",
+      "nema17",
+      "a4988",
+      "passo",
+      "direção",
+      "cnc",
+      "impressora 3d"
+    ],
+    "es": [
+      "motor paso a paso",
+      "nema17",
+      "a4988",
+      "paso",
+      "dirección",
+      "cnc",
+      "impresora 3d"
+    ]
+  },
+  "body": {
+    "w_mm": 64,
+    "d_mm": 42.3,
+    "h_mm": 40
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 640,
+    "height": 423
+  },
+  "logic_mv": 3000,
+  "pins": [
+    {"name":"EN","kind":"io","pos":{"x":15,"y":25},"mm":{"x":1.5,"y":2.5},"face":"top","label":{"en":"EN"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"MS1","kind":"io","pos":{"x":40.4,"y":25},"mm":{"x":4.04,"y":2.5},"face":"top","label":{"en":"MS1"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"MS2","kind":"io","pos":{"x":65.8,"y":25},"mm":{"x":6.58,"y":2.5},"face":"top","label":{"en":"MS2"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"MS3","kind":"io","pos":{"x":91.2,"y":25},"mm":{"x":9.12,"y":2.5},"face":"top","label":{"en":"MS3"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"RST","kind":"io","pos":{"x":116.6,"y":25},"mm":{"x":11.66,"y":2.5},"face":"top","label":{"en":"RST"},"abs_max_mv":5500,"pullup_ohms":100000,"pull_rail":"VDD"},
+    {"name":"SLP","kind":"io","pos":{"x":142,"y":25},"mm":{"x":14.2,"y":2.5},"face":"top","label":{"en":"SLP"},"abs_max_mv":5500,"pullup_ohms":100000,"pull_rail":"VDD"},
+    {"name":"STEP","kind":"io","pos":{"x":167.4,"y":25},"mm":{"x":16.74,"y":2.5},"face":"top","label":{"en":"STEP"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"DIR","kind":"io","pos":{"x":192.8,"y":25},"mm":{"x":19.28,"y":2.5},"face":"top","label":{"en":"DIR"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"VMOT","kind":"power_in","pos":{"x":15,"y":130},"mm":{"x":1.5,"y":13},"face":"top","label":{"en":"VMOT"},"min_mv":8000,"max_mv":35000,"typ_ma":0},
+    {"name":"GND","kind":"ground","pos":{"x":40.4,"y":130},"mm":{"x":4.04,"y":13},"face":"top","label":{"en":"GND"}},
+    {"name":"VDD","kind":"power_in","pos":{"x":65.8,"y":130},"mm":{"x":6.58,"y":13},"face":"top","label":{"en":"VDD"},"min_mv":3000,"max_mv":5500,"typ_ma":5}
+  ],
+  "outputs": [
+    {
+      "name": "position",
+      "type": "number",
+      "unit": "step/16",
+      "label": {
+        "en": "Position",
+        "pt-BR": "Posição",
+        "es": "Posición"
+      }
+    },
+    {
+      "name": "angle",
+      "type": "number",
+      "unit": "°",
+      "min": 0,
+      "max": 360,
+      "label": {
+        "en": "Angle",
+        "pt-BR": "Ângulo",
+        "es": "Ángulo"
+      }
+    },
+    {
+      "name": "stalled",
+      "type": "boolean",
+      "label": {
+        "en": "Skipping",
+        "pt-BR": "Perdendo passos",
+        "es": "Perdiendo pasos"
+      }
+    },
+    {
+      "name": "microstep",
+      "type": "number",
+      "label": {
+        "en": "Microstep divisor",
+        "pt-BR": "Divisor de micropasso",
+        "es": "Divisor de micropaso"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "shaft",
+      "effect": "rotate",
+      "x": 430,
+      "y": 211,
+      "r": 60,
+      "source": {
+        "output": "angle"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "stepper_step_dir",
+        "step": "STEP",
+        "dir": "DIR",
+        "en": "EN",
+        "ms1": "MS1",
+        "ms2": "MS2",
+        "ms3": "MS3",
+        "rst": "RST",
+        "slp": "SLP",
+        "steps_per_rev": 200,
+        "max_sps": 2000,
+        "position_output": "position",
+        "angle_output": "angle",
+        "stalled_output": "stalled",
+        "microstep_output": "microstep"
+      }
+    ]
+  }
+}

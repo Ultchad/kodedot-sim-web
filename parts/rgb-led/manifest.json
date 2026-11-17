@@ -1,0 +1,235 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "id": "dotbench.rgb-led",
+  "name": {
+    "en": "RGB LED (common cathode)",
+    "pt-BR": "LED RGB (catodo comum)",
+    "es": "LED RGB (cátodo común)"
+  },
+  "description": {
+    "en": "Three LEDs in one package with a shared cathode (COM to GND). R, G and B each have their own series resistor; drive them with digital pins or PWM.",
+    "pt-BR": "Três LEDs em um encapsulamento com catodo comum (COM no GND). R, G e B têm cada um seu resistor em série; acione com pinos digitais ou PWM.",
+    "es": "Tres LEDs en un encapsulado con cátodo común (COM a GND). R, G y B tienen cada uno su resistencia en serie; actívalos con pines digitales o PWM."
+  },
+  "category": "actuator",
+  "tags": [
+    "led",
+    "rgb",
+    "pwm"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 180,
+    "height": 150
+  },
+  "pins": [
+    {
+      "name": "R",
+      "kind": "io",
+      "pos": {
+        "x": 30,
+        "y": 134
+      },
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 0.5,
+        "y": 2.9
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "COM",
+      "kind": "io",
+      "pos": {
+        "x": 70,
+        "y": 134
+      },
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 3.04,
+        "y": 2.9
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "G",
+      "kind": "io",
+      "pos": {
+        "x": 110,
+        "y": 134
+      },
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 5.58,
+        "y": 2.9
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "B",
+      "kind": "io",
+      "pos": {
+        "x": 150,
+        "y": 134
+      },
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 8.12,
+        "y": 2.9
+      },
+      "face": "bottom"
+    }
+  ],
+  "fields": [
+    {
+      "name": "ohms",
+      "type": "number",
+      "label": {
+        "en": "Resistor per colour",
+        "pt-BR": "Resistor por cor",
+        "es": "Resistencia por color"
+      },
+      "min": 0,
+      "max": 10000,
+      "step": 10,
+      "unit": "Ω",
+      "default": 220,
+      "ui": "input"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "r",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "R"
+      }
+    },
+    {
+      "name": "g",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "G"
+      }
+    },
+    {
+      "name": "b",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "B"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "red",
+      "effect": "glow",
+      "x": 70,
+      "y": 56,
+      "r": 26,
+      "color": "#ff2a2a",
+      "source": {
+        "output": "r"
+      }
+    },
+    {
+      "id": "green",
+      "effect": "glow",
+      "x": 96,
+      "y": 56,
+      "r": 26,
+      "color": "#2aff4a",
+      "source": {
+        "output": "g"
+      }
+    },
+    {
+      "id": "blue",
+      "effect": "glow",
+      "x": 83,
+      "y": 34,
+      "r": 26,
+      "color": "#2a5aff",
+      "source": {
+        "output": "b"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "led",
+        "anode": "R",
+        "cathode": "COM",
+        "output": "r",
+        "vf_mv": 1900,
+        "series_ohms": {
+          "field": "ohms"
+        },
+        "full_ma": 10
+      },
+      {
+        "type": "led",
+        "anode": "G",
+        "cathode": "COM",
+        "output": "g",
+        "vf_mv": 3000,
+        "series_ohms": {
+          "field": "ohms"
+        },
+        "full_ma": 10
+      },
+      {
+        "type": "led",
+        "anode": "B",
+        "cathode": "COM",
+        "output": "b",
+        "vf_mv": 3000,
+        "series_ohms": {
+          "field": "ohms"
+        },
+        "full_ma": 10
+      }
+    ]
+  },
+  "body": {
+    "w_mm": 8.6,
+    "d_mm": 5.8,
+    "h_mm": 9
+  },
+  "keywords": {
+    "en": [
+      "rgb",
+      "led",
+      "color",
+      "light"
+    ],
+    "pt-BR": [
+      "rgb",
+      "led",
+      "cor",
+      "luz"
+    ],
+    "es": [
+      "rgb",
+      "led",
+      "color",
+      "luz"
+    ]
+  }
+}

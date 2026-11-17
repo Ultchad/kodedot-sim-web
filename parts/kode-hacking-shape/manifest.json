@@ -1,0 +1,175 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.kode-hacking-shape",
+  "name": {
+    "en": "Kode hacking module (shape only)",
+    "pt-BR": "Kode hacking module (só a forma)",
+    "es": "Kode hacking module (solo la forma)"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "SHAPE ONLY: it mounts on the header and passes the rails and the 14 signal terminals through, and does nothing else. The CC1101, nRF54L15, ESP32-C5 and GNSS radios is not simulated: no behaviour, no chip, no bus device. The pin names follow the published pin map.",
+    "pt-BR": "SÓ A FORMA: encaixa no cabeçalho e repassa os trilhos e os 14 terminais de sinal, e nada mais. The CC1101, nRF54L15, ESP32-C5 and GNSS radios não é simulado: sem comportamento, sem chip, sem dispositivo de barramento. Os nomes dos pinos seguem o mapa publicado.",
+    "es": "SOLO LA FORMA: encaja en el cabezal y pasa los rieles y los 14 terminales de señal, y nada más. The CC1101, nRF54L15, ESP32-C5 and GNSS radios no se simula: sin comportamiento, sin chip, sin dispositivo de bus. Los nombres de los pines siguen el mapa publicado."
+  },
+  "category": "kode-module",
+  "tags": [
+    "kode",
+    "module",
+    "shape-only",
+    "hacking",
+    "cc1101"
+  ],
+  "keywords": {
+    "en": [
+      "hacking",
+      "cc1101",
+      "sub-ghz",
+      "kode",
+      "module",
+      "shape only"
+    ],
+    "pt-BR": [
+      "hacking",
+      "cc1101",
+      "sub-ghz",
+      "kode",
+      "módulo",
+      "só a forma"
+    ],
+    "es": [
+      "hacking",
+      "cc1101",
+      "sub-ghz",
+      "kode",
+      "módulo",
+      "solo la forma"
+    ]
+  },
+  "body": {
+    "w_mm": 42,
+    "d_mm": 45,
+    "h_mm": 20,
+    "estimate": true
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 336,
+    "height": 360
+  },
+  "mount": {
+    "via": "interposer",
+    "orientations": [
+      "upright"
+    ],
+    "pins": [
+      {
+        "pin": "C5_EN",
+        "gpio": 8
+      },
+      {
+        "pin": "C5_BOOT",
+        "gpio": 9
+      },
+      {
+        "pin": "C5_RX",
+        "gpio": 10
+      },
+      {
+        "pin": "CC1101_MISO",
+        "gpio": 11
+      },
+      {
+        "pin": "C5_TX",
+        "gpio": 12
+      },
+      {
+        "pin": "CC1101_SCLK",
+        "gpio": 13
+      },
+      {
+        "pin": "CC1101_MOSI",
+        "gpio": 14
+      },
+      {
+        "pin": "I2C_SCL",
+        "gpio": 15
+      },
+      {
+        "pin": "I2C_SDA",
+        "gpio": 16
+      },
+      {
+        "pin": "CC1101_GDO0",
+        "gpio": 17
+      },
+      {
+        "pin": "EXP_INT",
+        "gpio": 18
+      },
+      {
+        "pin": "CC1101_CS",
+        "gpio": 19
+      },
+      {
+        "pin": "NRF_RX",
+        "gpio": 20
+      },
+      {
+        "pin": "NRF_TX",
+        "gpio": 21
+      }
+    ],
+    "rails": [
+      {
+        "pin": "V5",
+        "rail": "V5"
+      },
+      {
+        "pin": "V33",
+        "rail": "V33"
+      },
+      {
+        "pin": "GND",
+        "rail": "GND"
+      }
+    ]
+  },
+  "pins": [
+    {"name":"C5_EN","kind":"io","pos":{"x":40,"y":328},"mm":{"x":5,"y":41},"face":"bottom","label":{"en":"C5_EN"},"abs_max_mv":3600},
+    {"name":"C5_BOOT","kind":"io","pos":{"x":60.3,"y":328},"mm":{"x":7.54,"y":41},"face":"bottom","label":{"en":"C5_BOOT"},"abs_max_mv":3600},
+    {"name":"C5_RX","kind":"io","pos":{"x":80.6,"y":328},"mm":{"x":10.08,"y":41},"face":"bottom","label":{"en":"C5_RX"},"abs_max_mv":3600},
+    {"name":"CC1101_MISO","kind":"io","pos":{"x":101,"y":328},"mm":{"x":12.62,"y":41},"face":"bottom","label":{"en":"CC1101_MISO"},"abs_max_mv":3600},
+    {"name":"C5_TX","kind":"io","pos":{"x":121.3,"y":328},"mm":{"x":15.16,"y":41},"face":"bottom","label":{"en":"C5_TX"},"abs_max_mv":3600},
+    {"name":"CC1101_SCLK","kind":"io","pos":{"x":141.6,"y":328},"mm":{"x":17.7,"y":41},"face":"bottom","label":{"en":"CC1101_SCLK"},"abs_max_mv":3600},
+    {"name":"CC1101_MOSI","kind":"io","pos":{"x":161.9,"y":328},"mm":{"x":20.24,"y":41},"face":"bottom","label":{"en":"CC1101_MOSI"},"abs_max_mv":3600},
+    {"name":"I2C_SCL","kind":"io","pos":{"x":182.2,"y":328},"mm":{"x":22.78,"y":41},"face":"bottom","label":{"en":"I2C_SCL"},"abs_max_mv":3600},
+    {"name":"I2C_SDA","kind":"io","pos":{"x":202.6,"y":328},"mm":{"x":25.32,"y":41},"face":"bottom","label":{"en":"I2C_SDA"},"abs_max_mv":3600},
+    {"name":"CC1101_GDO0","kind":"io","pos":{"x":222.9,"y":328},"mm":{"x":27.86,"y":41},"face":"bottom","label":{"en":"CC1101_GDO0"},"abs_max_mv":3600},
+    {"name":"EXP_INT","kind":"io","pos":{"x":243.2,"y":328},"mm":{"x":30.4,"y":41},"face":"bottom","label":{"en":"EXP_INT"},"abs_max_mv":3600},
+    {"name":"CC1101_CS","kind":"io","pos":{"x":263.5,"y":328},"mm":{"x":32.94,"y":41},"face":"bottom","label":{"en":"CC1101_CS"},"abs_max_mv":3600},
+    {"name":"NRF_RX","kind":"io","pos":{"x":283.8,"y":328},"mm":{"x":35.48,"y":41},"face":"bottom","label":{"en":"NRF_RX"},"abs_max_mv":3600},
+    {"name":"NRF_TX","kind":"io","pos":{"x":304.2,"y":328},"mm":{"x":38.02,"y":41},"face":"bottom","label":{"en":"NRF_TX"},"abs_max_mv":3600},
+    {"name":"V5","kind":"io","pos":{"x":40,"y":348},"mm":{"x":5,"y":43.5},"face":"bottom","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"V33","kind":"io","pos":{"x":60.3,"y":348},"mm":{"x":7.54,"y":43.5},"face":"bottom","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"GND","kind":"io","pos":{"x":80.6,"y":348},"mm":{"x":10.08,"y":43.5},"face":"bottom","label":{"en":"GND"},"abs_max_mv":60000}
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "resistor",
+        "a": "V33",
+        "b": "GND",
+        "ohms": 1000000000
+      }
+    ]
+  }
+}

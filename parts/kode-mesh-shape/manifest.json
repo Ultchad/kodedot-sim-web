@@ -1,0 +1,174 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.kode-mesh-shape",
+  "name": {
+    "en": "Kode Mesh module (shape only)",
+    "pt-BR": "Kode Mesh module (só a forma)",
+    "es": "Kode Mesh module (solo la forma)"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "SHAPE ONLY: it mounts on the header and passes the rails and the 14 signal terminals through, and does nothing else. The LoRa radio (LR2021) and the GNSS receiver is not simulated: no behaviour, no chip, no bus device. The pin names follow the published pin map.",
+    "pt-BR": "SÓ A FORMA: encaixa no cabeçalho e repassa os trilhos e os 14 terminais de sinal, e nada mais. The LoRa radio (LR2021) and the GNSS receiver não é simulado: sem comportamento, sem chip, sem dispositivo de barramento. Os nomes dos pinos seguem o mapa publicado.",
+    "es": "SOLO LA FORMA: encaja en el cabezal y pasa los rieles y los 14 terminales de señal, y nada más. The LoRa radio (LR2021) and the GNSS receiver no se simula: sin comportamiento, sin chip, sin dispositivo de bus. Los nombres de los pines siguen el mapa publicado."
+  },
+  "category": "kode-module",
+  "tags": [
+    "kode",
+    "module",
+    "shape-only",
+    "mesh",
+    "lora"
+  ],
+  "keywords": {
+    "en": [
+      "mesh",
+      "lora",
+      "gnss",
+      "kode",
+      "module",
+      "shape only"
+    ],
+    "pt-BR": [
+      "mesh",
+      "lora",
+      "gnss",
+      "kode",
+      "módulo",
+      "só a forma"
+    ],
+    "es": [
+      "mesh",
+      "lora",
+      "gnss",
+      "kode",
+      "módulo",
+      "solo la forma"
+    ]
+  },
+  "body": {
+    "w_mm": 41.9,
+    "d_mm": 44.7,
+    "h_mm": 20
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 335,
+    "height": 358
+  },
+  "mount": {
+    "via": "interposer",
+    "orientations": [
+      "upright"
+    ],
+    "pins": [
+      {
+        "pin": "GNSS_RESET",
+        "gpio": 8
+      },
+      {
+        "pin": "GNSS_TX",
+        "gpio": 9
+      },
+      {
+        "pin": "GNSS_PPS",
+        "gpio": 10
+      },
+      {
+        "pin": "GNSS_RX",
+        "gpio": 11
+      },
+      {
+        "pin": "LORA_RESET",
+        "gpio": 12
+      },
+      {
+        "pin": "LORA_IRQ",
+        "gpio": 13
+      },
+      {
+        "pin": "LORA_DIO8",
+        "gpio": 14
+      },
+      {
+        "pin": "I2C_SCL",
+        "gpio": 15
+      },
+      {
+        "pin": "I2C_SDA",
+        "gpio": 16
+      },
+      {
+        "pin": "LORA_MOSI",
+        "gpio": 17
+      },
+      {
+        "pin": "LORA_BUSY",
+        "gpio": 18
+      },
+      {
+        "pin": "LORA_MISO",
+        "gpio": 19
+      },
+      {
+        "pin": "LORA_CS",
+        "gpio": 20
+      },
+      {
+        "pin": "LORA_SCK",
+        "gpio": 21
+      }
+    ],
+    "rails": [
+      {
+        "pin": "V5",
+        "rail": "V5"
+      },
+      {
+        "pin": "V33",
+        "rail": "V33"
+      },
+      {
+        "pin": "GND",
+        "rail": "GND"
+      }
+    ]
+  },
+  "pins": [
+    {"name":"GNSS_RESET","kind":"io","pos":{"x":40,"y":325.6},"mm":{"x":5,"y":40.7},"face":"bottom","label":{"en":"GNSS_RESET"},"abs_max_mv":3600},
+    {"name":"GNSS_TX","kind":"io","pos":{"x":60.3,"y":325.6},"mm":{"x":7.54,"y":40.7},"face":"bottom","label":{"en":"GNSS_TX"},"abs_max_mv":3600},
+    {"name":"GNSS_PPS","kind":"io","pos":{"x":80.6,"y":325.6},"mm":{"x":10.08,"y":40.7},"face":"bottom","label":{"en":"GNSS_PPS"},"abs_max_mv":3600},
+    {"name":"GNSS_RX","kind":"io","pos":{"x":101,"y":325.6},"mm":{"x":12.62,"y":40.7},"face":"bottom","label":{"en":"GNSS_RX"},"abs_max_mv":3600},
+    {"name":"LORA_RESET","kind":"io","pos":{"x":121.3,"y":325.6},"mm":{"x":15.16,"y":40.7},"face":"bottom","label":{"en":"LORA_RESET"},"abs_max_mv":3600},
+    {"name":"LORA_IRQ","kind":"io","pos":{"x":141.6,"y":325.6},"mm":{"x":17.7,"y":40.7},"face":"bottom","label":{"en":"LORA_IRQ"},"abs_max_mv":3600},
+    {"name":"LORA_DIO8","kind":"io","pos":{"x":161.9,"y":325.6},"mm":{"x":20.24,"y":40.7},"face":"bottom","label":{"en":"LORA_DIO8"},"abs_max_mv":3600},
+    {"name":"I2C_SCL","kind":"io","pos":{"x":182.2,"y":325.6},"mm":{"x":22.78,"y":40.7},"face":"bottom","label":{"en":"I2C_SCL"},"abs_max_mv":3600},
+    {"name":"I2C_SDA","kind":"io","pos":{"x":202.6,"y":325.6},"mm":{"x":25.32,"y":40.7},"face":"bottom","label":{"en":"I2C_SDA"},"abs_max_mv":3600},
+    {"name":"LORA_MOSI","kind":"io","pos":{"x":222.9,"y":325.6},"mm":{"x":27.86,"y":40.7},"face":"bottom","label":{"en":"LORA_MOSI"},"abs_max_mv":3600},
+    {"name":"LORA_BUSY","kind":"io","pos":{"x":243.2,"y":325.6},"mm":{"x":30.4,"y":40.7},"face":"bottom","label":{"en":"LORA_BUSY"},"abs_max_mv":3600},
+    {"name":"LORA_MISO","kind":"io","pos":{"x":263.5,"y":325.6},"mm":{"x":32.94,"y":40.7},"face":"bottom","label":{"en":"LORA_MISO"},"abs_max_mv":3600},
+    {"name":"LORA_CS","kind":"io","pos":{"x":283.8,"y":325.6},"mm":{"x":35.48,"y":40.7},"face":"bottom","label":{"en":"LORA_CS"},"abs_max_mv":3600},
+    {"name":"LORA_SCK","kind":"io","pos":{"x":304.2,"y":325.6},"mm":{"x":38.02,"y":40.7},"face":"bottom","label":{"en":"LORA_SCK"},"abs_max_mv":3600},
+    {"name":"V5","kind":"io","pos":{"x":40,"y":345.6},"mm":{"x":5,"y":43.2},"face":"bottom","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"V33","kind":"io","pos":{"x":60.3,"y":345.6},"mm":{"x":7.54,"y":43.2},"face":"bottom","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"GND","kind":"io","pos":{"x":80.6,"y":345.6},"mm":{"x":10.08,"y":43.2},"face":"bottom","label":{"en":"GND"},"abs_max_mv":60000}
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "resistor",
+        "a": "V33",
+        "b": "GND",
+        "ohms": 1000000000
+      }
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "name": "servo follows the pulse width",
+  "steps": [
+    {
+      "comment": "no pulse train yet: the horn rests",
+      "expect_output": {
+        "name": "angle",
+        "value": 0
+      }
+    },
+    {
+      "pwm": {
+        "pin": "SIG",
+        "hz": 50,
+        "duty_pct": 2.72
+      }
+    },
+    {
+      "comment": "0.544 ms (Servo library MIN_PULSE_WIDTH) is 0 degrees",
+      "expect_output": {
+        "name": "angle",
+        "value": 0
+      }
+    },
+    {
+      "pwm": {
+        "pin": "SIG",
+        "hz": 50,
+        "duty_pct": 5
+      }
+    },
+    {
+      "comment": "1.0 ms is 44.2 degrees on this range, not 0",
+      "expect_output": {
+        "name": "angle",
+        "value": 44.2
+      }
+    },
+    {
+      "pwm": {
+        "pin": "SIG",
+        "hz": 50,
+        "duty_pct": 7.36
+      }
+    },
+    {
+      "comment": "1.472 ms is what Servo.write(90) sends: 90 degrees",
+      "expect_output": {
+        "name": "angle",
+        "value": 90
+      }
+    },
+    {
+      "pwm": {
+        "pin": "SIG",
+        "hz": 50,
+        "duty_pct": 12
+      }
+    },
+    {
+      "comment": "2.4 ms (MAX_PULSE_WIDTH) is 180 degrees",
+      "expect_output": {
+        "name": "angle",
+        "value": 180
+      }
+    }
+  ]
+}

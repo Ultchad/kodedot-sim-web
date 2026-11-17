@@ -1,0 +1,103 @@
+{
+  "name": "COM-NC at rest, COM-NO when energised",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "COM",
+        "level": 1
+      }
+    },
+    {
+      "pullup": "IN"
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "comment": "IN idle high (active low): rest, COM joined to NC",
+      "expect_pin": {
+        "pin": "NC",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NO",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN",
+        "level": 0
+      }
+    },
+    {
+      "advance_ms": 2
+    },
+    {
+      "comment": "contacts have not moved yet (8 ms)",
+      "expect_pin": {
+        "pin": "NC",
+        "level": 1
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "expect_pin": {
+        "pin": "NO",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NC",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "energized",
+        "value": true
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN",
+        "level": 1
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "expect_pin": {
+        "pin": "NC",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NO",
+        "level": 0
+      }
+    },
+    {
+      "set_field": {
+        "active": "high"
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "comment": "active high jumper: the same IN high now energises it",
+      "expect_pin": {
+        "pin": "NO",
+        "level": 1
+      }
+    }
+  ]
+}
