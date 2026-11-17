@@ -393,7 +393,7 @@ export const en = {
   'power.unplugged': 'Unplugged',
   'bench.copy': 'copy',
   'sd.off': 'Turn the Dot on to see its card.',
-  'sd.size': '{mb} MB card',
+  'sd.size': '{size} card',
   'sd.used': '{used} used of {total}',
   'sd.writeProtect': 'Write protect',
   'sd.newCard': 'New card',

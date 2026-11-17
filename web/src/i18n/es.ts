@@ -394,7 +394,7 @@ export const es: Messages = {
   'power.unplugged': 'Desconectado',
   'bench.copy': 'copia',
   'sd.off': 'Enciende el Dot para ver su tarjeta.',
-  'sd.size': 'Tarjeta de {mb} MB',
+  'sd.size': 'Tarjeta de {size}',
   'sd.used': '{used} usados de {total}',
   'sd.writeProtect': 'Proteger contra escritura',
   'sd.newCard': 'Tarjeta nueva',

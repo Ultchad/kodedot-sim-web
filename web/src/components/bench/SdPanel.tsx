@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
-import { SD_ROOT, SD_SIZES_MB, addFile, joinPath, parentPath, snapshot, type SdAreaApi, type SdSnapshot, type StorageApi } from '../../bench/sd';
+import { SD_ROOT, SD_SIZES_MB, addFile, sizeLabel, joinPath, parentPath, snapshot, type SdAreaApi, type SdSnapshot, type StorageApi } from '../../bench/sd';
 import { useI18n } from '../../i18n';
 import { useHost } from '../../state/host';
 import { Icon, IconTile } from '../Glyphs';
@@ -105,7 +105,7 @@ export function SdPanel() {
           <IconTile area="sd" size={40} />
           <div className="min-w-0 flex-1">
             <h3 className="text-[17px] leading-snug">{t('kind.sd.card')}</h3>
-            <p className="tag m-0 mt-0.5 !text-[11px]">{t('sd.size', { mb: snap.capacityMb })}</p>
+            <p className="tag m-0 mt-0.5 !text-[11px]">{t('sd.size', { size: sizeLabel(snap.capacityMb) })}</p>
           </div>
         </div>
 
@@ -133,7 +133,7 @@ export function SdPanel() {
             <select className="field-input !w-auto" value={newSize} onChange={(e) => setNewSize(Number(e.target.value))} data-testid="sd-new-size">
               {SD_SIZES_MB.map((mb) => (
                 <option key={mb} value={mb}>
-                  {mb} MB
+                  {sizeLabel(mb)}
                 </option>
               ))}
             </select>
