@@ -135,9 +135,9 @@ export function boards() {
       return P(n === "TX" || n === "RX" ? n : "IO" + n, "io", x, y, { gpio: g, face: "bottom", abs_max_mv: HI3, caps: caps(g), label: { en: n === "TX" || n === "RX" ? n : "IO" + n } });
     };
     // the picture is the top view with the 3V3 end (antenna) on the left and the USB end on the right: J1 (3V3 ... 5V, GND) is the front row (y = 24.13 mm), J3 (GND ... GND) the back row (y = 1.27 mm), 22.86 mm (0.9 in) apart
-    const pins = [...left.map((n, i) => mk(n, 8 + 2.54 * i, 24.13)), ...right.map((n, i) => mk(n, 8 + 2.54 * i, 1.27))];
-    const W = 69, D = 25.4;
-    out.push(writePart({ id: "dotbench.esp32-s3-devkitc", dir: "esp32-s3-devkitc", w: W, d: D, h: 14, scale: 10, category: "mcu", tags: ["esp32", "esp32-s3", "espressif", "devkitc", "3v3", "wifi", "ble"],
+    const pins = [...left.map((n, i) => mk(n, 4.7 + 2.54 * i, 24.13)), ...right.map((n, i) => mk(n, 4.7 + 2.54 * i, 1.27))];
+    const W = 62.74, D = 25.4;   // 62.74 x 25.40 mm are the two overall sizes in Espressif's PCB drawing PDF (PCB_ESP32-S3-DevKitC-1_V1_20210312CB); the drawing text does not say which is the length, so the length is UNVERIFIED (body.estimate)
+    out.push(writePart({ id: "dotbench.esp32-s3-devkitc", dir: "esp32-s3-devkitc", w: W, d: D, h: 14, scale: 10, estimate: true, category: "mcu", tags: ["esp32", "esp32-s3", "espressif", "devkitc", "3v3", "wifi", "ble"],
       keywords: KW(["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontroller", "board", "3.3v", "wifi", "ble"], ["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontrolador", "placa", "3,3v", "wifi", "ble"], ["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontrolador", "placa", "3,3v", "wifi", "ble"]),
       name: L("ESP32-S3 DevKitC-1", "ESP32-S3 DevKitC-1", "ESP32-S3 DevKitC-1"),
       desc: cat(L("ESP32-S3-DevKitC-1: 3.3 V logic, two 22 pin headers at 0.9 inch (breadboard friendly, pins down), PWM (LEDC) on any GPIO, 12 bit ADC on GPIO1 to 20 (analogReadResolution up to 14 bits), touch on GPIO1 to 14, I2C on GPIO8 and 9, SPI on GPIO10 to 13, UART0 on GPIO43 and 44, on-board RGB LED on GPIO48 (shown as one LED), BOOT on GPIO0. Power with the usb field or 5 V on the 5V pin; 3V3 is a 3.3 V output while powered. GPIO19 and 20 are the USB pins and not modelled as such; GPIO35 to 37 are left free (no PSRAM modelled). WiFi and Bluetooth are not simulated.",
@@ -146,9 +146,9 @@ export function boards() {
       extra: { logic_mv: 3300 }, pins, groups: [{ pins: ["V33_1", "V33_2"] }, { pins: ["GND_1", "GND_2", "GND_3", "GND_4"] }],
       fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }],
       outputs: [...["r", "g", "b"].map((c) => ({ name: "rgb_" + c, type: "number", min: 0, max: 255, label: L("RGB LED " + c.toUpperCase() + " (0 to 255)", "LED RGB " + c.toUpperCase() + " (0 a 255)", "LED RGB " + c.toUpperCase() + " (0 a 255)") })), ...LIFE],
-      visuals: [{ id: "led", effect: "glow", x: 560, y: 125, r: 8, color: "#ffffff", source: { gpio: 48 } }],
+      visuals: [{ id: "led", effect: "glow", x: 500, y: 127, r: 8, color: "#ffffff", source: { gpio: 48 } }],
       behaviour: { type: "wasm", entry: "behaviour.wasm", abi: 1, core: "esp32-s3", memory_kb: 1024, stack_kb: 64, sources: ["src/main.ino"] },
-      svg: ({ px }) => `<rect x="2" y="2" width="${px(W) - 4}" height="${px(D) - 4}" rx="4" fill="#1b1b1b" stroke="#000" stroke-width="3"/><rect x="${px(4)}" y="${px(6)}" width="${px(18)}" height="${px(13)}" fill="#8a8f98" stroke="#555" stroke-width="2"/><text x="${px(13)}" y="${px(13.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#222">ESP32-S3</text><rect x="${px(W - 8)}" y="${px(8)}" width="${px(8)}" height="${px(9)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><circle id="led" cx="560" cy="125" r="8" fill="#ffffff" opacity="0.25"/>` + pinDots(pins, px, 4),
+      svg: ({ px }) => `<rect x="2" y="2" width="${px(W) - 4}" height="${px(D) - 4}" rx="4" fill="#1b1b1b" stroke="#000" stroke-width="3"/><rect x="${px(4)}" y="${px(6)}" width="${px(18)}" height="${px(13)}" fill="#8a8f98" stroke="#555" stroke-width="2"/><text x="${px(13)}" y="${px(13.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#222">ESP32-S3</text><rect x="${px(W - 8)}" y="${px(8)}" width="${px(8)}" height="${px(9)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><circle id="led" cx="500" cy="127" r="8" fill="#ffffff" opacity="0.25"/>` + pinDots(pins, px, 4),
       files: { "src/main.ino": blinkIno({ title: "ESP32-S3 DevKitC-1", core: "esp32-s3", rgb: true }) },
       tests: { "blink.test.json": blinkTest() } })); }
   return out;

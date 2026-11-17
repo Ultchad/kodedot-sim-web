@@ -27,7 +27,7 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 490,
+    "width": 496,
     "height": 251
   },
   "pins": [
@@ -822,7 +822,7 @@
     {
       "id": "led",
       "effect": "glow",
-      "x": 432,
+      "x": 342,
       "y": 126,
       "r": 10,
       "color": "#3ddc84",
@@ -855,7 +855,7 @@
     "core": "esp32"
   },
   "body": {
-    "w_mm": 54.4,
+    "w_mm": 55.1,
     "d_mm": 27.94,
     "h_mm": 13
   },
