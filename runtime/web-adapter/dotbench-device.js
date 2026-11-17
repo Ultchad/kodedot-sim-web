@@ -289,7 +289,7 @@ export class DotbenchDevice {
       u32: (off) => new DataView(M.HEAPU8.buffer).getUint32(inst.statePtr + off, true),
       i32: (off) => new DataView(M.HEAPU8.buffer).getInt32(inst.statePtr + off, true),
       setU32: (off, v) => new DataView(M.HEAPU8.buffer).setUint32(inst.statePtr + off, v >>> 0, true),
-      call: (fn, ...args) => M["_" + fn](...args),
+      call: (fn, ...args) => (inst.dead ? 0 : M["_" + fn](...args)),   // a torn-down instance: its workers are gone and may have died holding a lock
       alloc: (n) => M._malloc(n),
       free: (p) => M._free(p),
       heap: () => M.HEAPU8,
@@ -306,6 +306,8 @@ export class DotbenchDevice {
     this._drainText(inst);
     this._flushPartial();
     const M = inst.M;
+    inst.dead = true;                                   // from here on glue calls into the module are refused (see _glueContext)
+    for (const mods of Object.values(inst.glue ?? {})) for (const h of mods) { try { h?.dispose?.(); } catch { /* best effort */ } }
     this._rtcOffsetMs = M._kweb_time_offset_ms();
     M.PThread.terminateAllThreads();
     try { Atomics.notify(M.HEAP32, M._pthread_self() >> 2); } catch { /* mailbox wait already gone */ }

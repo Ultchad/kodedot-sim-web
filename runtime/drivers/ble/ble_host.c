@@ -1385,6 +1385,20 @@ static void ensure_thread(void)
 
 /* ======================================================================================== kdrv_ble.h */
 static inline void api_lock(void) { pthread_once(&g_once, start_thread_once); lock(); }
+/* The page's thread must never wait unboundedly: in a browser a blocked main thread spins in wasm and never returns to the event loop, so a
+ * lock whose holder cannot release it (a worker the host terminated while it held g_mu: every stop/restart does that) freezes the whole page.
+ * The page-facing exports below take g_mu with a bounded try and report "busy" instead; the page asks again at its next poll. */
+static bool page_lock(uint32_t budget_ms)
+{
+    pthread_once(&g_once, start_thread_once);
+    struct timespec t0, t;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    for (;;) {
+        if (0 == pthread_mutex_trylock(&g_mu)) return true;
+        clock_gettime(CLOCK_MONOTONIC, &t);
+        if ((uint64_t)(t.tv_sec - t0.tv_sec) * 1000u + (uint64_t)(t.tv_nsec - t0.tv_nsec + 1000000000L) / 1000000u - 1000u >= budget_ms) return false;
+    }
+}
 
 uint8_t kdrv_ble_scan_count(void) { api_lock(); uint8_t n = g.count; unlock(); return n; }
 bool kdrv_ble_scan_get(uint8_t idx, kdrv_ble_dev_t *out)
@@ -1883,7 +1897,7 @@ kode_status_t kdrv_ble_hear(bool on)
 /* ======================================================================================== page side */
 EMSCRIPTEN_KEEPALIVE int ble_in(const uint8_t *buf, int len)
 {
-    api_lock();
+    if (!page_lock(5)) return -3;
     int rc = 0;
     if (len <= 0 || len > 1400 || IN_BYTES - (g.in_w - g.in_r) < (uint32_t)len + 2u) { ++g.in_dropped; rc = -1; }
     else {
@@ -1897,7 +1911,7 @@ EMSCRIPTEN_KEEPALIVE int ble_in(const uint8_t *buf, int len)
 }
 EMSCRIPTEN_KEEPALIVE int ble_out_pop(uint8_t *buf, int cap)
 {
-    api_lock();
+    if (!page_lock(5)) return 0;
     int n = 0;
     if (g.out_w != g.out_r) {
         uint32_t const l = (uint32_t)g.out[(g.out_r + 1u) % OUT_BYTES] | ((uint32_t)g.out[(g.out_r + 2u) % OUT_BYTES] << 8);
@@ -1912,7 +1926,7 @@ EMSCRIPTEN_KEEPALIVE int ble_out_pop(uint8_t *buf, int cap)
 }
 EMSCRIPTEN_KEEPALIVE void ble_cfg(int key, int val)
 {
-    api_lock();
+    if (!page_lock(50)) return;
     if (key >= 0 && key < CFG_COUNT) g.cfg[key] = val;
     if (key == CFG_STALL && !val && g.thread) { g.ev_tx = g.ev_app = true;
 #if MIRROR_PIPE
@@ -1923,14 +1937,14 @@ EMSCRIPTEN_KEEPALIVE void ble_cfg(int key, int val)
 }
 EMSCRIPTEN_KEEPALIVE int ble_cfg_get(int key)
 {
-    api_lock();
+    if (!page_lock(5)) return 0;
     int v = (key >= 0 && key < CFG_COUNT) ? g.cfg[key] : 0;
     unlock();
     return v;
 }
 EMSCRIPTEN_KEEPALIVE void ble_stat(uint32_t *out)
 {
-    api_lock();
+    if (!page_lock(5)) return;
     out[STAT_UP] = g.up; out[STAT_SYNCED] = g.synced; out[STAT_STATE] = (uint32_t)g.state;
     out[STAT_CONN] = (CONN_NONE == g.conn) ? 0xFFFFu : g.conn; out[STAT_LINKS] = g.links; out[STAT_SECURE] = g.secure;
     out[STAT_BONDS] = bond_count(); out[STAT_OUT_DROPPED] = g.out_dropped; out[STAT_IN_DROPPED] = g.in_dropped;
@@ -1938,14 +1952,14 @@ EMSCRIPTEN_KEEPALIVE void ble_stat(uint32_t *out)
 }
 EMSCRIPTEN_KEEPALIVE void ble_set_addr(const uint8_t *a)
 {
-    api_lock();
+    if (!page_lock(50)) return;
     memcpy(g.addr, a, 6);
     unlock();
 }
 /* The info as JSON: for the page and for tests. Returns the length (0 when cap is too small). */
 EMSCRIPTEN_KEEPALIVE int ble_info(char *buf, int cap)
 {
-    api_lock();
+    if (!page_lock(5)) return 0;
     int n = snprintf(buf, (size_t)cap,
         "{\"up\":%d,\"synced\":%d,\"state\":%d,\"name\":\"%s\",\"addr\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"conn\":%d,\"links\":%u,\"secure\":%d,"
         "\"hearing\":%d,\"hidden\":%d,\"pulsed\":%d,\"adv\":%d,\"scan\":%d,\"mtu\":%u,\"enc\":%d,\"auth\":%d,\"console\":%d,\"mirror\":%d,"
@@ -1969,7 +1983,7 @@ EMSCRIPTEN_KEEPALIVE int ble_info(char *buf, int cap)
 /* The GATT table as JSON: services with their characteristics. */
 EMSCRIPTEN_KEEPALIVE int ble_gatt_json(char *buf, int cap)
 {
-    api_lock();
+    if (!page_lock(5)) return 0;
     int n = snprintf(buf, (size_t)cap, "[");
     for (unsigned s = 0; s < g.nsvc && n > 0 && n < cap; ++s) {
         svc_t const *sv = &g.svc[s];
@@ -2000,7 +2014,7 @@ EMSCRIPTEN_KEEPALIVE int ble_gatt_json(char *buf, int cap)
 /* Plant a bond (a phone "paired in kodeOS earlier"): addr in NimBLE order, type 0/1, ltk 16 bytes. Returns the new count. */
 EMSCRIPTEN_KEEPALIVE int ble_bond_inject(const uint8_t *addr_le, int type, const uint8_t *ltk, int auth)
 {
-    api_lock();
+    if (!page_lock(50)) return -1;
     bonds_load();
     bool ok = false;
     {   /* the store is full for an app: a planted bond still lands in a free slot only */
@@ -2034,13 +2048,20 @@ EMSCRIPTEN_KEEPALIVE int ble_blob_commit(uint32_t len)
     return 0;
 }
 /* What the Reject button on kodeOS's pairing card ends up calling (kdrv_ble_pair_reject): for tests that cannot touch the card. */
+/* Test hook: a thread takes g_mu and exits holding it, as a worker does when the host terminates it. */
+static void *orphan_main(void *a) { (void)a; api_lock(); return NULL; }
+EMSCRIPTEN_KEEPALIVE void ble_test_orphan_lock(void)
+{
+    pthread_t th; pthread_create(&th, NULL, orphan_main, NULL); pthread_join(th, NULL);
+}
 EMSCRIPTEN_KEEPALIVE int ble_test_pair_reject(void) { return (int)kdrv_ble_pair_reject(); }
 /* A hook for tests: forget everything this module keeps in memory (not the persisted region). */
 EMSCRIPTEN_KEEPALIVE void ble_reset_counters(void)
 {
-    api_lock();
+    if (!page_lock(50)) return;
     g.out_dropped = g.in_dropped = 0u;
     unlock();
 }
 
 #endif /* CONFIG_KODEOS_BLE && CONFIG_KODEOS_BLE_CONSOLE */
+

@@ -1156,3 +1156,4 @@ void vTimerSetTimerID(TimerHandle_t t, void *id) { t->id = id; }
 const char *pcTimerGetName(TimerHandle_t t) { return t->name; }
 TickType_t xTimerGetPeriod(TimerHandle_t t) { return t->period; }
 void vTimerSetReloadMode(TimerHandle_t t, BaseType_t r) { t->reload = r != 0; }
+

@@ -12,7 +12,7 @@
   "sources": ["*.c"],
   "exports": [
     "ble_in", "ble_out_pop", "ble_cfg", "ble_cfg_get", "ble_stat", "ble_set_addr", "ble_info", "ble_gatt_json",
-    "ble_bond_inject", "ble_blob_ptr", "ble_blob_len", "ble_blob_commit", "ble_reset_counters", "ble_test_pair_reject"
+    "ble_bond_inject", "ble_blob_ptr", "ble_blob_len", "ble_blob_commit", "ble_reset_counters", "ble_test_pair_reject", "ble_test_orphan_lock"
   ],
   "js": ["ble.js"],
   "test_apps": ["sdk:examples/ble_peripheral", "area:../../../tests/node/ble/apps/ble_api"]
