@@ -85,6 +85,36 @@ describe('a module on the header', () => {
   });
 });
 
+describe('a module\'s connector in the Dot\'s header', () => {
+  // EXP1..14 are GPIO 8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16 (J3_GPIO in runtime/web-adapter/bench.js)
+  const GPIO = [8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16];
+  const header = deviceTerms().map((d) => ({ ...d, what: d.name.startsWith('EXP') ? GPIO[Number(d.name.slice(3)) - 1] : d.name === '5V' ? 'V5' : d.name === '3V3' ? 'V33' : 'GND' }));
+  type Mounted = GeoManifest & { mount: MountGeo & { orientations: ('upright' | 'turned')[]; pins: { pin: string; gpio: number }[]; rails: { pin: string; rail: string }[] } };
+  for (const id of ['kode-maker', 'kode-robotics', 'kode-camera-shape', 'kode-mesh-shape', 'kode-hacking-shape']) {
+    const m = manifest(id) as Mounted;
+    for (const side of m.mount.orientations) {
+      it(`${id} ${side}: every connector pin is drawn in the hole of the header pin it is joined to`, () => {
+        const mat = mountMatrix(m.body, m.mount, side)!;
+        const terms = new Map(localTerms(m).map((t) => [t.name, t]));
+        // what each connector pin is joined to: its GPIO (turned: position p becomes 15 - p) or its rail
+        const joined = new Map<string, number | string>([
+          ...m.mount.pins.map((e) => [e.pin, side === 'turned' ? GPIO[13 - GPIO.indexOf(e.gpio)] : e.gpio] as [string, number]),
+          ...m.mount.rails.map((e) => [e.pin, e.rail] as [string, string]),
+        ]);
+        expect(joined.size).toBe(20);
+        for (const [name, what] of joined) {
+          const t = terms.get(name)!;
+          const p = [0, 1, 2].map((i) => mat[i] * t.x + mat[4 + i] * t.y + mat[8 + i] * t.z + mat[12 + i]);
+          // the hole it is in line with (across the Dot and through its thickness; along the Dot the pin is in or before the hole)
+          const hole = header.reduce((best, h) => (Math.hypot(h.X - p[0], h.Z - p[2]) < Math.hypot(best.X - p[0], best.Z - p[2]) ? h : best));
+          expect(Math.hypot(hole.X - p[0], hole.Z - p[2]), `${name} is ${Math.hypot(hole.X - p[0], hole.Z - p[2]).toFixed(2)} mm off a hole`).toBeLessThan(0.7);
+          expect(hole.what, `${name} sits in the hole of ${hole.name}`).toBe(what);
+        }
+      });
+    }
+  }
+});
+
 describe('wires in the store', () => {
   it('adds, refuses doubles, removes with the part, undoes', () => {
     const s = new BenchStore(null);

@@ -14,7 +14,10 @@ const railMap = [{ pin: "V5", rail: "V5" }, { pin: "V33", rail: "V33" }, { pin: 
 const NOTE_EST = L("Size and terminal positions are estimates from pictures (header pitch 2.54 mm is exact).", "Tamanho e posições dos terminais são estimativas a partir de fotos (o passo de 2,54 mm do cabeçalho é exato).", "El tamaño y las posiciones de los terminales son estimaciones a partir de fotos (el paso de 2,54 mm del cabezal es exacto).");
 // ---- the physical 2x10 connector. Header pin m of the Dot (1,20 = 5 V; 2,19 = 3.3 V; 10,11 = GND; 3..9 and 12..18 = positions 1..14) meets, on a right-angle J401
 // module, the module pin 20 - m (m odd) or 22 - m (m even) [mirrored, derived from the published tables]; through the interposer pin n = header pin n.
-// Module pin j sits in column ceil(j/2) (1 at the left, seen from the component side with the connector at the bottom edge); odd pins in one row, even in the other.
+// Module pin j sits in column ceil(j/2). A flat module is mounted upright with its component side on the screen side [documented: the Maker's breadboard is
+// "on the screen side when mounted", the Robotics table is "screen-side, upright"], so its pin 19 (5 V) meets header pin 1 at the Dot's left seen from the front:
+// column 1 is at the RIGHT seen from the component side with the connector at the bottom edge, and the odd pins are the row further from the board (they meet
+// the Dot's odd row, the one toward the screen). Through the interposer column 1 is at the left and the odd row is the one toward the screen (larger y).
 const J3 = [8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16];
 const hdr = (m) => (m === 1 || m === 20 ? { rail: "V5" } : m === 2 || m === 19 ? { rail: "V33" } : m === 10 || m === 11 ? { rail: "GND" } : { gpio: J3[m < 10 ? m - 3 : m - 5] });
 const PIN_LEN = 8, ROW_Z = [2.87, 5.41]; // flat modules: pin protrusion past the board edge; the two rows of a right-angle header above the 1.6 mm board (estimates)
@@ -30,10 +33,12 @@ function conn20(kind, des, place, mk) {
   }
   return { pins, mountPins, rails };
 }
-const flatPlace = (W, Dbd) => { const x0 = (W - 9 * ODD) / 2; return (c, r) => ({ x: x0 + ODD * (c - 1), y: Dbd + PIN_LEN / 2, z: ROW_Z[r] }); };
+const flatPlace = (W, Dbd) => { const x0 = (W - 9 * ODD) / 2; return (c, r) => ({ x: x0 + ODD * (10 - c), y: Dbd + PIN_LEN / 2, z: ROW_Z[1 - r] }); };
+// upright: the board in the Dot's plane past its top edge, component side (part +z) on the screen side (Dot +Z); turned: half a turn about the Dot's long axis.
+// (connector.odd_row is left out for the flat modules: the odd row is the higher one, which the schema's enum has no word for; the pins' own mm.z say it.)
 const flatMount = (W, Dbd, pins, rails) => ({ via: "direct", orientations: ["upright", "turned"], pins, rails,
-  connector: { seat_mm: { x: W / 2, y: Dbd, z: 4.14 }, pin_dir: "+y", pin_length_mm: PIN_LEN, odd_row: "low_z", source: "assumed" },
-  placement: { anchor_dot_mm: { x: 0, y: 38.5, z: 0 }, upright: { x: "-X", y: "-Y", z: "-Z" }, turned: { x: "+X", y: "-Y", z: "+Z" }, source: "assumed" } });
+  connector: { seat_mm: { x: W / 2, y: Dbd, z: 4.14 }, pin_dir: "+y", pin_length_mm: PIN_LEN, source: "assumed" },
+  placement: { anchor_dot_mm: { x: 0, y: 38.5, z: 0 }, upright: { x: "+X", y: "-Y", z: "+Z" }, turned: { x: "-X", y: "-Y", z: "-Z" }, source: "documented" } });
 const holes = (W, D, hw, hd) => [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b], i) => ({ name: "hole" + (i + 1), kind: "hole", diameter_mm: 3.2, mm: { x: Math.round((W / 2 + a * hw / 2) * 100) / 100, y: Math.round((D / 2 + b * hd / 2) * 100) / 100, z: 0 } }));
 const cat = (...xs) => ({ en: xs.map((x) => x.en).join(" "), "pt-BR": xs.map((x) => x["pt-BR"]).join(" "), es: xs.map((x) => x.es).join(" ") });
 
