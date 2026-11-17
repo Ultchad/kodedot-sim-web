@@ -21,11 +21,11 @@ export const fullFactoryJson = { format: 1, apps: FULL_FACTORY.map((n) => n + ".
 export const factoryJson = { format: 1, apps: FACTORY.map((n) => n + ".dotbench") };
 
 /** A system on `dir` (the persistence directory): the same device across "page reloads" when the dir is reused. */
-export function makeSystem(dir, { factory = factoryJson } = {}) {
+export function makeSystem(dir, { factory = factoryJson, os = null, fetch = null } = {}) {
   const sys = new DotbenchSystem({
-    os: pkgBytes("kodeos"),
+    os: os ?? pkgBytes("kodeos"),
     persist: new NodeDirBackend(dir),
-    factory: { apps: factory.apps, fetch: async (n) => pkgBytes(n.replace(/\.dotbench$/, "")) },
+    factory: { apps: factory.apps, fetch: async (n) => (fetch ? await fetch(n) : null) ?? pkgBytes(n.replace(/\.dotbench$/, "")) },
     pollMs: 20,
   });
   sys.logText = () => sys.lines.map((l) => l.text).join("\n");
