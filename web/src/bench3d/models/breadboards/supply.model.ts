@@ -10,7 +10,7 @@
  */
 import manifest from '../../../../../parts/supply/manifest.json';
 import {
-  INK, PAL, Shape, defineModel, footprintOf, glowing, lamp, part, partState, pcb, pinHeader, print, setLamp, silkBox, terminalsFromManifest, text, topQuad, usbC,
+  INK, PAL, Shape, defineModel, footprintOf, glowing, lamp, markControl, part, partState, pcb, pinHeader, print, setLamp, silkBox, terminalsFromManifest, text, topQuad, usbC,
   type PartState,
 } from '../../index';
 import { asPart, chip, slideKnob, slideSwitch, slideTravel, sot223 } from './builders';
@@ -73,7 +73,8 @@ export default defineModel<PartState>({
           silkBox(g, REG.x - 3.55, REG.z - 2.05, 7.1, 4.1, 0.25, 0.14);
         },
       }),
-      slideKnob({ x: SW.x, z: SW.z, y: top, finish: PAL.plasticWhite }).toObject('knob'),
+      // the knob is the control of the output field: a click steps it through the stops (off, 3.3 V, 5 V)
+      markControl(slideKnob({ x: SW.x, z: SW.z, y: top, finish: PAL.plasticWhite }).toObject('knob'), { field: FIELD.name, mode: 'toggle', values: STOPS }),
       glowing('reg', reg),
       lamp('pwr', [LED.x, top + 0.45, LED.z], [0.62, 0.36, 0.42]),
     );
