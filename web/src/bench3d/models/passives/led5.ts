@@ -7,12 +7,11 @@
  * on the cathode side, 8.6 mm from the seating plane to the top, square leads 0.5 mm at 2.54 mm, the anode lead the
  * longer one. Inside the resin: the cathode's anvil with its reflector cup and the die, the anode's post, a bond wire.
  */
-import { MeshBuilder } from '../../../device3d/meshBuilder';
 import {
   PAL, Shape, circleLoop, defineModel, footprintOf, glowing, part, partState, setLamp, terminalsFromManifest,
   type AnimEnv, type BuildCtx, type Finish, type Object3D, type PartModel, type PartState, type Pt, type V2, type V3,
 } from '../../index';
-import { asManifest, plate, show, terminalOf, tint, visualColour, type PartManifest } from './common';
+import { asManifest, plate, ribbon, show, terminalOf, tint, visualColour, type PartManifest } from './common';
 
 export const LENS_R = 2.5;
 export const FLANGE_R = 2.9;
@@ -51,26 +50,13 @@ function onLens(a: number, y: number, h = LED_H): { p: V3; n: V3 } {
   const n: V3 = [(Math.cos(a) * r) / LENS_R, dy / LENS_R, (Math.sin(a) * r) / LENS_R];
   return { p: [Math.cos(a) * r, y, Math.sin(a) * r], n };
 }
-/** A crack: a ribbon lying on the lens along `pts` ([degrees round the axis, height]), `w0` wide at its start, pointed at its end. */
+/** A crack through the lens along `pts` ([degrees round the axis, height above the flange's underside at `y0`]), pointed at its end. */
 function crack(s: Shape, colour: string, pts: V2[], y0: number, w0: number, lift: number, shift = 0): void {
-  const mb = new MeshBuilder();
-  const at = pts.map(([deg, y]) => onLens((deg * Math.PI) / 180, y));
-  let prev: [number, number] | null = null;
-  for (let i = 0; i < at.length; i++) {
-    const a = at[Math.max(0, i - 1)].p, b = at[Math.min(at.length - 1, i + 1)].p, { p, n } = at[i];
-    const t: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    let sx = n[1] * t[2] - n[2] * t[1], sy = n[2] * t[0] - n[0] * t[2], sz = n[0] * t[1] - n[1] * t[0];
-    const l = Math.hypot(sx, sy, sz) || 1;
-    sx /= l;
-    sy /= l;
-    sz /= l;
-    const w = (w0 * (1 - (i / (at.length - 1)) * 0.8)) / 2;
-    const c: V3 = [p[0] + n[0] * lift + sx * shift, p[1] + y0 + n[1] * lift + sy * shift, p[2] + n[2] * lift + sz * shift];
-    const pair: [number, number] = [mb.vertex([c[0] - sx * w, c[1] - sy * w, c[2] - sz * w], n), mb.vertex([c[0] + sx * w, c[1] + sy * w, c[2] + sz * w], n)];
-    if (prev) mb.quad(prev[0], prev[1], pair[1], pair[0], n);
-    prev = pair;
-  }
-  s.add('matte', colour, mb.build());
+  const at = pts.map(([deg, y]) => {
+    const q = onLens((deg * Math.PI) / 180, y);
+    return { p: [q.p[0], q.p[1] + y0, q.p[2]] as V3, n: q.n };
+  });
+  ribbon(s, ['matte', colour], at, w0, w0 * 0.2, lift, shift);
 }
 const CRACKS: { pts: V2[]; w: number }[] = [
   { pts: [[58, 1.05], [66, 2.1], [55, 3.2], [64, 4.3], [53, 5.4], [61, 6.5], [48, 7.5], [60, 8.25]], w: 0.3 },

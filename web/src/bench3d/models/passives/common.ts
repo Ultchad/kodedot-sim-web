@@ -1,9 +1,10 @@
 /**
  * Shared builders of the passives family (resistor, capacitors, diode, LEDs). Several of them are candidates for the
- * kit (parts.ts / nodes.ts / print.ts): `axial`, `plate`, `bentLead`, `cylinderStrip` with `printOnCylinder` and
+ * kit (parts.ts / nodes.ts / print.ts): `axial`, `plate`, `ribbon`, `bentLead`, `cylinderStrip` with `printOnCylinder` and
  * `screenOnCylinder`, `hotShell`, `tint`.
  */
 import { BufferAttribute, BufferGeometry, type Mesh, type MeshStandardMaterial } from 'three';
+import { MeshBuilder } from '../../../device3d/meshBuilder';
 import {
   Matrix4, PAL, Shape, glowing, part, print, roundCorners, screen, setLamp,
   type Finish, type ManifestBody, type ManifestPin, type Object3D, type PrintDef, type Pt, type Terminal, type V2, type V3,
@@ -60,6 +61,30 @@ const UPRIGHT = new Matrix4().makeRotationX(Math.PI / 2);
  */
 export function plate(s: Shape, finish: Finish, outline: V2[], z0: number, z1: number, bevel = 0.04): void {
   s.with(UPRIGHT, () => s.prism(...finish, outline.map(([x, y]) => [x, -y] as Pt), z0, z1, bevel, { cap: true, ao: 1 }));
+}
+
+/**
+ * A flat ribbon lying on a surface (a crack, a score line, a seam): through the points `at` (each with the surface's
+ * normal there), `w0` wide at its start and `w1` at its end, raised `lift` off the surface and moved `shift` sideways.
+ */
+export function ribbon(s: Shape, finish: Finish, at: { p: V3; n: V3 }[], w0: number, w1: number, lift = 0.04, shift = 0): void {
+  const mb = new MeshBuilder();
+  let prev: [number, number] | null = null;
+  for (let i = 0; i < at.length; i++) {
+    const a = at[Math.max(0, i - 1)].p, b = at[Math.min(at.length - 1, i + 1)].p, { p, n } = at[i];
+    const t: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    let sx = n[1] * t[2] - n[2] * t[1], sy = n[2] * t[0] - n[0] * t[2], sz = n[0] * t[1] - n[1] * t[0];
+    const l = Math.hypot(sx, sy, sz) || 1;
+    sx /= l;
+    sy /= l;
+    sz /= l;
+    const w = (w0 + ((w1 - w0) * i) / (at.length - 1)) / 2;
+    const c: V3 = [p[0] + n[0] * lift + sx * shift, p[1] + n[1] * lift + sy * shift, p[2] + n[2] * lift + sz * shift];
+    const pair: [number, number] = [mb.vertex([c[0] - sx * w, c[1] - sy * w, c[2] - sz * w], n), mb.vertex([c[0] + sx * w, c[1] + sy * w, c[2] + sz * w], n)];
+    if (prev) mb.quad(prev[0], prev[1], pair[1], pair[0], n);
+    prev = pair;
+  }
+  s.add(finish[0], finish[1], mb.build());
 }
 
 /** A round lead through `pts` with rounded bends (like the kit's `lead`, with the tube's sides as a parameter). */
