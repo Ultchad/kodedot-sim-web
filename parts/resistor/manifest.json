@@ -1,0 +1,121 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.resistor",
+  "name": {
+    "en": "Resistor",
+    "pt-BR": "Resistor",
+    "es": "Resistencia"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A resistor of any value between its two leads (0.1 ohm to 10 Mohm), 0.25 W. It loads the nets it joins, so a resistor between a GPIO and an LED really sets the LED current. Above 0.25 W the bench shows an overpower hazard (it does not burn).",
+    "pt-BR": "Um resistor de qualquer valor entre seus dois terminais (0,1 ohm a 10 Mohm), 0,25 W. Ele carrega as redes que liga: um resistor entre um GPIO e um LED define de verdade a corrente do LED. Acima de 0,25 W a bancada mostra um aviso de potência (ele não queima).",
+    "es": "Una resistencia de cualquier valor entre sus dos terminales (0,1 ohm a 10 Mohm), 0,25 W. Carga las redes que une: una resistencia entre un GPIO y un LED fija de verdad la corriente del LED. Por encima de 0,25 W el banco muestra un aviso de potencia (no se quema)."
+  },
+  "category": "passive",
+  "tags": [
+    "resistor",
+    "passive"
+  ],
+  "keywords": {
+    "en": [
+      "resistor",
+      "resistance",
+      "ohm",
+      "pull-up",
+      "pull-down",
+      "current limit"
+    ],
+    "pt-BR": [
+      "resistor",
+      "resistência",
+      "ohm",
+      "limitador de corrente",
+      "pull-up"
+    ],
+    "es": [
+      "resistencia",
+      "resistor",
+      "ohmio",
+      "limitador de corriente",
+      "pull-up"
+    ]
+  },
+  "body": {
+    "w_mm": 12.7,
+    "d_mm": 3.2,
+    "h_mm": 3.2
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 127,
+    "height": 32
+  },
+  "pins": [
+    {"name":"A","kind":"io","pos":{"x":12.7,"y":16},"mm":{"x":1.27,"y":1.6},"face":"bottom","label":{"en":"A"},"abs_max_mv":60000},
+    {"name":"B","kind":"io","pos":{"x":114.3,"y":16},"mm":{"x":11.43,"y":1.6},"face":"bottom","label":{"en":"B"},"abs_max_mv":60000}
+  ],
+  "fields": [
+    {
+      "name": "ohms",
+      "type": "number",
+      "label": {
+        "en": "Resistance",
+        "pt-BR": "Resistência",
+        "es": "Resistencia"
+      },
+      "min": 0.1,
+      "max": 10000000,
+      "step": 1,
+      "unit": "Ω",
+      "default": 330,
+      "ui": "input"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "current_ma",
+      "type": "number",
+      "unit": "mA",
+      "label": {
+        "en": "Current",
+        "pt-BR": "Corrente",
+        "es": "Corriente"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "value",
+      "effect": "text",
+      "x": 63,
+      "y": 20,
+      "color": "#1d2a38",
+      "source": {
+        "field": "ohms"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "resistor",
+        "a": "A",
+        "b": "B",
+        "ohms": {
+          "field": "ohms"
+        },
+        "rated_mw": 250,
+        "current_output": "current_ma"
+      }
+    ]
+  }
+}

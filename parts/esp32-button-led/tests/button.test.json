@@ -1,0 +1,73 @@
+{
+  "name": "button toggles the LED",
+  "steps": [
+    {
+      "advance_ms": 50
+    },
+    {
+      "expect_serial": "button on IO4"
+    },
+    {
+      "expect_pin": {
+        "pin": "IO4",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "IO5",
+        "level": 0
+      }
+    },
+    {
+      "comment": "press: the tester pulls IO4 low",
+      "set_pin": {
+        "pin": "IO4",
+        "level": 0
+      }
+    },
+    {
+      "advance_ms": 60
+    },
+    {
+      "expect_pin": {
+        "pin": "IO5",
+        "level": 1
+      }
+    },
+    {
+      "expect_serial": "press 1: LED on"
+    },
+    {
+      "comment": "release and press again: off",
+      "set_pin": {
+        "pin": "IO4",
+        "level": null
+      }
+    },
+    {
+      "advance_ms": 60
+    },
+    {
+      "set_pin": {
+        "pin": "IO4",
+        "level": 0
+      }
+    },
+    {
+      "advance_ms": 60
+    },
+    {
+      "expect_pin": {
+        "pin": "IO5",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "presses",
+        "value": 2
+      }
+    }
+  ]
+}

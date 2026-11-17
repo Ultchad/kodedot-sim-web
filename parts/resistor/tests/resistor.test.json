@@ -1,0 +1,72 @@
+{
+  "name": "a resistor between two driven pins",
+  "steps": [
+    {
+      "comment": "nothing drives it: no current",
+      "expect_output": {
+        "name": "current_ma",
+        "value": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "B",
+        "level": 0
+      }
+    },
+    {
+      "comment": "3.3 V across 118 + 330 + 118 ohm is about 5.8 mA",
+      "expect_output": {
+        "name": "current_ma",
+        "min": 5.5,
+        "max": 6.1
+      }
+    },
+    {
+      "set_field": {
+        "ohms": 1000
+      }
+    },
+    {
+      "comment": "1k: about 2.4 mA",
+      "expect_output": {
+        "name": "current_ma",
+        "min": 2.2,
+        "max": 2.7
+      }
+    },
+    {
+      "set_field": {
+        "ohms": 100000
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "B",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "B",
+        "level": null
+      }
+    },
+    {
+      "pullup": "B"
+    },
+    {
+      "comment": "B has only the 45k pull-up of the header: no current to speak of",
+      "expect_output": {
+        "name": "current_ma",
+        "max": 0.02
+      }
+    }
+  ]
+}

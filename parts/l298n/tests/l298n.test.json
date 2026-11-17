@@ -1,0 +1,86 @@
+{
+  "name": "H-bridge outputs follow the inputs",
+  "steps": [
+    {
+      "comment": "nothing driven: ENA is jumpered high, inputs low, outputs low",
+      "expect_pin": {
+        "pin": "OUT1",
+        "mv_max": 200
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN1",
+        "level": 1
+      }
+    },
+    {
+      "comment": "VS is 5 V on the tester: out = 5 - 1.4 = 3.6 V",
+      "expect_pin": {
+        "pin": "OUT1",
+        "mv_min": 3400,
+        "mv_max": 3700
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "OUT2",
+        "mv_max": 200
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN1",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN2",
+        "level": 1
+      }
+    },
+    {
+      "comment": "reversed",
+      "expect_pin": {
+        "pin": "OUT2",
+        "mv_min": 3400,
+        "mv_max": 3700
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "OUT1",
+        "mv_max": 200
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "ENA",
+        "level": 0
+      }
+    },
+    {
+      "comment": "disabled: high impedance, nothing on OUT2",
+      "expect_pin": {
+        "pin": "OUT2",
+        "mv_max": 200
+      }
+    },
+    {
+      "pwm": {
+        "pin": "ENA",
+        "hz": 1000,
+        "duty_pct": 50
+      }
+    },
+    {
+      "comment": "EN PWM 50 % chops the output",
+      "expect_pin": {
+        "pin": "OUT2",
+        "mv_min": 1500,
+        "mv_max": 2100
+      }
+    }
+  ]
+}
