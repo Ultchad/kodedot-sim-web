@@ -51,22 +51,23 @@
   },
   "body": {
     "w_mm": 62,
-    "d_mm": 32,
-    "h_mm": 19
+    "d_mm": 42,
+    "h_mm": 29,
+    "estimate": true
   },
   "picture": {
     "file": "picture.svg",
     "width": 620,
-    "height": 320
+    "height": 420
   },
   "logic_mv": 3000,
   "pins": [
-    {"name":"IN1","kind":"io","pos":{"x":100,"y":40},"mm":{"x":10,"y":4},"face":"top","label":{"en":"IN1"},"abs_max_mv":7000,"pulldown_ohms":100000},
-    {"name":"IN2","kind":"io","pos":{"x":125.4,"y":40},"mm":{"x":12.54,"y":4},"face":"top","label":{"en":"IN2"},"abs_max_mv":7000,"pulldown_ohms":100000},
-    {"name":"IN3","kind":"io","pos":{"x":150.8,"y":40},"mm":{"x":15.08,"y":4},"face":"top","label":{"en":"IN3"},"abs_max_mv":7000,"pulldown_ohms":100000},
-    {"name":"IN4","kind":"io","pos":{"x":176.2,"y":40},"mm":{"x":17.62,"y":4},"face":"top","label":{"en":"IN4"},"abs_max_mv":7000,"pulldown_ohms":100000},
-    {"name":"V5","kind":"power_in","pos":{"x":220,"y":40},"mm":{"x":22,"y":4},"face":"top","label":{"en":"5V"},"min_mv":4000,"max_mv":6500,"typ_ma":240},
-    {"name":"GND","kind":"ground","pos":{"x":245.4,"y":40},"mm":{"x":24.54,"y":4},"face":"top","label":{"en":"GND"}}
+    {"name":"IN1","kind":"io","pos":{"x":100,"y":40},"mm":{"x":10,"y":4,"z":11.4},"face":"top","label":{"en":"IN1"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN2","kind":"io","pos":{"x":125.4,"y":40},"mm":{"x":12.54,"y":4,"z":11.4},"face":"top","label":{"en":"IN2"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN3","kind":"io","pos":{"x":150.8,"y":40},"mm":{"x":15.08,"y":4,"z":11.4},"face":"top","label":{"en":"IN3"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN4","kind":"io","pos":{"x":176.2,"y":40},"mm":{"x":17.62,"y":4,"z":11.4},"face":"top","label":{"en":"IN4"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"V5","kind":"power_in","pos":{"x":220,"y":40},"mm":{"x":22,"y":4,"z":11.4},"face":"top","label":{"en":"5V"},"min_mv":4000,"max_mv":6500,"typ_ma":240},
+    {"name":"GND","kind":"ground","pos":{"x":245.4,"y":40},"mm":{"x":24.54,"y":4,"z":11.4},"face":"top","label":{"en":"GND"}}
   ],
   "outputs": [
     {
@@ -105,8 +106,8 @@
     {
       "id": "shaft",
       "effect": "rotate",
-      "x": 470,
-      "y": 160,
+      "x": 460,
+      "y": 130,
       "r": 40,
       "source": {
         "output": "angle"

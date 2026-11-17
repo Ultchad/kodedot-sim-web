@@ -282,4 +282,22 @@ await test("every board's default sketch builds from its own source (offline bui
   }
 });
 
+await test("boards show life: serial counters, the user LED, a crash flag, the S3's RGB colour; renamed pins keep their old names", async () => {
+  const b = await mk(), u = await board(b, "uno-r3", `void setup() { Serial.begin(9600); pinMode(13, OUTPUT); digitalWrite(13, HIGH); Serial.print("hello"); }
+void loop() { while (Serial.available()) Serial.read(); delay(5); }
+`);
+  await run(b, 100);
+  check(out(b, u, "tx") === 5 && out(b, u, "led") === 1 && out(b, u, "rx") === 0 && out(b, u, "crashed") === false, "Uno: tx counts the 5 bytes of 'hello', the LED output follows pin 13, rx and crashed are idle", [out(b, u, "tx"), out(b, u, "led"), out(b, u, "rx")]);
+  b.serialIn(u, "abc"); await run(b, 40);
+  check(out(b, u, "rx") === 3, "Uno: rx counts the 3 bytes typed into the serial monitor");
+  const s = await board(b, "esp32-s3", `void setup() { neopixelWrite(RGB_BUILTIN, 10, 20, 30); }
+void loop() { delay(5); }
+`);
+  await run(b, 100);
+  check(out(b, s, "rgb_r") === 10 && out(b, s, "rgb_g") === 20 && out(b, s, "rgb_b") === 30 && out(b, s, "led") === 1, "ESP32-S3: neopixelWrite gives the colour as rgb_r, rgb_g, rgb_b and the LED output is on");
+  const e = b.addPart("dotbench.esp32-blink-echo"), w = b.connect(e + ".TX", "device.EXP10"), n = b.connect(e + ".GND", "device.GND");
+  check(b.wireOf(e + ".IO17", "device.EXP10") === w && b.net(e + ".TX").id === b.net(e + ".IO17").id && b.net(e + ".GND").id === b.net(e + ".GND_1").id, "an old pin name (TX, GND) is an alias of the real pin (IO17, GND_1)");
+  b.dispose();
+});
+
 process.exit(finish("boards"));

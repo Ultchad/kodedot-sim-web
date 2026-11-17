@@ -27,23 +27,24 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 200,
-    "height": 150
+    "width": 160,
+    "height": 96
   },
   "pins": [
     {
       "name": "VCC",
       "kind": "power_in",
       "pos": {
-        "x": 30,
-        "y": 134
+        "x": 49.5,
+        "y": 84
       },
       "min_mv": 2700,
       "max_mv": 5500,
       "typ_ma": 1,
       "mm": {
-        "x": 5.08,
-        "y": 10.5
+        "x": 6.19,
+        "y": 10.5,
+        "z": 0
       },
       "face": "bottom"
     },
@@ -51,12 +52,13 @@
       "name": "GND",
       "kind": "ground",
       "pos": {
-        "x": 77,
-        "y": 134
+        "x": 69.8,
+        "y": 84
       },
       "mm": {
-        "x": 7.62,
-        "y": 10.5
+        "x": 8.73,
+        "y": 10.5,
+        "z": 0
       },
       "face": "bottom"
     },
@@ -64,13 +66,14 @@
       "name": "SDA",
       "kind": "io",
       "pos": {
-        "x": 123,
-        "y": 134
+        "x": 90.2,
+        "y": 84
       },
       "abs_max_mv": 5500,
       "mm": {
-        "x": 10.16,
-        "y": 10.5
+        "x": 11.27,
+        "y": 10.5,
+        "z": 0
       },
       "face": "bottom"
     },
@@ -78,13 +81,14 @@
       "name": "SCL",
       "kind": "io",
       "pos": {
-        "x": 170,
-        "y": 134
+        "x": 110.5,
+        "y": 84
       },
       "abs_max_mv": 5500,
       "mm": {
-        "x": 12.7,
-        "y": 10.5
+        "x": 13.81,
+        "y": 10.5,
+        "z": 0
       },
       "face": "bottom"
     }
@@ -125,10 +129,10 @@
     {
       "id": "t",
       "effect": "text",
-      "x": 100,
-      "y": 50,
-      "w": 120,
-      "h": 24,
+      "x": 80,
+      "y": 32,
+      "w": 96,
+      "h": 15.4,
       "color": "#ffffff",
       "source": {
         "field": "temperature"
@@ -137,10 +141,10 @@
     {
       "id": "h",
       "effect": "text",
-      "x": 100,
-      "y": 82,
-      "w": 120,
-      "h": 24,
+      "x": 80,
+      "y": 52.5,
+      "w": 96,
+      "h": 15.4,
       "color": "#9fd4ff",
       "source": {
         "field": "humidity"
@@ -224,7 +228,7 @@
   "body": {
     "w_mm": 20,
     "d_mm": 12,
-    "h_mm": 3
+    "h_mm": 6
   },
   "keywords": {
     "en": [

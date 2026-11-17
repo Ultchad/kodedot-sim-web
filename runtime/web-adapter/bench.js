@@ -103,7 +103,7 @@ export class Bench {
     for (const f of m.fields ?? []) fields[f.name] = f.default;
     for (const [k, v] of Object.entries(o.fields ?? {})) if (k in fields) fields[k] = this._coerce(m.fields.find((f) => f.name === k), v);
     const part = { instance, id: m.id, def, label: o.label ?? instance, pos: { x: 0, y: 0, rot: 0, ...(o.pos ?? {}) }, fields, outputs: {}, impl: null, starting: null, startP: null, console: [], consoleTail: "", code: null, storage: null,
-      pins: new Map(m.pins.map((p) => [p.name, p])) };
+      pins: new Map(m.pins.map((p) => [p.name, p])), alias: new Map(m.pins.flatMap((p) => (p.aliases ?? []).map((a) => [a, p.name]))) };
     for (const out of m.outputs ?? []) part.outputs[out.name] = out.type === "boolean" ? false : 0;
     part.mount = null;
     this.parts.set(instance, part);
@@ -152,8 +152,11 @@ export class Bench {
     for (const p of this.parts.values()) for (const pin of p.def.manifest.pins) if (pin.kind !== "nc") out.push({ term: `${p.instance}.${pin.name}`, owner: p.instance, pin: pin.name, kind: pin.kind });
     return out;
   }
-  _has(term) { const [o, ...r] = term.split("."), pin = r.join("."); if (o === DEVICE) return DEVICE_TERMINALS.some((t) => t.name === pin); const p = this.parts.get(o); return !!p && p.pins.has(pin) && p.pins.get(pin).kind !== "nc"; }
+  /** A terminal name as the manifest's pin `aliases` give it (an old name of a renamed pin) becomes the pin's own name. */
+  _canon(term) { const i = term.indexOf("."); if (i < 0) return term; const a = this.parts.get(term.slice(0, i))?.alias?.get(term.slice(i + 1)); return a ? term.slice(0, i + 1) + a : term; }
+  _has(term) { term = this._canon(term); const [o, ...r] = term.split("."), pin = r.join("."); if (o === DEVICE) return DEVICE_TERMINALS.some((t) => t.name === pin); const p = this.parts.get(o); return !!p && p.pins.has(pin) && p.pins.get(pin).kind !== "nc"; }
   connect(a, b, o = {}) {
+    a = this._canon(a); b = this._canon(b);
     for (const t of [a, b]) if (!this._has(t)) throw new Error(`no such terminal ${t}`);
     if (a === b) throw new Error("a wire needs two different terminals");
     for (const w of this.wires.values()) if ((w.from === a && w.to === b) || (w.from === b && w.to === a)) return w.id;
@@ -163,7 +166,7 @@ export class Bench {
     this._touch(); return id;
   }
   disconnect(id) { if (!this.wires.delete(id)) return false; this._touch(); return true; }
-  wireOf(a, b) { for (const w of this.wires.values()) if ((w.from === a && w.to === b) || (w.from === b && w.to === a)) return w.id; return null; }
+  wireOf(a, b) { a = this._canon(a); b = this._canon(b); for (const w of this.wires.values()) if ((w.from === a && w.to === b) || (w.from === b && w.to === a)) return w.id; return null; }
 
   // ---------------------------------------------------------------- host handed to a part runtime
   _host(part) {
@@ -183,9 +186,9 @@ export class Bench {
   }
   _netInfo(term) { return this._net.get(term) ?? { mv: 0, mvHigh: 0, mvLow: 0, rth: Infinity, floating: true, level: 0, pwm: null, id: -1 }; }
   /** Live net data of a terminal (for the page and tests). */
-  net(term) { this._flush(); return this._netInfo(term); }
+  net(term) { this._flush(); return this._netInfo(this._canon(term)); }
   /** The id of a terminal's net (same id, same net), -1 when unknown. */
-  netId(term) { this._flush(); return this._net.get(term)?.id ?? -1; }
+  netId(term) { this._flush(); return this._net.get(this._canon(term))?.id ?? -1; }
 
   // ---------------------------------------------------------------- solving
   _touch() { this._dirty = true; if (!this._batch) this._flush(); }

@@ -106,4 +106,33 @@ await test("parts_robotics: a Dot app drives two DC motors and a servo through t
   r.close();
 });
 
+await test("module bodies: the real 2x10 connector, every signal on it, the bounding box holds pins and antennas, placement is described", async () => {
+  const fs = await import("node:fs"), rd = (d) => JSON.parse(fs.readFileSync(new URL(`../../../parts/${d}/manifest.json`, import.meta.url), "utf8"));
+  const J3 = [8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16];
+  for (const d of ["kode-maker", "kode-robotics", "kode-camera-shape", "kode-mesh-shape", "kode-hacking-shape"]) {
+    const m = rd(d), c = m.pins.filter((p) => p.ref), straight = m.mount.via === "interposer", des = straight ? "KDINT" : "J401";
+    check(c.length === 20 && c.every((p) => p.ref.startsWith(des + ".")) && new Set(c.map((p) => p.ref)).size === 20, `${d}: 20 distinct connector positions ${des}.1..20`);
+    const cols = new Set(c.map((p) => p.mm.x)), rows = new Set(c.map((p) => p.mm.y + "|" + p.mm.z)), xs = [...cols].sort((a, b) => a - b);
+    check(cols.size === 10 && rows.size === 2 && xs.every((x, i) => i === 0 || Math.abs(x - xs[i - 1] - 2.54) < 0.011), `${d}: two rows of ten at 2.54 mm pitch`);
+    // every signal is on the connector: 14 GPIO + 6 rail pins in the mount table, each at the position the published table gives
+    const sig = new Map([...m.mount.pins.map((e) => [e.pin, e.gpio]), ...m.mount.rails.map((e) => [e.pin, e.rail])]);
+    check(m.mount.pins.length === 14 && m.mount.rails.length === 6 && c.every((p) => sig.has(p.name)), `${d}: all 14 GPIO and 6 rail pins (5 V twice, 3.3 V twice, GND twice) are connector pins`);
+    const ok = c.every((p) => { const j = +p.ref.split(".")[1], mm = straight ? j : (j % 2 ? 20 - j : 22 - j), g = sig.get(p.name);
+      return typeof g === "number" ? g === J3[mm < 10 ? mm - 3 : mm - 5] : g === (mm === 1 || mm === 20 ? "V5" : mm === 2 || mm === 19 ? "V33" : "GND"); });
+    check(ok, `${d}: each connector position carries the signal of header pin ${straight ? "n" : "20 - m or 22 - m"} (${straight ? "interposer, straight" : "mirrored J401"})`);
+    const inside = m.pins.every((p) => p.mm.x >= 0 && p.mm.x <= m.body.w_mm && p.mm.y >= 0 && p.mm.y <= m.body.d_mm && (p.mm.z ?? 0) <= m.body.h_mm);
+    check(inside, `${d}: every pin is inside the body box`);
+    check(m.mount.connector?.seat_mm && m.mount.placement?.anchor_dot_mm && m.mount.placement.upright, `${d}: mount.connector and mount.placement say where it ends up on the Dot`);
+  }
+  const mesh = rd("kode-mesh-shape"), fck = rd("kode-hacking-shape");
+  for (const m of [mesh, fck]) {
+    check(m.body.w_mm > 46.65 && m.body.w_mm < 56 && m.body.h_mm > 80 && m.refs.length === 2 && m.refs.every((r) => r.kind === "antenna_sma" && r.mm.z + r.length_mm <= m.body.h_mm + 0.01), `${m.id}: wider than the Dot, tall enough for the antennas, two SMA reference points (non-electrical)`);
+    check(m.refs[1].length_mm > 1.5 * m.refs[0].length_mm, `${m.id}: the two antennas have different lengths`);
+  }
+  const cam = rd("kode-camera-shape"); check(cam.body.d_mm >= 45.5 + 8, "Camera: the body holds the 45.5 mm board plus the 8 mm of pins");
+  const rob = rd("kode-robotics"), P = (n) => rob.pins.find((p) => p.name === n).mm;
+  check(P("MOTB_1").x < P("STP_1").x && P("STP_4").x < P("MOTA_1").x && P("J404_GND").y < P("J404_V33").y && P("J402_GND").y > 8, "Robotics: motor B, stepper, motor A left to right; J404 GND at the top; the servo header clears the corner hole");
+  const mk = rd("kode-maker"); check(mk.body.h_mm >= 14, "Maker: 14 mm high");
+});
+
 process.exit(finish("modules"));

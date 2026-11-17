@@ -9,31 +9,35 @@ const KW = (en, pt, es) => ({ en, "pt-BR": pt, es });
 
 // ---- Uno family header layout, millimetres from the top-left, USB end on the left, top view (Arduino R3 mechanical drawing, 0.1 inch pitch, the 0.16 inch gap between D7 and D8)
 const UNO_W = 68.58, UNO_D = 53.34, TOP_Y = 2.54, BOT_Y = 50.8;
+// The body box includes the connector overhang: the USB-B (R3) sticks out about 6.4 mm past the board's left edge, the DC jack about as much; the R4 USB-C less (the box keeps the larger allowance). All x below are measured from the box's left edge = the board's left edge minus OVER.
+const OVER = 6.4, CONTACT_Z = 11.4;   // CONTACT_Z: height of a female header socket's mouth above the table (1.6 mm board + 8.5 mm socket + ~1.3 mm of mouth), where a wire or a shield pin meets the header
 const inch = (i) => Math.round(i * 25.4 * 100) / 100;
+const X = (i) => Math.round((OVER + i * 25.4) * 100) / 100;   // x of a header position given in inches from the board's left edge (Arduino Uno R3 drawing: D0 and A5 at 2.5 in = 63.5 mm)
 function unoPins(v) {
   const r4 = v !== "uno-r3", wifi = v === "uno-r4-wifi", lim = HI5;
   const pins = [], dcaps = { 0: ["uart_rx"], 1: ["uart_tx"], 2: ["interrupt"], 3: ["pwm", "interrupt"], 5: ["pwm"], 6: ["pwm"], 9: ["pwm"], 10: ["pwm", "spi_ss"], 11: ["pwm", "spi_mosi"], 12: ["spi_miso"], 13: ["spi_sck"] };
   // digital header: left to right SCL SDA AREF GND 13 12 11 10 9 8 | 7 6 5 4 3 2 1 0
   const top = [["SCL", null], ["SDA", null], ["AREF", null], ["GND_T", null], ...[13, 12, 11, 10, 9, 8].map((n) => ["D" + n, n]), ...[7, 6, 5, 4, 3, 2, 1, 0].map((n) => ["D" + n, n])];
-  const xs = [0.84, 0.94, 1.04, 1.14, 1.24, 1.34, 1.44, 1.54, 1.64, 1.74, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6];
+  const xs = [0.74, 0.84, 0.94, 1.04, 1.14, 1.24, 1.34, 1.44, 1.54, 1.64, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5];   // SCL .. D8 then D7 .. D0: 0.1 in pitch with the 0.16 in gap between D8 and D7 (D0 at 2.5 in)
   top.forEach(([name, n], i) => {
-    const x = inch(xs[i]);
+    const x = X(xs[i]);
     if (n !== null) pins.push(P(name, "io", x, TOP_Y, { gpio: n, face: "top", abs_max_mv: lim, caps: ["digital", ...(dcaps[n] ?? []), ...(r4 && !(dcaps[n] ?? []).includes("interrupt") ? ["interrupt"] : [])], label: { en: name.replace("D", "") + (n === 13 ? " (L)" : "") } }));
     else if (name === "GND_T") pins.push(P(name, "ground", x, TOP_Y, { face: "top", label: { en: "GND" } }));
     else if (name === "AREF") pins.push(P(name, "io", x, TOP_Y, { face: "top", abs_max_mv: lim, caps: ["analog"], label: { en: "AREF" } }));
     else pins.push(P(name, "io", x, TOP_Y, { face: "top", abs_max_mv: lim, caps: [name === "SDA" ? "i2c_sda" : "i2c_scl"], label: { en: name } }));
   });
   // power header: NC IOREF RESET 3V3 5V GND GND VIN, then A0..A5
-  const px = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7];
-  pins.push(P("NC", "nc", inch(px[0]), BOT_Y, { face: "top", label: { en: "NC" } }));
-  pins.push(P("IOREF", "power_out", inch(px[1]), BOT_Y, { face: "top", out_mv: 5000, out_ohms: 50, label: { en: "IOREF" } }));
-  pins.push(P("RESET", "io", inch(px[2]), BOT_Y, { face: "top", abs_max_mv: lim, label: { en: "RESET" } }));
-  pins.push(P("V33", "power_out", inch(px[3]), BOT_Y, { face: "top", out_mv: 3300, out_ohms: 10, label: { en: "3V3" } }));
-  pins.push(P("V5", "power_in", inch(px[4]), BOT_Y, { face: "top", min_mv: 4500, max_mv: 5500, typ_ma: wifi ? 120 : 50, supply_group: "pwr", internal: { mv: 5000, ohms: 0.5, field: "usb" }, label: { en: "5V" } }));
-  pins.push(P("GND_1", "ground", inch(px[5]), BOT_Y, { face: "top", label: { en: "GND" } }));
-  pins.push(P("GND_2", "ground", inch(px[6]), BOT_Y, { face: "top", label: { en: "GND" } }));
-  pins.push(P("VIN", "power_in", inch(px[7]), BOT_Y, { face: "top", min_mv: 6500, max_mv: r4 ? 24000 : 20000, typ_ma: wifi ? 120 : 50, supply_group: "pwr", label: { en: "VIN" } }));
-  for (let i = 0; i < 6; i++) pins.push(P("A" + i, "io", inch(1.9 + 0.1 * i), BOT_Y, { gpio: 14 + i, face: "top", abs_max_mv: lim, caps: ["analog", "digital", ...(i === 4 ? ["i2c_sda"] : []), ...(i === 5 ? ["i2c_scl"] : []), ...(r4 && i === 0 ? ["dac"] : [])], label: { en: "A" + i } }));
+  const px = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8];   // power header, VIN at 1.8 in, one empty position, then A0 at 2.0 in .. A5 at 2.5 in
+  pins.push(P("NC", "nc", X(px[0]), BOT_Y, { face: "top", label: { en: "NC" } }));
+  pins.push(P("IOREF", "power_out", X(px[1]), BOT_Y, { face: "top", out_mv: 5000, out_ohms: 50, label: { en: "IOREF" } }));
+  pins.push(P("RESET", "io", X(px[2]), BOT_Y, { face: "top", abs_max_mv: lim, label: { en: "RESET" } }));
+  pins.push(P("V33", "power_out", X(px[3]), BOT_Y, { face: "top", out_mv: 3300, out_ohms: 10, label: { en: "3V3" } }));
+  pins.push(P("V5", "power_in", X(px[4]), BOT_Y, { face: "top", min_mv: 4500, max_mv: 5500, typ_ma: wifi ? 120 : 50, supply_group: "pwr", internal: { mv: 5000, ohms: 0.5, field: "usb" }, label: { en: "5V" } }));
+  pins.push(P("GND_1", "ground", X(px[5]), BOT_Y, { face: "top", label: { en: "GND" } }));
+  pins.push(P("GND_2", "ground", X(px[6]), BOT_Y, { face: "top", label: { en: "GND" } }));
+  pins.push(P("VIN", "power_in", X(px[7]), BOT_Y, { face: "top", min_mv: 6500, max_mv: r4 ? 24000 : 20000, typ_ma: wifi ? 120 : 50, supply_group: "pwr", label: { en: "VIN" } }));
+  for (let i = 0; i < 6; i++) pins.push(P("A" + i, "io", X(2.0 + 0.1 * i), BOT_Y, { gpio: 14 + i, face: "top", abs_max_mv: lim, caps: ["analog", "digital", ...(i === 4 ? ["i2c_sda"] : []), ...(i === 5 ? ["i2c_scl"] : []), ...(r4 && i === 0 ? ["dac"] : [])], label: { en: "A" + i } }));
+  for (const p of pins) p.mm.z = CONTACT_Z;
   return pins;
 }
 const unoGroups = () => [{ pins: ["A4", "SDA"] }, { pins: ["A5", "SCL"] }, { pins: ["GND_T", "GND_1", "GND_2"] }];
@@ -42,7 +46,7 @@ const blinkIno = (v) => `// Default sketch of ${v.title}: blink the on-board LED
 // This board does not emulate its chip: the sketch is compiled to WebAssembly against ArduinoCore-API + dotcore for "${v.core}".
 #include <dotbench.h>
 #include "dotbench_fields.h"        // FIELD_BLINK_MS${v.matrix ? ", OUTPUT_MATRIX0.." : ""} (generated from manifest.json)
-${v.matrix ? '#include <Arduino_LED_Matrix.h>\nArduinoLEDMatrix matrix;\nstatic const uint32_t HEART[3] = { 0x3184a444, 0x44042081, 0x100a0 };\n' : ""}
+${v.matrix ? '#include <Arduino_LED_Matrix.h>\nArduinoLEDMatrix matrix;\nstatic const uint32_t HEART[3] = { 0x3184a444, 0x44042081, 0x100a0040 };\n' : ""}
 static uint32_t last = 0; static bool on = false;
 
 void setup() {
@@ -55,13 +59,15 @@ void loop() {
   uint32_t half = (uint32_t)dotbenchField(FIELD_BLINK_MS);
   if (millis() - last >= half) {
     last = millis(); on = !on;
-    digitalWrite(LED_BUILTIN, on ? HIGH : LOW);
-${v.matrix ? "    if (on) matrix.loadFrame(HEART); else matrix.clear();\n" : ""}    Serial.println(on ? "LED on" : "LED off");
+${v.rgb ? "    neopixelWrite(LED_BUILTIN, on ? 0 : 0, on ? 40 : 0, on ? 90 : 0);   // a teal pulse on the on-board RGB LED\n" : "    digitalWrite(LED_BUILTIN, on ? HIGH : LOW);\n"}${v.matrix ? "    if (on) matrix.loadFrame(HEART); else matrix.clear();\n" : ""}    Serial.println(on ? "LED on" : "LED off");
   }
   delay(1);
 }
 `;
 
+// outputs every board declares so a model can show life (after any output a sketch writes by index): serial byte counters (activity = the counter changed), the user LED, a crash flag
+const LIFE = [{ name: "led", type: "number", label: L("User LED (0 to 1)", "LED do usuário (0 a 1)", "LED del usuario (0 a 1)") }, { name: "tx", type: "number", label: L("Serial bytes sent", "Bytes seriais enviados", "Bytes seriales enviados") },
+  { name: "rx", type: "number", label: L("Serial bytes received", "Bytes seriais recebidos", "Bytes seriales recibidos") }, { name: "crashed", type: "boolean", label: L("Stopped (crashed)", "Parada (travou)", "Detenida (falló)") }];
 const NOEMU = {
   en: "This part does NOT emulate the chip: there is no AVR/ARM/Xtensa core, no bootloader and no peripheral registers. Its sketch is compiled to WebAssembly against ArduinoCore-API + dotcore (the bench's Arduino core), so the pins, voltages, Arduino API and timing in milliseconds are real, instruction timing is not. Code that pokes registers (PORTB, DDRB, TCCR1A, direct HW access) does not compile.",
   "pt-BR": "Esta peça NÃO emula o chip: não há núcleo AVR/ARM/Xtensa, bootloader nem registradores de periféricos. O sketch é compilado para WebAssembly contra ArduinoCore-API + dotcore (o núcleo Arduino da bancada), então os pinos, tensões, API Arduino e tempo em milissegundos são reais, o tempo de instrução não é. Código que mexe em registradores (PORTB, DDRB, TCCR1A, acesso direto ao hardware) não compila.",
@@ -97,21 +103,22 @@ export function boards() {
   ];
   for (const v of UNO) {
     const pins = unoPins(v.core);
-    const outputs = v.matrix ? [0, 1, 2].map((i) => ({ name: "matrix" + i, type: "number", label: L(`LED matrix word ${i}`, `Matriz de LED, palavra ${i}`, `Matriz de LED, palabra ${i}`) })) : undefined;
-    out.push(writePart({ id: "dotbench." + v.id, dir: v.id, w: UNO_W, d: UNO_D, h: 15, scale: 8, category: "mcu", tags: v.tags, keywords: v.kw, name: v.name, desc: cat(v.desc, NOEMU),
+    const outputs = [...(v.matrix ? [0, 1, 2].map((i) => ({ name: "matrix" + i, type: "number", label: L(`LED matrix word ${i}`, `Matriz de LED, palavra ${i}`, `Matriz de LED, palabra ${i}`) })) : []), ...LIFE];
+    out.push(writePart({ id: "dotbench." + v.id, dir: v.id, w: UNO_W + OVER, d: UNO_D, h: 15, scale: 8, category: "mcu", tags: v.tags, keywords: v.kw, name: v.name, desc: cat(v.desc, NOEMU),
       extra: { logic_mv: 5000, ...(v.core === "uno-r3" ? { vih_pct: 60 } : {}) }, pins, groups: unoGroups(),
       fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }],
       ...(outputs ? { outputs } : {}),
-      visuals: [{ id: "led", effect: "glow", x: Math.round(inch(1.2) * 8 + 40), y: 64, r: 7, color: "#f5c518", source: { gpio: 13 } }],
+      visuals: [{ id: "led", effect: "glow", x: Math.round((OVER + 31) * 8), y: 64, r: 7, color: "#f5c518", source: { gpio: 13 } }],
       behaviour: { type: "wasm", entry: "behaviour.wasm", abi: 1, core: v.core, memory_kb: 1024, stack_kb: 64, sources: ["src/main.ino"] },
-      svg: ({ px }) => `<rect x="2" y="2" width="${px(UNO_W) - 4}" height="${px(UNO_D) - 4}" rx="6" fill="${v.core === "uno-r3" ? "#00878f" : "#0b6e7a"}" stroke="#034a52" stroke-width="3"/>`
-        + `<rect x="0" y="${px(8)}" width="${px(16)}" height="${px(12)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><text x="${px(8)}" y="${px(14.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#333">${v.core === "uno-r3" ? "USB-B" : "USB-C"}</text>`
-        + `<rect x="0" y="${px(36)}" width="${px(14)}" height="${px(10)}" fill="#222" stroke="#000" stroke-width="2"/><text x="${px(7)}" y="${px(41.5)}" text-anchor="middle" font-family="monospace" font-size="10" fill="#aaa">DC</text>`
-        + `<rect x="${px(30)}" y="${px(18)}" width="${px(16)}" height="${px(16)}" fill="#1b1b1b"/><text x="${px(38)}" y="${px(27.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#bbb">${v.core === "uno-r3" ? "ATmega328P" : "RA4M1"}</text>`
-        + (v.matrix ? `<rect x="${px(44)}" y="${px(22)}" width="${px(21)}" height="${px(14)}" fill="#101010" stroke="#444" stroke-width="2"/>` : "")
-        + `<text x="${px(2)}" y="${px(30)}" font-family="sans-serif" font-size="15" font-weight="bold" fill="#fff">${v.title.replace("Arduino ", "")}</text><circle id="led" cx="${px(inch(1.2)) + 40}" cy="64" r="7" fill="#f5c518" opacity="0.25"/>` + pinDots(pins, px, 4),
+      svg: ({ px }) => { const o = px(OVER), B = [[0, 0], [66.04, 0], [68.58, 2.54], [68.58, 34.29], [67.31, 35.56], [67.31, 51.8], [66.04, 53.34], [0, 53.34]].map(([x, y]) => `${(o + px(x)).toFixed(1)},${px(y).toFixed(1)}`).join(" ");
+        return `<polygon points="${B}" fill="${v.core === "uno-r3" ? "#00878f" : "#0b6e7a"}" stroke="#034a52" stroke-width="3"/>`
+        + `<rect x="0" y="${px(8)}" width="${px(OVER + 10)}" height="${px(12)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><text x="${px(OVER / 2 + 3)}" y="${px(14.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#333">${v.core === "uno-r3" ? "USB-B" : "USB-C"}</text>`
+        + `<rect x="0" y="${px(36)}" width="${px(OVER + 8)}" height="${px(10)}" fill="#222" stroke="#000" stroke-width="2"/><text x="${px(OVER / 2 + 2)}" y="${px(41.5)}" text-anchor="middle" font-family="monospace" font-size="10" fill="#aaa">DC</text>`
+        + `<rect x="${px(OVER + 30)}" y="${px(18)}" width="${px(16)}" height="${px(16)}" fill="#1b1b1b"/><text x="${px(OVER + 38)}" y="${px(27.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#bbb">${v.core === "uno-r3" ? "ATmega328P" : "RA4M1"}</text>`
+        + (v.matrix ? `<rect x="${px(OVER + 44)}" y="${px(22)}" width="${px(21)}" height="${px(14)}" fill="#101010" stroke="#444" stroke-width="2"/>` : "")
+        + `<text x="${px(OVER + 2)}" y="${px(30)}" font-family="sans-serif" font-size="15" font-weight="bold" fill="#fff">${v.title.replace("Arduino ", "")}</text><circle id="led" cx="${px(OVER + 31)}" cy="64" r="7" fill="#f5c518" opacity="0.25"/>` + pinDots(pins, px, 4); },
       files: { "src/main.ino": blinkIno(v) },
-      tests: { "blink.test.json": blinkTest(v.matrix ? [{ comment: "the heart is on the matrix while the LED is on", expect_output: { name: "matrix0", value: 0x3184a444 } }, { expect_output: { name: "matrix2", value: 0x100a0 } }] : []) } }));
+      tests: { "blink.test.json": blinkTest(v.matrix ? [{ comment: "the heart is on the matrix while the LED is on", expect_output: { name: "matrix0", value: 0x3184a444 } }, { expect_output: { name: "matrix2", value: 0x100a0040 } }] : []) } }));
   }
   // ---------------------------------------------------------------- ESP32-S3 DevKitC-1
   { const left = ["V33_1", "V33_2", "RST", 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, "V5", "GND_1"], right = ["GND_2", "TX", "RX", 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, "GND_3", "GND_4"];
@@ -124,7 +131,8 @@ export function boards() {
       const g = n === "TX" ? 43 : n === "RX" ? 44 : n;
       return P(n === "TX" || n === "RX" ? n : "IO" + n, "io", x, y, { gpio: g, face: "bottom", abs_max_mv: HI3, caps: caps(g), label: { en: n === "TX" || n === "RX" ? n : "IO" + n } });
     };
-    const pins = [...left.map((n, i) => mk(n, 8 + 2.54 * i, 1.27)), ...right.map((n, i) => mk(n, 8 + 2.54 * i, 24.13))];
+    // the picture is the top view with the 3V3 end (antenna) on the left and the USB end on the right: J1 (3V3 ... 5V, GND) is the front row (y = 24.13 mm), J3 (GND ... GND) the back row (y = 1.27 mm), 22.86 mm (0.9 in) apart
+    const pins = [...left.map((n, i) => mk(n, 8 + 2.54 * i, 24.13)), ...right.map((n, i) => mk(n, 8 + 2.54 * i, 1.27))];
     const W = 69, D = 25.4;
     out.push(writePart({ id: "dotbench.esp32-s3-devkitc", dir: "esp32-s3-devkitc", w: W, d: D, h: 14, scale: 10, category: "mcu", tags: ["esp32", "esp32-s3", "espressif", "devkitc", "3v3", "wifi", "ble"],
       keywords: KW(["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontroller", "board", "3.3v", "wifi", "ble"], ["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontrolador", "placa", "3,3v", "wifi", "ble"], ["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontrolador", "placa", "3,3v", "wifi", "ble"]),
@@ -134,10 +142,11 @@ export function boards() {
         "ESP32-S3-DevKitC-1: lógica de 3,3 V, dos cabezales de 22 pines a 0,9 pulgadas (apta para protoboard, pines hacia abajo), PWM (LEDC) en cualquier GPIO, ADC de 12 bits en GPIO1 a 20 (analogReadResolution hasta 14 bits), táctil en GPIO1 a 14, I2C en GPIO8 y 9, SPI en GPIO10 a 13, UART0 en GPIO43 y 44, LED RGB de la placa en GPIO48 (mostrado como un LED), BOOT en GPIO0. Aliméntala con el campo usb o 5 V en el pin 5V; 3V3 es una salida de 3,3 V con la placa encendida. GPIO19 y 20 son los pines USB y no se modelan como tal; GPIO35 a 37 quedan libres (sin PSRAM). WiFi y Bluetooth no se simulan."), NOEMU),
       extra: { logic_mv: 3300 }, pins, groups: [{ pins: ["V33_1", "V33_2"] }, { pins: ["GND_1", "GND_2", "GND_3", "GND_4"] }],
       fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }],
-      visuals: [{ id: "led", effect: "glow", x: 600, y: 125, r: 8, color: "#ffffff", source: { gpio: 48 } }],
+      outputs: [...["r", "g", "b"].map((c) => ({ name: "rgb_" + c, type: "number", min: 0, max: 255, label: L("RGB LED " + c.toUpperCase() + " (0 to 255)", "LED RGB " + c.toUpperCase() + " (0 a 255)", "LED RGB " + c.toUpperCase() + " (0 a 255)") })), ...LIFE],
+      visuals: [{ id: "led", effect: "glow", x: 560, y: 125, r: 8, color: "#ffffff", source: { gpio: 48 } }],
       behaviour: { type: "wasm", entry: "behaviour.wasm", abi: 1, core: "esp32-s3", memory_kb: 1024, stack_kb: 64, sources: ["src/main.ino"] },
-      svg: ({ px }) => `<rect x="2" y="2" width="${px(W) - 4}" height="${px(D) - 4}" rx="4" fill="#1b1b1b" stroke="#000" stroke-width="3"/><rect x="${px(26)}" y="${px(6)}" width="${px(18)}" height="${px(13)}" fill="#8a8f98" stroke="#555" stroke-width="2"/><text x="${px(35)}" y="${px(13.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#222">ESP32-S3</text><rect x="0" y="${px(8)}" width="${px(8)}" height="${px(9)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><circle id="led" cx="600" cy="125" r="8" fill="#ffffff" opacity="0.25"/>` + pinDots(pins, px, 4),
-      files: { "src/main.ino": blinkIno({ title: "ESP32-S3 DevKitC-1", core: "esp32-s3" }) },
+      svg: ({ px }) => `<rect x="2" y="2" width="${px(W) - 4}" height="${px(D) - 4}" rx="4" fill="#1b1b1b" stroke="#000" stroke-width="3"/><rect x="${px(4)}" y="${px(6)}" width="${px(18)}" height="${px(13)}" fill="#8a8f98" stroke="#555" stroke-width="2"/><text x="${px(13)}" y="${px(13.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#222">ESP32-S3</text><rect x="${px(W - 8)}" y="${px(8)}" width="${px(8)}" height="${px(9)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><circle id="led" cx="560" cy="125" r="8" fill="#ffffff" opacity="0.25"/>` + pinDots(pins, px, 4),
+      files: { "src/main.ino": blinkIno({ title: "ESP32-S3 DevKitC-1", core: "esp32-s3", rgb: true }) },
       tests: { "blink.test.json": blinkTest() } })); }
   return out;
 }
