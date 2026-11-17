@@ -515,7 +515,7 @@ export default function (ctx) {
       default: break;
     }
   }
-  const parseDotAdv = () => { const a = parseAd(dot.adv.data), b = parseAd(dot.adv.rsp); return { name: b.name ?? a.name, uuids: [...a.uuids128, ...b.uuids128] }; };
+  const parseDotAdv = () => { const a = parseAd(dot.adv.data), b = parseAd(dot.adv.rsp); return { name: b.name ?? a.name, uuids: [...a.uuids128, ...b.uuids128], mfg: b.mfg ?? a.mfg }; };
 
   function drain() {
     if (closed) return;
