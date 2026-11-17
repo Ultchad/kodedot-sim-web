@@ -1,0 +1,6 @@
+{
+  "area": "usb",
+  "description": "USB-C cable: VBUS through the power area, the USB-Serial/JTAG console pipe to a computer (8 KB RX ring, stall rule), the real kdrv_kfw container decoder for the computer link's installs",
+  "exports": ["usb_plug", "usb_host", "usb_send", "usb_recv", "usb_get"],
+  "js": ["usb.js"]
+}

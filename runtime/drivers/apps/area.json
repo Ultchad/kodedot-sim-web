@@ -1,10 +1,9 @@
 {
   "area": "apps",
-  "description": "The apps region and the app_pending mailbox as persistent regions under the REAL kdrv_apps.c (esp_partition/esp_image shims); OTA slot, kfw and image check stay stubbed",
+  "description": "The apps region and the app_pending mailbox as persistent regions under the REAL kdrv_apps.c (esp_partition/esp_image shims); OTA slot and the file image check stay stubbed; the kfw container decoder is real (runtime/drivers/usb)",
   "supersedes": {
     "components/kdrv/apps/src/kdrv_slot.c": "stubbed: OTA slot flash region",
     "components/kdrv/apps/src/kdrv_slot_crash.c": "stubbed: crash record in flash",
-    "components/kdrv/apps/src/kdrv_kfw.c": "stubbed: firmware image verification (mbedTLS PSA)",
     "components/kdrv/apps/src/kdrv_image_check.c": "stubbed: ESP image verification"
   },
   "test_apps": [
