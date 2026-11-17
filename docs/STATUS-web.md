@@ -271,13 +271,86 @@ scale), prints triangles against the budget and the contract problems, exit code
 `node scripts/model-gallery.mjs` writes the contact sheet `web/screenshots/models/_gallery.png`. `npx vitest run src/bench3d`
 checks every model in node. Last run: unit tests 196/196, `npm run build` green, `model-shot --all` 4/4 ok.
 
-### Workbench (first step; the rest of phase 1 follows)
-- `host.mode`: 'device' | 'workbench' (desk default workbench, phone default device; `?mode=` in the URL decides for one visit; the
-  existing check scripts ask for `mode=device`). The toolbar has the Device / Workbench switch; in the Workbench: Focus on the Dot,
-  Whole table, Undo, Redo.
-- One canvas, one Dot: `Device3D` got `mode`/`world`; in the Workbench the same model lies face up on the table
-  (`web/src/workbench/`: `world.ts` scene, `World.tsx` input, `camera.ts` orbit rig, `table.ts` desk and mat, `layout.ts` table maths),
-  the screen stays live, the buttons press; switching modes moves the Dot and the camera, nothing restarts.
-- Bench store v3: every object has `pos` and `rot`; `near` is what the position means for kinds with a range; `move`, `rotate`,
-  `setNear` (moves the object), fixtures (the microSD card's place), `checkpoint`/`undo`/`redo`; older benches get places.
-- Not yet: bodies on the table, dragging, ranges, the new side panel, the Workbench checks.
+### Workbench (phase 1: the scene and the wireless objects in 3D)
+
+Run: `npm run build && node scripts/workbench-check.mjs [--no-shots] [--no-perf]` (headless Chrome, fresh profile, the real page).
+
+What it is
+- `host.mode`: 'device' | 'workbench' (desk and tablet default Workbench, phone default Device; remembered apart; `?mode=` in the
+  URL decides for one visit, and the older check scripts ask for `mode=device`). The toolbar's first control is the Device / Workbench
+  switch; in the Workbench it also has Focus on the Dot, Whole table, Undo, Redo. On a phone the Workbench is opened from the Bench
+  tab of the sheet ("Open the Workbench") and left the same way or with the toolbar.
+- One canvas, one Dot (`Device3D` got `mode`/`world`): in the Workbench the same model lies face up on the table
+  (`web/src/workbench/`: `world.ts` scene and the Dot's pose, `bodies.ts` everything on the table, `World.tsx` input, `camera.ts`
+  orbit rig, `table.ts` wooden top and desk mat with a 10 mm dot grid and a ruler, `layout.ts` table maths, `state.ts` selection and
+  commands). The screen is the live framebuffer and takes touch, the buttons press. Switching modes moves the Dot and the camera
+  (about half a second); the program, the bench and the WebGL context stay.
+- Camera: drag turns, Shift/middle/right drag slides, wheel and pinch zoom, two fingers slide; never under the table (78 degrees
+  from the vertical at most), never off the table; double click on a thing or on the Dot frames it; keys F and 0.
+- Things stay on the table: dragging slides on the table plane, snapped to 5 mm (Alt: free), kept on the mat; a dragged thing
+  goes round the Dot and the other things (it is pushed out the shortest way), several selected things move as one and stop
+  where one of them has no room; R / Shift+R and a button turn a quarter; Shift-click adds to the selection, Ctrl+A, Escape;
+  Delete; Ctrl+D; Ctrl+Z / Ctrl+Shift+Z and the toolbar (bench edits from the scene AND from the panel: add, delete, move, turn,
+  near/away, rename, field edits; a drag, a held arrow or typing is one step); arrows nudge one grid step (Shift: five), N brings
+  near or takes away; with nothing selected the arrows are the Dot's D-pad as before.
+- Bodies: every kind has a Bench3D model (see the kit above): NFC tag, NFC card, desktop NFC reader (status light), EM4100 card,
+  T5577 fob, door reader (bar blue while waiting, green granted, red denied), router (power, link: amber blinking while the Dot
+  joins and blue when joined, traffic), TV (its screen shows power, channel, volume, mute; standby lamp), remote (six caps that go
+  down; pressed in the scene they send, held they repeat), charger (its cable runs to a USB-C plug that goes into the middle of
+  the Dot's bottom edge when plugged), battery (label with the charge), microSD card (flies into the slot of the left wall when
+  inserted). Static bodies are instanced per kind and material family; lamps, screens and caps are a small copy per object.
+  What the Dot does with an object shows as a ring pulse under it (green ok, red refused) and on its lamps.
+- Motion: the amber ball off the Dot's top edge tilts it (drag: pitch and roll; Shift: heading; double click: flat; Alt+arrows
+  from the keyboard), writing the pose the motion sensors read; the Dot's card in the panel has the three sliders, Shake and
+  Lay flat. Lying flat on the table is the zero pose.
+- Near and far are distances (`layout.ts`): NFC within 46 mm of the coil (upper half of the back), 125 kHz within 58 mm (lower
+  half), infrared a beam out of the top edge (33 degrees either side, 255 mm), Wi-Fi within 300 mm with the signal the Dot hears
+  falling with the distance (the router's own setting less up to about 18 dB; the fake's `signal` is set from it), the charger
+  within its cable (105 mm of the bottom edge), the card within 26 mm of its slot. The range shows on the table while a thing of
+  that area is dragged (and while a palette tile is), stronger when the thing is inside. Dragging in or out flips the object's
+  near state at once; the switch moves the object just into or just out of its range. The bench store is the only truth
+  (`pos`, `rot` per object, saved as v3; older benches get places: near things near, the rest parked); the runtime re-applies it
+  to every program as before.
+- Side panel (the same in Device mode and in the phone sheet): the inspector of the selection (the object's own card; the Dot:
+  tilt, shake, this phone's sensors; the microSD card: its files panel; several things: bring near, take away, delete), the list
+  of what is on the table with each thing's switch, and the palette (click to drop at a free spot, or drag the tile onto the table).
+
+Checked by `workbench-check.mjs` (last run: all passed): the page opens in the Workbench with kodeOS running; the Dot's screen
+in the scene is live; a swipe on it unlocks kodeOS; the NFC app is opened from kodeOS by touch on the 3D screen; an NFC tag is
+added, taken away with the switch (it moves), dragged with the mouse from far to near (near, on the grid, not overlapping the Dot)
+and Read in the app reads it; dragged away it is gone for the Dot's NFC area; Device and back: the NFC app is still the running
+program, no reboot, same bench; arrows, R, N, Delete, Ctrl+Z, the undo and redo buttons; the remote's Vol+ pressed in the scene
+sends; the card is in the slot at boot, dragged out it is ejected, its switch puts it back; the charger plugs and unplugs; the
+tilt ball tilts the Dot; a palette tile dropped on the table lands there; a reload keeps every place and the bench is applied
+again; no page errors; nothing is drawn while nothing changes.
+
+Other checks after the Workbench landed (the older scripts ask for Device mode and follow the new panel): `system-check.mjs`
+all passed (25), `bench-check.mjs` 20 passed (the bench is driven through the new list, palette and inspector, in Device mode
+with the 2D view: the bench works without the table), `settings-check.mjs` all passed (18; run before the default names and
+the toolbar thresholds changed), `AUDIT=off headless-check.mjs` 169/169 (run before the last toolbar threshold change),
+unit tests 214/214, `npm run build` green. After main took the merge of the parts engine, USB and Bluetooth, `workbench-check.mjs` passed again on a fresh build (the other scripts were not run again after that merge). Layout audit (`layout-audit.mjs`, with new scenes `bench-objects`, `bench-list`,
+`object-menu`, `workbench`): 1280x720 and 390x844 clean in both themes and three languages; 820x1180 and 1024x768 clean (12/12)
+after the toolbar labels were made to collapse earlier (the Spanish and Portuguese toolbar overlapped its neighbours on a tablet).
+
+Frame time, whole table in view, 1280 x 720, SwiftShader (software GL, a floor: it is bound by pixel shading; no real GPU was
+measured): 1 object 82 to 90 ms, 20 objects 108 to 166 ms, 60 objects 185 to 332 ms over four runs on a shared machine
+(the device alone in Device mode measures about 250 ms here, where it fills the view). Draw calls: 33, 90, 150 (60 objects of
+nine kinds: the static bodies are 4 to 5 calls per kind whatever the count; the rest is lamps, screens and button caps).
+
+Screenshots (`web/screenshots/workbench/`): `table-dozen-desktop.png`, `table-dozen-low-angle.png`, `table-dozen-dark.png`,
+`range-{nfc,rfid,wifi,ir,power}.png`, `range-while-dragging.png`, `object-<kind>-{a,b}.png` (every object close up from two
+sides, the Dot and the card included), `nfc-read-in-workbench.png`, `dot-tilted.png`, `perf-60-objects.png`,
+`table-{tablet,phone}.png` and `-panel.png`, `desktop-empty.png`; every model alone: `web/screenshots/models/`.
+
+Estimates and limits
+- The maker publishes no positions for the coils, the infrared window or the USB-C port: NFC and 125 kHz coils against the back,
+  infrared out of the top edge, USB-C in the middle of the bottom edge are estimates in `layout.ts` (`ANCHORS`). The card slot is
+  the one of the left wall of the body model.
+- Infrared: no shipped app arms the receiver or transmits, so the TV reacting to the Dot's codes is the driver's path
+  (`tv-state` events) and is not exercised end to end; the remote reports "receiver is not armed".
+- The wireless objects are drawn smaller than life where life is too big for a desk (TV 150 mm wide, router 118 mm).
+- Pressing a remote button needs the pointer on the cap itself; a touch on a phone-size table is fiddly: zoom in first.
+- No real GPU, phone or tablet was used: frame rate, pinch and two-finger slide on glass are unverified.
+- Seams for phase 2: `bodies.ts` draws any Bench3D model by id (static part instanced, dynamic part per copy, `animate` with a
+  state object, controls picked by ray), `layout.ts` sizes come from the models' footprints, the store keeps `pos`/`rot` per
+  object; wired parts need their own state source (the parts engine), terminals drawn from `model.terminals`, wires and a library.
