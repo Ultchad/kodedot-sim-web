@@ -112,3 +112,7 @@ Everything is plain ES modules in `runtime/web-adapter/` (flat, copy the folder)
 - The first `dotbench part build` of a code part compiles dotcore (about 21 s) and needs emsdk; later builds use the cache.
 - Node takes the `worker_threads` path for parts even though Emscripten defines a global `Worker` there (found and fixed during the end-to-end work).
 - `runtime/drivers/parts/area.json` exists only to register the test apps so `tests/node/run.sh` keeps working.
+
+## kodeOS role check
+
+`tools/dotbench sdk --role kodeos` with the new and changed drivers: `340 real SDK files, 324 LVGL files, 132 stub functions`, every group `0 failed`, exit 0. The kodeOS image itself was not rebuilt or booted with a bench attached.
