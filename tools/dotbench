@@ -2,7 +2,7 @@
 """dotbench: build kode-sdk C apps for the browser test bench.
 
   dotbench sdk                      precompile SDK + LVGL + QP/C + runtime into static libraries
-  dotbench build APPDIR [-o OUT]    compile an app's main/ sources, link, package OUT/<name>.dotbench
+  dotbench build APPDIR [-o OUT]    compile an app's main/ sources, link, package OUT/<name>.zip (and <name>.dotbench)
   dotbench seed OLD_BUILD_DIR       copy an existing build dir into --build (new worktree starts warm)
   dotbench areas                    list hardware areas (runtime/drivers/*/area.json)
 
@@ -419,7 +419,11 @@ def cmd_build(a):
             z.write(src, "factory/storage/" + rel)
         z.writestr("manifest.json", json.dumps(manifest, indent=1))
     T.save_hash_cache(base_build / "hashcache.json")
-    print("dotbench build: %s (%d bytes)" % (pkg, pkg.stat().st_size))
+    # The same package under the name people share and install: an app package is a plain zip.
+    # (<name>.dotbench stays beside it: tests and the site's factory list still read that name.)
+    zip_pkg = outdir / (name + ".zip")
+    shutil.copyfile(pkg, zip_pkg)
+    print("dotbench build: %s (%d bytes)" % (zip_pkg, zip_pkg.stat().st_size))
     return 0
 
 

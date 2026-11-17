@@ -83,7 +83,7 @@ export function AppsList({ onRun, compact = false }: { onRun?: () => void; compa
         <input
           ref={file}
           type="file"
-          accept=".dotbench"
+          accept=".zip,.dotbench,application/zip"
           hidden
           data-testid="file-input"
           onChange={(e) => {

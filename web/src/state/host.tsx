@@ -1,4 +1,5 @@
 import { setUsbSystem } from '../bench/drivers/usb';
+import { APP_PACKAGE_RE } from '../lib/appPackage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { applyPoseToBench } from '../bench/sync';
 import { DRIVERS } from '../bench/drivers';
@@ -128,7 +129,7 @@ const NO_PROGRAM = new Atom<Program | null>(null);
 const NO_APPS = new Atom<readonly InstalledApp[]>([]);
 
 /** Display name of an app: a saved bundle's file name without the extension; the system reads kodeOS. */
-export const appLabel = (name: string): string => displayAppName(name.replace(/\.dotbench$/i, ''));
+export const appLabel = (name: string): string => displayAppName(name.replace(APP_PACKAGE_RE, ''));
 
 export function HostProvider({ children }: { children: ReactNode }) {
   const { t, setLocale } = useI18n();
@@ -247,7 +248,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
 
   const installFile = useCallback(
     async (file: File) => {
-      if (!/\.dotbench$/i.test(file.name)) return say('error', 'notice.badExt');
+      if (!APP_PACKAGE_RE.test(file.name)) return say('error', 'notice.badExt');
       const dev = dot();
       if (!dev) return;
       setAppBusy('install');

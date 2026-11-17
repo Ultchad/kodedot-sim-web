@@ -393,7 +393,7 @@ const Computer: View = ({ obj }) => {
           <input type="checkbox" className="switch" checked={runAfter} onChange={(e) => setRunAfter(e.target.checked)} />
           {t('usb.install.run')}
         </label>
-        <input ref={app} type="file" accept=".dotbench,application/zip" className="sr-only" tabIndex={-1} onChange={(e) => (void bytesOf(e.target.files?.[0]).then((b) => b && work(t('usb.install'), (c) => c.installPackage(b, { run: runAfter }))), (e.target.value = ''))} data-testid="usb-app-file" />
+        <input ref={app} type="file" accept=".zip,.dotbench,application/zip" className="sr-only" tabIndex={-1} onChange={(e) => (void bytesOf(e.target.files?.[0]).then((b) => b && work(t('usb.install'), (c) => c.installPackage(b, { run: runAfter }))), (e.target.value = ''))} data-testid="usb-app-file" />
         <span className="tag">{t('usb.files')}</span>
         <input className="field-input font-mono !text-[12.5px]" value={path} onChange={(e) => setPath(e.target.value)} aria-label={t('usb.path')} data-testid="usb-path" />
         <div className="flex flex-wrap gap-1.5">

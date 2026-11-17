@@ -1,3 +1,4 @@
+import { APP_PACKAGE_RE } from './appPackage';
 /**
  * The page's side of "which 3D model". The store itself (parsing the GLB, keeping it in this browser, feeding the 3D
  * view) belongs to the 3D model code in src/device3d/customModel.ts; this file only knows its contract and turns its
@@ -87,9 +88,9 @@ export function optionsOf(state: CustomModelState | null | undefined): { options
 
 export type DropKind = 'app' | 'model' | 'other';
 
-/** What a dropped or picked file is, by its name: a .dotbench app, a .glb or .gltf model, or something the page cannot use. */
+/** What a dropped or picked file is, by its name: an app package (.zip), a .glb or .gltf model, or something the page cannot use. */
 export function classifyFile(name: string): DropKind {
-  if (/\.dotbench$/i.test(name)) return 'app';
+  if (APP_PACKAGE_RE.test(name)) return 'app';
   if (/\.(glb|gltf)$/i.test(name)) return 'model';
   return 'other';
 }
