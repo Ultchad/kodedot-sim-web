@@ -155,7 +155,7 @@ memory and browser storage.
 
 **Design** (`runtime/drivers/sd/sdcard.c`, tests `tests/node/sd/bigsd*.mjs`, `tests/browser/bigsd.test.mjs`).
 * Card <= 32 MB: DENSE, sector s at byte s*512 of region `sd-card` (32 MiB), exactly the layout cards saved by earlier builds have: **migration is "do nothing"**
-  (tested with a package of the dense build: 8 MB and 32 MB cards with files load, mount and stay writable). Zero chunks are not stored by the host as before.
+  (tested with a real package of the dense build before it was overwritten in /home/claude/dotbench/build: 8 MB and 32 MB cards with files load, mount and stay writable; the test now emulates it by dropping `sd-map` when that package is a current build). Zero chunks are not stored by the host as before.
 * Card > 32 MB: SPARSE. `sd-card` (32 MiB) + `sd-pool2` (24 MiB) are a pool of 4 KiB slots (14336). A two-level table maps card chunk (4 KiB = 8 sectors) to a slot:
   directory in `sd-map` (32768 x u16, 64 KiB, covers 256 GiB), leaves are pool slots (2048 x u16 = 8 MiB of card each). A slot is taken at the first write of a
   NON-ZERO sector into a hole (zeros into a hole do nothing: the SDK's own last-sector write-back check, and mkfs, store nothing), and given back, zeroed (so the host
