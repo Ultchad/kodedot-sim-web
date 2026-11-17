@@ -4,8 +4,8 @@
  * the bill of materials of ABX00080: every fitted part at its place and angle, the lands of the parts left off the
  * board bare): USB-C and the barrel jack on the left edge, the Renesas RA4M1 (LQFP-64, 10 x 10 mm) in the middle, the
  * buck converter with its inductor and its row of capacitors by the jack, the two input diodes, the SWD port (2 x 5
- * at 1.27 mm) and the ICSP header on the right, the reset button in the corner, and the four LEDs: ON, L (pin 13), TX
- * and RX. A sparse blue board, as the real one is.
+ * at 1.27 mm) and the ICSP header on the right, the reset button (where the manifest's control is), and the four
+ * LEDs: ON, L (pin 13, where the manifest's `visuals.led` is), TX and RX. A sparse blue board, as the real one is.
  *
  * Legends: as on the maker's picture of the board, in the kit's type, with the grid of fine lines the board carries on
  * its left third. The maker's name, logo, the marks taken from it and the web address are left out; "UNO R4 MINIMA"
@@ -15,7 +15,7 @@ import manifestJson from '../../../../../parts/uno-r4-minima/manifest.json';
 import { FONT_MONO, INK, Shape, defineModel, footprintOf, partState, pinHeader, print, terminalsFromManifest, text, usbC, type Finish, type PartState } from '../../index';
 import {
   C0402, C0603, C0805, L0603, LED0603, R0402, SOD123, SOT143, TOP, animateUno, chips, dcJack, dots, drawCaption, drawPinLabels, emptyLands, eraseHoles, flatDiode, inductor, leadless,
-  ledBodies, ledLamps, legend, miniHeader, pads, plate, qfpLean, resetButton, resetCap, smallOutline, trafficOutputs, unoBoard, unoGeo, type UnoLeds, type UnoManifest,
+  ledBodies, ledLamps, legend, miniHeader, pads, plate, qfpLean, resetButton, resetCap, resetPress, smallOutline, trafficOutputs, unoBoard, unoGeo, type UnoLeds, type UnoManifest,
 } from './uno';
 
 const manifest = manifestJson as unknown as UnoManifest;
@@ -28,12 +28,17 @@ const MASK: Finish = ['pcb', '#1b5587'];
 const USB = { x: -0.65, y: 15.47 }, JACK = { x: Math.max(-2.04, -geo.x0), y: 45.54 };
 const MCU = { x: 43.5, y: 21.84, size: 10 };
 const ICSP = { x: 64.9, y: 25.4 }, SWD = { x: 61.63, y: 12.64 };
-const RESET = { x: 6.35, y: 3.94 };
-const LEDS: UnoLeds = { l: [27.94, 11.18], tx: [27.94, 16.76], rx: [27.94, 19.05], on: [58.42, 16.76], size: LED0603 };
-/** The grid printed on the left third: lines 3 mm apart, [place, from, to]. */
-const GRID_X: [number, number, number][] = [[2.75, 0, D], [5.75, 0, 7], [5.75, 9.2, D], [8.75, 0, 7], [8.75, 9.2, D], [11.75, 0, D], [14.75, 4.75, D], [17.75, 11.8, D], [20.75, 13.1, D], [23.75, 25.3, D]];
+/** The reset button: where the manifest has the control (an estimate there; the PCB document has it at 6.35, 3.94). */
+const RESET = geo.control('reset');
+/** The word RESET under the button, and the room the grid leaves it: [x0, y0, x1, y1]. */
+const RESET_WORD = { x: RESET[0] - 0.15, y: RESET[1] + 4.11 };
+const RESET_ROOM = [RESET_WORD.x - 3.2, RESET_WORD.y - 1.05, RESET_WORD.x + 3.5, RESET_WORD.y + 1.15] as const;
+/** L (pin 13) lights where the manifest's `visuals.led` is; TX, RX and ON as the PCB document has them. */
+const LEDS: UnoLeds = { l: geo.visual('led'), tx: [27.94, 16.76], rx: [27.94, 19.05], on: [58.42, 16.76], size: LED0603 };
+/** The grid printed on the left third: lines 3 mm apart, [place, from, to]; it is rubbed out where the word RESET stands. */
+const GRID_X: [number, number, number][] = [[2.75, 0, D], [5.75, 0, D], [8.75, 0, D], [11.75, 0, D], [14.75, 4.75, D], [17.75, 11.8, D], [20.75, 13.1, D], [23.75, 25.3, D]];
 const GRID_Y: [number, number, number][] = [
-  [2.8, 0, 13.1], [5.8, 0, 16.6], [8.8, 0, 3], [8.8, 9.7, 16.6], [11.8, 5.75, 22.9], [14.8, 5.75, 22.9], [17.8, 5.75, 22.9], [20.8, 0, 22.9], [23.8, 0, 26.4], [26.8, 0, 25],
+  [2.8, 0, 13.1], [5.8, 0, 16.6], [8.8, 0, 16.6], [11.8, 5.75, 22.9], [14.8, 5.75, 22.9], [17.8, 5.75, 22.9], [20.8, 0, 22.9], [23.8, 0, 26.4], [26.8, 0, 25],
   [29.8, 0, 25], [32.8, 0, 25], [35.8, 0, 25], [38.8, 0, 25], [41.8, 11.9, 26.4], [44.8, 13.1, 25], [47.8, 0, 25], [50.8, 0, 25],
 ];
 
@@ -49,7 +54,7 @@ export default defineModel<PartState>({
       unoBoard(s, geo, MASK, ctx.seg);
       usbC(s, { x: USB.x, z: USB.y, y: TOP, turn: 1 });
       dcJack(s, JACK.x, JACK.y, 1, ctx.seg);
-      resetButton(s, RESET.x, RESET.y);
+      resetButton(s, RESET);
       chipTop = qfpLean(s, { x: MCU.x, z: MCU.y, size: MCU.size, perSide: 16, h: 1.45 });
       pinHeader(s, { x: ICSP.x, z: ICSP.y, y: TOP, n: 3, rows: 2, turn: 1 });
       miniHeader(s, SWD.x, SWD.y, 1);
@@ -81,6 +86,7 @@ export default defineModel<PartState>({
           c.fillStyle = INK.silk;
           for (const [x, y0, y1] of GRID_X) c.fillRect(x - 0.11, y0, 0.22, y1 - y0);
           for (const [y, x0, x1] of GRID_Y) c.fillRect(x0, y - 0.11, x1 - x0, 0.22);
+          c.clearRect(RESET_ROOM[0], RESET_ROOM[1], RESET_ROOM[2] - RESET_ROOM[0], RESET_ROOM[3] - RESET_ROOM[1]);
           // bare metal: the lands of the parts left off the board (the crystal, its two capacitors, two pull-ups and a few more), test points, fiducials, the jack's lug
           pads(c, [[41.54, 10.94, 1.4, 1.15], [43.74, 10.94, 1.4, 1.15], [41.54, 12.64, 1.4, 1.15], [43.74, 12.64, 1.4, 1.15]]);
           emptyLands(c, [[12.44, 6.17, 90], [41.74, 14.11], [43.64, 14.11], [14.87, 29.66], [14.87, 30.76], [8.44, 30.76], [12.94, 30.76]], 1.0, 0.5);
@@ -100,7 +106,7 @@ export default defineModel<PartState>({
           legend(c, 'TX', LEDS.tx[0] - 2.7, LEDS.tx[1], 1.45);
           legend(c, 'RX', LEDS.rx[0] - 2.7, LEDS.rx[1], 1.45);
           legend(c, 'ON', LEDS.on[0] - 2.8, LEDS.on[1], 1.45);
-          legend(c, 'RESET', 6.2, 8.05, 1.7);
+          legend(c, 'RESET', RESET_WORD.x, RESET_WORD.y, 1.7);
           legend(c, 'ICSP', ICSP.x + 0.3, ICSP.y - 4.75, 1.35);
           legend(c, 'SWD', SWD.x - 2.2, SWD.y, 1.1, true);
           c.fillRect(W - 1.2, ICSP.y + 1.0, 1.2, 2.4); // the mark of the ICSP header's first pin, on the board's edge
@@ -117,7 +123,8 @@ export default defineModel<PartState>({
           text(c, 'AB3CFM', 0, 0.95, 1.55, { weight: 600, font: FONT_MONO, spacing: 0.05 });
         },
       }),
-      resetCap(geo, RESET.x, RESET.y, ['matte', '#eeebe3'], ctx.seg),
+      resetCap(geo, manifest, ['matte', '#eeebe3'], ctx.seg),
+      resetPress(geo, manifest),
       ...ledLamps(geo, LEDS),
     );
     return root;

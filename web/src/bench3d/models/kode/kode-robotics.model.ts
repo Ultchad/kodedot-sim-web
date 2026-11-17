@@ -4,7 +4,7 @@
  * Sources: parts/kode-robotics/manifest.json (the footprint: a 45 x 40.5 mm board plus the header's pins; the four
  * mounting holes; every terminal; the connector's seat: measured from the picture by the parts engineer, an
  * ESTIMATE) and the maker's store picture (ref-4, never copied) for everything seen: the black rounded-square board
- * with a gold-ringed hole in each corner; on the far edge, left to right, the "motor B" terminal block, the four
+ * with a plain drilled hole in each corner; on the far edge, left to right, the "motor B" terminal block, the four
  * straight "stepper" pins and the "motor A" block (black blocks, big bright slotted screws, 3.81 mm apart); the three
  * "servo" pins and the I2C sockets down the left edge, the sensor sockets down the right, each contact named in gold
  * beside it; the small QFN driver in the middle with its two sense resistors above it, a small part on either side
@@ -155,20 +155,28 @@ export default defineModel<PartState>({
             g.stroke();
           }
           // the far edge: each connector's name under it, with the corner marks that tie it to its part
-          const named = (t: string, x0: number, x1: number, face: number, size: number) => {
-            label(t, (x0 + x1) / 2, face + 0.45 + 0.35 + size * 0.36, size);
+          // (a block's outline runs the whole way down its right side, as the picture shows; the others are corners)
+          const named = (t: string, x0: number, x1: number, face: number, size: number, side = face - 1) => {
+            // the name stands under the middle of its part, moved along just enough to stay off a mounting hole
+            const z = face + 0.45 + 0.35 + size * 0.36, half = (t.length * size * 0.6) / 2;
+            let x = (x0 + x1) / 2;
+            for (const h of B.holes) {
+              const r = h.d / 2 + 0.6;
+              if (Math.abs(h.z - z) < r + size * 0.4 && Math.abs(h.x - x) < r + half) x = h.x + Math.sign(x - h.x) * (r + half);
+            }
+            label(t, x, z, size);
             g.beginPath();
             g.moveTo(x0, face - 1);
             g.lineTo(x0, face + 0.45);
             g.lineTo(x0 + 1.4, face + 0.45);
-            g.moveTo(x1, face - 1);
+            g.moveTo(x1, side);
             g.lineTo(x1, face + 0.45);
             g.lineTo(x1 - 1.4, face + 0.45);
             g.stroke();
           };
           const face = at.MOTB_1[2] + BLOCK.d / 2;
-          named('motor B', at.MOTB_1[0] - MOT_PITCH / 2 - 0.3, at.MOTB_2[0] + MOT_PITCH / 2 + 0.3, face, 2);
-          named('motor A', at.MOTA_1[0] - MOT_PITCH / 2 - 0.3, at.MOTA_2[0] + MOT_PITCH / 2 + 0.3, face, 2);
+          named('motor B', at.MOTB_1[0] - MOT_PITCH / 2 - 0.3, at.MOTB_2[0] + MOT_PITCH / 2 + 0.3, face, 2, B.far + 0.4);
+          named('motor A', at.MOTA_1[0] - MOT_PITCH / 2 - 0.3, at.MOTA_2[0] + MOT_PITCH / 2 + 0.3, face, 2, B.far + 0.4);
           named('stepper', at.STP_1[0] - PITCH / 2 - 0.3, at.STP_4[0] + PITCH / 2 + 0.3, at.STP_1[2] + PITCH / 2, 1.9);
           // the outline of every passive
           g.lineWidth = 0.14;
@@ -187,6 +195,14 @@ export default defineModel<PartState>({
           g.lineTo(end, tails - 1.25);
           g.lineTo(end, EDGE - PITCH - 0.2);
           g.stroke();
+          // the print is one flat sheet and the board under it is drilled: nothing is printed across a hole
+          g.globalCompositeOperation = 'destination-out';
+          for (const h of B.holes) {
+            g.beginPath();
+            g.arc(h.x, h.z, h.d / 2 + 0.35, 0, Math.PI * 2);
+            g.fill();
+          }
+          g.globalCompositeOperation = 'source-over';
         },
       }),
       glowing('u501', chip),

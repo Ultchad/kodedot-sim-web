@@ -1,7 +1,8 @@
 /**
  * What the three Arduino Uno boards share: the board built from the manifest's data (the stepped `outline` polygon,
  * the mounting holes in `refs`, the socket strips where the pins are), the silkscreen legends beside the sockets, the
- * four indicator LEDs with their live state, the reset button as a control, and the builders the kit does not have
+ * four indicator LEDs with their live state (L where the manifest's `visuals.led` is), the reset button as a control
+ * (where the manifest's `controls` has it), and the builders the kit does not have
  * (chip passives by the dozen, small-outline packages, socketed DIP, HC-49 crystal, SMD electrolytic, a lean QFP,
  * JST-SH, 1.27 mm header, DC jack).
  *
@@ -17,8 +18,9 @@
  * above. The legends follow the maker's pictures of the boards; the maker's name and logo are left out.
  */
 import {
-  FONT_MONO, INK, Matrix4, PAL, PITCH, Shape, circleLoop, flatLamp, glowing, halo, markControl, part, pinHeader, place, roundedRectLoop, setLamp, tactButton, text, topQuad,
-  type AnimEnv, type Finish, type ManifestBody, type ManifestPin, type Object3D, type PartState, type Pt, type Quad, type V3,
+  FONT_MONO, INK, Matrix4, PAL, PITCH, Shape, circleLoop, controlFromManifest, flatLamp, glowing, halo, markControl, part, pinHeader, place, roundedRectLoop, setLamp, tactButton, text,
+  topQuad,
+  type AnimEnv, type ControlManifest, type Finish, type ManifestBody, type ManifestPin, type Object3D, type PartState, type Pt, type Quad, type V3,
 } from '../../index';
 
 // ------------------------------------------------------------------------------------------------- the manifest
@@ -36,6 +38,12 @@ export interface UnoManifest {
   outline: { x: number; y: number }[];
   /** Non-electrical reference points: the mounting holes are the ones of kind `hole`. */
   refs: { name: string; kind: string; diameter_mm?: number; mm: { x: number; y: number } }[];
+  picture?: { width: number };
+  /** Where the 2D picture shows an effect; `mm` is the same place on the part (the on-board LED is `led`). */
+  visuals?: (NonNullable<ControlManifest['visuals']>[number] & { id: string; x?: number; y?: number; mm?: { x: number; y: number } })[];
+  /** What the pointer works: the reset button, with its place on the part in `mm`. */
+  controls?: { field: string; mode: string; mm?: { x: number; y: number }; action?: string }[];
+  fields?: ControlManifest['fields'];
 }
 
 /** Underside of the board: its through-hole pins poke out below, it rests on them. */
@@ -67,6 +75,13 @@ export interface UnoGeo {
   frame: Matrix4;
   /** A manifest pin's x in board millimetres. */
   pinX(name: string): number;
+  /**
+   * Where the manifest has a visual (the on-board LED is `led`), in board millimetres: its `mm`, or for a manifest
+   * without it the place of the effect in the picture. Throws when the manifest has no such visual.
+   */
+  visual(id: string): Pt;
+  /** Where the manifest has the control of a field (the reset button), in board millimetres. Throws when it has none. */
+  control(field: string): Pt;
   /** A point given in board millimetres and a height, in the model frame (for lamps, screens and quads). */
   at(x: number, y: number, h: number): V3;
   /** A print or screen quad lying at height `h`, centred on a point given in board millimetres and turned `deg` counter-clockwise. */
@@ -92,6 +107,18 @@ export function unoGeo(m: UnoManifest): UnoGeo {
     holes: m.refs.filter((r) => r.kind === 'hole').map((r) => ({ x: r.mm.x - x0, y: r.mm.y, d: r.diameter_mm ?? 3.2 })),
     frame: new Matrix4().makeTranslation(bx, 0, bz),
     pinX: (name) => (m.pins.find((p) => p.name === name)?.mm?.x ?? 0) - x0,
+    visual: (id) => {
+      const v = m.visuals?.find((q) => q.id === id);
+      if (v?.mm) return [v.mm.x - x0, v.mm.y];
+      const k = (m.picture?.width ?? 0) / m.body.w_mm;
+      if (!v || v.x === undefined || v.y === undefined || !k) throw new Error(`${m.id}: the manifest does not say where the visual "${id}" is`);
+      return [v.x / k - x0, v.y / k];
+    },
+    control: (field) => {
+      const c = m.controls?.find((q) => q.field === field);
+      if (!c?.mm) throw new Error(`${m.id}: the manifest does not say where the control of "${field}" is`);
+      return [c.mm.x - x0, c.mm.y];
+    },
     at: (x, y, h) => [x + bx, h, y + bz],
     quad: (x, y, h, hw, hd, deg = 0) => {
       const c = Math.cos(deg * DEG), sn = Math.sin(deg * DEG);
@@ -485,22 +512,42 @@ export function miniHeader(s: Shape, x: number, z: number, turn: number, n = 5):
 
 // -------------------------------------------------------------------------------------------------- reset button
 const BUTTON_TOP = 3.45; // the kit's tactile switch: base and metal cover
-/** The reset button's body: the kit's 6 mm tactile switch with nothing in its cover's hole. Its plunger is `resetCap`. */
-export function resetButton(s: Shape, x: number, y: number): void {
-  tactButton(s, { x, z: y, y: TOP, size: 6, plunger: 0.02, cap: ['matte', '#0d0d0e'] });
+/** The field of the boards' reset button, and the name of its plunger in the model. */
+export const RESET_FIELD = 'reset';
+/**
+ * The reset button's body: the kit's 6 mm tactile switch with nothing in its cover's hole, standing where the
+ * manifest has the control of `reset` (`g.control`). Its plunger is `resetCap`.
+ */
+export function resetButton(s: Shape, at: Pt): void {
+  tactButton(s, { x: at[0], z: at[1], y: TOP, size: 6, plunger: 0.02, cap: ['matte', '#0d0d0e'] });
 }
 /**
- * The button's plunger: the named child `reset`, marked as a momentary control of the field `reset` (the Workbench
- * holds the field true while the pointer is down; `animateUno` shows it pressed). Add it under the model's root.
+ * The button's plunger: the named child `reset`, marked as the control the manifest declares for the field `reset`
+ * (momentary: the Workbench holds the field true while the pointer is down, the engine restarts the sketch when it
+ * goes true; `animateUno` shows it pressed). Add it under the model's root.
  */
-export function resetCap(g: UnoGeo, x: number, y: number, finish: Finish, seg: (n: number) => number): Object3D {
+export function resetCap(g: UnoGeo, m: UnoManifest, finish: Finish, seg: (n: number) => number): Object3D {
+  const [x, y] = g.control(RESET_FIELD);
   const cap = new Shape();
   cap.disc(finish[0], finish[1], 0, 0, 1.6, -0.3, 0.75, 0.22, seg(18), { ao: 0.9 });
-  const node = markControl(cap.toObject('reset'), { field: 'reset', mode: 'momentary', values: [false, true] });
+  const node = markControl(cap.toObject(RESET_FIELD), controlFromManifest(m, RESET_FIELD));
   node.position.set(...g.at(x, y, TOP + BUTTON_TOP));
   node.userData.restY = node.position.y;
   return node;
 }
+/**
+ * The light of a press: a soft glow over the switch, round its plunger, while it is held, so that a press reads from
+ * the Workbench's camera (the plunger itself moves half a millimetre). The simulator's own way of speaking, not a
+ * part of the board. It stays inside the footprint. Add it under the model's root, beside `resetCap`.
+ */
+export function resetPress(g: UnoGeo, m: UnoManifest): Object3D {
+  const [x, y] = g.control(RESET_FIELD);
+  const p = g.at(x, y, TOP + BUTTON_TOP + 0.04);
+  return halo(PRESS, p, Math.min(4.8, m.body.w_mm / 2 - Math.abs(p[0]), m.body.d_mm / 2 - Math.abs(p[2])));
+}
+const PRESS = 'press:reset';
+/** How far the plunger goes down while the button is held. */
+const TRAVEL = 0.5;
 
 // ------------------------------------------------------------------------------------------------ indicator LEDs
 export interface UnoLeds {
@@ -554,7 +601,7 @@ interface Seen {
  * `outputs.led` (pin 13: its level, or its PWM duty). TX and RX light for a moment whenever `outputs.tx` /
  * `outputs.rx` (counters of serial bytes) have moved. A crashed sketch (`outputs.crashed`, or the part's `crashed`)
  * is the hazard: TX and RX dark and L glaring red, unsteady, in a pool of red light on the board that reads from
- * across the table. The reset button's plunger goes down while the field `reset` is held.
+ * across the table. The reset button's plunger goes down, in a pool of light, while the field `reset` is held.
  * Returns true while it needs frames.
  */
 export function animateUno(st: PartState, obj: Object3D, env: AnimEnv): boolean {
@@ -594,8 +641,10 @@ export function animateUno(st: PartState, obj: Object3D, env: AnimEnv): boolean 
   const shell = part(obj, 'fault');
   if (shell) shell.visible = fault;
   setLamp(obj, 'fault', FAULT, pool);
-  const cap = part(obj, 'reset');
-  if (cap) cap.position.y = (cap.userData.restY as number) - (st.fields.reset === true ? 0.3 : 0);
+  const held = st.fields[RESET_FIELD] === true;
+  const cap = part(obj, RESET_FIELD);
+  if (cap) cap.position.y = (cap.userData.restY as number) - (held ? TRAVEL : 0);
+  setLamp(obj, PRESS, 0xfff1d0, held ? 0.75 : 0);
   return again;
 }
 

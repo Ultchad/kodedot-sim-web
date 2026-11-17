@@ -4,8 +4,9 @@
  * its place and angle): USB-B and the barrel jack on the left edge, the ATmega328P (DIP-28) in its socket with pin 1
  * towards the analog pins, the ATmega16U2 (QFN-32) with its 16 MHz HC-49 crystal, its own ICSP header and the four
  * empty lands of JP2, the 5 V regulator (SOT-223), the two 47 uF cans, the input diode, the resettable fuse, the
- * comparator and the 3.3 V regulator, the 328P's resonator, four resistor networks, the reset button in the corner,
- * the ICSP header on the right, and the four LEDs: ON, L (pin 13), TX and RX.
+ * comparator and the 3.3 V regulator, the 328P's resonator, four resistor networks, the reset button (where the
+ * manifest's control is), the ICSP header on the right, and the four LEDs: ON, L (pin 13, where the manifest's
+ * `visuals.led` is), TX and RX.
  *
  * Legends: as on the maker's picture of the board, in the kit's type. The maker's name, logo and web address are
  * left out; "UNO R3" is the plain designation the board carries.
@@ -14,7 +15,8 @@ import manifestJson from '../../../../../parts/uno-r3/manifest.json';
 import { FONT_MONO, Shape, defineModel, footprintOf, partState, pinHeader, print, qfn, terminalsFromManifest, text, usbB, type Finish, type PartState } from '../../index';
 import {
   C0603, D1206, F1812, L0805, LED0805, MSOP8, R0603, SMB, SOT23, SOT23_5, TOP, animateUno, chips, crystalHC49, dcJack, dipSocketed, dots, drawCaption, drawPinLabels, eraseHoles, flatDiode,
-  ledBodies, ledLamps, legend, pads, plate, resetButton, resetCap, resistorArrays, resonator, smallOutline, smdCan, sot223, trafficOutputs, unoBoard, unoGeo, type UnoLeds, type UnoManifest,
+  ledBodies, ledLamps, legend, pads, plate, resetButton, resetCap, resetPress, resistorArrays, resonator, smallOutline, smdCan, sot223, trafficOutputs, unoBoard, unoGeo, type UnoLeds,
+  type UnoManifest,
 } from './uno';
 
 const manifest = manifestJson as unknown as UnoManifest;
@@ -28,9 +30,11 @@ const USB = { x: -6.34, y: 15.24 }, JACK = { x: -1.8, y: 45.54 };
 const DIP = { x: 46.355, y: 36.957 };
 const ICSP = { x: 64.897, y: 25.4 }, ICSP2 = { x: 18.288, y: 7.112 };
 const U3 = { x: 19.939, y: 18.669 }, XTAL = { x: 18.923, y: 27.178 };
-const RESET = { x: 6.35, y: 3.937 };
+/** The reset button: where the manifest has the control (an estimate there; the board file has it at 6.35, 3.94). */
+const RESET = geo.control('reset');
 const CANS = [18.415, 25.527], CAN_Y = 44.196;
-const LEDS: UnoLeds = { l: [27.94, 11.176], tx: [27.94, 16.764], rx: [27.94, 19.05], on: [58.42, 16.764], size: LED0805 };
+/** L (pin 13) lights where the manifest's `visuals.led` is; TX, RX and ON as the board file has them. */
+const LEDS: UnoLeds = { l: geo.visual('led'), tx: [27.94, 16.764], rx: [27.94, 19.05], on: [58.42, 16.764], size: LED0805 };
 
 export default defineModel<PartState>({
   id: manifest.id,
@@ -44,7 +48,7 @@ export default defineModel<PartState>({
       unoBoard(s, geo, MASK, ctx.seg);
       usbB(s, { x: USB.x, z: USB.y, y: TOP, turn: 1 });
       dcJack(s, JACK.x, JACK.y, 1, ctx.seg);
-      resetButton(s, RESET.x, RESET.y);
+      resetButton(s, RESET);
       chipTop = dipSocketed(s, { x: DIP.x, z: DIP.y, pins: 28 });
       pinHeader(s, { x: ICSP.x, z: ICSP.y, y: TOP, n: 3, rows: 2, turn: 1 });
       pinHeader(s, { x: ICSP2.x, z: ICSP2.y, y: TOP, n: 3, rows: 2 });
@@ -91,7 +95,7 @@ export default defineModel<PartState>({
           legend(c, 'TX', LEDS.tx[0] - 2.6, LEDS.tx[1], 1.35);
           legend(c, 'RX', LEDS.rx[0] - 2.6, LEDS.rx[1], 1.35);
           legend(c, 'ON', LEDS.on[0] + 2.7, LEDS.on[1], 1.35);
-          legend(c, 'RESET', 0.85, RESET.y, 1.0, true);
+          legend(c, 'RESET', RESET[0] - 5.5, RESET[1], 1.0, true);
           legend(c, 'ICSP', ICSP.x + 1.0, ICSP.y - 4.75, 1.0);
           legend(c, 'JP2', 16.1, 12.19, 0.9, true);
           legend(c, 'RESET EN', 25.5, 27.2, 0.8, true);
@@ -138,7 +142,8 @@ export default defineModel<PartState>({
           }
         },
       }),
-      resetCap(geo, RESET.x, RESET.y, ['matte', '#d6d0c0'], ctx.seg),
+      resetCap(geo, manifest, ['matte', '#d6d0c0'], ctx.seg),
+      resetPress(geo, manifest),
       ...ledLamps(geo, LEDS),
     );
     return root;

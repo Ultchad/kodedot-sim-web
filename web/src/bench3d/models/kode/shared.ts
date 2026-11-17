@@ -2,7 +2,7 @@
  * Shared builders of the Kode module family (the add-on modules that plug onto the Dot's 2x10 expansion header J3).
  *
  * The family's look, read off the owner's reference pictures (never copied): a matte black rounded-square board
- * with a gold-ringed mounting hole in each corner, gold silkscreen, black sockets, a 2x10 right-angle pin header at
+ * with a plain drilled mounting hole in each corner, gold silkscreen, black sockets, a 2x10 right-angle pin header at
  * the edge that meets the Dot (the three bare-board modules); a moulded block with a tongue, in the Dot's own
  * plastic, with two whip antennas (the two cased modules, case.ts).
  *
@@ -109,22 +109,27 @@ export function moduleBoard(m: KodeManifest, o: { thick?: number; inset?: number
   return { loop: roundedRectLoop((x0 + x1) / 2, (far + near) / 2, x1 - x0, near - far, r, o.seg ?? 6), x0, x1, far, near, top, under, holes };
 }
 /**
- * A board with any outline: solder mask round an FR4 core, drilled holes with their tinned rings. Returns the height
+ * A board with any outline: solder mask round an FR4 core, drilled holes with their pale edge. Returns the height
  * of its top face. (The kit's `pcb` is this with a rounded rectangle.)
  */
 export function outlineBoard(s: Shape, o: { loop: Pt[]; y?: number; thick?: number; finish?: Finish; holes?: { x: number; z: number; d: number }[]; ring?: Finish }): number {
   const y = o.y ?? 0, t = o.thick ?? 1.6;
   const holes = (o.holes ?? []).map((h) => circleLoop(h.x, h.z, h.d / 2, 14));
   s.prism(...(o.finish ?? PAL.pcbBlack), o.loop, y, y + t, 0.12, { cap: true, ao: 0.9, holes });
-  for (const h of o.holes ?? []) s.prism(...(o.ring ?? RING), circleLoop(h.x, h.z, h.d / 2 + 0.4, 18), y + t, y + t + 0.04, 0, { holes: [circleLoop(h.x, h.z, h.d / 2, 14)], ao: 1 });
+  for (const h of o.holes ?? []) s.prism(...(o.ring ?? HOLE_EDGE), circleLoop(h.x, h.z, h.d / 2 + 0.28, 18), y + t, y + t + 0.04, 0, { holes: [circleLoop(h.x, h.z, h.d / 2, 14)], ao: 1 });
   return y + t;
 }
 
 // ------------------------------------------------------------------------------------------------------- headers
 /** The boards' silkscreen as the pictures show it: a warm gold, a little softer than the kit's amber ink. */
 export const SILK = '#f0a83e';
-/** The dull gold of the bare rings round the mounting holes and of the fiducials (the picture shows them faint). */
+/** The dull gold of the fiducials (the picture shows them faint). */
 export const RING: Finish = ['matte', '#a5843a'];
+/**
+ * The edge of a mounting hole: the store picture, looked at closely, shows plain drilled holes with a thin pale edge
+ * (the board's core where the mask stops), not a gilded ring.
+ */
+export const HOLE_EDGE: Finish = ['matte', '#6f746a'];
 /**
  * A legend in the boards' silkscreen hand: a wide, even, heavy monospace (the kit's mono face, thickened with its own
  * outline, since the page ships it in one weight). Centred on (x, y) unless `align` says otherwise; `size` is the em
