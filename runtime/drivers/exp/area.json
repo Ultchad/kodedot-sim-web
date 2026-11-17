@@ -1,8 +1,18 @@
 {
   "area": "exp",
-  "description": "J3 expansion pins and buses (stubbed, stage 5)",
+  "description": "J3 expansion header: the link to the bench model (pin drive state, levels, millivolts, bus mailbox, UART rings), the ADC port and the I2C/SPI/UART bus driver",
   "supersedes": {
-    "components/khal/exp/src/khal_exp_esp.c": "stubbed: J3 expansion pins (stage 5)",
-    "components/kdrv/exp_bus/src/kdrv_exp_bus.c": "stubbed: J3 buses (stage 5)"
-  }
+    "components/khal/exp/src/khal_exp_esp.c": "web fake: runtime/drivers/exp/khal_exp_port_web.c (ADC1 millivolts come from the bench net solver; khal_exp.c above it is the SDK's own)",
+    "components/kdrv/exp_bus/src/kdrv_exp_bus.c": "web fake: runtime/drivers/exp/kdrv_exp_bus_web.c (a bus is a transaction handed to the bench router)"
+  },
+  "exports": [
+    "dbx_block"
+  ],
+  "js": [
+    "exp.js"
+  ],
+  "test_apps": [
+    "sdk:examples/expansion_io",
+    "sdk:examples/exp_bus"
+  ]
 }

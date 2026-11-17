@@ -1,0 +1,54 @@
+{
+  "name": "servo follows the pulse width",
+  "steps": [
+    {
+      "comment": "no pulse train yet: the horn rests",
+      "expect_output": {
+        "name": "angle",
+        "value": 0
+      }
+    },
+    {
+      "pwm": {
+        "pin": "SIG",
+        "hz": 50,
+        "duty_pct": 5
+      }
+    },
+    {
+      "comment": "1.0 ms is 0 degrees",
+      "expect_output": {
+        "name": "angle",
+        "value": 0
+      }
+    },
+    {
+      "pwm": {
+        "pin": "SIG",
+        "hz": 50,
+        "duty_pct": 7.5
+      }
+    },
+    {
+      "comment": "1.5 ms is 90 degrees",
+      "expect_output": {
+        "name": "angle",
+        "value": 90
+      }
+    },
+    {
+      "pwm": {
+        "pin": "SIG",
+        "hz": 50,
+        "duty_pct": 10
+      }
+    },
+    {
+      "comment": "2.0 ms is 180 degrees",
+      "expect_output": {
+        "name": "angle",
+        "value": 180
+      }
+    }
+  ]
+}
