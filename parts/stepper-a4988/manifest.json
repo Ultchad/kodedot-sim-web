@@ -58,7 +58,7 @@
   "body": {
     "w_mm": 64,
     "d_mm": 42.3,
-    "h_mm": 40
+    "h_mm": 64
   },
   "picture": {
     "file": "picture.svg",
@@ -67,17 +67,17 @@
   },
   "logic_mv": 3000,
   "pins": [
-    {"name":"EN","kind":"io","pos":{"x":15,"y":25},"mm":{"x":1.5,"y":2.5},"face":"top","label":{"en":"EN"},"abs_max_mv":5500,"pulldown_ohms":100000},
-    {"name":"MS1","kind":"io","pos":{"x":40.4,"y":25},"mm":{"x":4.04,"y":2.5},"face":"top","label":{"en":"MS1"},"abs_max_mv":5500,"pulldown_ohms":100000},
-    {"name":"MS2","kind":"io","pos":{"x":65.8,"y":25},"mm":{"x":6.58,"y":2.5},"face":"top","label":{"en":"MS2"},"abs_max_mv":5500,"pulldown_ohms":100000},
-    {"name":"MS3","kind":"io","pos":{"x":91.2,"y":25},"mm":{"x":9.12,"y":2.5},"face":"top","label":{"en":"MS3"},"abs_max_mv":5500,"pulldown_ohms":100000},
-    {"name":"RST","kind":"io","pos":{"x":116.6,"y":25},"mm":{"x":11.66,"y":2.5},"face":"top","label":{"en":"RST"},"abs_max_mv":5500,"pullup_ohms":100000,"pull_rail":"VDD"},
-    {"name":"SLP","kind":"io","pos":{"x":142,"y":25},"mm":{"x":14.2,"y":2.5},"face":"top","label":{"en":"SLP"},"abs_max_mv":5500,"pullup_ohms":100000,"pull_rail":"VDD"},
-    {"name":"STEP","kind":"io","pos":{"x":167.4,"y":25},"mm":{"x":16.74,"y":2.5},"face":"top","label":{"en":"STEP"},"abs_max_mv":5500,"pulldown_ohms":100000},
-    {"name":"DIR","kind":"io","pos":{"x":192.8,"y":25},"mm":{"x":19.28,"y":2.5},"face":"top","label":{"en":"DIR"},"abs_max_mv":5500,"pulldown_ohms":100000},
-    {"name":"VMOT","kind":"power_in","pos":{"x":15,"y":130},"mm":{"x":1.5,"y":13},"face":"top","label":{"en":"VMOT"},"min_mv":8000,"max_mv":35000,"typ_ma":0},
-    {"name":"GND","kind":"ground","pos":{"x":40.4,"y":130},"mm":{"x":4.04,"y":13},"face":"top","label":{"en":"GND"}},
-    {"name":"VDD","kind":"power_in","pos":{"x":65.8,"y":130},"mm":{"x":6.58,"y":13},"face":"top","label":{"en":"VDD"},"min_mv":3000,"max_mv":5500,"typ_ma":5}
+    {"name":"EN","kind":"io","pos":{"x":15,"y":293},"mm":{"x":1.5,"y":29.3,"z":11.4},"face":"top","label":{"en":"EN"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"MS1","kind":"io","pos":{"x":40.4,"y":293},"mm":{"x":4.04,"y":29.3,"z":11.4},"face":"top","label":{"en":"MS1"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"MS2","kind":"io","pos":{"x":65.8,"y":293},"mm":{"x":6.58,"y":29.3,"z":11.4},"face":"top","label":{"en":"MS2"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"MS3","kind":"io","pos":{"x":91.2,"y":293},"mm":{"x":9.12,"y":29.3,"z":11.4},"face":"top","label":{"en":"MS3"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"RST","kind":"io","pos":{"x":116.6,"y":293},"mm":{"x":11.66,"y":29.3,"z":11.4},"face":"top","label":{"en":"RST"},"abs_max_mv":5500,"pullup_ohms":100000,"pull_rail":"VDD"},
+    {"name":"SLP","kind":"io","pos":{"x":142,"y":293},"mm":{"x":14.2,"y":29.3,"z":11.4},"face":"top","label":{"en":"SLP"},"abs_max_mv":5500,"pullup_ohms":100000,"pull_rail":"VDD"},
+    {"name":"STEP","kind":"io","pos":{"x":167.4,"y":293},"mm":{"x":16.74,"y":29.3,"z":11.4},"face":"top","label":{"en":"STEP"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"DIR","kind":"io","pos":{"x":192.8,"y":293},"mm":{"x":19.28,"y":29.3,"z":11.4},"face":"top","label":{"en":"DIR"},"abs_max_mv":5500,"pulldown_ohms":100000},
+    {"name":"VMOT","kind":"power_in","pos":{"x":15,"y":398},"mm":{"x":1.5,"y":39.8,"z":11.4},"face":"top","label":{"en":"VMOT"},"min_mv":8000,"max_mv":35000,"typ_ma":0},
+    {"name":"GND","kind":"ground","pos":{"x":40.4,"y":398},"mm":{"x":4.04,"y":39.8,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"VDD","kind":"power_in","pos":{"x":65.8,"y":398},"mm":{"x":6.58,"y":39.8,"z":11.4},"face":"top","label":{"en":"VDD"},"min_mv":3000,"max_mv":5500,"typ_ma":5}
   ],
   "outputs": [
     {

@@ -1,0 +1,21 @@
+Third-party software shipped with the dotbench in-browser Arduino compiler
+=========================================================================
+The files in this folder (llvm.core*.wasm, sysroot-*.pack, board-*.pack, pch-stl-*.pack, cc-worker.*.js) contain or are built from the
+components below. The full licence texts are in licenses/. This notice is a legal requirement of those licences, not documentation.
+
+LLVM, Clang and LLD (the compiler and linker, as WebAssembly)   Apache License 2.0 with LLVM Exceptions     licenses/LLVM-LICENSE.txt
+  Built for WebAssembly by YoWASP (@yowasp/clang, see toolchain.json for the pinned version)                 licenses/YoWASP-clang-LICENSE.txt
+libc++ (C++ standard library headers and library archive)       Apache 2.0 with LLVM Exceptions (and the     licenses/libcxx-LICENSE.txt
+                                                                 legacy MIT/UIUC terms stated in that file)
+libc++abi                                                        same terms                                    licenses/libcxxabi-LICENSE.txt
+compiler-rt builtins (libclang_rt.builtins.a)                    same terms                                    licenses/compiler-rt-LICENSE.txt
+wasi-libc (the C library, headers and libc.a)                    Apache-2.0 WITH LLVM-exception, Apache-2.0,   licenses/wasi-libc-LICENSE.txt
+                                                                 MIT; contains musl (MIT), dlmalloc (CC0),     licenses/wasi-libc-LICENSE-APACHE-LLVM.txt
+                                                                 cloudlibc (BSD-2-Clause)                      licenses/wasi-libc-LICENSE-APACHE.txt
+                                                                                                               licenses/wasi-libc-LICENSE-MIT.txt
+                                                                                                               licenses/musl-COPYRIGHT.txt
+ArduinoCore-API (Print, Stream, String, IPAddress, headers;     LGPL-2.1                                      licenses/ArduinoCore-API-LICENSE.txt
+  precompiled into libdotcore.a)
+dotcore, the bench's Arduino core (libdotcore.a, headers)        GPL-3.0-or-later (this project)
+
+Every part package the compiler builds carries a NOTICE file with the same attributions, because wasi-libc, libc++ and ArduinoCore-API code is linked into it.

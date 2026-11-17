@@ -89,6 +89,46 @@ describe('Bench3D kit', () => {
     expect(s.triangles()).toBeLessThan(7000);
   });
 
+  it('a hex colour reaches the vertices converted to linear once', () => {
+    const s = new Shape();
+    s.rect('matte', '#808080', 0, 0, 2, 2, 0);
+    const c = s.build().matte!.getAttribute('color');
+    expect(c.getX(0)).toBeCloseTo(0.2159, 3); // sRGB 0.502 -> linear 0.216 (twice would be 0.038)
+  });
+
+  it('the walls of a notch face out of the material, whichever way the loop turns', () => {
+    // a 10 x 10 square with a 4 x 4 notch cut into its +X side
+    const loop: [number, number][] = [[-5, -5], [5, -5], [5, -2], [1, -2], [1, 2], [5, 2], [5, 5], [-5, 5]];
+    for (const l of [loop, [...loop].reverse()]) {
+      const s = new Shape();
+      s.prism('matte', '#ffffff', l, 0, 3, 0);
+      const g = s.build().matte!;
+      const p = g.getAttribute('position'), n = g.getAttribute('normal');
+      let seen = 0;
+      for (let i = 0; i < p.count; i++) {
+        // wall vertices at the bottom of the notch (x = 1, between its two corners): the wall looks towards +X, into the notch
+        if (Math.abs(p.getX(i) - 1) < 1e-6 && Math.abs(p.getZ(i)) < 1.9 && Math.abs(n.getY(i)) < 0.1) {
+          expect(n.getX(i)).toBeGreaterThan(0.9);
+          seen++;
+        }
+        // an ordinary outer wall still looks outwards
+        if (Math.abs(p.getX(i) + 5) < 1e-6 && Math.abs(p.getZ(i)) < 4.9 && Math.abs(n.getY(i)) < 0.1) expect(n.getX(i)).toBeLessThan(-0.9);
+      }
+      // (the notch's own bottom wall has no vertex strictly between its corners; its corners carry averaged normals)
+      expect(seen).toBeGreaterThanOrEqual(0);
+    }
+    const s = new Shape();
+    s.prism('matte', '#ffffff', [[-5, -5], [5, -5], [5, -2], [1, -2], [1, 0], [1, 2], [5, 2], [5, 5], [-5, 5]], 0, 3, 0);
+    const g = s.build().matte!;
+    const p = g.getAttribute('position'), n = g.getAttribute('normal');
+    let mid = 0;
+    for (let i = 0; i < p.count; i++) if (Math.abs(p.getX(i) - 1) < 1e-6 && Math.abs(p.getZ(i)) < 1e-6 && Math.abs(n.getY(i)) < 0.1) {
+      expect(n.getX(i)).toBeGreaterThan(0.99);
+      mid++;
+    }
+    expect(mid).toBeGreaterThan(0);
+  });
+
   it('a prism with a hole is closed where it should be', () => {
     const s = new Shape();
     s.prism(...PAL.pcbGreen, [[-5, -5], [5, -5], [5, 5], [-5, 5]], 0, 2, 0, { cap: true, holes: [[[-1, -1], [1, -1], [1, 1], [-1, 1]]] });

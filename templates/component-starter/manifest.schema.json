@@ -96,7 +96,9 @@
       },
       "description": "width/height define the coordinate space used by every pos, region and visual in this manifest."
     },
-    "refs": {"type": "array", "maxItems": 32, "items": {"type": "object", "required": ["name", "kind", "mm"], "additionalProperties": false, "properties": {"name": {"type": "string", "maxLength": 24}, "kind": {"enum": ["antenna_sma", "hole", "other"]}, "mm": {"$ref": "#/$defs/pin/properties/mm"}, "length_mm": {"type": "number", "minimum": 0, "description": "antenna_sma: length of the antenna standing on this base, base included, along +z."}, "note": {"type": "string", "maxLength": 200}}}, "description": "Non-electrical reference points of the body (antenna bases, mounting holes), same millimetre frame as the pins. A model may place geometry on them; estimates when body.estimate is true."},
+    "outline": {"type": "array", "minItems": 3, "maxItems": 64, "items": {"type": "object", "required": ["x", "y"], "additionalProperties": false, "properties": {"x": {"type": "number"}, "y": {"type": "number"}}}, "description": "Non-electrical: the board outline as a polygon in millimetres (same frame as the pins), for the picture and for 3D models. Absent: the body rectangle."},
+    "refs": {"type": "array", "maxItems": 32, "items": {"type": "object", "required": ["name", "kind", "mm"], "additionalProperties": false, "properties": {"name": {"type": "string", "maxLength": 24}, "kind": {"enum": ["antenna_sma", "hole", "other"]}, "mm": {"$ref": "#/$defs/pin/properties/mm"}, "diameter_mm": {"type": "number", "exclusiveMinimum": 0, "description": "hole: diameter."},
+        "length_mm": {"type": "number", "minimum": 0, "description": "antenna_sma: length of the antenna standing on this base, base included, along +z."}, "note": {"type": "string", "maxLength": 200}}}, "description": "Non-electrical reference points of the body (antenna bases, mounting holes), same millimetre frame as the pins. A model may place geometry on them; estimates when body.estimate is true."},
     "model": {
       "type": "object",
       "required": ["file"],
@@ -239,6 +241,7 @@
           "items": {"enum": ["digital", "pwm", "analog", "dac", "interrupt", "i2c_sda", "i2c_scl", "spi_sck", "spi_miso", "spi_mosi", "spi_ss", "uart_rx", "uart_tx", "touch", "boot_strap", "input_only"]},
           "description": "What the pin can do on the real board (a board part: pin capabilities for the page and the sketch editor). Informational: the part still decides what its sketch does."
         },
+        "aliases": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/pinName"}, "description": "Old or alternative names of this terminal: bench.connect, wireOf and net accept them and mean this pin (a renamed pin keeps its old name working)."},
         "ref": {"type": "string", "maxLength": 24, "description": "Non-electrical: the board designator and pin number of this terminal on the real part (J401.17)."},
         "face": {"enum": ["top", "bottom", "left", "right", "front", "back"], "default": "top", "description": "Which face the terminal is on: top (header pins, screw terminals), bottom (leads that plug into a breadboard), left/right (x edges), front (y = d_mm) and back (y = 0)."}
       },
@@ -709,6 +712,7 @@
             "a": {"$ref": "#/$defs/pinName"}, "b": {"$ref": "#/$defs/pinName"},
             "ohms": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "object", "required": ["field"], "additionalProperties": false, "properties": {"field": {"$ref": "#/$defs/fieldName"}, "scale": {"type": "number"}}}]},
             "rated_mw": {"type": "number", "exclusiveMinimum": 0, "description": "Power rating; above it the bench shows an overpower hazard."},
+            "overpower_output": {"$ref": "#/$defs/fieldName", "description": "A boolean output: true while the power is above rated_mw."},
             "current_output": {"$ref": "#/$defs/fieldName"}
           },
           "description": "A resistor between two terminals, solved with the nets (it loads them)."
@@ -759,7 +763,8 @@
             "mv": {"$ref": "#/$defs/expr"},
             "ohms": {"type": "number", "minimum": 0.001, "default": 1.5},
             "max_ma": {"type": "number", "exclusiveMinimum": 0, "description": "Above it an overcurrent hazard is shown."},
-            "current_output": {"$ref": "#/$defs/fieldName"}
+            "current_output": {"$ref": "#/$defs/fieldName"},
+            "overload_output": {"$ref": "#/$defs/fieldName", "description": "A boolean output: true while the current is above max_ma or plus is wired to minus."}
           },
           "description": "A floating voltage source (battery, bench supply): + at `pos`, `mv` above `neg`; its minus is 0 V when nothing else defines the reference."
         },

@@ -80,8 +80,8 @@ esp_err_t esp_ldo_release_channel(esp_ldo_channel_handle_t h)
 
 /* ---- khal_pwm_port (the LEDC peripheral under the SDK's real khal_pwm.c) ----
  * khal_pwm.c keeps the timer/channel bookkeeping (own_timer, pause needing a timer of its own, bits and duty maths);
- * only the five port calls of khal_pwm_esp.c are replaced. Weak, so a pwm area that models the whole LEDC wins; the
- * carrier hook (pwm_report) would then have to move there. */
+ * only the five port calls of khal_pwm_esp.c are replaced: rfid_pwm_* hold the carrier model (pwm_report), the weak khal_pwm_port_*
+ * below them stand in for the LEDC port, and the pwm area's own port calls rfid_pwm_* too (see its khal_pwm_port_web.c). */
 /* khal_pwm_port.h is private to components/khal/pwm/src, off the include path of the runtime: the five-plus-one port
  * calls it declares (SDK commit c9568a3), restated so that a signature drift fails the link, not silently. */
 kode_status_t khal_pwm_port_timer_set(uint8_t timer, uint32_t hz, uint8_t bits);
@@ -103,7 +103,7 @@ static void pwm_report(int ch)
     if (g_pc[ch].gpio == (uint8_t)KBSP_PIN_RFID_OUT) rb_dev_carrier(on, g_pt[g_pc[ch].timer].hz);
 }
 
-__attribute__((weak)) kode_status_t khal_pwm_port_timer_set(uint8_t t, uint32_t hz, uint8_t bits)
+kode_status_t rfid_pwm_timer_set(uint8_t t, uint32_t hz, uint8_t bits)
 {
     (void)bits;
     if (t >= PT || !hz) return KODE_ERROR;
@@ -112,14 +112,14 @@ __attribute__((weak)) kode_status_t khal_pwm_port_timer_set(uint8_t t, uint32_t 
     return KODE_OK;
 }
 
-__attribute__((weak)) void khal_pwm_port_timer_stop(uint8_t t)
+void rfid_pwm_timer_stop(uint8_t t)
 {
     if (t >= PT) return;
     g_pt[t].set = 0; g_pt[t].paused = 0;
     for (int c = 0; c < PC; c++) if (g_pc[c].on && g_pc[c].timer == t) pwm_report(c);
 }
 
-__attribute__((weak)) kode_status_t khal_pwm_port_timer_pause(uint8_t t)
+kode_status_t rfid_pwm_timer_pause(uint8_t t)
 {
     if (t >= PT || !g_pt[t].set) return KODE_ERROR;
     g_pt[t].paused = 1;
@@ -128,7 +128,7 @@ __attribute__((weak)) kode_status_t khal_pwm_port_timer_pause(uint8_t t)
     return KODE_OK;
 }
 
-__attribute__((weak)) kode_status_t khal_pwm_port_timer_resume(uint8_t t)
+kode_status_t rfid_pwm_timer_resume(uint8_t t)
 {
     if (t >= PT || !g_pt[t].set) return KODE_ERROR;
     g_pt[t].paused = 0;
@@ -137,7 +137,7 @@ __attribute__((weak)) kode_status_t khal_pwm_port_timer_resume(uint8_t t)
     return KODE_OK;
 }
 
-__attribute__((weak)) kode_status_t khal_pwm_port_chan_start(uint8_t c, uint8_t gpio, uint8_t t, uint32_t duty)
+kode_status_t rfid_pwm_chan_start(uint8_t c, uint8_t gpio, uint8_t t, uint32_t duty)
 {
     if (c >= PC || t >= PT) return KODE_ERROR;
     if (gpio == (uint8_t)KBSP_PIN_RFID_OUT && (rb_fault() & 2u)) return KODE_ERROR;   /* fault: the carrier will not start */
@@ -146,7 +146,7 @@ __attribute__((weak)) kode_status_t khal_pwm_port_chan_start(uint8_t c, uint8_t 
     return KODE_OK;
 }
 
-__attribute__((weak)) kode_status_t khal_pwm_port_chan_bind(uint8_t c, uint8_t t, uint32_t duty)
+kode_status_t rfid_pwm_chan_bind(uint8_t c, uint8_t t, uint32_t duty)
 {
     if (c >= PC || t >= PT || !g_pc[c].on) return KODE_ERROR;
     g_pc[c].timer = t; g_pc[c].duty = duty;
@@ -154,7 +154,7 @@ __attribute__((weak)) kode_status_t khal_pwm_port_chan_bind(uint8_t c, uint8_t t
     return KODE_OK;
 }
 
-__attribute__((weak)) kode_status_t khal_pwm_port_chan_duty(uint8_t c, uint32_t duty)
+kode_status_t rfid_pwm_chan_duty(uint8_t c, uint32_t duty)
 {
     if (c >= PC || !g_pc[c].on) return KODE_ERROR;
     if (g_pc[c].gpio == (uint8_t)KBSP_PIN_RFID_OUT && duty && (rb_fault() & 2u)) return KODE_ERROR;
@@ -163,7 +163,7 @@ __attribute__((weak)) kode_status_t khal_pwm_port_chan_duty(uint8_t c, uint32_t 
     return KODE_OK;
 }
 
-__attribute__((weak)) void khal_pwm_port_chan_stop(uint8_t c, uint8_t gpio)
+void rfid_pwm_chan_stop(uint8_t c, uint8_t gpio)
 {
     (void)gpio;
     if (c >= PC) return;
@@ -171,6 +171,17 @@ __attribute__((weak)) void khal_pwm_port_chan_stop(uint8_t c, uint8_t gpio)
     pwm_report(c);
     g_pc[c].on = 0;
 }
+
+/* Standing in for the LEDC port when no pwm area is linked. With the pwm area (which models the whole LEDC for J3's pins) its strong
+ * khal_pwm_port_* win and call these rfid_pwm_* hooks, so the carrier and the gaps still reach the bench's reader model. */
+__attribute__((weak)) kode_status_t khal_pwm_port_timer_set(uint8_t t, uint32_t hz, uint8_t bits) { return rfid_pwm_timer_set(t, hz, bits); }
+__attribute__((weak)) void khal_pwm_port_timer_stop(uint8_t t) { rfid_pwm_timer_stop(t); }
+__attribute__((weak)) kode_status_t khal_pwm_port_timer_pause(uint8_t t) { return rfid_pwm_timer_pause(t); }
+__attribute__((weak)) kode_status_t khal_pwm_port_timer_resume(uint8_t t) { return rfid_pwm_timer_resume(t); }
+__attribute__((weak)) kode_status_t khal_pwm_port_chan_start(uint8_t c, uint8_t gpio, uint8_t t, uint32_t duty) { return rfid_pwm_chan_start(c, gpio, t, duty); }
+__attribute__((weak)) kode_status_t khal_pwm_port_chan_bind(uint8_t c, uint8_t t, uint32_t duty) { return rfid_pwm_chan_bind(c, t, duty); }
+__attribute__((weak)) kode_status_t khal_pwm_port_chan_duty(uint8_t c, uint32_t duty) { return rfid_pwm_chan_duty(c, duty); }
+__attribute__((weak)) void khal_pwm_port_chan_stop(uint8_t c, uint8_t gpio) { rfid_pwm_chan_stop(c, gpio); }
 
 /* ---- adc_continuous ---- */
 struct dotbench_adc_cont {

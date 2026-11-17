@@ -1,0 +1,6 @@
+{
+  "npm": "@yowasp/clang",
+  "version": "22.0.0-git20542-10",
+  "integrity": "sha512-V31/z9GrJECKeACTDUyvg2llbEUiFi3bxtL5HSg7H/6sydSxdI/AoVAD9F5ozrfLjotWl0B9rghR87m+DUM/zg==",
+  "notes": "LLVM/clang/lld built for WebAssembly by YoWASP (jco-transpiled WASI component). Pinned: the precompiled cores and PCHs are only valid for the clang that made them, and the asset build makes them with this very package."
+}

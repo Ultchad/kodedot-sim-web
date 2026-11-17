@@ -26,20 +26,21 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 200,
-    "height": 150
+    "width": 418,
+    "height": 320
   },
   "pins": [
     {
       "name": "GND",
       "kind": "ground",
       "pos": {
-        "x": 55,
-        "y": 134
+        "x": 0,
+        "y": 140.5
       },
       "mm": {
         "x": 0,
-        "y": 3.66
+        "y": 17.56,
+        "z": 4
       },
       "face": "left"
     },
@@ -47,15 +48,16 @@
       "name": "V5",
       "kind": "power_in",
       "pos": {
-        "x": 100,
-        "y": 134
+        "x": 0,
+        "y": 160.8
       },
       "min_mv": 4000,
       "max_mv": 6000,
       "typ_ma": 150,
       "mm": {
         "x": 0,
-        "y": 6.2
+        "y": 20.1,
+        "z": 4
       },
       "face": "left"
     },
@@ -63,13 +65,14 @@
       "name": "SIG",
       "kind": "io",
       "pos": {
-        "x": 145,
-        "y": 134
+        "x": 0,
+        "y": 181.1
       },
       "abs_max_mv": 5500,
       "mm": {
         "x": 0,
-        "y": 8.74
+        "y": 22.64,
+        "z": 4
       },
       "face": "left"
     }
@@ -92,9 +95,9 @@
     {
       "id": "horn",
       "effect": "rotate",
-      "x": 100,
-      "y": 60,
-      "r": 40,
+      "x": 248,
+      "y": 160,
+      "r": 80,
       "source": {
         "output": "angle"
       },
@@ -125,9 +128,9 @@
     ]
   },
   "body": {
-    "w_mm": 22.5,
-    "d_mm": 12.2,
-    "h_mm": 22.7
+    "w_mm": 52.3,
+    "d_mm": 40,
+    "h_mm": 31.8
   },
   "keywords": {
     "en": [

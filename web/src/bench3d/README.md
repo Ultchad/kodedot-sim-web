@@ -11,7 +11,7 @@ web/src/bench3d/
   materials.ts    PAL (finishes) and INK (print colours)
   parts.ts        builders: pcb, pinHeader, lead, soic/qfp/qfn, moduleCan, usbC/usbB/microUsb/barrelJack,
                   tactButton, electrolytic, ledDome, screwTerminal, heatsink, shaft, gear
-  print.ts        print(): silkscreen, legends, logos as decals; drawing helpers
+  print.ts        print(): silkscreen and legends as decals; drawing helpers
   nodes.ts        lamp(), glowing(), screen(), part(); instantiate() for hosts
   registry.ts     finds models/**/*.model.ts
   index.ts        import everything from here
@@ -126,6 +126,17 @@ model, whatever the number of copies). What changes goes in a **named child**:
 | a display, a picture that changes | `screen(name, quad, ppm, { lit })` | `drawScreen(obj, name, key, (g, w, h) => ...)` |
 | something that moves (horn, shaft, button cap) | `otherShape.toObject('name')`, added to the root | `part(obj, 'name')!.rotation.y = ...` |
 
+Lean variants: `flatLamp(name, quad)` is a lit patch of two triangles (an SMD LED's top, a pixel); `lamp` is an
+80-triangle lens; `halo(name, pos, r)` is the soft light a lamp throws on the board round it (a flat additive disc,
+shown by `setLamp`). A part that heats up or burns: a `glowing` shell hidden until the hazard.
+
+**Controls** (what the pointer works in 3D: a button cap, a switch lever, a knob): mark the moving child with
+`markControl(node, mark)`; for a wired part `markControl(node, controlFromManifest(manifest, field))`. The Workbench
+ray-casts the marked children of the copy under the pointer and, by `mark.mode`, holds the field at `values[1]` while
+the pointer is down (`momentary`), steps it on a click (`toggle`, `nextValue`) or follows the pointer round the
+knob's axis (`rotate`, `turnValueAt`); a press on a control never drags the part. The model only shows the state it
+is given. See `controls.ts`; the infrared remote's caps are the example.
+
 `animate(state, obj, env)` is called when the state changes and then every frame for as long as it returns `true`
 (blink, spin). It runs for every copy: **no `new`, no array or object literals, no closures** in it. `part()` caches
 its look-ups; `setLamp` and `drawScreen` do nothing when nothing changed. Do not touch the shared family materials.
@@ -146,7 +157,7 @@ thing. Textures: one per print, 6 to 12 px/mm, capped at 1024 px.
 - `models/wireless/nfc-tag.model.ts` (simple): two solids, one print. 398 triangles, 3 draw calls.
 - `models/wireless/wifi-router.model.ts` (complex): body in three families, feet, antennas, a print with legends, three
   lamps with a state machine in `animate`, four example states. 1,486 triangles.
-- `models/reference/kit-sampler.model.ts`: every builder of `parts.ts` on one invented board, with silkscreen and
+- `models/reference/kit-sampler.model.ts`: every builder of `parts.ts` on one made-up, unbranded board, with silkscreen and
   terminals computed from what the builders return. Copy from it.
 - `models/reference/led-5mm.model.ts` (wired): size and terminals from the manifest, legs with `plugMm`, a glowing
   dome, `PartState`, the hazard states `overcurrent` and `burnt`.
@@ -161,7 +172,7 @@ Do:
   1.5+ as a soft case). A sharp box is a brick.
 - Use `PAL` finishes. Metal is `tin`, `gold`, `copper`, `steel`; boards are `pcb*` with the FR4 look built in.
 - Add the small printed things that make a part recognisable: silkscreen outline and reference, pin labels
-  (`pinLabels`), polarity marks, a rating, a made-up maker's mark. Draw them in `print()`.
+  (`pinLabels`), polarity marks, a rating, a port's name, a button's symbol. Draw them in `print()`.
 - Give boards their real details: drilled mounting holes (`pcb({ holes })`), the header rows where they really are,
   the crystal, the regulator, the reset button.
 - A board with through-hole parts does not lie flat: its pins and solder joints poke out of the underside, so give
@@ -170,12 +181,32 @@ Do:
 
 Don't:
 - No white bricks, no single-colour blobs, no parts floating above the table or sinking into it.
-- No real brand logos or wordmarks, ever (invent a mark, or print the plain part number).
+- **No brands of any kind, real or invented** (the owner's rule for everything on the Workbench): no maker's name,
+  no logo or logo-like mark, no wordmark, printed, debossed or shown on a screen; and nothing that says or contains
+  "kode", "dot" or "dotbench". Print only functional, generic markings: pin and port names, LED legends, ratings
+  ("5 V 2 A", "8 GB", "125 kHz"), polarity, reference designators (U1, C3), a revision, button symbols, generic
+  standard signs (the contactless waves, the power sign). Where a real board carries its maker's name or logo, leave
+  that area blank. Live data the user typed (a network name on a screen) is data, not a brand.
 - No per-frame allocation, no timers, no listeners in a model. No random numbers in `build` (models must be the same
   on every visit).
 - No textures from files, no fetches: everything is built in code.
 - No new shared materials: if a finish is missing, ask for it in `PAL` (additive changes to the kit are welcome).
 - Do not edit `contract.ts`, `registry.ts` or another model to make yours work.
+
+## Colours
+
+Give colours as sRGB hex, the way they should look (`'#1d6a45'`); the kit converts them once. (Until the commit that
+fixed it, `Shape.add` converted twice and everything came out darker and redder: a model that compensated for that,
+for instance with an `asSeen()` helper, must drop the compensation.)
+
+## Planned for the kit (do not wait for it: keep your own copy in your family folder until it lands)
+
+Builders written by the model families that belong here and will be moved in, names kept where possible: pins-down
+header (`legRow`), radio module with antenna, SMD switch, chip passives, SOT-23/223, SOD-123, DPAK, DIP in a socket,
+crystal, DC jack, JST-SH, shrouded header, finned heatsink, crimp housing, jumper cap, wire and ribbon, slide
+switch, PP3 snaps, 3.81 mm screw terminal, right-angle header, socket strip, SMA jack, FPC connector, `outlineBoard`,
+`printOnCylinder`, `extrude` and `roundLoop`. Changes to the kit are additive: what a model imports today keeps
+working.
 
 ## For hosts (the Workbench, the stand)
 

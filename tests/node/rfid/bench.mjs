@@ -75,5 +75,9 @@ export async function bootRfid(pkg) {
     }
   };
   await a.waitFor(() => a.logText().includes("rfid_api up") || pkg !== "rfid_api", 20000, "app boot");
+  // The first ~1.5 s of a Node boot without radio glue belongs to AO_Radio's failed link-up (esp_hosted_init times out); with the BLE area in the
+  // firmware a timed call issued inside that window is stretched by it (the carrier-gap write and the read windows). Start once it has ended.
+  const t0 = Date.now();
+  while (!/esp_hosted_init|kdrv\.radio link up/.test(a.logText()) && Date.now() - t0 < 8000) await sleep(25);
   return a;
 }

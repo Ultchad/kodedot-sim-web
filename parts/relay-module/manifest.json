@@ -60,12 +60,12 @@
   },
   "logic_mv": 3000,
   "pins": [
-    {"name":"VCC","kind":"power_in","pos":{"x":15,"y":60},"mm":{"x":1.5,"y":6},"face":"left","label":{"en":"VCC"},"min_mv":4000,"max_mv":6500,"typ_ma":70},
-    {"name":"GND","kind":"ground","pos":{"x":15,"y":85.4},"mm":{"x":1.5,"y":8.54},"face":"left","label":{"en":"GND"}},
-    {"name":"IN","kind":"io","pos":{"x":15,"y":110.8},"mm":{"x":1.5,"y":11.08},"face":"left","label":{"en":"IN"},"abs_max_mv":6000},
-    {"name":"COM","kind":"io","pos":{"x":485,"y":60},"mm":{"x":48.5,"y":6},"face":"right","label":{"en":"COM"},"abs_max_mv":60000},
-    {"name":"NO","kind":"io","pos":{"x":485,"y":110.8},"mm":{"x":48.5,"y":11.08},"face":"right","label":{"en":"NO"},"abs_max_mv":60000},
-    {"name":"NC","kind":"io","pos":{"x":485,"y":161.6},"mm":{"x":48.5,"y":16.16},"face":"right","label":{"en":"NC"},"abs_max_mv":60000}
+    {"name":"VCC","kind":"power_in","pos":{"x":15,"y":60},"mm":{"x":1.5,"y":6,"z":11.4},"face":"left","label":{"en":"VCC"},"min_mv":4000,"max_mv":6500,"typ_ma":70},
+    {"name":"GND","kind":"ground","pos":{"x":15,"y":85.4},"mm":{"x":1.5,"y":8.54,"z":11.4},"face":"left","label":{"en":"GND"}},
+    {"name":"IN","kind":"io","pos":{"x":15,"y":110.8},"mm":{"x":1.5,"y":11.08,"z":11.4},"face":"left","label":{"en":"IN"},"abs_max_mv":6000},
+    {"name":"COM","kind":"io","pos":{"x":500,"y":60},"mm":{"x":50,"y":6,"z":6.3},"face":"right","label":{"en":"COM"},"abs_max_mv":60000},
+    {"name":"NO","kind":"io","pos":{"x":500,"y":110.8},"mm":{"x":50,"y":11.08,"z":6.3},"face":"right","label":{"en":"NO"},"abs_max_mv":60000},
+    {"name":"NC","kind":"io","pos":{"x":500,"y":161.6},"mm":{"x":50,"y":16.16,"z":6.3},"face":"right","label":{"en":"NC"},"abs_max_mv":60000}
   ],
   "fields": [
     {

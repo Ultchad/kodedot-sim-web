@@ -297,8 +297,10 @@ export class DeclarativePart {
         if (el.reversed_output) set(el.reversed_output, reversed);
       } else if (el.type === "resistor") {
         if (el.current_output) set(el.current_output, Math.round((r?.cur ?? 0) * 100) / 100);
+        if (el.overpower_output) set(el.overpower_output, !!(el.rated_mw && r && (r.cur * r.cur * this._ohms(el)) / 1000 > el.rated_mw));
       } else if (el.type === "cell") {
         if (el.current_output) set(el.current_output, Math.round(Math.abs(r?.cur ?? 0) * 10) / 10);
+        if (el.overload_output) set(el.overload_output, !!(el.max_ma && Math.abs(r?.cur ?? 0) > el.max_ma) || this.host.net(this.host.term(el.pos)).id === this.host.net(this.host.term(el.neg)).id);
       } else if (el.type === "motor") {
         const v = r?.vd ?? 0, a = Math.abs(v), rated = el.rated_mv ?? 6000, start = el.start_mv ?? 500;
         const f = a <= start ? 0 : Math.min(1.2, (a - start) / (rated - start)), sp = Math.round(Math.sign(v) * f * 1000) / 1000;
