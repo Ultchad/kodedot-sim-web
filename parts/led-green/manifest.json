@@ -1,0 +1,149 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.led-green",
+  "name": {
+    "en": "LED green 5 mm",
+    "pt-BR": "LED verde 5 mm",
+    "es": "LED verde 5 mm"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A green 5 mm LED (forward voltage 2.10 V) with no resistor inside: put one in series. It loads the net, glows by its current (10 mA is full brightness) and reports overcurrent: above 26 mA for 60 ms it burns out (open circuit and a \"burnt\" flag) until you replace it. The long lead is the anode (A).",
+    "pt-BR": "Um LED verde de 5 mm (tensão direta 2.10 V) sem resistor dentro: ligue um em série. Ele carrega a rede, brilha pela corrente (10 mA é brilho total) e avisa de sobrecorrente: acima de 26 mA por 60 ms ele queima (circuito aberto e a marca \"queimado\") até você trocar a peça. O terminal longo é o anodo (A).",
+    "es": "Un LED verde de 5 mm (tensión directa 2.10 V) sin resistencia dentro: pon una en serie. Carga la red, brilla según su corriente (10 mA es brillo máximo) y avisa de sobrecorriente: por encima de 26 mA durante 60 ms se quema (circuito abierto y marca \"quemado\") hasta cambiar la pieza. El terminal largo es el ánodo (A)."
+  },
+  "category": "actuator",
+  "tags": [
+    "led",
+    "green",
+    "output"
+  ],
+  "keywords": {
+    "en": [
+      "led",
+      "light",
+      "lamp",
+      "green",
+      "diode"
+    ],
+    "pt-BR": [
+      "led",
+      "luz",
+      "lâmpada",
+      "verde",
+      "diodo"
+    ],
+    "es": [
+      "led",
+      "luz",
+      "lámpara",
+      "verde",
+      "diodo"
+    ]
+  },
+  "body": {
+    "w_mm": 5.8,
+    "d_mm": 5.8,
+    "h_mm": 8.6
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 116,
+    "height": 116
+  },
+  "pins": [
+    {"name":"A","kind":"io","pos":{"x":32.4,"y":58},"mm":{"x":1.62,"y":2.9},"face":"bottom","label":{"en":"A"},"abs_max_mv":60000},
+    {"name":"K","kind":"io","pos":{"x":83.2,"y":58},"mm":{"x":4.16,"y":2.9},"face":"bottom","label":{"en":"K"},"abs_max_mv":60000}
+  ],
+  "outputs": [
+    {
+      "name": "brightness",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "Brightness",
+        "pt-BR": "Brilho",
+        "es": "Brillo"
+      }
+    },
+    {
+      "name": "current_ma",
+      "type": "number",
+      "unit": "mA",
+      "label": {
+        "en": "Current",
+        "pt-BR": "Corrente",
+        "es": "Corriente"
+      }
+    },
+    {
+      "name": "overcurrent",
+      "type": "boolean",
+      "label": {
+        "en": "Overcurrent",
+        "pt-BR": "Sobrecorrente",
+        "es": "Sobrecorriente"
+      }
+    },
+    {
+      "name": "burnt",
+      "type": "boolean",
+      "label": {
+        "en": "Burnt out",
+        "pt-BR": "Queimado",
+        "es": "Quemado"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "glow",
+      "effect": "glow",
+      "x": 58,
+      "y": 40,
+      "r": 40,
+      "color": "#34c759",
+      "source": {
+        "output": "brightness"
+      }
+    },
+    {
+      "id": "burnt",
+      "effect": "opacity",
+      "x": 58,
+      "y": 58,
+      "r": 56,
+      "color": "#000000",
+      "source": {
+        "output": "burnt"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "diode",
+        "anode": "A",
+        "cathode": "K",
+        "vf_mv": 2100,
+        "rs_ohms": 10,
+        "max_ma": 25,
+        "burn_ms": 60,
+        "full_ma": 10,
+        "output": "brightness",
+        "current_output": "current_ma",
+        "overcurrent_output": "overcurrent",
+        "burnt_output": "burnt"
+      }
+    ]
+  }
+}

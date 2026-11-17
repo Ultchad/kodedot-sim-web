@@ -9,12 +9,37 @@
 
 // ---- time ----
 static uint64_t g_boot_us;   // set when dp_start runs: millis()/micros() count from power-on, like a real MCU
-unsigned long micros(void) { return (unsigned long)(dp_time_us() - g_boot_us); }
-unsigned long millis(void) { return (unsigned long)((dp_time_us() - g_boot_us) / 1000ULL); }
+// timed work the sketch does not call itself: tone() durations and library timers (LED matrix sequences)
+struct ToneT { int16_t pin; uint64_t end; };
+static ToneT g_tones[4];
+typedef void (*PollFn)(void); typedef uint64_t (*DeadlineFn)(void);
+static PollFn g_polls[4]; static DeadlineFn g_deadlines[4]; static int g_npolls = 0;
+void dotcore_register_poll(PollFn f, DeadlineFn d) { if (g_npolls < 4) { g_polls[g_npolls] = f; g_deadlines[g_npolls++] = d; } }
+static void pwm_stop_pin(int pin) { dp_pwm(pin, 0, 0); dp_pin_write(pin, 0); }
+void dotcore_poll(void) {
+  uint64_t now = 0; bool have = false;
+  for (auto &t : g_tones) if (t.pin >= 0 && (have || (now = dp_time_us(), have = true)) && now >= t.end) { pwm_stop_pin(t.pin); t.pin = -1; }
+  for (int i = 0; i < g_npolls; i++) g_polls[i]();
+}
+static uint64_t next_deadline(uint64_t limit) {
+  uint64_t d = limit;
+  for (auto &t : g_tones) if (t.pin >= 0 && t.end < d) d = t.end;
+  for (int i = 0; i < g_npolls; i++) { uint64_t x = g_deadlines[i](); if (x < d) d = x; }
+  return d;
+}
+unsigned long micros(void) { dotcore_poll(); return (unsigned long)(dp_time_us() - g_boot_us); }
+unsigned long millis(void) { dotcore_poll(); return (unsigned long)((dp_time_us() - g_boot_us) / 1000ULL); }
 int64_t esp_timer_get_time(void) { return (int64_t)(dp_time_us() - g_boot_us); }
-void delay(unsigned long ms) { dp_wait_until_us(dp_time_us() + (uint64_t)ms * 1000ULL); }
-void delayMicroseconds(unsigned int us) { dp_wait_until_us(dp_time_us() + us); }
-void yield(void) { dp_yield(); }
+static void wait_until(uint64_t target) {
+  for (;;) {
+    uint64_t now = dp_time_us(); if (now >= target) return;
+    uint64_t next = next_deadline(target);
+    dp_wait_until_us(next); dotcore_poll();
+  }
+}
+void delay(unsigned long ms) { wait_until(dp_time_us() + (uint64_t)ms * 1000ULL); }
+void delayMicroseconds(unsigned int us) { wait_until(dp_time_us() + us); }
+void yield(void) { dp_yield(); dotcore_poll(); }
 
 // ---- GPIO ----
 void pinMode(pin_size_t p, PinMode m) { dp_pin_mode(p, (int)m); }
@@ -31,22 +56,42 @@ void attachInterrupt(pin_size_t p, voidFuncPtr cb, PinStatus mode) {
 }
 void detachInterrupt(pin_size_t p) { if (p < 64) { g_isr[p] = nullptr; dp_pin_irq(p, 0); } }
 
-// ---- analog / PWM ----
-static uint8_t g_adc_bits = 12, g_pwm_bits = 8; static uint32_t g_pwm_hz = 1000;
-void analogReadResolution(uint8_t b) { g_adc_bits = b; }
-void analogWriteResolution(uint8_t b) { g_pwm_bits = b; }
-void analogWriteFrequency(uint32_t hz) { g_pwm_hz = hz; }
-void analogSetAttenuation(int) {}
-void analogReference(uint8_t) {}
-int analogRead(pin_size_t p) {   // ESP32: 12 bit, 0..~3.1 V at 12 dB -> use 3300 mV full scale here
-  long mv = dp_adc_mv(p); if (mv < 0) mv = 0; if (mv > 3300) mv = 3300;
-  return (int)((mv * ((1L << g_adc_bits) - 1)) / 3300L);
+// ---- analog / PWM: resolution, reference and PWM pins come from the board variant (variants/<core>/pins_arduino.h) ----
+static uint8_t g_adc_bits = DP_ADC_BITS, g_pwm_bits = DP_PWM_BITS; static uint32_t g_pwm_hz_override = 0;
+void analogReadResolution(uint8_t b) {
+#if DP_ADC_SETTABLE
+  if (b >= 1 && b <= 14) g_adc_bits = b;
+#else
+  (void)b;       // the Uno R3 ADC is 10 bit, fixed
+#endif
 }
+void analogWriteResolution(uint8_t b) { if (b >= 1 && b <= 16) g_pwm_bits = b; }
+void analogWriteFrequency(uint32_t hz) { g_pwm_hz_override = hz; }
+void analogReference(uint8_t) {}
+int analogRead(pin_size_t p) {
+#ifdef DP_ANALOG_PIN
+  p = DP_ANALOG_PIN(p);
+#endif
+  long mv = dp_adc_mv(p); if (mv < 0) mv = 0; if (mv > DP_ADC_VREF_MV) mv = DP_ADC_VREF_MV;
+  return (int)((mv * ((1L << g_adc_bits) - 1)) / DP_ADC_VREF_MV);
+}
+void analogWrite(pin_size_t p, int v) {
+  const uint32_t full = (1UL << g_pwm_bits) - 1;
+#ifdef DP_IS_DAC
+  if (DP_IS_DAC(p)) { long mv = (long)v * DP_ADC_VREF_MV / (long)full; dp_dac_mv(p, (int)(mv < 0 ? 0 : mv > DP_ADC_VREF_MV ? DP_ADC_VREF_MV : mv)); return; }
+#endif
+#if !DP_PWM_ANY
+  if (!DP_IS_PWM(p)) { dp_pin_mode(p, 1); dp_pin_write(p, v >= (int)((full + 1) / 2) ? 1 : 0); return; }   // a non-PWM pin: digital, as on the real board
+#endif
+  if (v <= 0) { dp_pin_mode(p, 1); dp_pwm(p, 0, 0); dp_pin_write(p, 0); return; }
+  if ((uint32_t)v >= full) { dp_pin_mode(p, 1); dp_pwm(p, 0, 0); dp_pin_write(p, 1); return; }
+  dp_pwm(p, g_pwm_hz_override ? g_pwm_hz_override : DP_PWM_HZ_FOR(p), (uint32_t)(((uint64_t)v << 16) / full));
+}
+#if DP_ESP_API
 static void pwm_out(uint8_t p, uint32_t hz, uint32_t duty, uint8_t bits) {
   uint32_t full = (1UL << bits); if (duty > full) duty = full;
   dp_pwm(p, hz, (uint32_t)(((uint64_t)duty << 16) / full));
 }
-void analogWrite(pin_size_t p, int v) { pwm_out(p, g_pwm_hz, (uint32_t)v, g_pwm_bits); }
 static uint8_t g_ledc_pin[16], g_ledc_bits[16]; static uint32_t g_ledc_hz[16];
 uint32_t ledcSetup(uint8_t ch, uint32_t f, uint8_t bits) { g_ledc_hz[ch & 15] = f; g_ledc_bits[ch & 15] = bits; return f; }
 void ledcAttachPin(uint8_t pin, uint8_t ch) { g_ledc_pin[ch & 15] = pin; }
@@ -55,9 +100,17 @@ static uint32_t g_pinhz[64]; static uint8_t g_pinbits[64];
 bool ledcAttach(uint8_t pin, uint32_t f, uint8_t bits) { if (pin < 64) { g_pinhz[pin] = f; g_pinbits[pin] = bits; } return true; }
 void ledcWrite(uint8_t pin, uint32_t duty) { if (pin < 64) pwm_out(pin, g_pinhz[pin], duty, g_pinbits[pin]); }
 void dacWrite(uint8_t pin, uint8_t v) { dp_dac_mv(pin, (int)v * 3300 / 255); }
+void analogSetAttenuation(int) {}
 uint32_t getCpuFrequencyMhz(void) { return 240; }
-void tone(uint8_t pin, unsigned int f, unsigned long) { dp_pwm(pin, f, 32768); }
-void noTone(uint8_t pin) { dp_pwm(pin, 0, 0); }
+#endif
+// tone(): a 50 % square wave as PWM on the net; with a duration it stops by itself (checked at every time call, delay and yield)
+void tone(uint8_t pin, unsigned int f, unsigned long duration) {
+  if (f == 0) { noTone(pin); return; }
+  for (auto &t : g_tones) if (t.pin == pin) t.pin = -1;
+  dp_pin_mode(pin, 1); dp_pwm(pin, f, 32768);
+  if (duration) for (auto &t : g_tones) if (t.pin < 0) { t.pin = pin; t.end = dp_time_us() + (uint64_t)duration * 1000ULL; break; }
+}
+void noTone(uint8_t pin) { for (auto &t : g_tones) if (t.pin == pin) t.pin = -1; dp_pin_mode(pin, 1); pwm_stop_pin(pin); }
 
 double dotbenchField(int i) { return dp_field_f64(i); }
 void dotbenchOutput(int i, double v) { dp_output_f64(i, v); }
@@ -92,16 +145,24 @@ void randomSeed(unsigned long s) { g_seed = s ? s : 1; }
 static unsigned long rnd() { g_seed = g_seed * 1103515245UL + 12345UL; return (g_seed >> 8) & 0x7fffffffUL; }
 long random(long hi) { return hi <= 0 ? 0 : (long)(rnd() % (unsigned long)hi); }
 long random(long lo, long hi) { return lo >= hi ? lo : lo + random(hi - lo); }
-uint32_t esp_random(void) { return (uint32_t)(rnd() << 1) ^ (uint32_t)rnd(); }
 void init(void) __attribute__((weak)); void init(void) {}
 void initVariant(void) __attribute__((weak)); void initVariant(void) {}
+#if DP_ESP_API
 void EspClass::restart() { dp_yield(); }
 uint32_t EspClass::getFreeHeap() { return 200000; }
 EspClass ESP;
+uint32_t esp_random(void) { return (uint32_t)(rnd() << 1) ^ (uint32_t)rnd(); }
+#endif
 void serialEvent() {}
 
 // ---- Serial ----
-DPSerial Serial(0), Serial1(1), Serial2(2);
+DPSerial Serial(0);
+#if DP_HAS_SERIAL1
+DPSerial Serial1(1);
+#endif
+#if DP_ESP_API
+DPSerial Serial2(2);
+#endif
 void DPSerial::begin(unsigned long baud, uint32_t, int8_t rx, int8_t tx) { dp_uart_begin(port_, (uint32_t)baud, rx, tx); }
 void DPSerial::flushTx() { if (txn_) { dp_uart_write(port_, tx_, txn_); txn_ = 0; } }
 // every write goes out at once (a real UART starts sending immediately); the 64 byte buffer only batches one call's bytes
@@ -183,6 +244,7 @@ uint8_t SPIClass::transfer(uint8_t d) { transfer(&d, 1); return d; }
 uint16_t SPIClass::transfer16(uint16_t d) { uint8_t b[2] = { (uint8_t)(d >> 8), (uint8_t)d }; if (!msb_) { uint8_t t = b[0]; b[0] = b[1]; b[1] = t; } transfer(b, 2); return msb_ ? (uint16_t)(b[0] << 8 | b[1]) : (uint16_t)(b[1] << 8 | b[0]); }
 void SPIClass::transferBytes(const uint8_t *out, uint8_t *in, uint32_t n) { for (uint32_t i = 0; i < n; i++) { uint8_t b = out ? out[i] : 0xFF; transfer(&b, 1); if (in) in[i] = b; } }
 
+#if DP_ESP_API
 // ---- Preferences: in memory, for the life of this power-on (the bench does not persist it yet) ----
 namespace { struct PrefEnt { char key[16]; uint8_t type; uint32_t n; uint8_t *data; }; PrefEnt g_prefs[32]; int g_np = 0; }
 static PrefEnt *pref_find(const char *k) { for (int i = 0; i < g_np; i++) if (!strncmp(g_prefs[i].key, k, 15)) return &g_prefs[i]; return nullptr; }
@@ -202,6 +264,8 @@ size_t Preferences::getBytesLength(const char *k) { PrefEnt *e = pref_find(k); r
 size_t Preferences::putString(const char *k, const char *v) { return pref_put(k, v, (uint32_t)strlen(v) + 1, 2) ? strlen(v) : 0; }
 String Preferences::getString(const char *k, String def) { PrefEnt *e = pref_find(k); return e && e->type == 2 ? String((const char *)e->data) : def; }
 
+#endif
+
 // ---- exports: how the bench reaches into the component ----
 static uint8_t g_scratch[512];
 extern "C" {
@@ -215,7 +279,13 @@ DP_EXPORT(dp_pin_event) void dp_pin_event(int pin, int level) {
   (void)level; if (pin >= 0 && pin < 64 && g_isr[pin]) g_isr[pin](g_isr_arg[pin]);
 }
 DP_EXPORT(dp_uart_rx) void dp_uart_rx(int port, int byte) {
-  (port == 0 ? Serial : port == 1 ? Serial1 : Serial2).rxPush((uint8_t)byte);
+  if (port == 0) Serial.rxPush((uint8_t)byte);
+#if DP_HAS_SERIAL1
+  else if (port == 1) Serial1.rxPush((uint8_t)byte);
+#endif
+#if DP_ESP_API
+  else if (port == 2) Serial2.rxPush((uint8_t)byte);
+#endif
 }
 DP_EXPORT(dp_start) void dp_start(void) {
   g_boot_us = dp_time_us();

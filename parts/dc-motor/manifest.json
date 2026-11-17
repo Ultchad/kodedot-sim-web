@@ -1,0 +1,139 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.dc-motor",
+  "name": {
+    "en": "DC motor",
+    "pt-BR": "Motor DC",
+    "es": "Motor DC"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A small brushed DC motor (3 to 6 V). A 4 ohm winding that loads whatever drives it, and a speed that follows the voltage across its two terminals: 6 V is 6000 rpm, it does not start below 0.5 V, swap the wires to reverse. The speed (-1..1, negative is reverse) and rpm are part state the page can spin. PWM works (the average voltage counts). Not modelled: back-EMF, inertia, load, inductive kick (add a diode anyway).",
+    "pt-BR": "Um pequeno motor DC com escovas (3 a 6 V). Enrolamento de 4 ohm que carrega quem o aciona e uma velocidade que segue a tensão entre os terminais: 6 V são 6000 rpm, não parte abaixo de 0,5 V, troque os fios para inverter. A velocidade (-1..1, negativa é reverso) e as rpm são estado da peça que a página pode girar. PWM funciona (conta a tensão média). Não modelado: força contraeletromotriz, inércia, carga, pico indutivo (ponha um diodo mesmo assim).",
+    "es": "Un pequeño motor DC con escobillas (3 a 6 V). Bobinado de 4 ohm que carga a quien lo maneja y una velocidad que sigue la tensión entre sus terminales: 6 V son 6000 rpm, no arranca por debajo de 0,5 V, invierte los cables para el giro contrario. La velocidad (-1..1, negativa es reversa) y las rpm son estado de la pieza que la página puede girar. PWM funciona (cuenta la tensión media). No modelado: fuerza contraelectromotriz, inercia, carga, pico inductivo (pon un diodo igualmente)."
+  },
+  "category": "actuator",
+  "tags": [
+    "motor",
+    "dc",
+    "brushed"
+  ],
+  "keywords": {
+    "en": [
+      "motor",
+      "dc motor",
+      "brushed",
+      "wheel",
+      "fan",
+      "spin"
+    ],
+    "pt-BR": [
+      "motor",
+      "motor dc",
+      "roda",
+      "ventilador",
+      "girar"
+    ],
+    "es": [
+      "motor",
+      "motor dc",
+      "rueda",
+      "ventilador",
+      "girar"
+    ]
+  },
+  "body": {
+    "w_mm": 33,
+    "d_mm": 20.4,
+    "h_mm": 15.4
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 330,
+    "height": 204
+  },
+  "pins": [
+    {"name":"M1","kind":"io","pos":{"x":10,"y":74},"mm":{"x":1,"y":7.4},"face":"left","label":{"en":"M1"},"abs_max_mv":60000},
+    {"name":"M2","kind":"io","pos":{"x":10,"y":130},"mm":{"x":1,"y":13},"face":"left","label":{"en":"M2"},"abs_max_mv":60000}
+  ],
+  "outputs": [
+    {
+      "name": "speed",
+      "type": "number",
+      "min": -1.2,
+      "max": 1.2,
+      "label": {
+        "en": "Speed",
+        "pt-BR": "Velocidade",
+        "es": "Velocidad"
+      }
+    },
+    {
+      "name": "rpm",
+      "type": "number",
+      "unit": "rpm",
+      "label": {
+        "en": "Speed",
+        "pt-BR": "Rotação",
+        "es": "Rotación"
+      }
+    },
+    {
+      "name": "current_ma",
+      "type": "number",
+      "unit": "mA",
+      "label": {
+        "en": "Current",
+        "pt-BR": "Corrente",
+        "es": "Corriente"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "rotor",
+      "effect": "rotate",
+      "x": 290,
+      "y": 102,
+      "r": 30,
+      "source": {
+        "output": "speed"
+      },
+      "scale": {
+        "in": [
+          -1,
+          1
+        ],
+        "out": [
+          -180,
+          180
+        ]
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "motor",
+        "a": "M1",
+        "b": "M2",
+        "ohms": 4,
+        "rated_mv": 6000,
+        "start_mv": 500,
+        "rpm": 6000,
+        "max_ma": 1500,
+        "speed_output": "speed",
+        "rpm_output": "rpm",
+        "current_output": "current_ma"
+      }
+    ]
+  }
+}

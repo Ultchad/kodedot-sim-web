@@ -1,0 +1,70 @@
+{
+  "name": "a motor turns with the voltage across it",
+  "steps": [
+    {
+      "comment": "nothing wired: still",
+      "expect_output": {
+        "name": "speed",
+        "value": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "M1",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "M2",
+        "level": 0
+      }
+    },
+    {
+      "comment": "a Dot pin cannot drive a motor: 3.3 V over 236 ohm of pins plus the 4 ohm winding is 13.8 mA and 55 mV, it does not turn",
+      "expect_output": {
+        "name": "current_ma",
+        "min": 13,
+        "max": 14.5
+      }
+    },
+    {
+      "expect_output": {
+        "name": "speed",
+        "value": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "M1",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "M2",
+        "level": 1
+      }
+    },
+    {
+      "comment": "reversed: same current, still",
+      "expect_output": {
+        "name": "current_ma",
+        "min": 13,
+        "max": 14.5
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "M2",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "current_ma",
+        "value": 0
+      }
+    }
+  ]
+}

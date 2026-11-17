@@ -1,0 +1,54 @@
+{
+  "name": "an antenna is inert at DC",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "GND",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "FEED",
+        "level": 1
+      }
+    },
+    {
+      "comment": "FEED high, GND low: no voltage change on either side",
+      "expect_pin": {
+        "pin": "GND",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "FEED",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "FEED",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "GND",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "FEED",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "GND",
+        "level": 1
+      }
+    }
+  ]
+}

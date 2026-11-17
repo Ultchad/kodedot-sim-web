@@ -13,6 +13,7 @@ step() { echo "== $1"; shift; "$@" || rc=1; }
 step "schema copies" node "$root/tools/dblib/part/gen-schema.mjs" --check
 step "built-in library: build and run every part's scenarios" node "$root/parts/build-library.mjs" --test
 step "bench unit tests" node "$here/bench.test.mjs"
+step "circuit tests (nodal solve, capacitors, hazards)" node "$here/circuit.test.mjs"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 step "starter: new, build, test" bash -c "cd '$tmp' && '$root/tools/dotbench' part new '$tmp/demo' >/dev/null && '$root/tools/dotbench' part build '$tmp/demo' && '$root/tools/dotbench' part test '$tmp/demo'"
 for a in parts_io parts_i2c parts_uart; do [ -f "$DOTBENCH_BUILD/apps/$a/$a.dotbench" ] || "$root/tools/dotbench" build "$here/apps/$a" | tail -1; done

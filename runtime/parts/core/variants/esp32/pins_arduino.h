@@ -1,7 +1,18 @@
-// Pin numbers of the virtual ESP32 DevKit-style MCU: Arduino pin number == GPIO number,
-// as in arduino-esp32. The manifest maps these numbers to named pins on the picture.
+// dotcore variant "esp32": the virtual ESP32 DevKit-style MCU. Arduino pin number == GPIO number, as in arduino-esp32.
 #pragma once
 #include <stdint.h>
+#define DP_BOARD_NAME "ESP32"
+#define DP_ESP_API 1            /* ledc*, dacWrite, ESP, Preferences, esp_random */
+#define DP_HAS_SERIAL1 1
+#define DP_HAS_WIFI 1
+#define DP_ADC_BITS 12
+#define DP_ADC_VREF_MV 3300
+#define DP_ADC_SETTABLE 1
+#define DP_PWM_BITS 8
+#define DP_PWM_ANY 1
+#define DP_PWM_HZ_FOR(p) 1000
+#define DP_EEPROM_SIZE 4096
+#define DP_LOGIC_MV 3300
 static const uint8_t LED_BUILTIN = 2;
 #define BUILTIN_LED LED_BUILTIN
 static const uint8_t SDA = 21;
