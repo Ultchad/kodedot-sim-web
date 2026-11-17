@@ -76,7 +76,9 @@
             "gpio": {"enum": [8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16], "description": "The ESP32-P4 GPIO this module pin meets when mounted upright (SDK positions 1..14 are GPIO 8 9 10 11 12 13 14 21 19 20 17 18 15 16)."},
             "source": {"enum": ["documented", "assumed"], "default": "documented", "description": "assumed: not established by a public source; the table is data and can be corrected."}}}
         },
-        "rails": {"type": "array", "maxItems": 16, "items": {"type": "object", "required": ["pin", "rail"], "additionalProperties": false, "properties": {"pin": {"$ref": "#/$defs/pinName"}, "rail": {"enum": ["V5", "V33", "GND"]}}}}
+        "connector": {"type": "object", "required": ["seat_mm", "pin_dir", "pin_length_mm"], "additionalProperties": false, "properties": {"cols": {"const": 10}, "rows": {"const": 2}, "pitch_mm": {"const": 2.54}, "seat_mm": {"type": "object", "required": ["x", "y", "z"], "additionalProperties": false, "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}, "description": "Centre of the 2x10 pin block where the pins leave the part (the seating plane), part frame."}, "pin_dir": {"enum": ["+y", "-z"], "description": "Part-frame direction in which the pins point (into the Dot)."}, "pin_length_mm": {"type": "number"}, "odd_row": {"enum": ["low_z", "high_y"], "description": "Where pins 1,3,..19 of the connector sit: the row with the lower z (flat modules) or the larger y (standing modules). Assumed."}, "source": {"enum": ["documented", "assumed"]}}, "description": "The physical 2x10 mating connector. The 20 pins are in the pin list (ref says which position), terminal mm is the middle of the exposed pin."},
+      "placement": {"type": "object", "required": ["anchor_dot_mm", "upright"], "additionalProperties": false, "properties": {"anchor_dot_mm": {"type": "object", "required": ["x", "y", "z"], "additionalProperties": false, "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}, "description": "Where connector.seat_mm lands in the Dot's frame (X right, Y up, Z out of the screen, origin the centre of the Dot's bounding box): the middle of the top-wall connector."}, "upright": {"type": "object", "required": ["x", "y", "z"], "additionalProperties": false, "properties": {"x": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}, "y": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}, "z": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}}, "description": "Direction in the Dot's frame of the part's +x, +y, +z when plugged in upright."}, "turned": {"type": "object", "required": ["x", "y", "z"], "additionalProperties": false, "properties": {"x": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}, "y": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}, "z": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}}, "description": "The same plugged in turned (a half turn about the Dot's Y axis)."}, "source": {"enum": ["documented", "assumed"]}}, "description": "How a page places a mounted module in 3D. Components are mapped one by one (the part frame is left handed: x right, y down, z up), so the matrix has determinant -1."},
+      "rails": {"type": "array", "maxItems": 16, "items": {"type": "object", "required": ["pin", "rail"], "additionalProperties": false, "properties": {"pin": {"$ref": "#/$defs/pinName"}, "rail": {"enum": ["V5", "V33", "GND"]}}}}
       },
       "description": "The part plugs onto the Dot's J3 header as a whole: bench.mountPart(instance, orientation) joins every listed pin to its header position and every rail pin to the rail, in one action."
     },
@@ -94,6 +96,7 @@
       },
       "description": "width/height define the coordinate space used by every pos, region and visual in this manifest."
     },
+    "refs": {"type": "array", "maxItems": 32, "items": {"type": "object", "required": ["name", "kind", "mm"], "additionalProperties": false, "properties": {"name": {"type": "string", "maxLength": 24}, "kind": {"enum": ["antenna_sma", "hole", "other"]}, "mm": {"$ref": "#/$defs/pin/properties/mm"}, "length_mm": {"type": "number", "minimum": 0, "description": "antenna_sma: length of the antenna standing on this base, base included, along +z."}, "note": {"type": "string", "maxLength": 200}}}, "description": "Non-electrical reference points of the body (antenna bases, mounting holes), same millimetre frame as the pins. A model may place geometry on them; estimates when body.estimate is true."},
     "model": {
       "type": "object",
       "required": ["file"],
@@ -236,6 +239,8 @@
           "items": {"enum": ["digital", "pwm", "analog", "dac", "interrupt", "i2c_sda", "i2c_scl", "spi_sck", "spi_miso", "spi_mosi", "spi_ss", "uart_rx", "uart_tx", "touch", "boot_strap", "input_only"]},
           "description": "What the pin can do on the real board (a board part: pin capabilities for the page and the sketch editor). Informational: the part still decides what its sketch does."
         },
+        "aliases": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/pinName"}, "description": "Old or alternative names of this terminal: bench.connect, wireOf and net accept them and mean this pin (a renamed pin keeps its old name working)."},
+        "ref": {"type": "string", "maxLength": 24, "description": "Non-electrical: the board designator and pin number of this terminal on the real part (J401.17)."},
         "face": {"enum": ["top", "bottom", "left", "right", "front", "back"], "default": "top", "description": "Which face the terminal is on: top (header pins, screw terminals), bottom (leads that plug into a breadboard), left/right (x edges), front (y = d_mm) and back (y = 0)."}
       },
       "allOf": [
@@ -705,6 +710,7 @@
             "a": {"$ref": "#/$defs/pinName"}, "b": {"$ref": "#/$defs/pinName"},
             "ohms": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "object", "required": ["field"], "additionalProperties": false, "properties": {"field": {"$ref": "#/$defs/fieldName"}, "scale": {"type": "number"}}}]},
             "rated_mw": {"type": "number", "exclusiveMinimum": 0, "description": "Power rating; above it the bench shows an overpower hazard."},
+            "overpower_output": {"$ref": "#/$defs/fieldName", "description": "A boolean output: true while the power is above rated_mw."},
             "current_output": {"$ref": "#/$defs/fieldName"}
           },
           "description": "A resistor between two terminals, solved with the nets (it loads them)."
@@ -755,7 +761,8 @@
             "mv": {"$ref": "#/$defs/expr"},
             "ohms": {"type": "number", "minimum": 0.001, "default": 1.5},
             "max_ma": {"type": "number", "exclusiveMinimum": 0, "description": "Above it an overcurrent hazard is shown."},
-            "current_output": {"$ref": "#/$defs/fieldName"}
+            "current_output": {"$ref": "#/$defs/fieldName"},
+            "overload_output": {"$ref": "#/$defs/fieldName", "description": "A boolean output: true while the current is above max_ma or plus is wired to minus."}
           },
           "description": "A floating voltage source (battery, bench supply): + at `pos`, `mv` above `neg`; its minus is 0 V when nothing else defines the reference."
         },

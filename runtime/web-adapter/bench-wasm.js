@@ -53,9 +53,14 @@ export class WasmPart {
     this.worker = null; this.dead = false; this.busy = false; this.lastBeat = 0; this.stale = 0; this.parkMark = -1;
     this.reqQueue = []; this.reqActive = false;
     this.consoleDecoder = new TextDecoder();
+    // optional outputs a board declares so a model can show life: tx / rx (counters of serial bytes written and received), crashed, led (the user LED pin: level or PWM duty)
+    this.hasOut = new Set((this.m.outputs ?? []).map((o) => o.name)); this.nTx = 0; this.nRx = 0;
+    this.ledGpio = (this.m.visuals ?? []).find((v) => v.id === "led")?.source?.gpio;
   }
+  _o(name, v) { if (this.hasOut.has(name)) this.host.setOutput(name, v); }
 
   async start() {
+    this._o("tx", 0); this._o("rx", 0); this._o("crashed", false); this._o("led", 0);
     for (let i = 0; i < this.fieldIdx.length && i < 32; i++) this._field(i);
     const def = this.part.def, code = this.part.code;
     let mod;
@@ -69,7 +74,7 @@ export class WasmPart {
       const t = setTimeout(() => rej(new Error("the part did not start within 10 s")), 10000); t.unref?.();
       this.worker.on((m) => {
         if (m.type === "ready") { clearTimeout(t); res(); } else if (m.type === "bell") this.drain();
-        else if (m.type === "error") { clearTimeout(t); if (!this.dead) { this.crashed = true; this.host.warn("crashed", `the part stopped: ${m.message.split("\n")[0]}`); this.host.changed(); } rej(new Error(m.message.split("\n")[0])); }
+        else if (m.type === "error") { clearTimeout(t); if (!this.dead) { this.crashed = true; this._o("crashed", true); this.host.warn("crashed", `the part stopped: ${m.message.split("\n")[0]}`); this.host.changed(); } rej(new Error(m.message.split("\n")[0])); }
       });
     });
     this.worker.post({ type: "init", module: mod, bytes: undefined, clockSab: this.host.clock().sab, mbSab: this.sab, ringSab: this.ringSab, L });
@@ -163,6 +168,7 @@ export class WasmPart {
     return out;
   }
   _uartIn(port, bytes) {
+    this.nRx += bytes.length ?? 0; this._o("rx", this.nRx);
     let head = Atomics.load(this.mb, L.UART_HEAD + port), tail = Atomics.load(this.mb, L.UART_TAIL + port);
     for (const b of bytes) {
       if (((tail - head) | 0) >= 1024) break;
@@ -230,11 +236,11 @@ export class WasmPart {
       case K.PIN_MODE: { const st = this.pin.get(a) ?? this._adhoc(a); st.pwm = null; st.dac = null;
         st.mode = b === 1 ? "out" : b === 4 ? "od" : "in"; st.pull = b === 2 ? "up" : b === 3 ? "down" : "none"; return true; }
       case K.PIN_WRITE: {
-        const st = this.pin.get(a) ?? this._adhoc(a), was = st.level; st.level = b ? 1 : 0;
+        const st = this.pin.get(a) ?? this._adhoc(a), was = st.level; st.level = b ? 1 : 0; if (a === this.ledGpio && st.mode === "out") this._o("led", st.level);
         if (was !== st.level && st.mode === "out") { const term = this._term(a); if (term) this.bench.preciseLevel(term, st.level, tv); }
         return true;
       }
-      case K.PWM: { const st = this.pin.get(a) ?? this._adhoc(a); st.pwm = b > 0 ? { hz: b >>> 0, duty: Math.min(65536, c >>> 0) } : null; if (b > 0) st.mode = "out"; return true; }
+      case K.PWM: { const st = this.pin.get(a) ?? this._adhoc(a); st.pwm = b > 0 ? { hz: b >>> 0, duty: Math.min(65536, c >>> 0) } : null; if (b > 0) st.mode = "out"; if (a === this.ledGpio) this._o("led", st.pwm ? st.pwm.duty / 65536 : st.level); return true; }
       case K.DAC: { const st = this.pin.get(a) ?? this._adhoc(a); st.dac = b; return true; }
       case K.PIN_IRQ: { const st = this.pin.get(a) ?? this._adhoc(a); st.irq = b; return false; }
       case K.UART_BEGIN: { if (a >= 0 && a < 3) this.uart[a] = { baud: b >>> 0, rx: c, tx: d }; return false; }
@@ -256,6 +262,7 @@ export class WasmPart {
   }
   _adhoc(gpio) { const st = { mode: "z", pull: "none", level: 0, pwm: null, dac: null, irq: 0 }; this.pin.set(gpio, st); return st; }
   _uartOut(port, bytes) {
+    if (port !== 7) { this.nTx += bytes.length; this._o("tx", this.nTx); }
     if (port === 7) { this._note = (this._note ?? "") + new TextDecoder().decode(bytes); let i; while ((i = this._note.indexOf("\n")) >= 0) { this.host.warn("note", this._note.slice(0, i)); this._note = this._note.slice(i + 1); } return; }       // dp_log: a note from the core (e.g. WiFi is not simulated)
     if (port === 0) { this.host.console(this.consoleDecoder.decode(bytes, { stream: true })); return; }
     const u = this.uart[port]; if (!u || u.tx < 0) return;

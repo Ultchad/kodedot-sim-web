@@ -26,21 +26,22 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 120,
-    "height": 130
+    "width": 156,
+    "height": 156
   },
   "pins": [
     {
       "name": "P",
       "kind": "io",
       "pos": {
-        "x": 40,
-        "y": 114
+        "x": 28.6,
+        "y": 78
       },
       "abs_max_mv": 5500,
       "mm": {
         "x": 2.2,
-        "y": 6
+        "y": 6,
+        "z": 0
       },
       "face": "bottom"
     },
@@ -48,13 +49,14 @@
       "name": "N",
       "kind": "io",
       "pos": {
-        "x": 80,
-        "y": 114
+        "x": 127.4,
+        "y": 78
       },
       "abs_max_mv": 5500,
       "mm": {
         "x": 9.8,
-        "y": 6
+        "y": 6,
+        "z": 0
       },
       "face": "bottom"
     }
@@ -77,10 +79,10 @@
     {
       "id": "pitch",
       "effect": "text",
-      "x": 60,
-      "y": 46,
-      "w": 80,
-      "h": 22,
+      "x": 78,
+      "y": 55.2,
+      "w": 104,
+      "h": 26.4,
       "color": "#ffffff",
       "source": {
         "output": "hz"

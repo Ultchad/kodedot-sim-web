@@ -53,17 +53,17 @@
   },
   "body": {
     "w_mm": 7.62,
-    "d_mm": 5,
+    "d_mm": 3,
     "h_mm": 7
   },
   "picture": {
     "file": "picture.svg",
-    "width": 76,
-    "height": 50
+    "width": 91,
+    "height": 36
   },
   "pins": [
-    {"name":"A","kind":"io","pos":{"x":12.7,"y":25},"mm":{"x":1.27,"y":2.5},"face":"bottom","label":{"en":"A"},"abs_max_mv":50000},
-    {"name":"B","kind":"io","pos":{"x":63.5,"y":25},"mm":{"x":6.35,"y":2.5},"face":"bottom","label":{"en":"B"},"abs_max_mv":50000}
+    {"name":"A","kind":"io","pos":{"x":15.2,"y":18},"mm":{"x":1.27,"y":1.5,"z":0},"face":"bottom","label":{"en":"A"},"abs_max_mv":50000},
+    {"name":"B","kind":"io","pos":{"x":76.2,"y":18},"mm":{"x":6.35,"y":1.5,"z":0},"face":"bottom","label":{"en":"B"},"abs_max_mv":50000}
   ],
   "fields": [
     {

@@ -21,8 +21,10 @@ export function writePart(d) {
   const scale = d.scale ?? 10, W = Math.round(d.w * scale), H = Math.round(d.d * scale), px = (mm) => Math.round(mm * scale * 10) / 10;
   const dir = path.join(PARTS, d.dir);
   fs.mkdirSync(path.join(dir, "tests"), { recursive: true });
-  const pins = d.pins.map(({ name, kind, mm, face, label, ...rest }) => {
-    const o = { name, kind, pos: { x: px(mm.x), y: px(mm.y) }, mm: mm.z === undefined ? mm : { ...mm } };
+  // every terminal gets an explicit contact height z (mm above the table): the pin's own z, else d.zFace[face], else 0 for leads that plug down (face bottom) or the body height
+  const pins = d.pins.map(({ name, kind, mm, face, label, z, ...rest }) => {
+    const zz = z ?? mm.z ?? d.zFace?.[face ?? "top"] ?? ((face ?? "top") === "bottom" ? 0 : d.h);
+    const o = { name, kind, pos: { x: px(mm.x), y: px(mm.y) }, mm: { x: mm.x, y: mm.y, z: Math.round(zz * 100) / 100 } };
     if (face) o.face = face;
     if (label !== null) o.label = label ?? { en: name };
     return { ...o, ...rest };

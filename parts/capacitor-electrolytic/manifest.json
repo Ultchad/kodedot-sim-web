@@ -54,7 +54,7 @@
   "body": {
     "w_mm": 6.5,
     "d_mm": 6.5,
-    "h_mm": 11
+    "h_mm": 11.4
   },
   "picture": {
     "file": "picture.svg",
@@ -62,8 +62,8 @@
     "height": 65
   },
   "pins": [
-    {"name":"POS","kind":"io","pos":{"x":20,"y":32.5},"mm":{"x":2,"y":3.25},"face":"bottom","label":{"en":"+"},"abs_max_mv":60000},
-    {"name":"NEG","kind":"io","pos":{"x":45.4,"y":32.5},"mm":{"x":4.54,"y":3.25},"face":"bottom","label":{"en":"-"},"abs_max_mv":60000}
+    {"name":"POS","kind":"io","pos":{"x":20,"y":32.5},"mm":{"x":2,"y":3.25,"z":0},"face":"bottom","label":{"en":"+"},"abs_max_mv":60000},
+    {"name":"NEG","kind":"io","pos":{"x":45.4,"y":32.5},"mm":{"x":4.54,"y":3.25,"z":0},"face":"bottom","label":{"en":"-"},"abs_max_mv":60000}
   ],
   "fields": [
     {

@@ -114,6 +114,7 @@ export function lintManifest(m, files = null, opts = {}) {
     if (p.pos && (p.pos.x > pic.width || p.pos.y > pic.height)) E(`/pins/${i}/pos`, `${p.name} at (${p.pos.x}, ${p.pos.y}) is outside the ${pic.width}x${pic.height} picture`);
     if (p.pull_rail && !pins.has(p.pull_rail) && !(m.pins ?? []).some((q) => q.name === p.pull_rail)) E(`/pins/${i}/pull_rail`, `pull_rail ${p.pull_rail} is not a pin of this part`);
   });
+  { const all = new Set((m.pins ?? []).map((p) => p.name)); (m.pins ?? []).forEach((p, i) => (p.aliases ?? []).forEach((a) => { if (all.has(a)) E(`/pins/${i}/aliases`, `alias ${a} is also a pin name`); })); }
   if (m.mount) {
     const seen = new Set();
     for (const [i, e] of (m.mount.pins ?? []).entries()) { if (!pins.has(e.pin)) E(`/mount/pins/${i}/pin`, `unknown pin ${e.pin}`); if (seen.has(e.gpio)) E(`/mount/pins/${i}/gpio`, `GPIO${e.gpio} is used twice`); seen.add(e.gpio); }
