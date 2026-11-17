@@ -67,7 +67,7 @@ export default defineModel<PartState>({
       ao: 0.86,
       holes: [roundedRectLoop(BB.x, CHANNEL.z, CHANNEL.w, CHANNEL.d, 0.7, 3)],
     });
-    s.box('matte', '#b9b4a8', BB.x, CHANNEL.z, CHANNEL.w, CHANNEL.d, TOP + 0.9, TOP + BB.h - 2.6, 0.7, 0, { ao: 1 });
+    s.box('matte', '#8d887d', BB.x, CHANNEL.z, CHANNEL.w, CHANNEL.d, TOP + 0.9, TOP + BB.h - 3, 0.7, 0, { ao: 1 });
 
     const root = s.toObject();
     const top = TOP + BB.h;
