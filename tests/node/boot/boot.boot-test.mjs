@@ -77,14 +77,16 @@ await check("launch Kody Kart by touch: the real path writes the KRUN request, t
   assert.equal(req.readReq().state, K.STATE.TRIED, "the bootloader consumed the NEW request");
 });
 
-await check("hold the bottom button 3000 ms in the app: back in kodeOS, which reads FROM_APP", async () => {
+await check("hold the bottom button in the app (Kody Kart: its own 1000 ms hold): back in kodeOS, which reads FROM_APP", async () => {
   sys.lines.length = 0;
   const t0 = Date.now();
   sys.button("bottom", true);
   await waitFor(() => sys.program?.kind === "os", 30000, "kodeOS", sys);
   const held = Date.now() - t0;
   sys.button("bottom", false);
-  assert.ok(held >= 2900, "the app's own hold takes 3000 ms, took " + held);
+  // Kody Kart goes home on its own hold of 1000 ms (kart_ao.c HOME_HOLD_MS, checked once a frame), not the SDK's 3000 ms home hold;
+  // the time to the OS also includes the restart. (This used to assert 3000 ms and failed whenever the machine was quiet.)
+  assert.ok(held >= 950, "Kody Kart's own home hold is 1000 ms, took " + held);
   await waitFor(() => log().includes("kgui first frame"), 60000, "kodeOS first frame", sys);
   assert.match(log(), /kaos\.boot\s+back from the user app @0x010000/);
   assert.ok(!/a kodeOS update never confirmed|cleared a stale boot request/.test(log()));
