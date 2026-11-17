@@ -30,11 +30,29 @@ static void once(void)
 static uint8_t *g_buf[2];      /* [0] back, [1] front */
 static bool g_up, g_link = true, g_lit, g_sleep;
 static bool g_done;            /* the binary completion */
+static int64_t g_due_ns;       /* when the pending flip completes (CLOCK_MONOTONIC ns); 0 = none pending */
 static uint8_t g_bright = 100;
 static int32_t g_dy1 = H, g_dy2;
 static uint32_t g_epoch = 1, g_recov;
 
-static void complete_locked(void) { g_done = true; pthread_cond_broadcast(&g_cv); }
+static void complete_locked(void) { g_done = true; g_due_ns = 0; pthread_cond_broadcast(&g_cv); }
+
+/* Pacing like the panel. On the board a FLIP (a flush of one of the two framebuffers) completes at the next frame boundary
+ * of the 60 Hz tearing-effect signal (kdrv_display.c on_frame_done()); a chunk copy completes when its transfer is done, i.e.
+ * at once. So a flip's completion is held back to the next boundary of a free-running 60 Hz grid, and only
+ * kdrv_display_flush_wait() sees the difference: a game that waits for its last flip runs at 60 fps instead of as fast as
+ * the host can paint. Define DOTBENCH_NO_DISPLAY_PACING to compile the old instant completion. */
+#define VSYNC_NS 16666667LL
+static int64_t mono_ns(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+static void due_locked(void)
+{
+    if (g_due_ns && mono_ns() >= g_due_ns) complete_locked();
+}
 
 static void apply_panel(void)
 {
@@ -85,6 +103,7 @@ static void convert_rows(const uint16_t *src_row0, int32_t x1, int32_t x2, int32
 kode_status_t kdrv_display_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const void *pixels, bool last)
 {
     (void)last;
+    bool flip = false;
     pthread_mutex_lock(&g_mu);
     if (!g_up || !g_link || !pixels || x1 < 0 || y1 < 0 || x2 > (int32_t)W || y2 > (int32_t)H) {
         pthread_mutex_unlock(&g_mu);
@@ -100,6 +119,7 @@ kode_status_t kdrv_display_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2,
         const uint16_t *fb = pixels;
         convert_rows(fb + (size_t)y1 * W + x1, x1, x2, y1, y2, W);
         if (pixels == g_buf[0]) { uint8_t *t = g_buf[0]; g_buf[0] = g_buf[1]; g_buf[1] = t; }
+        flip = true;
     } else {
         convert_rows(pixels, x1, x2, y1, y2, (size_t)(x2 - x1));
         /* Keep the front buffer in step so readers of it see the picture. */
@@ -116,6 +136,16 @@ kode_status_t kdrv_display_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2,
     g_lit = true;
     apply_panel();
     __atomic_fetch_add(&s->frame_seq, 1u, __ATOMIC_SEQ_CST);
+#ifndef DOTBENCH_NO_DISPLAY_PACING
+    if (flip) {
+        int64_t now = mono_ns();
+        g_done = false;
+        g_due_ns = (now / VSYNC_NS + 1) * VSYNC_NS;       /* the next boundary of the 60 Hz grid */
+        pthread_cond_broadcast(&g_cv);
+        pthread_mutex_unlock(&g_mu);
+        return KODE_OK;
+    }
+#endif
     complete_locked();
     pthread_mutex_unlock(&g_mu);
     return KODE_OK;
@@ -125,13 +155,14 @@ bool kdrv_display_flush_wait(uint32_t ms)
 {
     pthread_once(&g_once, once);
     pthread_mutex_lock(&g_mu);
-    if (!g_done && ms) {
-        struct timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        ts.tv_sec += ms / 1000;
-        ts.tv_nsec += (long)(ms % 1000) * 1000000L;
-        if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
-        while (!g_done && pthread_cond_timedwait(&g_cv, &g_mu, &ts) == 0) { }
+    int64_t deadline = mono_ns() + (int64_t)ms * 1000000LL;
+    for (;;) {
+        due_locked();
+        if (g_done || !ms) break;
+        int64_t until = (g_due_ns && g_due_ns < deadline) ? g_due_ns : deadline;
+        if (mono_ns() >= deadline) break;
+        struct timespec ts = { (time_t)(until / 1000000000LL), (long)(until % 1000000000LL) };
+        pthread_cond_timedwait(&g_cv, &g_mu, &ts);
     }
     bool ok = g_done;
     g_done = false;
