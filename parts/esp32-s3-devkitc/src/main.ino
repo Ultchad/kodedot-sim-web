@@ -15,7 +15,7 @@ void loop() {
   uint32_t half = (uint32_t)dotbenchField(FIELD_BLINK_MS);
   if (millis() - last >= half) {
     last = millis(); on = !on;
-    digitalWrite(LED_BUILTIN, on ? HIGH : LOW);
+    neopixelWrite(LED_BUILTIN, on ? 0 : 0, on ? 40 : 0, on ? 90 : 0);   // a teal pulse on the on-board RGB LED
     Serial.println(on ? "LED on" : "LED off");
   }
   delay(1);

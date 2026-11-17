@@ -25,16 +25,16 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 120,
-    "height": 150
+    "width": 151,
+    "height": 151
   },
   "pins": [
     {
       "name": "A",
       "kind": "io",
       "pos": {
-        "x": 40,
-        "y": 134
+        "x": 42.4,
+        "y": 75.4
       },
       "label": {
         "en": "A"
@@ -42,7 +42,8 @@
       "abs_max_mv": 5500,
       "mm": {
         "x": 1.63,
-        "y": 2.9
+        "y": 2.9,
+        "z": 0
       },
       "face": "bottom"
     },
@@ -50,8 +51,8 @@
       "name": "K",
       "kind": "io",
       "pos": {
-        "x": 80,
-        "y": 134
+        "x": 108.4,
+        "y": 75.4
       },
       "label": {
         "en": "K"
@@ -59,7 +60,8 @@
       "abs_max_mv": 5500,
       "mm": {
         "x": 4.17,
-        "y": 2.9
+        "y": 2.9,
+        "z": 0
       },
       "face": "bottom"
     }
@@ -98,9 +100,9 @@
     {
       "id": "glow",
       "effect": "glow",
-      "x": 60,
-      "y": 48,
-      "r": 30,
+      "x": 75.5,
+      "y": 48.3,
+      "r": 30.2,
       "color": "#ff3b30",
       "source": {
         "output": "brightness"
