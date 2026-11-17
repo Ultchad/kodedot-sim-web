@@ -141,16 +141,17 @@ describe('the line a wire follows', () => {
   });
 
   it('climbs over a low body in its way and is above it before the body begins', () => {
-    const a = end(0, REST, 0), b = end(200, REST, 0);
+    const a = end(-60, REST, 0), b = end(260, REST, 0);
     const board = box('board', 80, 120, -30, 30, 10);
     const line = wirePath(a, b, [board]);
     expect(entered(line, a, b, [board])).toEqual([]);
-    expect(entered(new Float32Array([0, REST, 0, 200, REST, 0]), a, b, [board]).length).toBeGreaterThan(0); // the check itself sees a wire that goes through
+    expect(entered(new Float32Array([-60, REST, 0, 260, REST, 0]), a, b, [board]).length).toBeGreaterThan(0); // the check itself sees a wire that goes through
     const over = walk(line).filter(({ p }) => p.x > 80 && p.x < 120);
     expect(over.length).toBeGreaterThan(20);
     for (const { p } of over) expect(p.y - R_WIRE).toBeGreaterThanOrEqual(10);
     // away from the body it lies on the table
-    expect(walk(line).some(({ p }) => p.x > 30 && p.x < 50 && p.y < REST + 0.01)).toBe(true);
+    expect(walk(line).some(({ p }) => p.x > 10 && p.x < 40 && p.y < REST + 0.01)).toBe(true);
+    expect(walk(line).some(({ p }) => p.x > 160 && p.x < 190 && p.y < REST + 0.01)).toBe(true);
   });
 
   it('goes round a tall body instead of over it, by the shorter side', () => {
@@ -168,7 +169,7 @@ describe('the line a wire follows', () => {
     const top = Math.max(...arch.map((p) => p.y));
     expect(top).toBeGreaterThan(8.5 + STUB);
     expect(top).toBeLessThan(8.5 + STUB + BEND + 0.01);
-    const long = walk(wirePath(end(0, REST, 0), end(260, REST, 0), []));
+    const long = walk(wirePath(end(0, REST, 0), end(400, REST, 0), []));
     expect(long.filter(({ p }) => p.y < REST + 0.01).length).toBeGreaterThan(long.length * 0.6);
   });
 
@@ -242,7 +243,7 @@ describe('the line a wire follows', () => {
 describe('the tube', () => {
   it('is wound outward, so its near wall is drawn and it cannot be seen through', () => {
     const line = wirePath(end(0, 8.5, 0), end(90, 0.4, 60, new Vector3(1, 0, 0)), [box('bb', -40, 40, -27, 27, 8.5)]);
-    const n = line.length / 3, sides = 7;
+    const n = line.length / 3, sides = 6;
     const pos = new Float32Array(n * sides * 3), nor = new Float32Array(n * sides * 3), idx = new Uint32Array((n - 1) * sides * 6);
     expect(writeRings(pos, nor, 0, line, () => R_WIRE, sides)).toBe(n * sides);
     expect(writeRingIndices(idx, 0, 0, n, sides)).toBe(idx.length);
@@ -257,6 +258,24 @@ describe('the tube', () => {
       writeTube(pos, nor, pts, 1, seg);
       expect(outward(pos, nor, tubeIndices(n, seg))).toBe(1);
     }
+  });
+});
+
+describe('a bundle of wires', () => {
+  it('two wires that would lie on each other between the same two things are pushed apart, the same way whichever way they were drawn', () => {
+    registerSize('test.board', { w: 60, d: 30, h: 8.5 });
+    const term = (name: string, x: number) => ({ name, x, y: 8.5, z: 0, face: 'top', kind: 'io' });
+    const parts: WireParts = { terms: () => [term('a', -20), term('b', 20)], liftOf: () => 0, mountOf: () => null, getVersion: () => 0 };
+    const bench = new BenchStore(null);
+    const b1 = bench.addPart('test.board', 'B1', {}, { x: -150, z: -120 }), b2 = bench.addPart('test.board', 'B2', {}, { x: -150, z: 20 });
+    // an X: a to b and b to a (the second drawn from the other board), their middles in the same place
+    const w1 = bench.addWire(`${b1.id}.a`, `${b2.id}.b`)!, w2 = bench.addWire(`${b2.id}.a`, `${b1.id}.b`)!;
+    const wires = new Wires(bench, parts, LYING.clone(), new Vector3(0, DOT.h / 2, 0));
+    wires.draw();
+    const m1 = wires.mid(w1.id)!, m2 = wires.mid(w2.id)!;
+    expect(Math.hypot(m1.x - m2.x, m1.z - m2.z)).toBeGreaterThan(2);
+    expect(Math.hypot(m1.x - m2.x, m1.z - m2.z)).toBeLessThan(8);
+    wires.dispose();
   });
 });
 

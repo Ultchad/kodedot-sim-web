@@ -39,6 +39,7 @@ async function run() {
       await sleep(700);
       await page.screenshot({ path: join(out, `${name}.png`), clip: box });
       console.log(`shot  ${name}`);
+      if (b.problems.length) console.log('  page problems:', b.problems.splice(0).join('\n  '));
     };
     const place = async (id, x, z) => {
       const o = await D((i, at) => window.__dotbench.parts.place(i, i.split('.')[1], at).then((p) => p?.id ?? null), id, { x, z });
@@ -72,9 +73,16 @@ async function run() {
       await clear();
       const bf = await place('dotbench.breadboard-half', 0, 95);
       await wire('device.EXP3', `${bf}.c8`, '#2f6fdb');
-      await wire('device.GND', `${bf}.A1_3`, '#1d1d1d');
+      await wire('device.GND', `${bf}.B2_3`, '#1d1d1d');
       await view(0, 20, 360, 0.75, 0.5);
       await shot('wire-round-the-dot');
+      // several wires between the same two things: they fan out
+      await clear();
+      const bn = await place('dotbench.breadboard-half', 0, -125);
+      const colors = ['#d9412b', '#e3b21a', '#2f9e57', '#2f6fdb', '#1d1d1d'];
+      for (let i = 0; i < 5; i++) await wire(`device.EXP${i + 1}`, `${bn}.${'abcde'[i]}${10 + i * 2}`, colors[i]);
+      await view(0, -80, 250, 0.35, 0);
+      await shot('wires-fan');
     }
 
     if (only.includes('cross')) {
@@ -116,36 +124,61 @@ async function run() {
     }
 
     if (process.argv.includes('--cost')) {
-      await clear();
-      // 60 mixed parts and 40 wires, the whole table in view (the scene of the proof's section p)
-      const ids = ['dotbench.led-red', 'dotbench.resistor', 'dotbench.push-button', 'dotbench.breadboard-half', 'dotbench.uno-r3', 'dotbench.servo', 'dotbench.potentiometer', 'dotbench.buzzer', 'dotbench.hdc1080', 'dotbench.dc-motor'];
-      const made = [];
-      for (let i = 0; i < 60; i++) made.push(await D((id, at) => window.__dotbench.parts.place(id, 'x', at).then((p) => p?.id ?? null), ids[i % ids.length], { x: -300 + (i % 10) * 64, z: -250 + Math.floor(i / 10) * 70 }));
-      await until(() => D((n) => window.__dotbenchWb.world.bodies.items.size >= n, 60), 60000, 300);
-      const terms = await D(() => {
-        const w = window.__dotbenchWb.world.wires;
-        w.refresh();
-        return w.allSpots().filter((s) => !s.hole).map((s) => s.term);
+      // the scene and the measure of workbench-proof's section p: 60 mixed parts, 40 wires between neighbours, the whole table in view
+      await D(() => {
+        const s = window.__dotbench.bench;
+        s.removeMany(s.getState().objects.map((o) => o.id));
       });
-      for (let i = 0; i < 40; i++) await wire(terms[(i * 7) % terms.length], terms[(i * 13 + 5) % terms.length], '#2f6fdb');
-      await D(() => window.__dotbenchWb.frameAll());
-      await b.settled();
-      const ms = await D(async () => {
-        const g = window.__dotbench3d;
-        const times = [];
-        for (let i = 0; i < 6; i++) {
-          const t0 = performance.now();
-          const n0 = g.rendered();
-          window.__dotbenchWb.setView({ az: 0.001 * (i + 1) });
-          await new Promise((r) => {
-            const tick = () => (g.rendered() > n0 ? r() : requestAnimationFrame(tick));
-            requestAnimationFrame(tick);
-          });
-          times.push(performance.now() - t0);
+      const mix = ['dotbench.led-red', 'dotbench.resistor', 'dotbench.push-button', 'dotbench.uno-r3', 'dotbench.servo', 'dotbench.led-green', 'dotbench.potentiometer', 'dotbench.breadboard-half', 'dotbench.dc-motor', 'dotbench.capacitor-electrolytic'];
+      const made = await D(async (kinds) => {
+        const p = window.__dotbench.parts, s = window.__dotbench.bench;
+        const ids = [];
+        for (let i = 0; i < 60; i++) {
+          const o = await p.place(kinds[i % kinds.length], `part ${i}`, { x: -295 + (i % 10) * 64, z: -250 + Math.floor(i / 10) * 74 });
+          if (o) ids.push([o.id, o.kind]);
         }
-        return { times, wires: window.__dotbenchWb.world.wires.stats(), info: g.info() };
-      });
-      console.log('cost', JSON.stringify(ms));
+        let n = 0;
+        for (let i = 0; i + 1 < ids.length && n < 40; i++) {
+          const a = p.manifest(ids[i][1]).pins, c = p.manifest(ids[i + 1][1]).pins;
+          if (s.addWire(`${ids[i][0]}.${a[0].name}`, `${ids[i + 1][0]}.${c[c.length - 1].name}`, ['#d9412b', '#2f6fdb', '#e9b824', '#2f9e5b'][n % 4])) n++;
+        }
+        return { parts: ids.length, wires: s.getState().wires.length, first: ids[0][0] };
+      }, mix);
+      await until(async () => (await b.engine()).parts.length === made.parts, 60000, 300);
+      await sleep(2500);
+      await D(() => window.__dotbenchWb.setView({ x: 0, z: -45, az: 0, pol: 0.72, dist: 1250 }));
+      await sleep(1000);
+      const perf = await D((first) => {
+        const g = window.__dotbench3d, w = window.__dotbenchWb.world.wires, s = window.__dotbench.bench;
+        g.bench(3);
+        const frames = [g.bench(12), g.bench(12), g.bench(12)];
+        const i = g.info();
+        const time = (fn, n = 20) => {
+          const t0 = performance.now();
+          for (let k = 0; k < n; k++) fn();
+          return (performance.now() - t0) / n;
+        };
+        // every wire made from nothing
+        const all = time(() => {
+          w.built?.clear();
+          w.drawKey = '';
+          w.draw();
+        });
+        // one part moved a step and back: what is made again
+        const at = s.get(first).pos;
+        let remade = [];
+        const one = time(() => {
+          s.moveMany([{ id: first, pos: { x: at.x + 5, z: at.z } }]);
+          w.draw();
+          remade.push(w.remade ?? 'all');
+          s.moveMany([{ id: first, pos: at }]);
+          w.draw();
+        }, 10) / 2;
+        // nothing changed
+        const idle = time(() => w.draw(), 200);
+        return { frames, calls: i.calls, triangles: i.rendered, wires: w.stats(), allWiresMs: all, onePartMovedMs: one, remadePerMove: remade.slice(0, 3), idleMs: idle };
+      }, made.first);
+      console.log('cost', JSON.stringify({ made, perf }));
       await shot('cost-60-parts-40-wires');
     }
     if (b.problems.length) console.log('page problems:', b.problems.join('\n'));

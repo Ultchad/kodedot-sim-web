@@ -60,7 +60,7 @@ export interface WireEnd {
 /** Radius of the insulation and of the metal pin (a jumper wire: 1.6 mm over the insulation, a 0.64 mm pin). */
 export const R_WIRE = 0.8;
 const R_TIP = 0.32;
-const SIDES = 7;
+const SIDES = 6;
 const TIP_SIDES = 5;
 /** A pin is three rings: closed to a point inside the terminal, then its two ends. */
 const TIP_RINGS = 3;
@@ -299,26 +299,46 @@ export function wirePath(a: WireEnd, b: WireEnd, boxes: readonly WireBox[], o: W
 
   // how high: what is under each point, widened along the run so that the wire is up before a body begins
   const floor = new Float64Array(n + 1);
+  let lx0 = Infinity, lx1 = -Infinity, lz0 = Infinity, lz1 = -Infinity;
+  for (let k = 0; k <= n; k++) {
+    lx0 = Math.min(lx0, xs[k]);
+    lx1 = Math.max(lx1, xs[k]);
+    lz0 = Math.min(lz0, zs[k]);
+    lz1 = Math.max(lz1, zs[k]);
+  }
+  const under = boxes.filter((bx) => bx.x1 + GROW > lx0 && bx.x0 - GROW < lx1 && bx.z1 + GROW > lz0 && bx.z0 - GROW < lz1);
   for (let k = 0; k <= n; k++) {
     let f = 0;
-    for (const bx of boxes) if (bx.h > f && inRect(bx, xs[k], zs[k], GROW)) f = bx.h;
+    for (const bx of under) if (bx.h > f && inRect(bx, xs[k], zs[k], GROW)) f = bx.h;
     floor[k] = f;
   }
-  const WIDE = 4;
+  const WIDE = 6;
   const ys = new Float64Array(n + 1);
   const hA = A.p2[1], hB = B.p2[1];
-  const drop = (h: number, s: number) => REST + (h - REST) * (1 - smooth((s - 2) / Math.max(10, Math.min(60, 8 + (h - REST) * 1.8))));
+  const drop = (h: number, s: number) => REST + (h - REST) * (1 - smooth((s - 2) / Math.max(14, Math.min(70, 12 + (h - REST) * 2.2))));
   for (let k = 0; k <= n; k++) {
     let f = 0;
     for (let j = Math.max(0, k - WIDE); j <= Math.min(n, k + WIDE); j++) if (floor[j] > f) f = floor[j];
     const s = (S * k) / n;
     ys[k] = Math.max(drop(hA, s), drop(hB, S - s), f > 0 ? f + CLEAR : REST);
   }
-  for (let pass = 0; pass < 2; pass++) {
+  // softened (four passes reach four points to each side: less than the widening, so the wire is still up in time)
+  for (let pass = 0; pass < 4; pass++) {
     let before = ys[0];
     for (let k = 1; k < n; k++) {
       const cur = ys[k];
       ys[k] = Math.max((before + 2 * cur + ys[k + 1]) / 4, floor[k] > 0 ? floor[k] + CLEAR : REST);
+      before = cur;
+    }
+  }
+
+  // and the bottoms of its dips rounded upward (never lowered: it stays clear of what it crosses), so that a wire
+  // between two raised places comes down to the table in a curve, not in a V
+  for (let pass = 0; pass < 10; pass++) {
+    let before = ys[0];
+    for (let k = 1; k < n; k++) {
+      const cur = ys[k];
+      ys[k] = Math.max(cur, (before + 2 * cur + ys[k + 1]) / 4);
       before = cur;
     }
   }
@@ -337,7 +357,7 @@ export function wirePath(a: WireEnd, b: WireEnd, boxes: readonly WireBox[], o: W
   for (let k = j; k <= n - j; k++) line.push(M(k));
   bend(B.p1, M(n), M(n - j), true);
   line.push(B.p1, B.p0);
-  const kept = simplify(line, 0.1);
+  const kept = simplify(line, 0.16);
   const out = new Float32Array(kept.length * 3);
   kept.forEach((p, i) => out.set(p, i * 3));
   return out;
@@ -737,27 +757,48 @@ export class Wires {
     if (changed || !this.boxes.length) this.readBoxes();
 
     const list: Want[] = [];
-    // wires between the same two things fan out: each gets its place across the bundle
+    // wires between the same two things are a bundle: they bow the same way and keep apart in the middle
     const groups = new Map<string, number[]>();
     const ownerOf = (term: string) => term.slice(0, term.indexOf('.'));
     for (const w of st.wires as readonly Wire[]) {
       const a = this.byTerm.get(w.from), b = this.byTerm.get(w.to);
       if (!a || !b) continue;
       const ia = ownerOf(w.from), ib = ownerOf(w.to);
-      let seed = 0;
-      for (let i = 0; i < w.id.length; i++) seed = (seed * 31 + w.id.charCodeAt(i)) >>> 0;
-      const g = ia < ib ? `${ia}|${ib}` : `${ib}|${ia}`;
+      // which way round the wire was drawn (its left is the others' right when it is the other way)
+      const ori = ia <= ib ? 1 : -1;
+      const g = ori > 0 ? `${ia}|${ib}` : `${ib}|${ia}`;
       const at = list.length;
-      list.push({ id: w.id, a: { pos: a.pos, out: a.out, owner: ia }, b: { pos: b.pos, out: b.out, owner: ib }, color: w.color, wide: this.selected.has(w.id) || this.hoverWire === w.id, fan: ia < ib ? 1 : -1, seed });
+      list.push({ id: w.id, a: { pos: a.pos, out: a.out, owner: ia }, b: { pos: b.pos, out: b.out, owner: ib }, color: w.color, wide: this.selected.has(w.id) || this.hoverWire === w.id, fan: 0, seed: ori > 0 ? 0 : 1 });
       const have = groups.get(g);
       if (have) have.push(at);
       else groups.set(g, [at]);
     }
     for (const g of groups.values()) {
-      const gap = g.length > 1 ? Math.min(2.4, 12 / (g.length - 1)) : 0;
-      // a wire drawn the other way round has its left where the others have their right
-      g.forEach((at, k) => (list[at].fan *= (k - (g.length - 1) / 2) * gap));
-      if (g.length === 1) list[g[0]].fan = 0;
+      if (g.length < 2) continue;
+      // across the bundle (square to the way it runs): where each wire's middle would be by itself, in order
+      let dx = 0, dz = 0;
+      for (const at of g) {
+        const w = list[at], k = w.seed ? -1 : 1;
+        dx += (w.b.pos.x - w.a.pos.x) * k;
+        dz += (w.b.pos.z - w.a.pos.z) * k;
+      }
+      const l = Math.hypot(dx, dz) || 1;
+      const nx = -dz / l, nz = dx / l;
+      const c = g.map((at) => ((list[at].a.pos.x + list[at].b.pos.x) / 2) * nx + ((list[at].a.pos.z + list[at].b.pos.z) / 2) * nz);
+      const order = g.map((_, i) => i).sort((p, q) => c[p] - c[q] || p - q);
+      // pushed apart where they would lie on each other, the bundle staying where it was
+      const gap = Math.min(2.6, 14 / (g.length - 1));
+      const p = new Array<number>(g.length);
+      let last = -Infinity, off = 0;
+      for (const i of order) {
+        last = p[i] = Math.max(c[i], last + gap);
+        off += c[i] - p[i];
+      }
+      off /= g.length;
+      g.forEach((at, i) => {
+        const shift = Math.max(-7, Math.min(7, p[i] + off - c[i]));
+        list[at].fan = Math.abs(shift) < 0.05 ? 0 : (list[at].seed ? -shift : shift);
+      });
     }
     const start = this.startTerm ? this.byTerm.get(this.startTerm) : undefined;
     const over = this.hoverTerm && this.hoverTerm !== this.startTerm ? this.byTerm.get(this.hoverTerm) : undefined;
