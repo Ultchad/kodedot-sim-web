@@ -1,32 +1,41 @@
 /**
- * Arduino Uno R4 Minima. Footprint, socket positions and terminals come from parts/uno-r4-minima/manifest.json. The
- * board: USB-C and the barrel jack on the left edge, the Renesas RA4M1 (LQFP-64, 10 x 10 mm) turned 45 degrees in the
- * middle, the buck converter with its inductor by the jack, the SWD port (2 x 5 at 1.27 mm) and the ICSP header on
- * the right, the reset button in the corner, and the four LEDs: ON, L (pin 13), TX and RX. A sparse board, as the
- * real one is.
+ * Arduino Uno R4 Minima. Footprint, outline, mounting holes, socket positions and terminals come from
+ * parts/uno-r4-minima/manifest.json; the rest is the board as its maker's design files have it (the PCB document and
+ * the bill of materials of ABX00080: every fitted part at its place and angle, the lands of the parts left off the
+ * board bare): USB-C and the barrel jack on the left edge, the Renesas RA4M1 (LQFP-64, 10 x 10 mm) in the middle, the
+ * buck converter with its inductor and its row of capacitors by the jack, the two input diodes, the SWD port (2 x 5
+ * at 1.27 mm) and the ICSP header on the right, the reset button in the corner, and the four LEDs: ON, L (pin 13), TX
+ * and RX. A sparse blue board, as the real one is.
  *
- * Dimensions: the Uno mechanical drawing (see uno.ts; the USB-C socket overhangs the left edge by 1.3 mm, the jack by
- * 1.9 mm) and the package drawings. Print: the board's legends and the plain designations only.
+ * Legends: as on the maker's picture of the board, in the kit's type, with the grid of fine lines the board carries on
+ * its left third. The maker's name, logo, the marks taken from it and the web address are left out; "UNO R4 MINIMA"
+ * is the plain designation the board carries.
  */
 import manifestJson from '../../../../../parts/uno-r4-minima/manifest.json';
+import { FONT_MONO, INK, Shape, defineModel, footprintOf, partState, pinHeader, print, terminalsFromManifest, text, usbC, type Finish, type PartState } from '../../index';
 import {
-  FONT_HEAD, FONT_MONO, INK, PAL, Shape, defineModel, footprintOf, partState, pinHeader, print, qfn, silkBox, tactButton, terminalsFromManifest, text, usbC,
-  type PartState,
-} from '../../index';
-import {
-  RES, TEAL_R4, TOP, animateUno, chip, dcJack, drawCaption, drawPinLabels, inductor, joints, ledBodies, ledLamps, miniHeader, pads, qfpLean, rowsOf, sot23, track, trafficOutputs, unoBoard,
-  unoGeo, vias, type UnoLeds, type UnoManifest,
+  C0402, C0603, C0805, L0603, LED0603, R0402, SOD123, SOT143, TOP, animateUno, chips, dcJack, dots, drawCaption, drawPinLabels, emptyLands, eraseHoles, flatDiode, inductor, leadless,
+  ledBodies, ledLamps, legend, miniHeader, pads, plate, qfpLean, resetButton, resetCap, smallOutline, trafficOutputs, unoBoard, unoGeo, type UnoLeds, type UnoManifest,
 } from './uno';
 
 const manifest = manifestJson as unknown as UnoManifest;
 const geo = unoGeo(manifest);
 const { W, D } = geo;
 
-// board millimetres (the manifest's frame)
-const USB = { x: -1.3, y: 15.24 }, JACK = { x: -1.9, y: 45.72 };
-const MCU = { x: 38.6, y: 28.6, size: 10, angle: Math.PI / 4 };
-const ICSP = { x: 64.9, y: 25.4 }, SWD = { x: 55.2, y: 22.4 };
-const LEDS: UnoLeds = { l: geo.led, tx: [geo.led[0], geo.led[1] + 5.2], rx: [geo.led[0], geo.led[1] + 7.6], on: [59.5, 13.6] };
+/** The Minima's solder mask. */
+const MASK: Finish = ['pcb', '#1b5587'];
+// board millimetres (the manifest's frame); the connectors' mouths overhang the left edge (the jack as far as the manifest's body lets it)
+const USB = { x: -0.65, y: 15.47 }, JACK = { x: Math.max(-2.04, -geo.x0), y: 45.54 };
+const MCU = { x: 43.5, y: 21.84, size: 10 };
+const ICSP = { x: 64.9, y: 25.4 }, SWD = { x: 61.63, y: 12.64 };
+const RESET = { x: 6.35, y: 3.94 };
+const LEDS: UnoLeds = { l: [27.94, 11.18], tx: [27.94, 16.76], rx: [27.94, 19.05], on: [58.42, 16.76], size: LED0603 };
+/** The grid printed on the left third: lines 3 mm apart, [place, from, to]. */
+const GRID_X: [number, number, number][] = [[2.75, 0, D], [5.75, 0, 7], [5.75, 9.2, D], [8.75, 0, 7], [8.75, 9.2, D], [11.75, 0, D], [14.75, 4.75, D], [17.75, 11.8, D], [20.75, 13.1, D], [23.75, 25.3, D]];
+const GRID_Y: [number, number, number][] = [
+  [2.8, 0, 13.1], [5.8, 0, 16.6], [8.8, 0, 3], [8.8, 9.7, 16.6], [11.8, 5.75, 22.9], [14.8, 5.75, 22.9], [17.8, 5.75, 22.9], [20.8, 0, 22.9], [23.8, 0, 26.4], [26.8, 0, 25],
+  [29.8, 0, 25], [32.8, 0, 25], [35.8, 0, 25], [38.8, 0, 25], [41.8, 11.9, 26.4], [44.8, 13.1, 25], [47.8, 0, 25], [50.8, 0, 25],
+];
 
 export default defineModel<PartState>({
   id: manifest.id,
@@ -37,86 +46,78 @@ export default defineModel<PartState>({
     const s = new Shape();
     let chipTop = 0;
     s.with(geo.frame, () => {
-      unoBoard(s, geo, TEAL_R4, ctx.seg);
+      unoBoard(s, geo, MASK, ctx.seg);
       usbC(s, { x: USB.x, z: USB.y, y: TOP, turn: 1 });
       dcJack(s, JACK.x, JACK.y, 1, ctx.seg);
-      tactButton(s, { x: 5.8, z: 4.4, y: TOP, size: 4.4, plunger: 0.9, cap: PAL.plasticWhite });
-      chipTop = qfpLean(s, { x: MCU.x, z: MCU.y, size: MCU.size, perSide: 16, h: 1.45, angle: MCU.angle });
+      resetButton(s, RESET.x, RESET.y);
+      chipTop = qfpLean(s, { x: MCU.x, z: MCU.y, size: MCU.size, perSide: 16, h: 1.45 });
       pinHeader(s, { x: ICSP.x, z: ICSP.y, y: TOP, n: 3, rows: 2, turn: 1 });
-      miniHeader(s, SWD.x, SWD.y, 0);
-      // the buck converter by the jack
-      inductor(s, 19.4, 36.8);
-      qfn(s, { x: 25.0, z: 36.8, y: TOP, size: 3, perSide: 4 });
-      chip(s, 18.6, 42.6, 0, { l: 4.3, w: 2.6, h: 2.1, body: PAL.epoxyBlack });
-      chip(s, 25.2, 41.6, 0, { l: 3.2, w: 1.6, h: 1.2 });
-      chip(s, 19.2, 32.4, 0, { l: 3.2, w: 1.6, h: 1.2 });
-      sot23(s, 28.2, 32.4, 0, true); // 3.3 V regulator
-      sot23(s, 11.0, 15.2, 1, true); // USB protection
-      for (const [x, y, t] of [[30.0, 21.0, 0], [47.2, 21.0, 0], [30.2, 36.4, 1], [45.6, 30.4, 0], [24.4, 32.4, 0], [28.6, 40.4, 1], [13.6, 22.8, 0], [51.0, 26.6, 0]] as const) chip(s, x, y, t);
-      for (const [x, y, t] of [[10.4, 10.2, 0], [10.4, 20.2, 0], [56.4, 13.6, 0], [34.2, 13.2, 0], [34.2, 15.6, 0], [34.2, 8.0, 0], [58.8, 28.0, 0], [15.0, 28.6, 1]] as const) chip(s, x, y, t, { body: RES });
+      miniHeader(s, SWD.x, SWD.y, 1);
+      // the buck converter by the jack, the two input diodes above it, the USB port's protection
+      inductor(s, 4.84, 36.24);
+      leadless(s, [9.74, 33.56, 90], 4, 3, 6, 0.5);
+      flatDiode(s, [9.74, 24.69, 180], SOD123);
+      flatDiode(s, [9.74, 27.39, 180], SOD123);
+      smallOutline(s, [9.74, 14.97, 0], SOT143);
+      chips(s, C0805, [[4.18, 22.36], [4.69, 29.63], [4.69, 31.75], [12.83, 37.38, 90], [14.78, 37.38, 90], [8.94, 37.39, 90], [10.89, 37.39, 90]]);
+      chips(s, C0603, [[45.54, 13.22, 90], [35.22, 18.26], [35.22, 25.04]]);
+      chips(s, L0603, [[52.23, 19.59], [52.23, 20.89]]);
+      chips(s, C0402, [[39.94, 13.67, 90], [46.94, 13.67, 90], [51.93, 18.39], [51.93, 22.09], [35.64, 26.34], [7.24, 32.33, 90], [12.94, 34.06], [12.94, 35.16]]);
+      chips(s, R0402, [
+        [13.44, 6.17, 90], [30.42, 11.18], [7.51, 11.45, 90], [38.44, 12.17], [37.94, 13.67, 90], [38.94, 13.67, 90], [58.42, 15.27], [30.41, 16.76], [7.51, 17.95, 90], [30.42, 19.06], [54.13, 20.24, 90],
+        [35.64, 22.77], [35.64, 23.77], [4.56, 24.06], [51.93, 25.34], [51.93, 26.34], [10.64, 29.66], [12.94, 29.66], [10.64, 30.76], [12.94, 31.86], [12.94, 32.96], [14.87, 34.68, 90],
+      ]);
       ledBodies(s, LEDS);
     });
     const root = s.toObject();
-    const k = Math.SQRT1_2;
+    const mask = MASK[1];
     root.add(
       print({
         name: 'silk',
         quad: geo.quad(W / 2, D / 2, TOP + 0.02, W / 2, D / 2),
-        ppm: 12,
+        ppm: 14,
         draw(c) {
           c.translate(-W / 2, -D / 2);
-          // copper under the mask: the fan-out of the MCU towards both rows of sockets
-          const d7 = geo.pinX('D7'), d8 = geo.pinX('D8'), a0 = geo.pinX('A0');
-          for (let i = 0; i < 7; i++) track(c, [[41.5 + i * 0.9, 24.2 - i * 0.9], [44.4 + i * 1.1, 21.3 - i * 0.9], [d7 + i * 2.54, 17 - i * 0.5], [d7 + i * 2.54, 9]], 0.22);
-          for (let i = 0; i < 5; i++) track(c, [[36.0 - i * 0.9, 24.0 - i * 0.9], [36.0 - i * 0.9, 17 - i * 0.4], [d8 - i * 2.54, 12 - i * 0.2], [d8 - i * 2.54, 9]], 0.22);
-          for (let i = 0; i < 6; i++) track(c, [[42.6 + i * 0.9, 32.2 + i * 0.9], [42.6 + i * 0.9, 38 + i * 0.5], [a0 + i * 2.54, 43 + i * 0.1], [a0 + i * 2.54, 45]], 0.22);
-          track(c, [[7.6, 15.2], [9.4, 15.2]], 0.5);
-          track(c, [[12.6, 15.2], [22, 15.2], [31.4, 24.6]], 0.3);
-          track(c, [[12.6, 14.4], [22.4, 14.4], [31.8, 23.8]], 0.3);
-          track(c, [[12.6, 45.7], [15.8, 42.6]], 0.7);
-          track(c, [[21.6, 36.8], [23.2, 36.8]], 0.7);
-          track(c, [[26.8, 36.8], [28.2, 36.8], [28.2, 34]], 0.5);
-          track(c, [[58.6, 22.4], [61, 22.4], [62.4, 23.8]], 0.25);
-          vias(c, [[33.4, 17.6], [44.6, 17.4], [50.4, 30.6], [33.2, 39.6], [22, 28.4], [26.4, 24.2], [12.4, 33.4], [56.2, 30.4], [47, 12.6], [22.4, 21.4], [17.6, 25.2], [52.6, 17]]);
-          // footprints the Minima leaves empty: the two crystals, the battery header
-          pads(c, [[26.2, 27.4, 1.1, 1.5], [28.6, 27.4, 1.1, 1.5], [26.2, 30.0, 0.9, 1.1], [28.6, 30.0, 0.9, 1.1], [52.4, 29.4, 1.1, 1.4], [54.4, 29.4, 1.1, 1.4]]);
-          joints(c, [[6.4, 50.75]], 1.4);
-          drawPinLabels(c, geo);
-          const digital = rowsOf(geo, true), front = rowsOf(geo, false);
-          const d = digital[digital.length - 1];
-          drawCaption(c, 'DIGITAL (PWM ~)', d.x0 - 1, d.x1 + 1, 8.5, 1);
-          if (front[0]) drawCaption(c, 'POWER', front[0].x0 - 1, front[0].x1 + 1, 44.35, -1);
-          if (front[1]) drawCaption(c, 'ANALOG IN', front[1].x0 - 1, front[1].x1 + 1, 44.35, -1);
           c.fillStyle = INK.silk;
-          text(c, 'UNO R4', 54, 35.2, 5.6, { weight: 700, font: FONT_HEAD, spacing: 0.2 });
-          text(c, 'MINIMA', 54.2, 39.9, 2.3, { weight: 700, font: FONT_HEAD, spacing: 1.15 });
-          text(c, 'L', LEDS.l[0] - 2.0, LEDS.l[1], 1.3, { weight: 700 });
-          text(c, 'TX', LEDS.tx[0] - 2.5, LEDS.tx[1], 1.3, { weight: 700 });
-          text(c, 'RX', LEDS.rx[0] - 2.5, LEDS.rx[1], 1.3, { weight: 700 });
-          text(c, 'ON', LEDS.on[0] + 2.6, LEDS.on[1], 1.3, { weight: 700 });
-          text(c, 'RESET', 5.8, 7.9, 1.15, { weight: 700 });
-          text(c, 'ICSP', ICSP.x - 0.2, ICSP.y + 5.4, 1.15, { weight: 700 });
-          text(c, 'SWD', SWD.x, SWD.y - 2.6, 1.15, { weight: 700 });
-          text(c, '1', ICSP.x - 3.5, ICSP.y - 2.6, 1.1, { weight: 700 });
-          silkBox(c, ICSP.x - 2.9, ICSP.y - 4.2, 5.8, 8.4, 0.3);
-          silkBox(c, SWD.x - 3.7, SWD.y - 1.8, 7.4, 3.6, 0.3, 0.15);
-          silkBox(c, 17.0, 34.4, 4.8, 4.8, 0.4, 0.15);
-          // the corner mark of the MCU's pin 1
-          c.beginPath();
-          c.arc(MCU.x, MCU.y + 8.9, 0.35, 0, Math.PI * 2);
-          c.fill();
+          for (const [x, y0, y1] of GRID_X) c.fillRect(x - 0.11, y0, 0.22, y1 - y0);
+          for (const [y, x0, x1] of GRID_Y) c.fillRect(x0, y - 0.11, x1 - x0, 0.22);
+          // bare metal: the lands of the parts left off the board (the crystal, its two capacitors, two pull-ups and a few more), test points, fiducials, the jack's lug
+          pads(c, [[41.54, 10.94, 1.4, 1.15], [43.74, 10.94, 1.4, 1.15], [41.54, 12.64, 1.4, 1.15], [43.74, 12.64, 1.4, 1.15]]);
+          emptyLands(c, [[12.44, 6.17, 90], [41.74, 14.11], [43.64, 14.11], [14.87, 29.66], [14.87, 30.76], [8.44, 30.76], [12.94, 30.76]], 1.0, 0.5);
+          emptyLands(c, [[18.8, 9.08, 90], [21.34, 9.08, 90]], 1.6, 0.8);
+          dots(c, [[6.6, 27.39], [14.87, 32.66], [7.04, 29.66]], 0.4);
+          dots(c, [[2, 51.34], [60.5, 19.34]], 0.5);
+          dots(c, [[8.69, 50.04]], 1.9);
+          drawPinLabels(c, geo, { mask, backBar: true, names: { NC: 'BOOT', V33: '3.3V' } });
+          const a0 = geo.pinX('A0'), a5 = geo.pinX('A5'), vin = geo.pinX('VIN');
+          drawCaption(c, 'DIGITAL - PWM~', [43, 59.4], [28.1, 59.4], 8.7, 1, mask);
+          drawCaption(c, 'POWER', [vin - 4.9, vin + 1.3], [34.7, vin + 1.3], 44, 1, mask);
+          drawCaption(c, 'ANALOG IN', [a0 - 1.1, a0 + 9.5], [a0 - 1.1, a5 + 1.4], 44, 1, mask);
+          plate(c, 'UNO', 45.25, 31.5, 54, 35.4, mask, true, 3);
+          plate(c, 'R4', 54, 31.5, 60.25, 35.4, mask, false, 3);
+          plate(c, 'MINIMA', 45.25, 35.4, 60.25, 39.5, mask, false, 3);
+          legend(c, 'L', LEDS.l[0] - 2.2, LEDS.l[1], 1.45);
+          legend(c, 'TX', LEDS.tx[0] - 2.7, LEDS.tx[1], 1.45);
+          legend(c, 'RX', LEDS.rx[0] - 2.7, LEDS.rx[1], 1.45);
+          legend(c, 'ON', LEDS.on[0] - 2.8, LEDS.on[1], 1.45);
+          legend(c, 'RESET', 6.2, 8.05, 1.7);
+          legend(c, 'ICSP', ICSP.x + 0.3, ICSP.y - 4.75, 1.35);
+          legend(c, 'SWD', SWD.x - 2.2, SWD.y, 1.1, true);
+          c.fillRect(W - 1.2, ICSP.y + 1.0, 1.2, 2.4); // the mark of the ICSP header's first pin, on the board's edge
+          eraseHoles(c, geo);
         },
       }),
       print({
         name: 'chip',
-        quad: { c: geo.at(MCU.x, MCU.y, TOP + chipTop + 0.02), u: [4.4 * k, 0, -4.4 * k], v: [-3.2 * k, 0, -3.2 * k] },
+        quad: geo.quad(MCU.x, MCU.y, TOP + chipTop + 0.02, 4.4, 3.2),
         ppm: 14,
         draw(c) {
-          c.fillStyle = '#a9a8a2';
+          c.fillStyle = '#9d9c97';
           text(c, 'R7FA4M1', 0, -0.95, 1.55, { weight: 600, font: FONT_MONO, spacing: 0.05 });
           text(c, 'AB3CFM', 0, 0.95, 1.55, { weight: 600, font: FONT_MONO, spacing: 0.05 });
         },
       }),
+      resetCap(geo, RESET.x, RESET.y, ['matte', '#eeebe3'], ctx.seg),
       ...ledLamps(geo, LEDS),
     );
     return root;
@@ -126,6 +127,7 @@ export default defineModel<PartState>({
     blink: partState({ outputs: { led: 1, tx: 0, rx: 0, crashed: false } }),
     idle: partState({ outputs: { led: 0, tx: 0, rx: 0, crashed: false } }),
     serial: partState({ outputs: trafficOutputs() }),
+    reset: partState({ fields: { reset: true }, outputs: { led: 0, tx: 0, rx: 0, crashed: false } }),
     off: partState({ power: { on: false, reason: 'no supply' }, outputs: { led: 0, tx: 0, rx: 0, crashed: false } }),
     crashed: partState({ crashed: true, outputs: { led: 0, tx: 0, rx: 0, crashed: true } }),
   },
