@@ -22,7 +22,7 @@ await sleep(300);
 look = await phone.scan(1500);
 check(look.name === "Bench Dot", "the Phone reads the new name", look);
 await a.waitFor(() => a.ble.state().adv.mfg?.join() === "229,2,170,187,204".replace("229,2","229,2"), 3000, "mfg on air").catch(() => {});
-check(JSON.stringify(a.ble.state().adv.mfg) === JSON.stringify([0xe5, 0x02, 0xaa, 0xbb, 0xcc]), "the manufacturer data is in the scan response", a.ble.state().adv.mfg);
+check(JSON.stringify(a.ble.state().adv.mfg) === JSON.stringify([0xe5, 0x02, 0xaa, 0xbb, 0xcc]), "the manufacturer data is in the scan response", JSON.stringify(a.ble.state().adv.mfg));
 
 // connect, console channel and the app's service
 check((await phone.connect()).ok && await phone.whenSecure(4000), "a bonded Phone connects");
