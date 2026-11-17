@@ -14,9 +14,14 @@
  * - Rail lines, + and - signs, column numbers and row letters are PRINT (one decal per 1024 px of board length).
  *
  * The body is the usual three mouldings (two rail strips and the terminal block with its centre channel) joined
- * along two seams, dovetail tabs on the right and front, matching slots on the left and back, foam tape underneath.
- * Sizes after the MB-102 family: holes 1.1 mm square under a 1.66 mm lead-in, channel 3 mm wide, body 8.5 mm high.
- * The tabs must stay inside the manifest's footprint, so the mouldings are 1.2 mm smaller all round than the footprint.
+ * along two seams, foam tape underneath. Sizes after the MB-102 family: holes 1.1 mm square under a 1.66 mm lead-in,
+ * channel 3 mm wide, body 8.5 mm high.
+ * Dovetails: the manifest's body is the moulding WITHOUT its tabs, and a model may not leave its footprint, so the
+ * mouldings fill the footprint, the slots are cut in the left and back edges, and the tabs of the right and front
+ * edges are not built (they would stand 1.1 mm outside; on boards placed side by side they are inside the
+ * neighbour's slots anyway).
+ * Rails: in each pair the row further from the viewer is + (red line), the nearer one - (blue), the lines on the
+ * outside of the pair, as in the parts' picture.svg.
  */
 import { MeshBuilder, type V3 } from '../../../device3d/meshBuilder';
 import {
@@ -25,7 +30,8 @@ import {
 } from '../../index';
 import { extrude, face, roundLoop, type Rect } from './builders';
 
-const BODY_WHITE = '#ebeef1';
+// Colours are sRGB as they should look (the kit converts a hex colour to linear once).
+const BODY_WHITE = '#d4dae0';
 
 /** What the builder reads of parts/breadboard-<size>/manifest.json. */
 export interface BoardManifest {
@@ -37,8 +43,8 @@ export interface BoardManifest {
 
 // ---- the moulding (design values; everything about the holes' places comes from the manifest)
 const BODY: Finish = ['gloss', BODY_WHITE]; // ABS has a sheen; a cool white, so the board stands off the warm table
-const INSET = 1.2; // the mouldings stop this far inside the footprint: room for the tabs
-const TAB = 1.1; // how far a dovetail tab stands out
+const SLOT = 1.1; // how deep a dovetail slot is cut
+const RAIL_LINE = 2.1; // from a rail row to its coloured line
 const FOAM = 0.9; // the adhesive foam and its backing paper
 const BEVEL = 0.32;
 const SEAM_R = 0.55; // the corners of each moulding where two meet: the seam reads as a fine groove down the side
@@ -66,7 +72,7 @@ interface Layout {
   Z: number;
   rails: Trough[];
   strips: Trough[];
-  /** z of each rail row, sorted, and whether its line is red (+, the outer row) or blue (-). */
+  /** z of each rail row, sorted, and whether it is + (red line; the back row of its pair) or - (blue). */
   railRows: { z: number; plus: boolean; x0: number; x1: number; lineZ: number }[];
   /** x of every column of the terminal block with its number, z of every row with its letter. */
   cols: { x: number; n: number }[];
@@ -74,8 +80,9 @@ interface Layout {
   seamTop: number;
   seamBot: number;
   mid: number;
-  tabsX: number[];
-  tabsZ: number[];
+  /** Where the dovetail slots are: along the back edge (x) and the left edge (z). */
+  slotsX: number[];
+  slotsZ: number[];
 }
 
 const near = (a: number, b: number) => Math.abs(a - b) < 0.02;
@@ -108,7 +115,7 @@ export function layoutOf(m: BoardManifest): Layout {
     split.push({ ...t, u: run });
   }
   const rails = split.filter((t) => t.alongX), strips = split.filter((t) => !t.alongX);
-  const X = body.w_mm / 2 - INSET, Z = body.d_mm / 2 - INSET;
+  const X = body.w_mm / 2, Z = body.d_mm / 2;
   const railZ = [...new Set(rails.map((t) => t.v))].sort((a, b) => a - b);
   const rowZ = [...new Set(strips.flatMap((t) => t.u))].sort((a, b) => a - b);
   const colX = [...new Set(strips.map((t) => t.v))].sort((a, b) => a - b);
@@ -118,9 +125,8 @@ export function layoutOf(m: BoardManifest): Layout {
   const railRows = railZ.map((z) => {
     const mine = rails.filter((t) => t.v === z);
     const pair = z < mid ? topRails : botRails;
-    const outer = Math.abs(z - mid) === Math.max(...pair.map((q) => Math.abs(q - mid)));
     const away = Math.sign(z - pair.reduce((a, q) => a + q, 0) / pair.length) || Math.sign(z - mid);
-    return { z, plus: outer, x0: Math.min(...mine.map((t) => t.u[0])), x1: Math.max(...mine.map((t) => t.u[t.u.length - 1])), lineZ: z + away * 1.42 };
+    return { z, plus: z === Math.min(...pair), x0: Math.min(...mine.map((t) => t.u[0])), x1: Math.max(...mine.map((t) => t.u[t.u.length - 1])), lineZ: z + away * RAIL_LINE };
   });
   // the names say which column and row a hole is: "c17" is row c, column 17
   const cols = colX.map((x) => {
@@ -131,10 +137,10 @@ export function layoutOf(m: BoardManifest): Layout {
     const pin = m.pins.find((p) => p.mm && /^[a-z]\d+$/.test(p.name) && near(fromManifestMm(body, p.mm)[2], z))!;
     return { z, letter: pin.name[0] };
   });
-  const nTabs = Math.max(2, Math.round((2 * X) / 41));
-  const tabsX = Array.from({ length: nTabs }, (_, k) => ((k + 0.5) / nTabs - 0.5) * 2 * X);
-  const tabsZ = [(seamTop + mid - TRENCH / 2) / 2, (seamBot + mid + TRENCH / 2) / 2];
-  return { body, pitch, X, Z, rails, strips, railRows, cols, rows, seamTop, seamBot, mid, tabsX, tabsZ };
+  const nSlots = Math.max(2, Math.round((2 * X) / 41));
+  const slotsX = Array.from({ length: nSlots }, (_, k) => ((k + 0.5) / nSlots - 0.5) * 2 * X);
+  const slotsZ = [(seamTop + mid - TRENCH / 2) / 2, (seamBot + mid + TRENCH / 2) / 2];
+  return { body, pitch, X, Z, rails, strips, railRows, cols, rows, seamTop, seamBot, mid, slotsX, slotsZ };
 }
 
 // ------------------------------------------------------------------------------------------------- geometry
@@ -153,11 +159,11 @@ function outline(r: Rect, o: { slotsBack?: number[]; slotsLeft?: number[]; radii
   };
   // back edge from left to right, then down the right, along the front, up the left
   add(r.x0, r.z0, o.radii[0]);
-  for (const c of o.slotsBack ?? []) for (const [a, k] of dovetail(c, 0.1)) add(a, r.z0 + k * (TAB + 0.1), k ? 0.15 : 0);
+  for (const c of o.slotsBack ?? []) for (const [a, k] of dovetail(c, 0.1)) add(a, r.z0 + k * SLOT, k ? 0.15 : 0);
   add(r.x1, r.z0, o.radii[1]);
   add(r.x1, r.z1, o.radii[2]);
   add(r.x0, r.z1, o.radii[3]);
-  for (const c of [...(o.slotsLeft ?? [])].reverse()) for (const [a, k] of dovetail(c, 0.1).reverse()) add(r.x0 + k * (TAB + 0.1), a, k ? 0.15 : 0);
+  for (const c of [...(o.slotsLeft ?? [])].reverse()) for (const [a, k] of dovetail(c, 0.1).reverse()) add(r.x0 + k * SLOT, a, k ? 0.15 : 0);
   return roundLoop(pts, rad, 3);
 }
 
@@ -230,9 +236,9 @@ function buildBody(L: Layout, ctx: BuildCtx): Shape {
 
   // the four mouldings that carry holes, each with its field of holes left open in the top
   const pieces: { r: Rect; slotsBack?: number[]; slotsLeft?: number[]; radii: [number, number, number, number]; of: Trough[]; rail: boolean }[] = [
-    { r: { x0: -X, x1: X, z0: -Z, z1: seamTop - SEAM / 2 }, slotsBack: L.tabsX, radii: [1.1, 1.1, SEAM_R, SEAM_R], of: L.rails.filter((t) => t.v < mid), rail: true },
-    { r: { x0: -X, x1: X, z0: seamTop + SEAM / 2, z1: mid - TRENCH / 2 }, slotsLeft: [L.tabsZ[0]], radii: [SEAM_R, SEAM_R, SEAM_R, SEAM_R], of: L.strips.filter((t) => t.u[0] < mid), rail: false },
-    { r: { x0: -X, x1: X, z0: mid + TRENCH / 2, z1: seamBot - SEAM / 2 }, slotsLeft: [L.tabsZ[1]], radii: [SEAM_R, SEAM_R, SEAM_R, SEAM_R], of: L.strips.filter((t) => t.u[0] > mid), rail: false },
+    { r: { x0: -X, x1: X, z0: -Z, z1: seamTop - SEAM / 2 }, slotsBack: L.slotsX, radii: [1.1, 1.1, SEAM_R, SEAM_R], of: L.rails.filter((t) => t.v < mid), rail: true },
+    { r: { x0: -X, x1: X, z0: seamTop + SEAM / 2, z1: mid - TRENCH / 2 }, slotsLeft: [L.slotsZ[0]], radii: [SEAM_R, SEAM_R, SEAM_R, SEAM_R], of: L.strips.filter((t) => t.u[0] < mid), rail: false },
+    { r: { x0: -X, x1: X, z0: mid + TRENCH / 2, z1: seamBot - SEAM / 2 }, slotsLeft: [L.slotsZ[1]], radii: [SEAM_R, SEAM_R, SEAM_R, SEAM_R], of: L.strips.filter((t) => t.u[0] > mid), rail: false },
     { r: { x0: -X, x1: X, z0: seamBot + SEAM / 2, z1: Z }, radii: [SEAM_R, SEAM_R, 1.1, 1.1], of: L.rails.filter((t) => t.v > mid), rail: true },
   ];
   for (const p of pieces) {
@@ -265,12 +271,8 @@ function buildBody(L: Layout, ctx: BuildCtx): Shape {
   }
   s.add(BODY[0], BODY[1], shade.build());
   // the seams: a rail strip is a moulding of its own, a dark line runs between it and the terminal block
-  for (const z of [seamTop, seamBot]) s.box('matte', '#5d6066', 0, z, 2 * X - 0.5, SEAM + 0.2, FOAM, top - 0.75, 0.05, 0, { ao: 0.7 });
+  for (const z of [seamTop, seamBot]) s.box('matte', '#1e2024', 0, z, 2 * X - 0.5, SEAM + 0.2, FOAM, top - 0.75, 0.05, 0, { ao: 0.7 });
 
-  // dovetail tabs: on the right edge of the terminal block and along the front rail strip
-  const tabTop = top - 1.5;
-  for (const z of L.tabsZ) s.prism(...BODY, dovetail(z, 0).map(([a, k]) => [X - 0.3 + k * (TAB + 0.3), a] as Pt), FOAM, tabTop, 0.2, { ao: 0.6 });
-  for (const x of L.tabsX) s.prism(...BODY, dovetail(x, 0).map(([a, k]) => [a, Z - 0.3 + k * (TAB + 0.3)] as Pt), FOAM, tabTop, 0.2, { ao: 0.6 });
   return s;
 }
 
@@ -311,7 +313,8 @@ function legends(L: Layout, g: CanvasRenderingContext2D): void {
   }
   // row letters at both ends
   const x0 = L.cols[0].x, x1 = L.cols[L.cols.length - 1].x;
-  const off = Math.min(1.95, (x0 + L.X) / 2 + 0.47);
+  // between the bottom of a slot and the mouths of the first column
+  const off = Math.min(1.95, (x0 - OPEN + L.X - SLOT) / 2 + OPEN);
   for (const r of L.rows) {
     text(g, r.letter, x0 - off, r.z + 0.05, 1.55, { weight: 700, font: FONT });
     text(g, r.letter, x1 + off, r.z + 0.05, 1.55, { weight: 700, font: FONT });

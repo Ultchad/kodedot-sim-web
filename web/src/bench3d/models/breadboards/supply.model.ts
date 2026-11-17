@@ -4,8 +4,9 @@
  * 3.3 V or 5 V. The module built round that (it is our own design, no real product): USB-C power in on the left
  * edge, a three-way slide switch along the front (OFF / 3V3 / 5V), a two-way socket for the output where the
  * terminals are, a linear regulator in SOT-223 with its two tantalum capacitors, a power LED.
- * Live state: the knob stands at the chosen output, the LED is lit when there is one. Hazard: above the manifest's
- * `max_ma` the regulator glows red-hot and the LED flickers red.
+ * Live state: the knob stands at the chosen output, the LED is lit when there is one. Hazard: while the part's
+ * output `overload` is set (above the manifest's `max_ma`, or plus wired to minus) the regulator glows red-hot and
+ * the LED flickers red.
  */
 import manifest from '../../../../../parts/supply/manifest.json';
 import {
@@ -86,8 +87,8 @@ export default defineModel<PartState>({
     for (let i = 1; i < STOPS.length; i++) if (Math.abs(STOPS[i] - mv) < Math.abs(STOPS[stop] - mv)) stop = i;
     part(obj, 'knob')!.position.x = (stop - (STOPS.length - 1) / 2) * TRAVEL;
     const ma = Math.abs(Number(st.outputs.current_ma ?? 0));
-    if (on && ma > MAX_MA) {
-      const over = Math.min(1, (ma - MAX_MA) / MAX_MA);
+    if (st.outputs.overload) {
+      const over = Math.min(1, Math.max(0, (ma - MAX_MA) / MAX_MA));
       setLamp(obj, 'reg', HOT, 0.55 + over * 0.45 + 0.25 * Math.sin(env.time * 14));
       setLamp(obj, 'pwr', RED, Math.floor(env.time * 9) % 2 === 0 ? 1.4 : 0.15);
       return true;
@@ -99,6 +100,6 @@ export default defineModel<PartState>({
     'on-5v': partState({ fields: { mv: 5000 }, outputs: { current_ma: 120 } }),
     'on-3v3': partState({ fields: { mv: 3300 }, outputs: { current_ma: 40 } }),
     off: partState({ fields: { mv: 0 }, outputs: { current_ma: 0 } }),
-    overload: partState({ fields: { mv: 5000 }, outputs: { current_ma: 1600 } }),
+    overload: partState({ fields: { mv: 5000 }, outputs: { current_ma: 1600, overload: true } }),
   },
 });

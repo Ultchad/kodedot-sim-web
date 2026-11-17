@@ -222,10 +222,10 @@ export function pp3Snaps(s: Shape, o: { pos: V3; neg: V3; y: number; seg?: numbe
   // - : a crown of six spring petals round an opening
   s.disc(...PAL.steel, nx, nz, 4.7, y, y + 0.4, 0.15, seg, { ao: 1 });
   s.prism(...PAL.tin, circleLoop(nx, nz, 4.1, 6), y + 0.35, y + hn, 0.5, { ao: 0.88, holes: [circleLoop(nx, nz, 2.85, Math.max(8, seg - 4))] });
-  s.disc('metal', '#6a6d74', nx, nz, 2.9, y + 0.35, y + 0.6, 0, Math.max(8, seg - 4), { ao: 1 });
+  s.disc('metal', '#33353a', nx, nz, 2.9, y + 0.35, y + 0.6, 0, Math.max(8, seg - 4), { ao: 1 });
   for (let i = 0; i < 6; i++) {
     const m = new Matrix4().makeTranslation(nx, 0, nz).multiply(new Matrix4().makeRotationY((i / 6) * Math.PI * 2));
-    s.with(m, () => s.box('matte', '#26272a', 3.3, 0, 1.0, 0.36, y + hn - 0.03, y + hn + 0.01, 0.05, 0, { ao: 1 }));
+    s.with(m, () => s.box('matte', '#101113', 3.3, 0, 1.0, 0.36, y + hn - 0.03, y + hn + 0.01, 0.05, 0, { ao: 1 }));
   }
 }
 

@@ -3,8 +3,8 @@
  * stud is +, the six-sided crown is -. A lacquered steel jacket with rolled rims and a generic label: a coloured
  * band with the polarity, the voltage, the chemistry and the size codes; no name and no mark of any maker.
  * Live state: the voltage (field `volts`) is the big numeral of the label and the small one between the snaps, where
- * the part's picture shows it. Hazard: above the manifest's `max_ma` the cell overheats: a red-hot glow that beats
- * faster and stronger up to a dead short.
+ * the part's picture shows it. Hazard: while the part's output `overload` is set (above the manifest's `max_ma`, or
+ * plus wired to minus) the cell overheats: a red-hot glow that beats faster and stronger up to a dead short.
  */
 import manifest from '../../../../../parts/battery-9v/manifest.json';
 import {
@@ -23,7 +23,7 @@ const PLATE = M.body.h_mm - 4.1; // the snaps stand 4.1 mm over the top plate
 const RIM = PLATE + 0.3;
 const BAND = 29.6; // where the amber band of the label begins
 
-const CREAM = '#f5eede', GRAPHITE = '#1c1c1f', AMBER = '#ffac00';
+const CREAM = '#f5eede', GRAPHITE = '#121214', AMBER = '#ffac00';
 
 // the numerals are drawn per copy; `animate` may not allocate, so the value travels here
 const pen = { volts: DEFAULT_VOLTS };
@@ -152,13 +152,13 @@ export default defineModel<PartState>({
     drawScreen(obj, 'volts', key, drawFront);
     drawScreen(obj, 'top', key, drawTop);
     const heat = part(obj, 'heat')!;
-    const ma = Math.abs(Number(st.outputs.current_ma ?? 0));
-    if (ma <= MAX_MA) {
+    if (!st.outputs.overload) {
       heat.visible = false;
       return;
     }
-    // 0 just over the limit, 1 at a dead short (several times the limit)
-    const over = Math.min(1, (ma - MAX_MA) / (MAX_MA * 4));
+    // how hard: 0 just over the limit, 1 at a dead short (several times the limit)
+    const ma = Math.abs(Number(st.outputs.current_ma ?? 0));
+    const over = Math.min(1, Math.max(0, (ma - MAX_MA) / (MAX_MA * 4)));
     const beat = 0.5 + 0.5 * Math.sin(env.time * (6 + over * 12));
     heat.visible = true;
     heat.scale.set(1 + 0.012 * beat, 1, 1 + 0.02 * beat);
@@ -169,7 +169,7 @@ export default defineModel<PartState>({
     idle: partState({ fields: { volts: DEFAULT_VOLTS }, outputs: { current_ma: 0 } }),
     'set-7v5': partState({ fields: { volts: 7.5 }, outputs: { current_ma: 20 } }),
     loaded: partState({ fields: { volts: DEFAULT_VOLTS }, outputs: { current_ma: 320 } }),
-    overload: partState({ fields: { volts: DEFAULT_VOLTS }, outputs: { current_ma: 800 } }),
-    short: partState({ fields: { volts: DEFAULT_VOLTS }, outputs: { current_ma: 4500 } }),
+    overload: partState({ fields: { volts: DEFAULT_VOLTS }, outputs: { current_ma: 800, overload: true } }),
+    short: partState({ fields: { volts: DEFAULT_VOLTS }, outputs: { current_ma: 4500, overload: true } }),
   },
 });
