@@ -324,8 +324,16 @@ sends; the card is in the slot at boot, dragged out it is ejected, its switch pu
 tilt ball tilts the Dot; a palette tile dropped on the table lands there; a reload keeps every place and the bench is applied
 again; no page errors; nothing is drawn while nothing changes.
 
+Other checks after the Workbench landed (the older scripts ask for Device mode and follow the new panel): `system-check.mjs`
+all passed (25), `bench-check.mjs` 20 passed (the bench is driven through the new list, palette and inspector, in Device mode
+with the 2D view: the bench works without the table), `settings-check.mjs` all passed (18; run before the default names and
+the toolbar thresholds changed), `AUDIT=off headless-check.mjs` 169/169 (run before the last toolbar threshold change),
+unit tests 220/220, `npm run build` green. Layout audit (`layout-audit.mjs`, with new scenes `bench-objects`, `bench-list`,
+`object-menu`, `workbench`): 1280x720 and 390x844 clean in both themes and three languages; 820x1180 and 1024x768 clean (12/12)
+after the toolbar labels were made to collapse earlier (the Spanish and Portuguese toolbar overlapped its neighbours on a tablet).
+
 Frame time, whole table in view, 1280 x 720, SwiftShader (software GL, a floor: it is bound by pixel shading; no real GPU was
-measured): 1 object 82 to 85 ms, 20 objects 108 to 166 ms, 60 objects 185 to 332 ms over three runs on a shared machine
+measured): 1 object 82 to 90 ms, 20 objects 108 to 166 ms, 60 objects 185 to 332 ms over four runs on a shared machine
 (the device alone in Device mode measures about 250 ms here, where it fills the view). Draw calls: 33, 90, 150 (60 objects of
 nine kinds: the static bodies are 4 to 5 calls per kind whatever the count; the rest is lamps, screens and button caps).
 
