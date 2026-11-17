@@ -803,8 +803,24 @@ static BaseType_t recv_common(Queue_t *q, void *item, TickType_t ticks, bool pee
     return ok;
 }
 
+/* Test hook (tests/node/system/ao_overflow.test.mjs): the named task sleeps for ms the next time it goes to wait for a queue item, as a thread
+ * the host scheduler does not run for a while (a loaded machine) would. The tick keeps posting; this shows which queue overflows first. */
+static char g_stall_name[16];
+static volatile uint32_t g_stall_ms;
+__attribute__((used)) void dotbench_rtos_test_stall(const char *name, uint32_t ms)
+{
+    strncpy(g_stall_name, name ? name : "", sizeof g_stall_name - 1);
+    __atomic_store_n(&g_stall_ms, ms, __ATOMIC_SEQ_CST);
+}
 BaseType_t xQueueReceive(QueueHandle_t q, void *item, TickType_t ticks)
 {
+    if (__atomic_load_n(&g_stall_ms, __ATOMIC_RELAXED) && ticks != 0) {
+        tcb_t *me = self();
+        if (me && 0 == strncmp(me->name, g_stall_name, sizeof me->name)) {
+            uint32_t ms = __atomic_exchange_n(&g_stall_ms, 0u, __ATOMIC_SEQ_CST);
+            if (ms) { struct timespec ts = { ms / 1000u, (long)(ms % 1000u) * 1000000L }; nanosleep(&ts, NULL); }
+        }
+    }
     return q ? recv_common(q, item, ticks, false) : pdFALSE;
 }
 BaseType_t xQueueReceiveFromISR(QueueHandle_t q, void *item, BaseType_t *woken)
