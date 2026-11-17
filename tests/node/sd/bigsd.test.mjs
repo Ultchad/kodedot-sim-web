@@ -254,7 +254,35 @@ await check("remove and swap: a pulled card keeps its sparse data; swapping to a
   await run.stop();
 });
 
-// The power cut and the pulled card on a big card: the hammer writes files; every pull must leave an intact FAT.
+await check("power cut on a 64 GB card (torn writes at 10 random points): it mounts without a format, earlier files verify, new ones can be written", async () => {
+  let bench = await new Bench().open();
+  let run = await ready(bench);
+  let fs = run.glue(sm), sd = run.glue(sdm);
+  sd.swap(65536);
+  assert.ok(await mountCard(run, sd));
+  const base = [["/sdcard/base1.bin", 1, 300000], ["/sdcard/base2.bin", 2, 70001]];   // complete before any cut: must survive every one
+  for (const [p, seed, n] of base) fs.write(p, pattern(n, seed));
+  let rnd = 4242; const next = () => (rnd = (rnd * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+  let cuts = 0;
+  for (let round = 0; round < 10; round++) {
+    run.M._dbp_cut_after(Math.floor(500 + next() * 90000));
+    for (let i = 0; i < 6; i++) { try { fs.write(`/sdcard/r${round}_${i}.bin`, pattern(20000 + Math.floor(next() * 80000), round * 10 + i + 3)); } catch { break; } }
+    if (run.M._dbp_cut_fired()) cuts++;
+    await run.stop();                                                     // what the cut let through is the state on the medium
+    bench = await new Bench({ dir: bench.dir }).open();
+    run = await ready(bench, pkgPath("storage"), RESET.POWERON);
+    fs = run.glue(sm); sd = run.glue(sdm);
+    assert.equal(sd.state().capacityMb, 65536);
+    assert.ok(await mountCard(run, sd), "round " + round + ": mounts without a format");
+    for (const [p, seed, n] of base) assert.deepEqual(fs.read(p), pattern(n, seed), "round " + round + ": " + p);
+    fs.write("/sdcard/after" + round + ".txt", "written after the cut");
+    assert.equal(fs.readText("/sdcard/after" + round + ".txt"), "written after the cut");
+  }
+  assert.ok(cuts >= 6, "the cuts really fired: " + cuts);
+  await run.stop();
+});
+
+// The pulled card on a big card: the hammer writes files; every pull must leave an intact FAT.
 const hname = "sd_hammer";
 const hpkg = buildApp(assembleApp(hname, appProject(hname, [hname + "_main.c"], {
   ["main/" + hname + "_main.c"]: { copy: path.join(here, "../storage/apps", hname, "main", hname + "_main.c") },
