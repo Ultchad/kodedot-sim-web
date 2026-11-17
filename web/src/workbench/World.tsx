@@ -457,6 +457,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
 
   // ---- the tilt handle of the Dot
   const onHandleDown = (e: ThreeEvent<PointerEvent>) => {
+    if (!handle.current?.visible) return; // put away: the press belongs to whatever is behind it
     e.stopPropagation();
     const ne = e.nativeEvent;
     if (ne.pointerType === 'mouse' && ne.button !== 0) return;
@@ -499,6 +500,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     );
   };
   const layFlat = (e?: ThreeEvent<MouseEvent>) => {
+    if (e && !handle.current?.visible) return;
     e?.stopPropagation();
     live.current.deps.bench.checkpoint('tilt');
     live.current.deps.applyPose({ pitch: 0, roll: 0, heading: 0 });
@@ -511,8 +513,8 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         const busy = world.step(dt, reduced);
         const h = handle.current;
         if (h) {
-          const p = world.shownPose();
-          h.visible = live.current.active && (live.current.deps.select.has(DOT_ID) || Math.abs(p.pitch) > 0.5 || Math.abs(p.roll) > 0.5);
+          // shown while the Dot is selected, whatever its pose: a click elsewhere puts it away (dragging it selects the Dot)
+          h.visible = live.current.active && live.current.deps.select.has(DOT_ID);
           h.position.copy(world.dotPos);
           h.quaternion.copy(world.dotQuat);
         }
@@ -944,6 +946,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         return toClient(new Vector3(it.x, SIZES[it.kind].h, it.z).add(part ? partOffset(it.kind, part, it.ry) : new Vector3()));
       },
       handle: () => toClient(world.handlePos.clone()),
+      handleShown: () => !!handle.current?.visible,
       view: () => ({ ...world.rig.cur }),
       setView: (v: Partial<typeof world.rig.goal>, jump = true) => {
         Object.assign(world.rig.goal, v);
