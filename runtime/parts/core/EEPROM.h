@@ -2,6 +2,7 @@
 // size from the board (Uno R3 1 KB, R4 8 KB, ESP32 4 KB). AVR and R4 write through at once; the ESP32 flavour needs begin(size) and commit() like the real one.
 #pragma once
 #include "Arduino.h"
+#include "dotbench_abi.h"
 
 class EEPROMClass;
 struct EERef {

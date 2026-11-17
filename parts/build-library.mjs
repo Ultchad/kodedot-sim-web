@@ -17,7 +17,9 @@ for (const d of fs.readdirSync(here, { withFileTypes: true }).filter((e) => e.is
   run(["build", dir, "--builtin", "-o", out]);
   if (process.argv.includes("--test")) console.log(run(["test", out === "" ? dir : dir, "--builtin"]).trim().split("\n").pop() + "  " + d);
   const bytes = fs.readFileSync(out);
-  index.push({ id: m.id, version: m.version, file: path.basename(out), bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), name: m.name, category: m.category, kind: m.behaviour.type, tags: m.tags ?? [], folder: d });
+  index.push({ id: m.id, version: m.version, file: path.basename(out), bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), name: m.name, category: m.category, kind: m.behaviour.type, tags: m.tags ?? [], keywords: m.keywords ?? {}, description: m.description ?? null, body: m.body ?? null, pins: m.pins.length, ...(m.behaviour.core ? { core: m.behaviour.core } : {}), folder: d });
+  if (!m.keywords || !m.keywords.en?.length || !m.keywords["pt-BR"]?.length || !m.keywords.es?.length || !m.body || m.pins.some((p) => p.kind !== "nc" && !p.mm)) { console.error(`${d}: needs keywords in en, pt-BR and es, a body and a terminal mm position on every pin`); process.exit(1); }
 }
-fs.writeFileSync(path.join(dist, "library.json"), JSON.stringify({ format: "dotbench-library", version: 1, parts: index }, null, 2) + "\n");
+const categories = [...new Set(index.map((x) => x.category))].sort();
+fs.writeFileSync(path.join(dist, "library.json"), JSON.stringify({ format: "dotbench-library", version: 2, categories, parts: index }, null, 2) + "\n");
 console.log(`built ${index.length} parts into ${path.relative(process.cwd(), dist)}`);

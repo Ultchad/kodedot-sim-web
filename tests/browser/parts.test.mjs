@@ -72,6 +72,16 @@ await check("parts_uart: the Dot and an ESP32 part running a real sketch in a bl
   assert.ok(st.console.some((l) => /echoing UART1/.test(l)), "the sketch's console: " + JSON.stringify(st.console));
 });
 
+await check("uno-r3 board: default sketch runs in a blob Worker, the serial monitor streams, the code-part calls work", async () => {
+  await page.evaluate(async () => {
+    await P.setup("parts_uart", ["dotbench.uno-r3"]);
+    P.u = P.bench.addPart("dotbench.uno-r3"); await P.start();
+  });
+  await until(() => P.bench.serialLog(P.u).some((l) => /blinking LED_BUILTIN/.test(l)), 30000, "the board's greeting on its serial monitor");
+  const r = await page.evaluate(() => { const c = P.bench.getPartCode(P.u), l = P.bench.serialise(); return { custom: c.custom, src: /LED_BUILTIN/.test(c.source), bytes: c.wasm.length, layoutCode: !!l.parts.find((x) => x.instance === P.u).code }; });
+  assert.ok(!r.custom && r.src && r.bytes > 1000 && !r.layoutCode, JSON.stringify(r));
+});
+
 await check("no page error, no CSP violation, no request beyond the test origin", async () => {
   assert.deepEqual(errors, []);
   assert.deepEqual(csp, []);

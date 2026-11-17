@@ -57,9 +57,9 @@ export function solveSources(sources) {
 }
 
 /** Digital level with hysteresis for a reader whose supply is vdd (mV); between the thresholds the previous level holds. */
-export function digital(mv, vdd, prev = 0) {
+export function digital(mv, vdd, prev = 0, hi = HI_FRACTION) {
   if (!(vdd > 0)) return 0;
-  if (mv >= HI_FRACTION * vdd) return 1;
+  if (mv >= hi * vdd) return 1;
   if (mv <= LO_FRACTION * vdd) return 0;
   return prev ? 1 : 0;
 }

@@ -9,3 +9,5 @@
 !rgb-led/*.dotpart
 !servo/*.dotpart
 !slide-switch/*.dotpart
+# generated board folders keep their package in dist/ only
+esp32-s3-devkitc/*.dotpart

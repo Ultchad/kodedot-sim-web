@@ -31,7 +31,7 @@ function run(cmd, cwd) {
 export const CORES = { "esp32": ["-DARDUINO_ARCH_ESP32", "-DESP32"], "esp32-s3": ["-DARDUINO_ARCH_ESP32", "-DESP32", "-DARDUINO_ESP32S3_DEV"],
   "uno-r3": ["-DARDUINO_AVR_UNO"], "uno-r4-minima": ["-DARDUINO_MINIMA", "-DARDUINO_ARCH_RENESAS_UNO"], "uno-r4-wifi": ["-DARDUINO_UNOR4_WIFI", "-DARDUINO_ARCH_RENESAS_UNO"] };
 const coreOf = (m) => { const c = m?.behaviour?.core ?? "esp32"; if (!CORES[c]) throw new Error(`behaviour.core "${c}" is not a dotcore variant (${Object.keys(CORES).join(", ")})`); return c; };
-const FLAGS = (api, core, extra = []) => ["-Os", "-std=gnu++17", "-fno-exceptions", "-fno-rtti", "-ffunction-sections", "-fdata-sections", "-I", path.join(CORE_DIR, "variants", core), "-I", CORE_DIR, "-I", api,
+const FLAGS = (api, core, extra = []) => ["-Os", "-std=gnu++17", "-fno-exceptions", "-fno-rtti", "-ffunction-sections", "-fdata-sections", "-I", path.join(CORE_DIR, "variants", core), "-I", CORE_DIR, "-I", api, "-I", path.join(api, "api/deprecated-avr-comp"),
   "-DARDUINO=10819", ...CORES[core], "-DHOST", "-Wno-main", ...extra].map(sh).join(" ");
 
 export { fieldsHeader };   // moved to shared.mjs (the browser compile service uses it too)

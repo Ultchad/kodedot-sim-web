@@ -3,6 +3,7 @@
 // A WasmPart is the "impl" the bench holds for a part whose manifest behaviour is wasm; it has the same shape as DeclarativePart
 // (sources, joins, evaluate, edge, netsChanged, i2cSlaves, spiSlaves, uartPorts, onField, dispose) plus start(), parked(), deadline().
 import { WORKER_SOURCE_URL } from "./bench-wasm-url.js";
+import { checkWasmModule } from "./dotpart.js";
 
 export const RING_CAP = 2048, REC_WORDS = 8;
 /** Mailbox layout (Int32 word indexes, byte offsets). Handed to the Worker with the init message, so it exists in exactly one place. */
@@ -56,8 +57,13 @@ export class WasmPart {
 
   async start() {
     for (let i = 0; i < this.fieldIdx.length && i < 32; i++) this._field(i);
-    const def = this.part.def;
-    def._module ??= await WebAssembly.compile(def.wasm);
+    const def = this.part.def, code = this.part.code;
+    let mod;
+    if (code) {                                  // a sketch uploaded to this board: compile it here and apply the same allow-list as an import
+      code._module ??= await WebAssembly.compile(code.wasm);
+      const bad = checkWasmModule(code._module); if (bad.length) throw new Error(`the uploaded binary is not an ABI 1 part: ${bad[0]}`);
+      mod = code._module;
+    } else { def._module ??= await WebAssembly.compile(def.wasm); mod = def._module; }
     this.worker = await spawn();
     const ready = new Promise((res, rej) => {
       const t = setTimeout(() => rej(new Error("the part did not start within 10 s")), 10000); t.unref?.();
@@ -66,7 +72,7 @@ export class WasmPart {
         else if (m.type === "error") { clearTimeout(t); if (!this.dead) { this.crashed = true; this.host.warn("crashed", `the part stopped: ${m.message.split("\n")[0]}`); this.host.changed(); } rej(new Error(m.message.split("\n")[0])); }
       });
     });
-    this.worker.post({ type: "init", module: def._module, bytes: undefined, clockSab: this.host.clock().sab, mbSab: this.sab, ringSab: this.ringSab, L });
+    this.worker.post({ type: "init", module: mod, bytes: undefined, clockSab: this.host.clock().sab, mbSab: this.sab, ringSab: this.ringSab, L });
     await ready;
     this.watch = setInterval(() => this._watchdog(), 500); this.watch.unref?.();
     this.drain();
@@ -250,7 +256,7 @@ export class WasmPart {
   }
   _adhoc(gpio) { const st = { mode: "z", pull: "none", level: 0, pwm: null, dac: null, irq: 0 }; this.pin.set(gpio, st); return st; }
   _uartOut(port, bytes) {
-    if (port === 7) { this.host.warn("note", this.consoleDecoder.decode(bytes)); return; }       // dp_log: a note from the core (e.g. WiFi is not simulated)
+    if (port === 7) { this._note = (this._note ?? "") + new TextDecoder().decode(bytes); let i; while ((i = this._note.indexOf("\n")) >= 0) { this.host.warn("note", this._note.slice(0, i)); this._note = this._note.slice(i + 1); } return; }       // dp_log: a note from the core (e.g. WiFi is not simulated)
     if (port === 0) { this.host.console(this.consoleDecoder.decode(bytes, { stream: true })); return; }
     const u = this.uart[port]; if (!u || u.tx < 0) return;
     const term = this._term(u.tx); if (term) this.bench.uartSend(term, bytes, u.baud, this.part.instance);

@@ -1,6 +1,7 @@
 // WiFiClient / WiFiServer for dotcore: never connected (see WiFi.h).
 #pragma once
 #include "WiFi.h"
+#include "api/Client.h"
 class WiFiClient : public Client {
 public:
   int connect(IPAddress, uint16_t) override { dp_wifi_note("WiFiClient::connect()"); return 0; }

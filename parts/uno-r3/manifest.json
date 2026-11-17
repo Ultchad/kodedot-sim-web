@@ -67,6 +67,7 @@
     "height": 427
   },
   "logic_mv": 5000,
+  "vih_pct": 60,
   "pins": [
     {"name":"SCL","kind":"io","pos":{"x":170.7,"y":20.3},"mm":{"x":21.34,"y":2.54},"face":"top","label":{"en":"SCL"},"abs_max_mv":5500,"caps":["i2c_scl"]},
     {"name":"SDA","kind":"io","pos":{"x":191,"y":20.3},"mm":{"x":23.88,"y":2.54},"face":"top","label":{"en":"SDA"},"abs_max_mv":5500,"caps":["i2c_sda"]},
