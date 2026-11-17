@@ -11,7 +11,7 @@ command -v emcc >/dev/null 2>&1 || . "${DOTBENCH_EMSDK:-/home/claude/tools/emsdk
 "$root/tools/dotbench" sdk | tail -1
 "$root/tools/dotbench" sdk --role kodeos | tail -1
 "$root/tools/dotbench" build "$kos" --role kodeos | tail -1
-for a in "$sdk/examples/power" "$sdk/examples/display_lvgl" "$sdk/examples/buttons_led" "$root/apps/kody_kart"; do "$root/tools/dotbench" build "$a" | tail -1; done
+for a in "$sdk/examples/power" "$sdk/examples/display_lvgl" "$sdk/examples/buttons_led" "${DOTBENCH_KODY_KART:-/home/claude/src/kode-app/kody_kart}"; do "$root/tools/dotbench" build "$a" | tail -1; done
 rc=0
 for t in "$here"/cable.test.mjs "$here"/*.usb-test.mjs; do
   echo "== ${t#$root/} (Node)"
