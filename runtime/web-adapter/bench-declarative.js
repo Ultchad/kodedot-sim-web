@@ -3,6 +3,8 @@
 // There is no scripting: every value is an `expr` over the part's fields. An unpowered part does nothing (the bench does not call us).
 // Elements: switch, bridge, divider, source, drive, i2c_slave, h_bridge, servo, led, buzzer (led and buzzer are an addition to the design,
 // see docs/STATUS-parts.md "decisions"); `wireless` binds a medium the bench does not simulate yet and is inert.
+// Two-terminal elements solved with the net (bench-solver solveNetwork): resistor, capacitor, diode (also LEDs), cell. They load their nets,
+// so a resistor between a GPIO and an LED really sets the LED current. Parts with them expose branches(), onBranch(), hazards(), repair().
 
 const num = (v) => (typeof v === "boolean" ? (v ? 1 : 0) : typeof v === "number" ? v : Number(v) || 0);
 
@@ -94,6 +96,58 @@ export class DeclarativePart {
       if (el.type === "wireless") this.warnings.push(`wireless port ${el.port} is not simulated by this bench build`);
     });
     this.last = new Map();        // output name -> value, for servo hold
+    this.diodeOn = new Map();     // branch id -> conducting (carried between solves)
+    this.br = new Map();          // branch id -> last result {cur (mA, duty average), curHi, curLo, vd (mV)}
+    this.capV = new Map();        // branch id -> capacitor voltage (mV, plus minus)
+    this.failed = new Map();      // element index -> "reason": an element that burned out or burst (open circuit) until repair()
+    this.since = new Map();       // latch key -> virtual time the condition began
+  }
+  /** Replace a failed element (the page's "new part" button). */
+  repair() { this.failed.clear(); this.since.clear(); this.host.changed(); }
+  _ohms(el) { const o = el.ohms; return Math.max(0.001, typeof o === "object" ? num(this.part.fields[o.field]) * (o.scale ?? 1) : num(o)); }
+  /** A condition that must hold `delayMs` of virtual time before it latches. */
+  _trip(key, cond, delayMs) {
+    if (!cond) { if (this.since.delete(key)) { /* cancelled */ } return false; }
+    const clock = this.host.clock(), now = clock.now();
+    if (!this.since.has(key)) { this.since.set(key, now); if (delayMs > 0) clock.schedule(now + delayMs * 1000, () => this.host.changed()); }
+    return now - this.since.get(key) >= delayMs * 1000 - 1;
+  }
+  /** Branches for the nodal solve (see bench-solver.js). */
+  branches() {
+    const out = [], T = (p) => this.host.term(p), f = this.part.fields;
+    this.elements.forEach((el, i) => {
+      if (this.failed.has(i)) return;
+      const id = "e" + i;
+      if (el.type === "resistor") out.push({ id, kind: "r", a: T(el.a), b: T(el.b), g: 1 / this._ohms(el) });
+      else if (el.type === "capacitor") { if (!this.capV.has(id)) this.capV.set(id, 0); out.push({ id, kind: "cap", a: T(el.a), b: T(el.b), c: Math.max(1e-12, num(evalExpr(el.farads, f))), esr: el.esr_ohms ?? 0, v: this.capV.get(id) }); }
+      else if (el.type === "diode") out.push({ id, kind: "diode", a: T(el.anode), b: T(el.cathode), vf: el.vf_mv ?? 700, rs: el.rs_ohms ?? 10 });
+      else if (el.type === "cell") out.push({ id, kind: "emf", a: T(el.pos), b: T(el.neg), g: 1 / Math.max(0.001, el.ohms ?? 1.5), e: num(evalExpr(el.mv, f)), refB: true });
+    });
+    return out;
+  }
+  onBranch(id, b, commitDt) {
+    this.br.set(id, { cur: b.cur, curHi: b.curHi, curLo: b.curLo, vd: b.vd });
+    if (b.kind === "diode") this.diodeOn.set(id, !!b.on);
+    else if (b.kind === "cap" && commitDt > 0) this.capV.set(id, this.capV.get(id) + (b.cur * commitDt) / b.c);
+  }
+  /** Capacitor voltage in mV (plus minus), for tests and the page. */
+  capVoltage(index) { return this.capV.get("e" + index) ?? 0; }
+  hazards() {
+    const out = [], T = (p) => this.host.term(p), N = (p) => this.host.net(T(p));
+    this.elements.forEach((el, i) => {
+      const id = "e" + i, r = this.br.get(id), inst = this.host.instance;
+      if (this.failed.has(i)) { out.push({ class: this.failed.get(i).class, terms: [inst], net: -1, text: `${inst}: ${this.failed.get(i).text}` }); return; }
+      if (el.type === "resistor" && el.rated_mw && r) { const pw = (r.cur * r.cur * this._ohms(el)) / 1000; if (pw > el.rated_mw) out.push({ class: "overpower", terms: [T(el.a), T(el.b)], net: N(el.a).id, text: `${inst}: resistor dissipates ${Math.round(pw)} mW, rated ${el.rated_mw} mW` }); }
+      else if (el.type === "diode" && el.max_ma && r && r.cur > el.max_ma) out.push({ class: "overcurrent", terms: [T(el.anode), T(el.cathode)], net: N(el.anode).id, text: `${inst}: ${Math.round(r.cur)} mA through a ${el.max_ma} mA part: add a series resistor` });
+      else if (el.type === "capacitor" && el.polarity) {
+        const v = this.capV.get(id) ?? 0, rev = el.polarity.plus === el.a ? -v : v;
+        if (rev > (el.polarity.reverse_mv ?? 1000)) out.push({ class: "polarity", terms: [T(el.a), T(el.b)], net: N(el.a).id, text: `${inst}: electrolytic capacitor connected backwards` });
+      } else if (el.type === "cell") {
+        if (N(el.pos).id === N(el.neg).id) out.push({ class: "short", terms: [T(el.pos), T(el.neg)], net: N(el.pos).id, text: `short: ${inst} plus wired to its own minus` });
+        else if (el.max_ma && r && Math.abs(r.cur) > el.max_ma) out.push({ class: "overcurrent", terms: [T(el.pos), T(el.neg)], net: N(el.pos).id, text: `${inst}: ${Math.round(Math.abs(r.cur))} mA, the source gives ${el.max_ma} mA` });
+      }
+    });
+    return out;
   }
   dispose() { for (const s of this.sw.values()) s.cancel?.(); }
   /** A field changed: switches follow, with their contact bounce. */
@@ -151,6 +205,34 @@ export class DeclarativePart {
     const f = this.part.fields, T = (p) => this.host.term(p);
     let changed = false;
     const set = (name, v) => { if (this.last.get(name) !== v) { this.last.set(name, v); this.host.setOutput(name, v); changed = true; } };
+    this.elements.forEach((el, i) => {
+      const id = "e" + i, r = this.br.get(id);
+      if (el.type === "diode") {
+        const cur = this.failed.has(i) ? 0 : Math.max(0, r?.cur ?? 0), max = el.max_ma ?? Infinity;
+        if (el.max_ma && !this.failed.has(i) && this._trip("burn" + i, cur > max * 1.05, el.burn_ms ?? 60)) this.failed.set(i, { class: "burnt", text: "LED burnt out (too much current)" });
+        const over = cur > max * 1.05 || this.failed.has(i);
+        if (el.output) set(el.output, Math.round(clamp(cur / (el.full_ma ?? 10), 0, 1) * 1000) / 1000);
+        if (el.current_output) set(el.current_output, Math.round(cur * 100) / 100);
+        if (el.overcurrent_output) set(el.overcurrent_output, over);
+        if (el.burnt_output) set(el.burnt_output, this.failed.has(i));
+      } else if (el.type === "capacitor") {
+        const v = this.capV.get(id) ?? 0;
+        if (el.polarity && !this.failed.has(i)) {
+          const rev = el.polarity.plus === el.a ? -v : v;
+          if (this._trip("rev" + i, rev > (el.polarity.reverse_mv ?? 1000), 40)) this.failed.set(i, { class: "polarity", text: "electrolytic capacitor burst (connected backwards)" });
+        }
+        if (el.max_mv && !this.failed.has(i) && Math.abs(v) > el.max_mv) this.failed.set(i, { class: "overvoltage", text: `capacitor over its ${el.max_mv / 1000} V rating` });
+        const vs = this.failed.has(i) ? 0 : Math.round((el.polarity && el.polarity.plus !== el.a ? -v : v)), reversed = !!el.polarity && vs < -(el.polarity.reverse_mv ?? 1000) / 2;
+        if (el.voltage_output) set(el.voltage_output, vs);
+        if (el.failed_output) set(el.failed_output, this.failed.has(i));
+        if (el.reversed_output) set(el.reversed_output, reversed);
+      } else if (el.type === "resistor") {
+        if (el.current_output) set(el.current_output, Math.round((r?.cur ?? 0) * 100) / 100);
+      } else if (el.type === "cell") {
+        if (el.current_output) set(el.current_output, Math.round(Math.abs(r?.cur ?? 0) * 10) / 10);
+      }
+    });
+    if (this.failed.size !== (this._nf ?? 0)) { this._nf = this.failed.size; this.host.changed(); }
     for (const el of this.elements) {
       if (el.type === "led") {
         const A = this.host.net(T(el.anode)), K = this.host.net(T(el.cathode));

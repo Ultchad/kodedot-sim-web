@@ -81,3 +81,74 @@ export function conflicts(sources) {
   }
   return out;
 }
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// Two-terminal elements (resistor, capacitor, diode, cell) and time. Units: volts in mV, conductance in S, current in mA (mV * S = mA).
+// The per-net Thevenin solve above stays the DC fast path: only nets joined by a branch go through this nodal solve (modified nodal analysis
+// with a dense Gauss elimination; a component has a handful of nodes because wires and breadboard strips are merged into nets first).
+//   node:   {g, i}                     the net's own sources as a Norton equivalent to the 0 V reference (g = 1/rth, i = mv * g); g = 0 when it has none
+//   branch: {a, b, kind, ...}          a, b are node indexes; the branch current I(a to b) is reported in `cur` (mA)
+//     "r"     {g}                      resistor
+//     "emf"   {g, e}                   I = g * (Va - Vb - e): a cell (+ at a), the forward diode model, a capacitor companion
+//     "cap"   {c, esr, v}              backward Euler: ideal C (farads) holding v (mV) behind esr (ohms), step dt seconds: g = 1/(esr + dt/c), e = v
+//     "diode" {vf, rs, on}             piecewise linear: off = open, on = vf in series with rs; `on` is updated until consistent
+// A connected set of nodes with no reference (no source at all) is not solved, it is reported as floating; a set whose only sources are
+// cells and branches (a battery loop) takes its `refs` node (a ground pin, a cell minus) as 0 V.
+export const R_MIN = 0.001;
+function gauss(A, b, n) {
+  for (let c = 0; c < n; c++) {
+    let p = c, best = Math.abs(A[c][c]);
+    for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > best) { best = Math.abs(A[r][c]); p = r; }
+    if (best < 1e-30) { A[c][c] = 1e-12; p = c; }
+    if (p !== c) { [A[p], A[c]] = [A[c], A[p]]; [b[p], b[c]] = [b[c], b[p]]; }
+    const d = A[c][c];
+    for (let r = c + 1; r < n; r++) {
+      const f = A[r][c] / d; if (f === 0) continue;
+      for (let k = c; k < n; k++) A[r][k] -= f * A[c][k];
+      b[r] -= f * b[c];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) { let s = b[r]; for (let k = r + 1; k < n; k++) s -= A[r][k] * x[k]; x[r] = s / A[r][r]; }
+  return x;
+}
+/**
+ * @param {{g:number,i:number}[]} nodes
+ * @param {object[]} branches (see above); `on` of diodes is read and updated
+ * @param {{dt?: number, ref?: number}} o dt in seconds for capacitors (0 or missing: a capacitor holds its voltage behind a tiny resistance); ref: node to ground when no node has a source
+ * @returns {{v: number[], cur: number[]}}
+ */
+export function solveNetwork(nodes, branches, o = {}) {
+  const n = nodes.length, dt = o.dt > 0 ? o.dt : 1e-6;
+  const nodeSrc = nodes.some((x) => x.g > 0), hasSrc = nodeSrc || branches.some((b) => b.kind === "emf" && b.g > 0);
+  const ref = nodeSrc ? -1 : (o.ref ?? 0);
+  const stamp = (bn) => {
+    if (bn.kind === "r") return { g: bn.g, e: 0 };
+    if (bn.kind === "emf") return { g: bn.g, e: bn.e };
+    if (bn.kind === "cap") return { g: 1 / ((bn.esr ?? 0) + dt / bn.c), e: bn.v };
+    if (bn.kind === "diode") return bn.on ? { g: 1 / Math.max(bn.rs, R_MIN), e: bn.vf } : null;
+    return null;
+  };
+  let v = new Array(n).fill(0);
+  for (let iter = 0; iter < 24; iter++) {
+    const A = Array.from({ length: n }, () => new Array(n).fill(0)), b = new Array(n).fill(0);
+    for (let k = 0; k < n; k++) { A[k][k] += nodes[k].g + GMIN; b[k] += nodes[k].i; }
+    for (const bn of branches) {
+      const s = stamp(bn); if (!s) continue;
+      const { a, b: c } = bn;
+      A[a][a] += s.g; A[c][c] += s.g; A[a][c] -= s.g; A[c][a] -= s.g;
+      b[a] += s.g * s.e; b[c] -= s.g * s.e;
+    }
+    if (ref >= 0) { for (let k = 0; k < n; k++) { A[ref][k] = 0; A[k][ref] = 0; } A[ref][ref] = 1; b[ref] = 0; }
+    v = gauss(A, b, n);
+    let flipped = false;
+    for (const bn of branches) if (bn.kind === "diode") {
+      const on = v[bn.a] - v[bn.b] > bn.vf;
+      if (on !== !!bn.on) { bn.on = on; flipped = true; }
+    }
+    if (!flipped) break;
+  }
+  const cur = branches.map((bn) => { const s = stamp(bn); return s ? s.g * (v[bn.a] - v[bn.b] - s.e) : 0; });
+  return { v, cur, dt, hasSrc };
+}
+export const GMIN = 1e-12;
