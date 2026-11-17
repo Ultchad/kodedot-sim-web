@@ -6,6 +6,8 @@
 #     --to TAG        pin kode-sdk and KodeOS at release TAG (and Kody Kart at the same tag when it has one), then run every step
 #     --verify-only   keep the pins as they are and only run the steps (rebuilds the packages, runs the suites and the page checks)
 #     --no-page       skip the page checks (step "page"); everything else runs
+#     --from STEP     resume: the steps before STEP are skipped (their results are taken from the build directory as it is; for a person
+#                     continuing after a fix, never used by the workflow)
 #
 # Steps, in order (a failure names its step on stderr and in $GITHUB_STEP_SUMMARY, and puts the tracked files back as they were):
 #   pins      resolve the tag to commits and write tools/pins.env
@@ -23,7 +25,8 @@
 #       DOTBENCH_EMSDK_REUSE=<dir>           use an Emscripten SDK already installed there instead of installing one under DEPS
 #       UPSTREAM_AREAS="system ble ..."      the areas of tests/node/run.sh (default: all that the owner's list names, see below)
 #       UPSTREAM_SKIP_TESTS="a b"            tests/node tests left out of the areas step (default: system/restart.test.mjs, failing before 0.1.2 as well)
-#       UPSTREAM_RETRIES=1                   a failed suite is run once more before it counts (the tests are timing sensitive)
+#       UPSTREAM_RETRIES=1                   a failed kodeos or boot suite is run once more before it counts (the tests are timing sensitive)
+#       UPSTREAM_TEST_RETRIES=2              a failed test file of the areas step is run up to twice more before it counts
 #       UPSTREAM_LOGS=<dir>                  where each step's full log goes (default /tmp/upstream-logs)
 #       UPSTREAM_SCRATCH=<dir>               the scratch tree of the page checks (default /tmp/dotbench-page)
 #       UPSTREAM_NODE_MODULES=<dir>          link this web/node_modules into the scratch tree instead of `npm ci` (offline, local runs)
@@ -34,12 +37,13 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-TO=""; VERIFY=0; PAGE=1
+TO=""; VERIFY=0; PAGE=1; FROM=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --to) TO="${2:?--to needs a tag}"; shift 2 ;;
         --verify-only) VERIFY=1; shift ;;
         --no-page) PAGE=0; shift ;;
+        --from) FROM="${2:?--from needs a step}"; shift 2 ;;
         *) echo "upstream-update: unknown argument $1" >&2; exit 64 ;;
     esac
 done
@@ -54,6 +58,7 @@ RETRIES="${UPSTREAM_RETRIES:-1}"
 AREAS="${UPSTREAM_AREAS:-system ble nfc rfid ir wifi radio usb storage sd persist nvs audio}"
 # tests known to fail on main with the OLD pins too, so they cannot judge a new release (docs/STATUS-upstream.md says why each is here;
 # an empty UPSTREAM_SKIP_TESTS= runs everything)
+export NODE_TEST_RETRIES="${UPSTREAM_TEST_RETRIES:-2}"   # per test file: the IR replay-gap check sits on a 1 ms boundary and fails about one run in three, alone
 export NODE_SKIP_TESTS="${UPSTREAM_SKIP_TESTS-system/restart.test.mjs}"
 TOUCHED=(tools/pins.env web/public/apps)     # what a failed run puts back
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
@@ -73,7 +78,14 @@ run_logged() {   # run_logged <name> <command...>: the command under `set -e`, i
     ( set -e; "$@" ) 2>&1 | tee "$LOGS/$name.log"
     return "${PIPESTATUS[0]}"
 }
+SKIPPING=0; [ -z "$FROM" ] || SKIPPING=1
+skipped() {   # --from: true while the step named $1 comes before the one to resume at
+    if [ "$SKIPPING" = 1 ] && [ "$1" = "$FROM" ]; then SKIPPING=0; fi
+    [ "$SKIPPING" = 1 ] && { echo "== step $1 (skipped, resuming at $FROM)"; return 0; }
+    return 1
+}
 step() {   # step <name> <command...>: run it, log it, stop at the first failure
+    skipped "$1" && return 0
     STEP="$1"; shift
     say "step $STEP"
     run_logged "$STEP" "$@" || fail
@@ -81,6 +93,7 @@ step() {   # step <name> <command...>: run it, log it, stop at the first failure
 }
 suite() {  # suite <name> <command...>: as step, but a failure is run again $RETRIES times first
     local name="$1"; shift
+    skipped "$name" && return 0
     STEP="$name"; say "step $name"
     local n=0
     until run_logged "$name" "$@"; do
@@ -147,7 +160,9 @@ step factory "$ROOT/tools/build-factory.sh"
 suite kodeos "$ROOT/tests/node/kodeos/run.sh"
 suite boot "$ROOT/tests/node/boot/run.sh"
 # shellcheck disable=SC2086
+STEP=areas; RETRIES_SAVED="$RETRIES"; RETRIES=0   # the areas step retries per test file (NODE_TEST_RETRIES), not the whole step
 suite areas "$ROOT/tests/node/run.sh" $AREAS
+RETRIES="$RETRIES_SAVED"
 
 # ---------------------------------------------------------------- stage
 stage_step() {
