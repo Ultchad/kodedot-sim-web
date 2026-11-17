@@ -1,14 +1,14 @@
 /**
  * 28BYJ-48 geared stepper with its ULN2003 driver board, one part as the manifest has it (parts/stepper-28byj48): the
  * board on the left with the control header where the manifest puts it, the motor on the right with its shaft up, the
- * five-wire lead plugged into the board's white socket.
+ * five-wire lead plugged into the board's white socket. Both at real size.
  *
- * Motor, after the 28BYJ-48 drawing: can 28 mm across and 19 mm high, front plate with two ears (holes 35 mm apart),
- * the blue lead cover on its side, a 9 mm boss 8 mm off centre and the 5 mm shaft with two flats, 10 mm above the can.
- * THE MANIFEST'S BOX IS THE BARE CAN (19 mm high, 32 mm deep): the whole motor, with its shaft up and its ears, is
- * 29 mm high and 42 mm across. It is built at its real proportions and fitted into the box by `FIT` (0.66 today); when
- * the manifest's body grows to the real envelope, `FIT` becomes 1 by itself. The board is at real size.
- * A small pointer pressed on the flats shows the rotation.
+ * Motor, after the 28BYJ-48 drawing: can 28 mm across and 19 mm high, front plate with two ears (holes 35 mm apart,
+ * 42 mm tip to tip: the footprint's depth), the blue lead cover on its side, a 9 mm boss 8 mm off centre and the 5 mm
+ * shaft with two flats, 10 mm above the can. The ears lie across the footprint, so the shaft's offset and the lead
+ * cover lie along it: the cover towards the board, the shaft away from it. The can stands against the right edge, so
+ * that the cover clears the board. A small pointer pressed on the flats shows the rotation.
+ * `FIT` is 1 for the manifest's body and only shrinks the motor if a manifest ever gives a smaller box.
  *
  * Live state: `outputs.position` (half steps, 4096 a turn) or `outputs.angle` turns the shaft, eased between updates;
  * the four LEDs A..D show the coils (the levels of IN1..IN4 while the board is powered); `outputs.stalled` (the rotor
@@ -19,7 +19,7 @@ import {
   INK, Matrix4, PAL, PITCH, Shape, circleLoop, convexHull, defineModel, footprintOf, glowing, lamp, ledDome, part, partState, pcb, pinHeader, print, roundPolygon,
   setLamp, silkBox, terminalsFromManifest, text, topQuad, type PartState, type Pt, type V3,
 } from '../../index';
-import { DEG, WIRE, asManifest, chip, dip, follow, pinAt, shroudedHeader, stepperDegrees, visualAt, wire } from './shared';
+import { DEG, WIRE, asManifest, chip, dip, follow, pinAt, shroudedHeader, stepperDegrees, wire } from './shared';
 
 const M = asManifest(manifest);
 const terminals = terminalsFromManifest(M);
@@ -32,15 +32,17 @@ const UNITS = M.behaviour?.elements?.find((e) => e.type === 'stepper_unipolar')?
 const CAN = { r: 14, h: 19 }, EARS = 17.5, BOSS = { x: 8, r: 4.5, h: 1.5 }, SHAFT = { r: 2.5, len: 8.5, flats: 1.5 };
 const MOTOR_H = CAN.h + BOSS.h + SHAFT.len, MOTOR_D = 2 * EARS + 7;
 const FIT = Math.min(1, H / MOTOR_H, D / MOTOR_D);
-/** The can's axis: where the part's picture has the motor (its `shaft` visual sits 1 mm beside the drawn can's centre). */
-const CX = visualAt(M, 'shaft')[0] - 1, CZ = 0;
+/** The can's axis: against the right edge of the footprint, in the middle of its depth. */
+const CX = W / 2 - CAN.r * FIT, CZ = 0;
 const at = (x: number, y: number, z: number): V3 => [CX + x * FIT, y * FIT, CZ + z * FIT];
 // ---- the board
 const IN = ['IN1', 'IN2', 'IN3', 'IN4'];
 const [IN1, IN4, V5, GND] = [pin('IN1'), pin('IN4'), pin('V5'), pin('GND')];
-const BOARD = { x0: -W / 2 + 0.4, x1: -0.6, d: D - 0.8, y: 1.3 };
-const LEDS = IN.map((_, i): [number, number] => [-25 + i * 4.2, 6.4]);
-const SOCKET = { x: -5.4, z: 6.6 };
+const BOARD = { x0: -W / 2 + 0.4, x1: -0.6, d: 31.2, y: 1.3 };
+/** The board's middle: it lies against the back of the footprint, its header 3.6 mm from its edge. */
+const BZ = IN1[2] - 3.6 + BOARD.d / 2;
+const LEDS = IN.map((_, i): [number, number] => [-25 + i * 4.2, BZ + 6.4]);
+const SOCKET = { x: -5.4, z: BZ + 6.6 };
 const LEAD = [WIRE.blue, WIRE.pink, WIRE.yellow, WIRE.orange, WIRE.red];
 const LED_NAMES = ['led0', 'led1', 'led2', 'led3'];
 const RED = 0xff3b30;
@@ -55,14 +57,14 @@ export default defineModel<PartState>({
     // ================================================================ the driver board
     const bx = (BOARD.x0 + BOARD.x1) / 2, bw = BOARD.x1 - BOARD.x0;
     const top = pcb(s, {
-      w: bw, d: BOARD.d, x: bx, y: BOARD.y, r: 1.2, finish: PAL.pcbGreen,
-      holes: [[BOARD.x0 + 2.6, -BOARD.d / 2 + 2.6], [BOARD.x0 + 2.6, BOARD.d / 2 - 2.6], [BOARD.x1 - 2.6, BOARD.d / 2 - 2.6]].map(([x, z]) => ({ x, z, d: 2.8 })),
+      w: bw, d: BOARD.d, x: bx, z: BZ, y: BOARD.y, r: 1.2, finish: PAL.pcbGreen,
+      holes: [[BOARD.x0 + 2.6, -BOARD.d / 2 + 2.6], [BOARD.x0 + 2.6, BOARD.d / 2 - 2.6], [BOARD.x1 - 2.6, BOARD.d / 2 - 2.6]].map(([x, z]) => ({ x, z: BZ + z, d: 2.8 })),
     });
     pinHeader(s, { x: (IN1[0] + IN4[0]) / 2, z: IN1[2], y: top, n: 4 });
     pinHeader(s, { x: (V5[0] + GND[0]) / 2, z: V5[2], y: top, n: 2 });
-    const chipTop = dip(s, { x: -16.2, z: -3.6, y: top, pins: 16, socket: true });
+    const chipTop = dip(s, { x: -16.2, z: BZ - 3.6, y: top, pins: 16, socket: true });
     for (const [x, z] of LEDS) chip(s, { x, z: z + 3.6, y: top, turn: 1 });
-    chip(s, { x: -4.2, z: -4.6, y: top, turn: 1, body: PAL.ceramic });
+    chip(s, { x: -4.2, z: BZ - 4.6, y: top, turn: 1, body: PAL.ceramic });
     // the motor's socket with the lead's plug in it
     const plug = shroudedHeader(s, { x: SOCKET.x, z: SOCKET.z, y: top, n: 5, turn: 1, plug: true });
     // ================================================================ the motor
@@ -94,25 +96,25 @@ export default defineModel<PartState>({
     root.add(
       print({
         name: 'silk',
-        quad: topQuad(bx, 0, top + 0.02, bw / 2, BOARD.d / 2),
+        quad: topQuad(bx, BZ, top + 0.02, bw / 2, BOARD.d / 2),
         ppm: 12,
         draw(g) {
-          g.translate(-bx, 0);
+          g.translate(-bx, -BZ);
           g.fillStyle = INK.silk;
           IN.forEach((name, i) => text(g, name, IN1[0] + i * PITCH, IN1[2] + 2.3, 0.85, { weight: 700 }));
           text(g, '5V', V5[0], V5[2] + 2.3, 0.85, { weight: 700 });
           text(g, 'GND', GND[0] + 0.2, GND[2] + 2.3, 0.85, { weight: 700 });
           silkBox(g, V5[0] - 1.5, V5[2] - 1.5, GND[0] - V5[0] + 3, 3, 0.3, 0.16);
           LEDS.forEach(([x, z], i) => text(g, 'ABCD'[i], x, z - 2.9, 1.25, { weight: 800 }));
-          text(g, 'ULN2003', -17.5, 12.6, 1.5, { weight: 800, spacing: 0.15 });
-          text(g, 'STEPPER DRIVER', -17.5, 14.3, 0.85, { weight: 600, spacing: 0.1 });
-          text(g, 'U1', -27.9, -3.6, 0.9);
+          text(g, 'ULN2003', -17.5, BZ + 12.6, 1.5, { weight: 800, spacing: 0.15 });
+          text(g, 'STEPPER DRIVER', -17.5, BZ + 14.3, 0.85, { weight: 600, spacing: 0.1 });
+          text(g, 'U1', -27.9, BZ - 3.6, 0.9);
           text(g, 'MOTOR', SOCKET.x - 4.4, SOCKET.z, 0.85, { weight: 700, angle: -Math.PI / 2 });
         },
       }),
       print({
         name: 'chip',
-        quad: topQuad(-16.2, -3.6, chipTop + 0.02, 9.6, 3.1),
+        quad: topQuad(-16.2, BZ - 3.6, chipTop + 0.02, 9.6, 3.1),
         ppm: 18,
         draw(g) {
           g.fillStyle = '#b9b9b4';

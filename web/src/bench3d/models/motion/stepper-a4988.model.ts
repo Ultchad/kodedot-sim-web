@@ -2,10 +2,9 @@
  * NEMA 17 stepper with its A4988 driver carrier, one part as the manifest has it (parts/stepper-a4988): the carrier in
  * the back left corner, the motor filling the right of the footprint with its shaft up, four leads between them.
  *
- * Motor: the NEMA 17 frame (42.3 mm square, 31 mm hole pattern, 22 mm pilot boss, 5 mm shaft with a flat), in its
- * short "pancake" length: the manifest's box is 40 mm high, so a 20 mm body with an 18 mm shaft is the NEMA 17 that
- * stands in it at real size with the shaft up. Black end caps with cut corners, the lamination stack between them.
- * A pointer clamped on the shaft shows the rotation against the ticks printed round the boss.
+ * Motor: a NEMA 17 at real size (42.3 mm square, 40 mm long, 31 mm hole pattern, 22 mm pilot boss, 5 mm shaft with a
+ * flat reaching 24 mm above the body: the manifest's 64 mm). Black end caps with cut corners, the lamination stack
+ * between them. A pointer clamped on the shaft shows the rotation against the ticks printed round the boss.
  * Carrier: the usual 20.3 x 15.2 mm A4988 board, its two rows of pins where the manifest puts them (pins up, for
  * jumper wires), the stick-on heatsink over the chip, the current-limit trimmer.
  *
@@ -29,7 +28,8 @@ const UNITS = (M.behaviour?.elements?.find((e) => e.type === 'stepper_step_dir')
 // ---- the motor: against the right edge of the footprint, as deep as the footprint
 const FRAME = Math.min(42.3, D);
 const MX = W / 2 - FRAME / 2, MZ = 0;
-const BODY = 20, CAP = 6.6, BOSS = 2, SHAFT_TOP = Math.min(H, BODY + BOSS + 18);
+const SHAFT = 24; // above the body, boss included
+const BODY = Math.min(40, H - SHAFT), CAP = Math.min(9.6, BODY / 3), BOSS = 2, SHAFT_TOP = BODY + SHAFT;
 const BLACK: Finish = ['matte', '#1f1f22'];
 // ---- the carrier: its two rows are the manifest's
 const [EN, DIR, VMOT] = [pin('EN'), pin('DIR'), pin('VMOT')];
@@ -73,7 +73,7 @@ export default defineModel<PartState>({
     s.prism(...BLACK, cap, 0, CAP, 0, { ao: 0.8 });
     s.prism('metal', '#c9ccd1', roundedRectLoop(MX, MZ, FRAME - 0.3, FRAME - 0.3, 3.2, 4), CAP, BODY - CAP, 0, { ao: 0.9 });
     // two laminations picked out: the stack is not one block
-    for (const y of [CAP + 2.2, CAP + 4.5]) s.prism('metal', '#7b7e85', roundedRectLoop(MX, MZ, FRAME - 0.2, FRAME - 0.2, 3.2, 4), y, y + 0.22, 0, { ao: 1 });
+    for (let y = CAP + 3; y < BODY - CAP - 1; y += 3.6) s.prism('metal', '#7b7e85', roundedRectLoop(MX, MZ, FRAME - 0.2, FRAME - 0.2, 3.2, 4), y, y + 0.22, 0, { ao: 1 });
     s.prism(...BLACK, cap, BODY - CAP, BODY, 0.7, { ao: 0.95, holes });
     // the tapped mounting holes: dark bottoms
     for (const h of holes) s.prism('matte', '#09090a', h, BODY - 3, BODY - 2.6, 0, { ao: 1 });
@@ -145,7 +145,7 @@ export default defineModel<PartState>({
           text(g, 'NEMA 17', -11.6, -3.9, 3.0, { weight: 800, align: 'left', spacing: 0.2 });
           text(g, '1.8°  ·  200 steps / rev', -11.6, 0.1, 1.55, { weight: 600, align: 'left' });
           text(g, '12 V   1.0 A   2 phase', -11.6, 2.7, 1.55, { weight: 600, align: 'left' });
-          text(g, '42 × 42 × 20', -11.6, 5.2, 1.3, { weight: 500, align: 'left' });
+          text(g, `42 × 42 × ${BODY}`, -11.6, 5.2, 1.3, { weight: 500, align: 'left' });
         },
       }),
     );
@@ -153,7 +153,7 @@ export default defineModel<PartState>({
     // ---- what turns: the shaft and the pointer clamped on it, about the motor's axis
     const r = new Shape();
     shaft(r, { x: 0, z: 0, y0: BODY + BOSS - 0.6, y1: SHAFT_TOP - 0.05, d: 5, flat: 0.5, finish: ['metal', '#dcdee2'] });
-    const clampY = BODY + BOSS + 5.4;
+    const clampY = BODY + BOSS + 7;
     r.prism(...PAL.plasticAmber, circleLoop(0, 0, 5.2, ctx.seg(22)), clampY, clampY + 5, 0.6, { cap: true, ao: 0.95 });
     // the pointer: towards -Z (up the part's picture) at 0 degrees
     r.prism(...PAL.plasticAmber, roundPolygon([[2.6, -3.2], [-2.6, -3.2], [-1.25, -15.4], [0, -17.2], [1.25, -15.4]], [0.3, 0.3, 0.5, 0.5, 0.5], 3), clampY + 0.4, clampY + 2.4, 0.35, { cap: true, ao: 1 });
