@@ -1,6 +1,7 @@
 /**
  * Push button: a 6 x 6 x 5 mm tactile switch (the B3F / TS-06 family: 6 mm square moulded base, stamped steel cover
- * staked at four corners, round plunger 3.5 mm across standing 1.45 mm proud, four legs in two pairs 4.5 mm apart).
+ * staked at four corners, round plunger 3.5 mm across standing 1.45 mm proud, four legs in two pairs, here spread to the 5.08 mm of the manifest so they
+ * drop into a breadboard).
  * Size and terminals come from parts/push-button/manifest.json: A and B sit between the two legs of each pair (the
  * legs of a pair are one contact inside the switch, which is why the manifest has two pins for four legs).
  * The plunger is the control (`cap`, momentary, field `pressed`). Its real travel is 0.25 mm; the model moves it
@@ -36,7 +37,7 @@ export default defineModel<PartState>({
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) s.disc(...PAL.plasticBlack, sx * (W / 2 - 0.95), sz * (D / 2 - 0.95), 0.42, COVER, COVER + 0.16, 0.1, ctx.seg(10), { ao: 1 });
     s.disc('matte', '#0c0c0e', 0, 0, 2.02, COVER, COVER + 0.015, 0, ctx.seg(24), { ao: 1 });
     // two legs per terminal: out of the base's sides, a shoulder, then the pin
-    for (const t of terminals) for (const sz of [-1, 1]) flatLeg(s, { x: t.pos[0], z: sz * (D / 2 + 0.1), y0: -LEGS, y1: 1.15, neck: -0.45, w: 0.6, shoulder: 1.0, t: 0.25 });
+    for (const t of terminals) for (const sz of [-1, 1]) flatLeg(s, { x: t.pos[0], z: sz * (D / 2 + 0.1), y0: -LEGS, y1: 1.15, neck: -0.45, w: 0.6, shoulder: 0.85, t: 0.25 });
     const root = s.toObject();
 
     const cap = new Shape();

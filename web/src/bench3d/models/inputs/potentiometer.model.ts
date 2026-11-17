@@ -4,7 +4,7 @@
  * plastic shaft with a knurled top, three flat terminals in a row along the front), drawn at the size and with the
  * 5 mm terminal pitch of parts/potentiometer/manifest.json. The shaft is the control (`knob`, rotate, field
  * `position`): its pointer line turns from -135 to +135 degrees as the manifest's knob visual says, the dead arc
- * towards the terminals, and the frame carries the scale it is read against.
+ * towards the terminals. The frame carries only the marking of a real pot: taper and value.
  */
 import manifestJson from '../../../../../parts/potentiometer/manifest.json';
 import { PAL, Shape, defineModel, footprintOf, part, partState, print, terminalsFromManifest, text, topQuad, type PartState, type Pt } from '../../index';
@@ -63,23 +63,12 @@ export default defineModel<PartState>({
     const root = s.toObject();
     root.add(
       print({
-        name: 'scale',
+        name: 'value',
         quad: topQuad(0, BODY_Z, FRAME + 0.02, BODY_W / 2, BODY_D / 2),
         ppm: 22,
         draw(g) {
-          // stamped in the frame: the travel as a ring of ticks round the bushing, and the value
-          g.strokeStyle = g.fillStyle = 'rgba(40,40,46,0.8)';
-          g.lineCap = 'round';
-          const n = 10;
-          for (let i = 0; i <= n; i++) {
-            const a = (TURN.minDeg + ((TURN.maxDeg - TURN.minDeg) * i) / n) * DEG;
-            const end = i === 0 || i === n, r0 = SHAFT_R + 1.05, r1 = SHAFT_R + (end ? 1.75 : 1.5);
-            g.lineWidth = end ? 0.32 : 0.2;
-            g.beginPath();
-            g.moveTo(Math.sin(a) * r0, -Math.cos(a) * r0);
-            g.lineTo(Math.sin(a) * r1, -Math.cos(a) * r1);
-            g.stroke();
-          }
+          // stamped in the frame, as on the real part: the taper (B, linear) and the value
+          g.fillStyle = 'rgba(40,40,46,0.8)';
           text(g, `B${OHMS / 1000}K`, 0, BODY_D / 2 - 0.75, 0.95, { weight: 700 });
         },
       }),
