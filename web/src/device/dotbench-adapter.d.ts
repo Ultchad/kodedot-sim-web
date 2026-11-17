@@ -23,3 +23,6 @@ declare module '*/generated/web-adapter/bench-wasm.js' {
 declare module '*/generated/cc/index.js' {
   export function createCompiler(o: { assetsBaseUrl: string; onProgress?: (e: unknown) => void }): unknown;
 }
+declare module '*/generated/web-adapter/usb-computer.js' {
+  export const UsbComputer: new (sys: object) => unknown;
+}

@@ -1,3 +1,4 @@
+import { setUsbSystem } from '../bench/drivers/usb';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { applyPoseToBench } from '../bench/sync';
 import { DRIVERS } from '../bench/drivers';
@@ -173,6 +174,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     painter.attach(device);
     parts.setDevice(device);
+    setUsbSystem(() => (device as unknown as { system?: () => Promise<unknown> }).system?.() ?? Promise.resolve(null));
     const off = runtime.attach(device);
     if (device.info.kind === 'mock') void device.start();
     return () => {

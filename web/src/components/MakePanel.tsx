@@ -176,7 +176,7 @@ export function MakePanel({ compact = false }: { compact?: boolean }) {
             <h3 className="tag m-0">{t('make.prompt')}</h3>
             <div className="inner flex flex-col items-start gap-2 p-4">
               <p className="m-0 text-[14px] leading-snug text-ink2">{t('make.prompt.hint')}</p>
-              <textarea className="field-input h-36 w-full resize-y font-mono !text-[12px] leading-snug" readOnly value={prompt} aria-label={t('make.prompt')} data-testid="make-prompt-text" />
+              <textarea className="field-input h-36 w-full resize-y !rounded-2xl font-mono !text-[12px] leading-snug" readOnly value={prompt} aria-label={t('make.prompt')} data-testid="make-prompt-text" />
               <button type="button" className="btn btn-sm btn-primary" onClick={() => void copy()} disabled={!prompt} data-testid="make-copy">
                 <Icon name="copy" size={16} />
                 {t(copied ? 'make.prompt.copied' : 'make.prompt.copy')}

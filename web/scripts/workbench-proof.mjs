@@ -6,10 +6,13 @@
 // (d) an LED without a resistor burns; repair restores it.
 // (e) the Robotics module mounted on the Dot drives a motor (the header pins are driven through the engine's test hook).
 // (f) the bench saved to a file, the page reloaded: everything is back; the file opens again.
+// (g) Make your own: a .dotpart imported, listed, placed, kept; the starter zip, the AI prompt, the manual.
+// (h) Bluetooth and USB: a sensor, a phone and a computer with bodies; the phone scans; the computer's terminal answers.
+// (p) frame time with 60 mixed parts and 40 wires.
 // The page sometimes freezes when an app starts (the firmware's BLE queue, not the bench): the run then starts again.
 import { openBench, sleep, until } from './proof-lib.mjs';
 
-const only = (process.argv.find((a) => a.startsWith('--only='))?.slice(7) ?? process.argv[process.argv.indexOf('--only') + 1] ?? '').split(',').filter((x) => /^[a-fp]$/.test(x));
+const only = (process.argv.find((a) => a.startsWith('--only='))?.slice(7) ?? process.argv[process.argv.indexOf('--only') + 1] ?? '').split(',').filter((x) => /^[a-hp]$/.test(x));
 const want = (s) => !only.length || only.includes(s);
 const noShots = process.argv.includes('--no-shots');
 const ROW = [128, 240, 353, 465];
@@ -327,6 +330,95 @@ async function run(b) {
     await D(() => window.__dotbenchWb.frameAll());
     await shot('f-after-reload');
   }
+  // ---- (g) own parts and the Make your own tab
+  if (want('g')) {
+    await page.$eval('[data-testid=left-tab-make]', (e) => e.click());
+    await page.waitForSelector('[data-testid=make-panel]');
+    const lib = JSON.parse((await import('node:fs')).readFileSync(new URL('../public/parts/library.json', import.meta.url), 'utf8'));
+    const entry = lib.parts.find((x) => x.id === 'dotbench.hdc1080') ?? lib.parts[0];
+    const file = new URL(`../public/parts/${entry.file}`, import.meta.url).pathname;
+    await (await page.$('[data-testid=make-file]')).uploadFile(file);
+    const ok = await until(() => page.$eval('[data-testid=make-message]', (e) => e.dataset.ok === 'true'), 20000, 200);
+    const mine = await page.$$eval('[data-testid=make-part]', (e) => e.map((x) => x.dataset.id));
+    check('(g) a .dotpart file chosen in Make your own is imported and listed', ok >= 0 && mine.includes(entry.id), mine.join());
+    await page.click('[data-testid=make-place]');
+    const placed = await until(async () => (await b.objects()).some((o) => o.kind === entry.id) && (await b.engine()).parts.some((x) => x.id === entry.id), 15000, 200);
+    check('(g) the imported part goes on the table and into the engine', placed >= 0);
+    const bad = new URL('../package.json', import.meta.url).pathname;
+    await (await page.$('[data-testid=make-file]')).uploadFile(bad);
+    const refused = await until(() => page.$eval('[data-testid=make-message]', (e) => e.dataset.ok === 'false'), 10000, 200);
+    check('(g) a file that is not a part is refused with the reasons', refused >= 0, (await page.$eval('[data-testid=make-message]', (e) => e.textContent)).slice(0, 120));
+    const zip = await D(async () => {
+      const a = document.querySelector('[data-testid=make-starter]');
+      const r = await fetch(a.href);
+      const u = new Uint8Array(await r.arrayBuffer());
+      return { status: r.status, bytes: u.length, magic: String.fromCharCode(u[0], u[1]) };
+    });
+    check('(g) the starter folder downloads as a zip', zip.status === 200 && zip.magic === 'PK' && zip.bytes > 20000, JSON.stringify(zip));
+    const prompt = await until(() => page.$eval('[data-testid=make-prompt-text]', (e) => e.value.length > 2000), 10000, 200);
+    await page.click('[data-testid=make-copy]');
+    await sleep(300);
+    const copied = await page.$eval('[data-testid=make-copy]', (e) => e.textContent);
+    await page.click('[data-testid=make-manual-toggle]');
+    const manual = await page.$eval('[data-testid=make-manual]', (e) => e.textContent.length).catch(() => 0);
+    check('(g) the AI prompt is there with a copy button, and the manual opens', prompt >= 0 && /Copied|Copiado/.test(copied) && manual > 2000, `copy button: "${copied.trim()}", manual ${manual} characters`);
+    await shot('g-make-your-own');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await b.ready().catch(() => {});
+    await page.$eval('[data-testid=left-tab-make]', (e) => e.click());
+    const kept = await until(() => page.$$eval('[data-testid=make-part]', (e, id) => e.some((x) => x.dataset.id === id), entry.id), 20000, 300);
+    const back = await until(async () => (await b.engine()).parts.some((x) => x.id === entry.id), 20000, 300);
+    check('(g) after a reload the imported part is still in the list and on the table', kept >= 0 && back >= 0);
+    await page.click('[data-testid=make-remove]');
+    await sleep(400);
+    check('(g) an imported part can be removed from the list', (await page.$$('[data-testid=make-part]')).length === 0);
+    await page.$eval('[data-testid=left-tab-components]', (e) => e.click());
+  }
+
+  // ---- (h) Bluetooth and USB things on the bench
+  if (want('h')) {
+    await page.$eval('[data-testid=left-tab-bench]', (e) => e.click());
+    await page.waitForSelector('[data-testid="add-ble.sensor"]');
+    const idOf = async (kind) => D((k) => window.__dotbench.bench.getState().objects.find((o) => o.kind === k)?.id ?? null, kind);
+    for (const k of ['ble.sensor', 'ble.phone', 'usb.computer']) await page.$eval(`[data-testid="add-${k}"]`, (e) => e.click());
+    await sleep(800);
+    const ids = { sensor: await idOf('ble.sensor'), phone: await idOf('ble.phone'), pc: await idOf('usb.computer') };
+    const bodies = await D((x) => Object.values(x).every((i) => window.__dotbenchWb.world.bodies.items.has(i)), ids);
+    const soon = await page.$('[data-testid=soon-list]');
+    check('(h) a Bluetooth sensor, a phone and a computer are on the table with bodies; nothing is "coming soon" any more', !!ids.sensor && !!ids.phone && !!ids.pc && bodies && !soon, JSON.stringify(ids));
+    // the phone in range scans for the Dot
+    await D((i) => window.__dotbench.bench.setNear(i, true), ids.phone);
+    await D((i) => window.__dotbench.select.only(i), ids.phone);
+    await page.waitForSelector('[data-testid=phone-scan]');
+    await until(() => page.$eval('[data-testid=phone-scan]', (e) => !e.disabled), 8000, 200);
+    await page.click('[data-testid=phone-scan]');
+    await until(() => page.$eval('[data-testid=phone-message]', (e) => e.textContent.length > 3 && !/…/.test(e.textContent)), 12000, 200);
+    const scan = await page.$eval('[data-testid=phone-message]', (e) => e.textContent);
+    check('(h) the phone scans and says what it found', scan.length > 3, scan);
+    // the computer: plugged, its terminal answers
+    await D((i) => window.__dotbench.bench.setNear(i, true), ids.pc);
+    await D((i) => window.__dotbench.select.only(i), ids.pc);
+    await page.waitForSelector('[data-testid=usb-type]');
+    const plugged = await until(() => page.$eval('[data-testid=usb-type]', (e) => !e.disabled), 15000, 200);
+    await page.type('[data-testid=usb-type]', 'ping');
+    await page.keyboard.press('Enter');
+    const pong = await until(() => page.$eval('[data-testid=usb-terminal]', (e) => /pong/i.test(e.textContent)), 15000, 200);
+    check('(h) the computer plugs into the Dot\'s USB-C port and its terminal answers "ping"', plugged >= 0 && pong >= 0, (await page.$eval('[data-testid=usb-terminal]', (e) => e.textContent)).slice(-120).replace(/\s+/g, ' '));
+    // one connector: the charger plugged on its USB cable takes the computer's cable out
+    await page.$eval('[data-testid="add-power.charger"]', (e) => e.click()).catch(() => {});
+    await sleep(500);
+    const ch = await idOf('power.charger');
+    await D((i) => window.__dotbench.bench.setNear(i, true), ch);
+    await sleep(500);
+    const one = await D((a, c) => [window.__dotbench.bench.get(a).near, window.__dotbench.bench.get(c).near], ch, ids.pc);
+    check('(h) the charger and the computer share the one port: plugging one unplugs the other', one[0] === true && one[1] === false, JSON.stringify(one));
+    await D((i) => window.__dotbench.bench.setNear(i, true), ids.pc);
+    await D(() => window.__dotbenchWb.frameAll());
+    await sleep(1500);
+    await shot('h-bluetooth-usb');
+    await page.$eval('[data-testid=left-tab-components]', (e) => e.click());
+  }
+
   // ---- frame time with 60 mixed parts and 40 wires (a table of its own, put there by the page's own store)
   if (want('p') || !only.length) {
     await D(() => {

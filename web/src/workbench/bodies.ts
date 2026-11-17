@@ -23,6 +23,7 @@ import { getModel } from '../bench3d/registry';
 import { Shape, tubeIndices, writeTube } from '../bench3d/shape';
 import { PAL } from '../bench3d/materials';
 import { CHARGER_EXIT } from '../bench3d/models/wireless/power-charger.model';
+import { COMPUTER_EXIT } from '../bench3d/models/wireless/usb-computer.model';
 import type { WirelessState } from '../bench3d/models/wireless/state';
 import { MAT, SD_ID, SIZES, hasBody, isNear, modelIdOf, zoneOf, type Rot, type Zone } from './layout';
 
@@ -690,7 +691,7 @@ export class Bodies {
           it.dyn.matrix.copy(it.matrix);
           it.dyn.matrixWorldNeedsUpdate = true;
         }
-        if (it.kind === 'power.charger') this.cableKey = '';
+        if (it.kind === 'power.charger' || it.kind === 'usb.computer') this.cableKey = '';
         it.fresh = false;
         if (moving) busy = true;
       }
@@ -760,7 +761,10 @@ export class Bodies {
   /** The charger's cable: from the charger to its plug, which is in the Dot's port when plugged and beside the charger when not. */
   private stepCable(dt: number, reduced: boolean, dotMoved: boolean): boolean {
     let charger: Body | null = null;
-    for (const it of this.order) if (it.kind === 'power.charger') charger = it;
+    // one cable is drawn: the plugged thing's, else the charger's, else the computer's
+    for (const it of this.order) if ((it.kind === 'power.charger' || it.kind === 'usb.computer') && (!charger || it.state.near || (!charger.state.near && it.kind === 'power.charger'))) charger = it;
+    const EXIT = charger?.kind === 'usb.computer' ? COMPUTER_EXIT : CHARGER_EXIT;
+    const side = charger?.kind === 'usb.computer';
     this.cable.visible = this.plug.visible = !!charger;
     if (!charger) return false;
     const goal = charger.state.near ? 1 : 0;
@@ -772,13 +776,13 @@ export class Bodies {
       this.cableKey = '';
     }
     if (dotMoved && this.plugT > 0) this.cableKey = '';
-    const key = `${charger.x.toFixed(2)},${charger.z.toFixed(2)},${charger.ry.toFixed(3)},${charger.lift.toFixed(2)}`;
+    const key = `${charger.id},${charger.x.toFixed(2)},${charger.z.toFixed(2)},${charger.ry.toFixed(3)},${charger.lift.toFixed(2)}`;
     if (key === this.cableKey) return busy;
     this.cableKey = key;
     // where the cable leaves the charger, and which way
     const c = Math.cos(charger.ry), s = Math.sin(charger.ry);
-    const ex = charger.x + CHARGER_EXIT[0] * c + CHARGER_EXIT[2] * s, ez = charger.z - CHARGER_EXIT[0] * s + CHARGER_EXIT[2] * c, ey = CHARGER_EXIT[1] + charger.lift;
-    const fx = -s, fz = -c; // the charger's back (-Z of the model) in the world
+    const ex = charger.x + EXIT[0] * c + EXIT[2] * s, ez = charger.z - EXIT[0] * s + EXIT[2] * c, ey = EXIT[1] + charger.lift;
+    const fx = side ? -c : -s, fz = side ? s : -c; // the charger's back (-Z of the model) in the world; the computer's left side (-X)
     // the plug at rest: on the table a little behind the charger, pointing away from it
     this.v.set(ex + fx * 30, 2.75, ez + fz * 30);
     this.q.setFromAxisAngle(UP, charger.ry);

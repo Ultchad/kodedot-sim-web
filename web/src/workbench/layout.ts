@@ -54,6 +54,9 @@ export const SIZES: Record<string, { w: number; d: number; h: number }> = {
   'ir.tv': { w: 150, d: 46, h: 104 },
   'ir.remote': { w: 40, d: 118, h: 12 },
   'power.charger': { w: 44, d: 44, h: 26 },
+  'ble.sensor': { w: 40, d: 40, h: 12 },
+  'ble.phone': { w: 72, d: 148, h: 9 },
+  'usb.computer': { w: 150, d: 122, h: 96 },
   'power.battery': { w: 36, d: 54, h: 6.8 },
   [SD_ID]: { w: 11, d: 15, h: 1.1 },
 };
@@ -91,6 +94,8 @@ const ZONES: Record<string, Zone> = {
   ir: { shape: 'sector', ...ANCHORS.ir, dir: 0, half: (33 * Math.PI) / 180, len: 255 },
   wifi: { shape: 'circle', ...ANCHORS.wifi, r: 300, by: 'centre' },
   power: { shape: 'circle', ...ANCHORS.usb, r: 105, by: 'edge' },
+  usb: { shape: 'circle', ...ANCHORS.usb, r: 120, by: 'edge' },
+  ble: { shape: 'circle', ...ANCHORS.wifi, r: 260, by: 'centre' },
   sd: { shape: 'circle', ...ANCHORS.sd, r: 26, by: 'edge' },
 };
 
@@ -234,6 +239,8 @@ const PARK: Record<string, { near: Pos; far: Pos }> = {
   ir: { near: { x: 0, z: -205 }, far: { x: -240, z: -120 } },
   wifi: { near: { x: 150, z: -120 }, far: { x: 255, z: -235 } },
   power: { near: { x: 0, z: DOT.hd + 60 }, far: { x: 150, z: 140 } },
+  usb: { near: { x: -110, z: DOT.hd + 95 }, far: { x: -215, z: 130 } },
+  ble: { near: { x: -150, z: -110 }, far: { x: -285, z: -235 } },
   sd: { near: { x: -(DOT.hw + 14), z: ANCHORS.sd.z }, far: { x: -90, z: 60 } },
 };
 const parkOf = (kind: string) => PARK[kind === SD_ID ? 'sd' : kind.split('.')[0]] ?? { near: { x: -120, z: 120 }, far: { x: -120, z: 120 } };

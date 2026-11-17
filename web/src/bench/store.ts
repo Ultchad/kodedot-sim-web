@@ -466,7 +466,19 @@ export class BenchStore {
     this.commit({ objects: this.state.objects.map((o) => (o.id === id ? fn(o) : o)) }, true);
   }
 
+  /** The Dot has one USB-C port: of the computer and the charger (on its USB cable), the one plugged last stays. */
+  private onePort(objects: readonly BenchObject[]): readonly BenchObject[] {
+    const usb = (o: BenchObject) => o.near && (o.kind === 'usb.computer' || (o.kind === 'power.charger' && (o.fields.cable ?? 'usb') === 'usb'));
+    const now = objects.filter(usb);
+    if (now.length < 2) return objects;
+    const was = new Set(this.state.objects.filter(usb).map((o) => o.id));
+    const loser = now.find((o) => was.has(o.id)) ?? now[0];
+    const obs = obstacles(objects.filter((o) => o.id !== loser.id) as readonly Placed[], '');
+    return objects.map((o) => (o.id === loser.id ? { ...o, near: false, pos: spotFor(o.kind, false, o.rot, obs, o.pos) } : o));
+  }
+
   private commit(next: Partial<Snap>, persist: boolean): void {
+    if (next.objects && next.objects !== this.state.objects) next = { ...next, objects: this.onePort(next.objects) };
     this.state = { ...this.snap(), ...next, undo: this.past.length, redo: this.future.length };
     if (persist) this.save();
     for (const l of [...this.listeners]) l();
