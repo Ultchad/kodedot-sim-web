@@ -6,7 +6,7 @@ import http from "node:http"; import fs from "node:fs"; import path from "node:p
 import { CSP } from "../server.mjs";
 const here = path.dirname(new URL(import.meta.url).pathname), root = path.resolve(here, "../../..");
 const buildDir = () => process.env.DOTBENCH_BUILD || path.join(root, "build");
-export const assetsDir = () => process.env.DOTBENCH_CC_ASSETS || path.join(buildDir(), "cc-assets");
+export const assetsDir = () => process.env.DOTBENCH_CC_ASSETS || path.join(root, "build/cc-assets")   /* where build-assets.mjs and tests/node/cc put them, whatever DOTBENCH_BUILD is */;
 const TYPES = { ".js": "text/javascript", ".mjs": "text/javascript", ".html": "text/html", ".dotbench": "application/zip", ".dotpart": "application/zip", ".json": "application/json", ".wasm": "application/wasm", ".txt": "text/plain" };
 export function startCcServer(port = 0) {
   const stats = { cc: [], ccBytes: 0, all: [] }, brCache = new Map();

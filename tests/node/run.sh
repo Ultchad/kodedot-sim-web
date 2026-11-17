@@ -4,6 +4,7 @@
 #   1. the RTOS layer's unit tests
 #   2. the two stage-0 acceptance tests (tests/node/acceptance/)
 #   3. the tests of the named area(s), tests/node/<area>/*.test.mjs; with no area, every area's.
+# (tests/node/cc is the in-browser compiler's own suite: tests/cc-run.sh, it has no driver area)
 # usage: tests/node/run.sh [--rebuild] [area ...]
 # env:   DOTBENCH_BUILD (build dir, default <repo>/build), DOTBENCH_SDK, DOTBENCH_EMSDK
 set -euo pipefail
@@ -18,7 +19,7 @@ command -v emcc >/dev/null 2>&1 || { . "$emsdk/emsdk_env.sh" >/dev/null 2>&1; }
 if [ "${1:-}" = "--rebuild" ]; then shift; rm -rf "$build/lib" "$build/obj"; fi
 areas=("$@")
 if [ ${#areas[@]} -eq 0 ]; then
-  mapfile -t areas < <(cd "$here" && for d in */; do d="${d%/}"; [ "$d" != acceptance ] && [ -n "$(ls "$d"/*.test.mjs "$d"/*/*.test.mjs 2>/dev/null)" ] && echo "$d"; done)
+  mapfile -t areas < <(cd "$here" && for d in */; do d="${d%/}"; [ "$d" != acceptance ] && [ "$d" != cc ] && [ -n "$(ls "$d"/*.test.mjs "$d"/*/*.test.mjs 2>/dev/null)" ] && echo "$d"; done)
 fi
 
 echo "== dotbench sdk"

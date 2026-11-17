@@ -108,3 +108,26 @@ Build passes. Needed page changes: `scripts/factory-apps.json` to the thirteen n
 
 ### Before merging integ/verify
 Package set (14) is in /home/claude/dotbench/build/apps/. Screenshots: docs/boot-shots/factory-list-*.png, docs/apps-shots/gpio_kit and ble_kit (real app, no canned copy). Busy and "off in Settings" pages of ble_kit are not reachable from an app and have no screenshot now.
+
+## Round 3
+
+Merged main (area/parts up to f0ca46b, spike/browser-cc, the 3D Workbench web commits): fast-forward, no conflicts. Fresh build of both roles, the 14 packages and the parts library (39 parts).
+
+### Results
+- `tests/node/run.sh` (all areas, kodeOS 13/BLE/radio, boot suite incl. reset/update/guard): all PASS except `system/restart` (rss growth, pre-existing). Two load flakes (`sound` volume, `nfc persist`) pass alone.
+- (a) RFID read and write, audio (record, tone_volume, files), gpio_kit 9 and gpio_kit_parts 7, ble_kit 6, e2e_apps 32, boards 52, modules 69: PASS. The merged C-side files did not change; only web-adapter and parts core did.
+- `tests/node/usb/run.sh`: PASS. `tests/node/parts/run.sh --browser`: PASS (rerun after building `parts_robotics`, which the first run missed). `tests/browser/run.sh`: PASS. `tests/node/cc`: 56 checks PASS. `tests/browser/cc.test.mjs`: 10 PASS.
+
+### Fixed
+1. `runtime/cc/build/build-assets.mjs` was never in git (the `build/` ignore rule swallowed it); it lived only in the cc worktree. Added with a `.gitignore` exception. Without this `tests/cc-run.sh` fails on any fresh checkout.
+2. `tests/node/run.sh` treated `tests/node/cc` as a driver area ("no such area: cc", whole run aborted). It is skipped now (its runner is `tests/cc-run.sh`).
+3. `tests/browser/cc/server.mjs` looked for assets under `$DOTBENCH_BUILD/cc-assets`, the builder and the Node test use `<repo>/build/cc-assets`; unified.
+
+### (b) Compile service assets
+`node runtime/cc/build/build-assets.mjs --sizes`: 123 s on a mostly idle machine, 124.7 MB in 34 files (matches STATUS-cc). `tools/dotbench part build parts/esp32-blink-echo` still works (6863 byte .dotpart); the page builds with `runtime/cc` present.
+
+### (c) Page, scratch copy of main's web/ (own UX_PORT each run)
+Build passes. system-check passes alone (it failed once with a protocol timeout while another check ran). bench-check: 20 PASS, no FAIL. settings-check is intermittent: 2 of 5 runs fail, once with a kodeOS panic (`QP ASSERT in qf_port:130 (task 'ext37') - resetting`, a call into firmware from an external thread right after a settings change), otherwise "kodeOS did not report the change". The same check against round 2's runtime and packages passed 2 of 3 and hung once, so it is not new with this merge, but it is real and unexplained; needs its own investigation. workbench-check: 29 to 31 PASS, then a protocol timeout or "Target closed" in both runs (3D rendering in headless Chrome); not judged.
+
+### Packages
+Not handed over: kodeOS's wasm is byte-identical to round 2's, and the app wasm differs only through rebuilding (no C-side change), so behaviour is the same.
