@@ -196,3 +196,14 @@ Rough edges (known, not the page's to fix):
 - Holding the bottom button returned to kodeOS after about 1.8 to 2.2 s of wall time in headless Chrome, not 3.0 s (the Node suite measures 3.0 s); the same through the mouse, the keyboard and the API, so it is below the page.
 - Back from an app, kodeOS shows its app list, not the lock screen.
 
+## Printed labels on the model (2026-11-17)
+
+Reported: the pin names printed next to the expansion header (3V3, IO9 … 5V / 5V, IO8 … 3V3) flickered, showed a moire or vanished depending on the angle.
+Cause: the label is a see-through textured quad lying exactly in the shell's top surface (0.9 µm above it in Kode's file, 0 after quantisation), so the depth buffer could not order the two: classic depth fighting, different at every angle.
+Fix (`web/src/device3d/decal.ts`, used by `prepare.ts` for every model file and by `Device3D.tsx`):
+- print on a surface (a flat sheet with a picture that is see-through in places, or a small flat textured patch) is drawn as a decal: in the vertex shader it is pulled 0.3 mm towards the camera along its own line of sight (its place on screen does not change, only its depth, by the same amount at every angle and zoom), it does not write depth, is drawn after the surface, and has a constant polygon offset on top. The same pull (0.12 and 0.18 mm) is on the live picture and its gloss over the glass, for all three models.
+- the camera's near and far planes now hug the model (they were 20 and 1500 mm), which alone improves depth resolution about tenfold; a 16-bit depth buffer resolves about 0.01 mm at the device.
+- the label's texture keeps its full 2048 px and gets anisotropic filtering (it is the one texture that is read); the optimiser keeps the shell under the print exactly as modelled. Bundled model now: 49,562 triangles, 445 kB.
+- the only printed part in Kode's model is this label (the mark on the back is geometry); the rule is generic, so a user's own model gets the same treatment.
+Check (permanent): `node scripts/model-shots.mjs --kode --labels` (also `--custom <file> --labels`, and without `--kode` for the simple model). 11 views of the labels (straight, 30, 60, 80 degrees, turned, near and far zoom): each is compared with a reference drawn without a depth test and must match within 1 % of the print's pixels, at the real depth precision and with a 256 times coarser one (near plane 256 times closer: what a 16-bit buffer gives where this machine has 24 bits); plus 6 general views that must not change with the coarse depth. All pass for the Kode model, the original file loaded as "My own…" and the simple model; with the fix switched off the 60-degree views lose 1,400 to 5,200 of 8,700 print pixels. Screenshots: `web/screenshots/model-labels-*.png`, `model-kode-depth-*.png`.
+
