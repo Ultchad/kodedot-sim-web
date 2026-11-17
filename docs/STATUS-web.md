@@ -356,7 +356,7 @@ Estimates and limits
   object; wired parts need their own state source (the parts engine), terminals drawn from `model.terminals`, wires and a library.
 
 
-## Workbench phase 2 (2026-11-17, step 1 of 6 done: parts on the table)
+## Workbench phase 2 (2026-11-17: parts, wires, code, own parts, Bluetooth and USB, bench file)
 
 Run: `npm run build && node scripts/workbench2-check.mjs` (headless Chrome, fresh profile, the real page; last run: all 15 passed).
 
@@ -390,13 +390,79 @@ the inspector is 1000 ohm in the engine and its two pins are listed; the push bu
 it (`pressed` true, false on release); Delete removes it from the table and the engine, Undo brings it back; after a reload the
 same parts, places and fields are in the engine again with bodies; no page errors.
 
-NOT done (phase 2 steps 2 to 6, in the coordinator's order)
-- Wires: no terminals in the scene, no click-to-connect, no wire bodies, no snapping of legs into breadboard holes, no module
-  mounting. The engine side is ready (`connect`, `groups`, `mountPart`); the page needs a `wires` list in the store, terminal
-  positions from `model.terminals` (and the Dot's header from `DEVICE_TERMINALS`), and the plug-in rule.
-- Code: no editor, no compiler wiring (`runtime/cc` is not added to the page's prebuild), no serial monitor.
-- Own parts ("Make your own"), Bluetooth and USB objects, export/import of the whole bench as one file.
-- The phase 2 proof (GPIO app driving an LED, blink compiled in the browser, servo, burnt LED and repair, Robotics module, frame
-  time with 60 parts and 40 wires) is therefore not written beyond what `workbench2-check.mjs` covers.
-- Parts have no undo-safe wiring yet, and a part's hazards are only shown in its card (not in the scene, apart from what its
-  model's `animate` draws).
+### Steps 2 to 6 (same day)
+
+Run: `npm run build && node scripts/workbench-proof.mjs [--only a,b,...] [--no-shots]` (the proof by mouse, sections a to h and p;
+screenshots in `web/screenshots/workbench2/`). Results of the last full run are at the end of this section.
+
+Wires and terminals (`workbench/wires.ts`, `parts/geometry.ts`, store `wires`)
+- A terminal is `"<instance>.<pin>"` or `device.<name>`. Places come from the manifest (`mm`, `face`, the same mapping as the
+  models) through where the part stands, how high (legs in holes) or the mount matrix; the Dot's 20 header pins are terminals in
+  its top wall and follow its pose (2 x 10, 2.54 mm, odd pins toward the screen, pin 1 on the right seen from the front: derived
+  from the modules' connector data, the maker publishes no pin 1 mark).
+- The wire tool (toolbar button or W; eight colours in a strip over the table) shows every terminal as a dot (board holes are not
+  dotted: the board shows them). Picking is done on the screen: the nearest terminal within 13 px, so a 2.54 mm header is hit at
+  any zoom at which it can be told apart; the name and the owner show in a tooltip. Click a terminal, then another (or press on
+  one and let go on the other); Esc lets the wire go; a click on a wire selects it (also from the Wires list), Delete removes it,
+  its card changes the colour. Wires are in the bench store with undo, and one mesh in the scene: tubes that rise from each end
+  and lie on the table (or over the bodies under them), bowed sideways by wire so that neighbours stay apart.
+- Legs in holes: a part whose pins are all `bottom` legs, let go over a part with sockets on top (breadboards, an Uno's headers,
+  the Maker module), is pulled so that every leg is over a hole (2.2 mm reach), stands at the holes' height and is connected: the
+  service keeps one engine wire per leg (`plug_<instance>_<pin>`) for as long as the part stands there. Nothing is stored: it is
+  derived from the positions, so moving it off disconnects, undo and reload restore it. Two parts cannot take the same hole. Parts
+  travel with the board they stand in.
+- Modules: a part with `mount` in its manifest gets "Mount on the Dot" / "Mount turned over" / "Take off". The body is placed by
+  `mount.connector.seat_mm`, `mount.placement.anchor_dot_mm` and the axis table (`mountMatrix`, tested to be a rotation), as a
+  child of the Dot's pose, so it tilts with the Dot. Dragging a mounted module takes it off.
+
+Code (`components/CodeEditor.tsx`, `code/compiler.ts`, `code/examples.ts`, `scripts/prepare-cc.mjs`)
+- A board's card has "Code": an editor over the table (CodeMirror 6, C++ mode, in a shadow root so that its styles are constructed
+  style sheets and the site's CSP stays `style-src 'self'`), a tab per file with add and remove, six examples (blink, button, fade,
+  servo, knob, serial echo in two files), "Compile and upload", "Back to the original sketch", the problems list (click goes to
+  the line) with the same problems underlined in the text, and the board's serial monitor with a line input and "Restart the board".
+- The compiler (`runtime/cc/index.js`, copied to `src/generated/cc/`) is created the first time an editor opens and fetches only
+  its manifest; the first Compile downloads the toolchain with a progress bar (bytes of the compiler's own progress events), later
+  ones come from the Cache API. Upload is `setPartCode`: only that board restarts. Sketch text is kept in the bench store
+  (`code`), the compiled binary in IndexedDB (`dotbench.bench` / `code`) and given back to the engine when the part is added
+  again (reload, undo, an opened bench file).
+- `prepare-cc.mjs` (in `prepare:assets`) copies `<repo>/build/cc-assets` to `public/cc/` (git-ignored). Two things the compile
+  service should know: (1) `runtime/cc/build/build-assets.mjs` is not in `main` (the root `.gitignore` has `build/`, which hides
+  that folder), so a clean checkout cannot build the assets: here they were copied from the compile service's worktree; without
+  them the build still works and the editor says the compiler's files are not on this site. (2) the packs are named `*.pack.gz`;
+  `vite preview` (sirv) answers them with `Content-Encoding: gzip`, the browser inflates them and the compiler fails with
+  "Failed to fetch"; the page therefore serves them as `*.pack.bin` (the manifest is rewritten to match). The assets are 120 MB
+  on disk (five boards); the first compile downloads about 21 MB.
+
+Own parts (`components/MakePanel.tsx`, third tab "Make")
+- Import of `.dotpart` files by picker or drop (the engine's own `loadPart`: its errors are listed), the visitor's parts with
+  "put on the table" and remove, kept in IndexedDB and loaded again with the library. An imported part without a model gets the
+  body made from its manifest. The starter folder as a zip (`scripts/prepare-starter.mjs`, made at build time from
+  `templates/component-starter` with the repository's own zip writer), the AI prompt in the page's language with a copy button,
+  and the manual (the starter's README, rendered) in English, Portuguese and Spanish.
+
+Bluetooth and USB (`bench/drivers/ble.ts`, `usb.ts`, three models in `bench3d/models/wireless/`)
+- `ble.sensor`: name, temperature, battery; a puck whose display shows the value. `ble.phone`: scan, connect, pair (passkey typed
+  on the phone, or read off the Dot), disconnect, forget; the phone's screen shows the link and the passkey box. `usb.computer`:
+  a small laptop whose cable goes into the Dot's USB-C port like the charger's; serial terminal with input, a file to the Dot and
+  from it, "Install an app over USB" (`UsbComputer.installPackage`). The charger on its USB cable and the computer share the port:
+  the one plugged last stays (store rule). The "Coming soon" line has nothing left to list and is gone.
+
+The bench as one file (Bench tab, "Bench file")
+- Save writes `bench.kodedot.json`: the store's data (objects, places, wires, mounts, sketches) plus the compiled sketches and the
+  imported parts (base64). Open replaces the bench (undoable). The same data is what the browser keeps between visits
+  (localStorage for the store, IndexedDB for binaries and imported parts).
+
+Weak or not done
+- The page can freeze: the page's thread is seen stuck inside the firmware's `ble_out_pop` (called by `runtime/drivers/ble/ble.js`
+  `poll -> drain`), most often right after a program starts, more often when the machine is loaded. It is not bench code; the
+  proof script starts again when it happens (up to three times) and the older check scripts fail on it now and then.
+- (e) drives the Robotics module's three inputs through the engine's `setDevicePin` (a test hook, `PartsService.drivePin`): the
+  GPIO app drives one pin at a time and its pin list needs scrolling by touch, which the script does not do.
+- Pairing on the phone was not run end to end (scan and the buttons were); file transfer and app install over USB were not run by
+  the script (the terminal was).
+- A board's EEPROM is not kept across reloads (the compiled sketch is). Wires are not yet drawn red when the engine reports a
+  short (the wire's card says so). Hazards show in the part's card, not in the scene.
+- The header's pin 1 side, the coil and port anchors are estimates. Touch and a real GPU were not tried. The editor keeps the
+  light highlight colours in the dark theme.
+- The part names shown in the library ("Arduino Uno R3" ...) are the parts library's data; the models carry no marks.
+

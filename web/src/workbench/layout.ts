@@ -282,7 +282,8 @@ export function placeMissing<T extends { id: string; kind: string; near: boolean
     if (hasBody(o.kind)) {
       const obs = obstacles(done, '');
       if (!pos) pos = spotFor(o.kind, o.near, rot, obs);
-      else if (!isFree(o.kind, pos, rot, obs)) pos = freeSpot(o.kind, pos, rot, obs);
+      // a wired part's saved place is meant (legs in a board's holes, a module on the Dot): it is not pushed away
+      else if ((o as { area?: string }).area !== 'part' && !isFree(o.kind, pos, rot, obs)) pos = freeSpot(o.kind, pos, rot, obs);
       done.push({ id: o.id, kind: o.kind, pos, rot });
     }
     out.push({ ...o, pos: pos ?? { x: 0, z: 0 }, rot });

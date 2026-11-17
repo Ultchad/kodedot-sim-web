@@ -377,6 +377,11 @@ async function run(b) {
 
   // ---- (h) Bluetooth and USB things on the bench
   if (want('h')) {
+    // a table of its own: the wired parts of the sections before are put away
+    await D(() => {
+      const s = window.__dotbench.bench;
+      s.removeMany(s.getState().objects.filter((o) => o.area === 'part').map((o) => o.id));
+    });
     await page.$eval('[data-testid=left-tab-bench]', (e) => e.click());
     await page.waitForSelector('[data-testid="add-ble.sensor"]');
     const idOf = async (kind) => D((k) => window.__dotbench.bench.getState().objects.find((o) => o.kind === k)?.id ?? null, kind);
@@ -390,11 +395,13 @@ async function run(b) {
     await D((i) => window.__dotbench.bench.setNear(i, true), ids.phone);
     await D((i) => window.__dotbench.select.only(i), ids.phone);
     await page.waitForSelector('[data-testid=phone-scan]');
+    const inRange = await D((i) => window.__dotbench.bench.get(i).near, ids.phone);
+    await until(() => D((i) => !!window.__dotbench.runtime.handle(i), ids.phone), 40000, 300); // the Dot's Bluetooth is up
     await until(() => page.$eval('[data-testid=phone-scan]', (e) => !e.disabled), 8000, 200);
     await page.click('[data-testid=phone-scan]');
     await until(() => page.$eval('[data-testid=phone-message]', (e) => e.textContent.length > 3 && !/…/.test(e.textContent)), 12000, 200);
     const scan = await page.$eval('[data-testid=phone-message]', (e) => e.textContent);
-    check('(h) the phone scans and says what it found', scan.length > 3, scan);
+    check('(h) the phone, brought in range, scans and says what it found', inRange && scan.length > 3, `in range ${inRange}: ${scan}`);
     // the computer: plugged, its terminal answers
     await D((i) => window.__dotbench.bench.setNear(i, true), ids.pc);
     await D((i) => window.__dotbench.select.only(i), ids.pc);
