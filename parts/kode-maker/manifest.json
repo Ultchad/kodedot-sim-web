@@ -57,14 +57,14 @@
   },
   "body": {
     "w_mm": 58,
-    "d_mm": 52,
-    "h_mm": 12,
+    "d_mm": 60,
+    "h_mm": 14,
     "estimate": true
   },
   "picture": {
     "file": "picture.svg",
     "width": 464,
-    "height": 416
+    "height": 480
   },
   "mount": {
     "via": "direct",
@@ -74,128 +74,117 @@
     ],
     "pins": [
       {
-        "pin": "S1",
+        "pin": "J401_17",
         "gpio": 8
       },
       {
-        "pin": "S2",
+        "pin": "J401_18",
         "gpio": 9
       },
       {
-        "pin": "S3",
+        "pin": "J401_15",
         "gpio": 10
       },
       {
-        "pin": "S4",
+        "pin": "J401_16",
         "gpio": 11
       },
       {
-        "pin": "S5",
+        "pin": "J401_13",
         "gpio": 12
       },
       {
-        "pin": "S6",
+        "pin": "J401_14",
         "gpio": 13
       },
       {
-        "pin": "S7",
+        "pin": "J401_11",
         "gpio": 14
       },
       {
-        "pin": "S8",
+        "pin": "J401_10",
         "gpio": 21
       },
       {
-        "pin": "S9",
-        "gpio": 20
-      },
-      {
-        "pin": "S10",
+        "pin": "J401_7",
         "gpio": 19
       },
       {
-        "pin": "S11",
-        "gpio": 18
+        "pin": "J401_8",
+        "gpio": 20
       },
       {
-        "pin": "S12",
+        "pin": "J401_5",
         "gpio": 17
       },
       {
-        "pin": "S13",
-        "gpio": 16
+        "pin": "J401_6",
+        "gpio": 18
       },
       {
-        "pin": "S14",
+        "pin": "J401_3",
         "gpio": 15
+      },
+      {
+        "pin": "J401_4",
+        "gpio": 16
       }
     ],
     "rails": [
       {
-        "pin": "V5_1",
+        "pin": "J401_19",
         "rail": "V5"
       },
       {
-        "pin": "V5_2",
+        "pin": "J401_20",
+        "rail": "V33"
+      },
+      {
+        "pin": "J401_12",
+        "rail": "GND"
+      },
+      {
+        "pin": "J401_9",
+        "rail": "GND"
+      },
+      {
+        "pin": "J401_1",
+        "rail": "V33"
+      },
+      {
+        "pin": "J401_2",
         "rail": "V5"
-      },
-      {
-        "pin": "V5_3",
-        "rail": "V5"
-      },
-      {
-        "pin": "V5_4",
-        "rail": "V5"
-      },
-      {
-        "pin": "V33_1",
-        "rail": "V33"
-      },
-      {
-        "pin": "V33_2",
-        "rail": "V33"
-      },
-      {
-        "pin": "V33_3",
-        "rail": "V33"
-      },
-      {
-        "pin": "V33_4",
-        "rail": "V33"
-      },
-      {
-        "pin": "GL_1",
-        "rail": "GND"
-      },
-      {
-        "pin": "GL_2",
-        "rail": "GND"
-      },
-      {
-        "pin": "GL_3",
-        "rail": "GND"
-      },
-      {
-        "pin": "GL_4",
-        "rail": "GND"
-      },
-      {
-        "pin": "GR_1",
-        "rail": "GND"
-      },
-      {
-        "pin": "GR_2",
-        "rail": "GND"
-      },
-      {
-        "pin": "GR_3",
-        "rail": "GND"
-      },
-      {
-        "pin": "GR_4",
-        "rail": "GND"
       }
-    ]
+    ],
+    "connector": {
+      "seat_mm": {
+        "x": 29,
+        "y": 52,
+        "z": 4.14
+      },
+      "pin_dir": "+y",
+      "pin_length_mm": 8,
+      "odd_row": "low_z",
+      "source": "assumed"
+    },
+    "placement": {
+      "anchor_dot_mm": {
+        "x": 0,
+        "y": 38.5,
+        "z": 0
+      },
+      "upright": {
+        "x": "-X",
+        "y": "-Y",
+        "z": "-Z"
+      },
+      "turned": {
+        "x": "+X",
+        "y": "-Y",
+        "z": "+Z"
+      },
+      "source": "assumed"
+    }
   },
   "pins": [
     {"name":"S1","kind":"io","pos":{"x":88,"y":32},"mm":{"x":11,"y":4},"face":"top","label":{"en":"1"},"abs_max_mv":3600},
@@ -397,13 +386,32 @@
     {"name":"g17","kind":"io","pos":{"x":394.6,"y":254.2},"mm":{"x":49.32,"y":31.78},"face":"top","abs_max_mv":60000},
     {"name":"h17","kind":"io","pos":{"x":394.6,"y":274.6},"mm":{"x":49.32,"y":34.32},"face":"top","abs_max_mv":60000},
     {"name":"i17","kind":"io","pos":{"x":394.6,"y":294.9},"mm":{"x":49.32,"y":36.86},"face":"top","abs_max_mv":60000},
-    {"name":"j17","kind":"io","pos":{"x":394.6,"y":315.2},"mm":{"x":49.32,"y":39.4},"face":"top","abs_max_mv":60000}
+    {"name":"j17","kind":"io","pos":{"x":394.6,"y":315.2},"mm":{"x":49.32,"y":39.4},"face":"top","abs_max_mv":60000},
+    {"name":"J401_19","kind":"io","pos":{"x":323.4,"y":448},"mm":{"x":40.43,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-19"},"abs_max_mv":60000,"ref":"J401.19"},
+    {"name":"J401_20","kind":"io","pos":{"x":323.4,"y":448},"mm":{"x":40.43,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-20"},"abs_max_mv":60000,"ref":"J401.20"},
+    {"name":"J401_17","kind":"io","pos":{"x":303.1,"y":448},"mm":{"x":37.89,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-17"},"abs_max_mv":3600,"ref":"J401.17"},
+    {"name":"J401_18","kind":"io","pos":{"x":303.1,"y":448},"mm":{"x":37.89,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-18"},"abs_max_mv":3600,"ref":"J401.18"},
+    {"name":"J401_15","kind":"io","pos":{"x":282.8,"y":448},"mm":{"x":35.35,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-15"},"abs_max_mv":3600,"ref":"J401.15"},
+    {"name":"J401_16","kind":"io","pos":{"x":282.8,"y":448},"mm":{"x":35.35,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-16"},"abs_max_mv":3600,"ref":"J401.16"},
+    {"name":"J401_13","kind":"io","pos":{"x":262.5,"y":448},"mm":{"x":32.81,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-13"},"abs_max_mv":3600,"ref":"J401.13"},
+    {"name":"J401_14","kind":"io","pos":{"x":262.5,"y":448},"mm":{"x":32.81,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-14"},"abs_max_mv":3600,"ref":"J401.14"},
+    {"name":"J401_11","kind":"io","pos":{"x":242.2,"y":448},"mm":{"x":30.27,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-11"},"abs_max_mv":3600,"ref":"J401.11"},
+    {"name":"J401_12","kind":"io","pos":{"x":242.2,"y":448},"mm":{"x":30.27,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-12"},"abs_max_mv":60000,"ref":"J401.12"},
+    {"name":"J401_9","kind":"io","pos":{"x":221.8,"y":448},"mm":{"x":27.73,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-9"},"abs_max_mv":60000,"ref":"J401.9"},
+    {"name":"J401_10","kind":"io","pos":{"x":221.8,"y":448},"mm":{"x":27.73,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-10"},"abs_max_mv":3600,"ref":"J401.10"},
+    {"name":"J401_7","kind":"io","pos":{"x":201.5,"y":448},"mm":{"x":25.19,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-7"},"abs_max_mv":3600,"ref":"J401.7"},
+    {"name":"J401_8","kind":"io","pos":{"x":201.5,"y":448},"mm":{"x":25.19,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-8"},"abs_max_mv":3600,"ref":"J401.8"},
+    {"name":"J401_5","kind":"io","pos":{"x":181.2,"y":448},"mm":{"x":22.65,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-5"},"abs_max_mv":3600,"ref":"J401.5"},
+    {"name":"J401_6","kind":"io","pos":{"x":181.2,"y":448},"mm":{"x":22.65,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-6"},"abs_max_mv":3600,"ref":"J401.6"},
+    {"name":"J401_3","kind":"io","pos":{"x":160.9,"y":448},"mm":{"x":20.11,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-3"},"abs_max_mv":3600,"ref":"J401.3"},
+    {"name":"J401_4","kind":"io","pos":{"x":160.9,"y":448},"mm":{"x":20.11,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-4"},"abs_max_mv":3600,"ref":"J401.4"},
+    {"name":"J401_1","kind":"io","pos":{"x":140.6,"y":448},"mm":{"x":17.57,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-1"},"abs_max_mv":60000,"ref":"J401.1"},
+    {"name":"J401_2","kind":"io","pos":{"x":140.6,"y":448},"mm":{"x":17.57,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-2"},"abs_max_mv":60000,"ref":"J401.2"}
   ],
   "groups": [
-    {"pins":["V5_1","V5_2","V5_3","V5_4"]},
-    {"pins":["GL_1","GL_2","GL_3","GL_4"]},
-    {"pins":["V33_1","V33_2","V33_3","V33_4"]},
-    {"pins":["GR_1","GR_2","GR_3","GR_4"]},
+    {"pins":["V5_1","V5_2","V5_3","V5_4","J401_19","J401_2"]},
+    {"pins":["GL_1","GL_2","GL_3","GL_4","J401_12","J401_9","GR_1","GR_2","GR_3","GR_4"]},
+    {"pins":["V33_1","V33_2","V33_3","V33_4","J401_20","J401_1"]},
     {"pins":["a1","b1","c1","d1","e1"]},
     {"pins":["f1","g1","h1","i1","j1"]},
     {"pins":["a2","b2","c2","d2","e2"]},
@@ -437,7 +445,21 @@
     {"pins":["a16","b16","c16","d16","e16"]},
     {"pins":["f16","g16","h16","i16","j16"]},
     {"pins":["a17","b17","c17","d17","e17"]},
-    {"pins":["f17","g17","h17","i17","j17"]}
+    {"pins":["f17","g17","h17","i17","j17"]},
+    {"pins":["S1","J401_17"]},
+    {"pins":["S2","J401_18"]},
+    {"pins":["S3","J401_15"]},
+    {"pins":["S4","J401_16"]},
+    {"pins":["S5","J401_13"]},
+    {"pins":["S6","J401_14"]},
+    {"pins":["S7","J401_11"]},
+    {"pins":["S8","J401_10"]},
+    {"pins":["S9","J401_8"]},
+    {"pins":["S10","J401_7"]},
+    {"pins":["S11","J401_6"]},
+    {"pins":["S12","J401_5"]},
+    {"pins":["S13","J401_4"]},
+    {"pins":["S14","J401_3"]}
   ],
   "behaviour": {
     "type": "declarative",
