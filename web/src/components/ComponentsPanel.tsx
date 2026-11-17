@@ -141,7 +141,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
                       data-testid={`part-${p.id}`}
                     >
                       <PartThumb id={p.id} name={text3(p.name, locale)} user={p.user} size={36} />
-                      <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight [overflow-wrap:anywhere]">{text3(p.name, locale)}</span>
+                      <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight">{text3(p.name, locale)}</span>
                       <Icon name="plus" size={14} className="shrink-0 opacity-60" />
                     </button>
                   </li>
