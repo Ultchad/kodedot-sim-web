@@ -143,13 +143,14 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
       device,
       select: host.select,
       bus: host.bus,
+      parts: host.parts,
       applyPose: host.applyPose,
       nameFor: (kind: string) => {
         const k = getKind(kind);
         return k ? `${tRef.current(k.labelKey)} ${host.bench.countOf(kind) + 1}` : kind;
       },
     }),
-    [host.bench, host.live, host.runtime, device, host.select, host.bus, host.applyPose],
+    [host.bench, host.live, host.runtime, device, host.select, host.bus, host.parts, host.applyPose],
   );
   const benchUndo = benchState.undo;
   const benchRedo = benchState.redo;

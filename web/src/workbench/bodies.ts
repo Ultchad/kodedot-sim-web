@@ -11,7 +11,7 @@ import {
   BufferAttribute, BufferGeometry, Color, DoubleSide, DynamicDrawUsage, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, Mesh, MeshStandardMaterial, PlaneGeometry, Quaternion,
   Raycaster, ShaderMaterial, Vector3, type Intersection, type Material, type Object3D, type Ray,
 } from 'three';
-import { controlOf, controlsIn } from '../bench3d/controls';
+import { controlOf, controlsIn, type ControlMark } from '../bench3d/controls';
 import type { LiveStore } from '../bench/live';
 import type { BenchStore } from '../bench/store';
 import type { KodeDevice } from '../device/types';
@@ -76,6 +76,8 @@ export interface Body {
   dock: number;
   dockGoal: number;
   dyn: Object3D | null;
+  /** A wired part: its model takes the parts engine's state. */
+  isPart: boolean;
   /** The children of `dyn` that the pointer can work (bench3d/controls.ts). */
   controls: Object3D[];
   state: WirelessState;
@@ -94,9 +96,21 @@ export interface Pick {
   distance: number;
   /** A named part under the pointer (a remote's button), or null. */
   part: string | null;
+  /** The control's mark and node, when the pointer is on one. */
+  mark: ControlMark | null;
+  node: Object3D | null;
+  isPart: boolean;
+}
+
+/** Where the wired parts' models and live states come from (parts/service.ts); absent in tests and on the stand. */
+export interface PartsSource {
+  /** A model for a part that has none in the registry (made from its manifest), or null while it is not loaded. */
+  modelFor(id: string): PartModel | null;
+  stateOf(instance: string): object | undefined;
 }
 
 export interface BodiesDeps {
+  parts?: PartsSource;
   bench: BenchStore;
   live: LiveStore;
   device: KodeDevice;
@@ -326,7 +340,7 @@ export class Bodies {
   private batchFor(modelId: string): Batch | null {
     let b = this.batches.get(modelId);
     if (b) return b;
-    const model = getModel(modelId);
+    const model = getModel(modelId) ?? this.deps.parts?.modelFor(modelId) ?? null;
     if (!model) return null;
     const template = model.build(makeCtx());
     const parts: Batch['parts'] = [];
@@ -364,7 +378,7 @@ export class Bodies {
   sync(): void {
     const st = this.deps.bench.getState();
     const seen = new Set<string>();
-    const put = (id: string, kind: string, x: number, z: number, rot: Rot, near: boolean, fields: WirelessState['fields']) => {
+    const put = (id: string, kind: string, x: number, z: number, rot: Rot, near: boolean, fields: WirelessState['fields'], isPart = false) => {
       if (!hasBody(kind)) return;
       const batch = this.batchFor(modelIdOf(kind));
       if (!batch) return;
@@ -375,7 +389,7 @@ export class Bodies {
           id, kind, batch, slot: -1, tx: x, tz: z, trot: rot, x, z, ry: -rot * HALF_PI, lift: 0, dock: 0, dockGoal: 0,
           dyn: batch.hasDynamic ? instantiate(batch.template, { dynamicOnly: true }) : null,
           state: { near, fields, live: this.deps.live.get(id).data, area: this.deps.live.get(`area:${kind.split('.')[0]}`).data, sinceEvent: Infinity, tone: 'info', pressed: null },
-          animating: true, eventAt: -1, seenStamp: 0, seenCount: 0, matrix: new Matrix4(), fresh: true, controls: [],
+          animating: true, eventAt: -1, seenStamp: 0, seenCount: 0, matrix: new Matrix4(), fresh: true, controls: [], isPart,
         };
         if (it.dyn) {
           it.dyn.matrixAutoUpdate = false;
@@ -401,7 +415,7 @@ export class Bodies {
       it.state.fields = fields;
       it.animating = true;
     };
-    for (const o of st.objects) put(o.id, o.kind, o.pos.x, o.pos.z, o.rot, o.near, o.fields);
+    for (const o of st.objects) put(o.id, o.kind, o.pos.x, o.pos.z, o.rot, o.near, o.fields, o.area === 'part');
     const sd = st.fixtures[SD_ID];
     if (sd) put(SD_ID, SD_ID, sd.pos.x, sd.pos.z, sd.rot, false, EMPTY);
     for (const [id, it] of [...this.items]) {
@@ -473,6 +487,12 @@ export class Bodies {
     return this.rangeGoal > 0 && this.rangeKind ? zoneOf(this.rangeKind) : null;
   }
 
+  /** The parts engine has news: the parts' models show it. */
+  partsChanged(): void {
+    for (const it of this.order) if (it.isPart) it.animating = true;
+    this.onWake();
+  }
+
   /** The body under a ray (nearest first), with small things given a generous target. */
   pick(ray: Ray): Pick | null {
     let best: Body | null = null;
@@ -532,15 +552,22 @@ export class Bodies {
     }
     if (!best) return null;
     let part: string | null = null;
+    let mark: ControlMark | null = null;
+    let node: Object3D | null = null;
     if (best.dyn && best.controls.length) {
       // a control under the pointer (a remote's button): the model marked it, the ray finds it
       best.dyn.updateMatrixWorld(true);
       this.caster.ray.copy(ray);
       this.hits.length = 0;
       this.caster.intersectObjects(best.controls, true, this.hits);
-      if (this.hits.length) part = controlOf(this.hits[0].object)?.mark.field ?? null;
+      if (this.hits.length) {
+        const c = controlOf(this.hits[0].object);
+        part = c?.mark.field ?? null;
+        mark = c?.mark ?? null;
+        node = c?.node ?? null;
+      }
     }
-    return { id: best.id, kind: best.kind, distance: bestT, part };
+    return { id: best.id, kind: best.kind, distance: bestT, part, mark, node, isPart: best.isPart };
   }
 
   /** The rectangle that holds every body (for framing the camera), or null when the table is empty. */
@@ -661,7 +688,8 @@ export class Bodies {
       it.state.sinceEvent = since;
       it.state.pressed = this.pressed && this.pressed[0] === it.id ? this.pressed[1] : null;
       if (it.dyn && it.batch.model.animate && (it.animating || since < 2)) {
-        it.animating = it.batch.model.animate(it.state as never, it.dyn, this.env) === true;
+        const st = it.isPart ? (this.deps.parts?.stateOf(it.id) ?? IDLE_PART) : it.state;
+        it.animating = it.batch.model.animate(st as never, it.dyn, this.env) === true;
         if (it.animating || since < 2) busy = true;
       }
 
@@ -790,4 +818,5 @@ export class Bodies {
 }
 
 const EMPTY: WirelessState['fields'] = {};
+const IDLE_PART = { fields: {}, outputs: {}, visuals: {}, power: { on: false }, pins: {} };
 const BLACK: readonly number[] = [0.22, 0.15, 0.09];

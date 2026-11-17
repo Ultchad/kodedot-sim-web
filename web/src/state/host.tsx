@@ -22,6 +22,7 @@ import { ScreenPainter } from '../lib/screen';
 import { SensorBridge, vibrate } from '../lib/sensors';
 import { useObservable } from './hooks';
 import { Selection, WorkbenchBus } from '../workbench/state';
+import { PartsService } from '../parts/service';
 
 export type ViewMode = '3d' | '2d';
 /** 'device': the Dot alone (3D or 2D). 'workbench': the Dot on the table among the bench objects (3D only). */
@@ -101,6 +102,8 @@ export interface Host {
   select: Selection;
   /** Commands from the page to the Workbench scene. */
   bus: WorkbenchBus;
+  /** The wired parts: the library and the parts engine. */
+  parts: PartsService;
   tiltLink: boolean;
   setTiltLink(v: boolean): void;
   applyPose(p: MotionPose): void;
@@ -135,13 +138,13 @@ export function HostProvider({ children }: { children: ReactNode }) {
   tRef.current = t;
 
   // long-lived services ------------------------------------------------------
-  const services = useRef<{ bench: BenchStore; live: LiveStore; runtime: BenchRuntime; painter: ScreenPainter; model: ModelController; select: Selection; bus: WorkbenchBus } | null>(null);
+  const services = useRef<{ bench: BenchStore; live: LiveStore; runtime: BenchRuntime; painter: ScreenPainter; model: ModelController; select: Selection; bus: WorkbenchBus; parts: PartsService } | null>(null);
   if (!services.current) {
     const b = new BenchStore(safeLocal());
     const l = new LiveStore();
-    services.current = { bench: b, live: l, runtime: new BenchRuntime(b, l, DRIVERS), painter: new ScreenPainter(), model: new ModelController(), select: new Selection(), bus: new WorkbenchBus() };
+    services.current = { bench: b, live: l, runtime: new BenchRuntime(b, l, DRIVERS), painter: new ScreenPainter(), model: new ModelController(), select: new Selection(), bus: new WorkbenchBus(), parts: new PartsService(b) };
   }
-  const { bench, live, runtime, painter, model, select, bus } = services.current;
+  const { bench, live, runtime, painter, model, select, bus, parts } = services.current;
   // the 3D code's own store; the controller tolerates anything that does not follow the contract
   useEffect(() => {
     if (!model.available && isModelStore(customModel)) model.setStore(customModel);
@@ -169,6 +172,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
   // device lifecycle --------------------------------------------------------
   useEffect(() => {
     painter.attach(device);
+    parts.setDevice(device);
     const off = runtime.attach(device);
     if (device.info.kind === 'mock') void device.start();
     return () => {
@@ -445,6 +449,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
       live,
       select,
       bus,
+      parts,
       runtime,
       input,
       painter,
@@ -636,6 +641,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
     setMode,
     select,
     bus,
+    parts,
     tiltLink,
     setTiltLink,
     applyPose,

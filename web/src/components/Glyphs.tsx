@@ -54,6 +54,12 @@ const PATHS: Record<AreaId, ReactNode> = {
       <path d="M22 11.2v2.6M11.2 10.2l-2 3h3.6l-2 3" />
     </>
   ),
+  part: (
+    <>
+      <rect x="7" y="7" width="10" height="10" rx="2" />
+      <path d="M10 7V4M14 7V4M10 20v-3M14 20v-3M7 10H4M7 14H4M20 10h-3M20 14h-3" />
+    </>
+  ),
   motion: (
     <>
       <rect x="8" y="3" width="8" height="13" rx="2.2" transform="rotate(22 12 9.5)" />

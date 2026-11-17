@@ -99,6 +99,9 @@ Build the pins and sockets where the terminals are (`fromManifestMm(body, pin.mm
 - `h_mm` is the height above the **seating plane** `y = 0`. Legs that plug into a breadboard or a socket (`face:
   'bottom'`) reach below it: declare how far with `plugMm` and build them down to `y = -plugMm`. The host puts the
   legs into holes or raises the part on them.
+- A manifest may allow the part to reach outside its body (`body.overhang_mm` per side: a breadboard's dovetail
+  tabs, a connector): declare `overhangMm: overhangOf(manifest.body)` and the check lets geometry go that far out.
+  The footprint (what the table keeps clear) stays the body.
 - The model's state is the part's entry of `bench.state().parts[]`, typed `PartState`: `outputs.brightness`,
   `outputs.burnt`, `outputs.angle`, `power.on`, `fields`, `pins[<name>].mv` ... (the list is in "Page wiring" 14).
   The engine's hazard outputs (`overcurrent`, `burnt`, `burst`, `stalled`) are the hazard looks to build.

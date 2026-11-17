@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "prepare:assets": "node scripts/sync-adapter.mjs && node scripts/prepare-apps.mjs",
+    "prepare:assets": "node scripts/sync-adapter.mjs && node scripts/prepare-apps.mjs && node scripts/prepare-parts.mjs",
     "predev": "npm run prepare:assets",
     "dev": "vite",
     "prebuild": "npm run prepare:assets",

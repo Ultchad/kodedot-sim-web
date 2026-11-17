@@ -49,6 +49,11 @@ export interface PartModel<S = Record<string, unknown>> {
   /** The box the model stays inside: w along X, d along Z, h along Y. Real dimensions, from the datasheet. */
   footprintMm: { w: number; d: number; h: number };
   /**
+   * What the part draws OUTSIDE its footprint on each side, when the manifest allows it (`body.overhang_mm`):
+   * `overhangMm: overhangOf(manifest.body)`. The footprint stays the body; the check lets geometry reach this far out.
+   */
+  overhangMm?: Overhang;
+  /**
    * How far leads or pins reach BELOW the seating plane y = 0 (the legs of an LED or a header that plug into a
    * breadboard or a socket). The body still stands on y = 0, as in the part's manifest (`h_mm` is the height above the
    * seating plane); the host decides whether the legs go into holes or the part is raised on them. Default 0.
@@ -90,7 +95,18 @@ export interface ManifestBody {
   w_mm: number;
   d_mm: number;
   h_mm: number;
+  /** How far the real part reaches outside its body on each side (a breadboard's dovetail tabs, a connector). */
+  overhang_mm?: Overhang;
 }
+/** Millimetres a model may draw outside its footprint, per side (left -X, right +X, back -Z, front +Z). */
+export interface Overhang {
+  left?: number;
+  right?: number;
+  back?: number;
+  front?: number;
+}
+/** The manifest's allowance for a model's `overhangMm`. */
+export const overhangOf = (body: ManifestBody): Overhang => ({ ...(body.overhang_mm ?? {}) });
 export type ManifestFace = 'top' | 'bottom' | 'left' | 'right' | 'front' | 'back';
 export interface ManifestPin {
   name: string;
@@ -165,8 +181,9 @@ export function inspectModel(m: PartModel, obj: Object3D = m.build(makeCtx())): 
   obj.updateMatrixWorld(true);
   const box = new Box3().setFromObject(obj);
   const tol = 0.25;
-  if (box.min.x < -w / 2 - tol || box.max.x > w / 2 + tol) problems.push(`sticks out of the footprint along X: ${box.min.x.toFixed(2)} .. ${box.max.x.toFixed(2)} (w ${w})`);
-  if (box.min.z < -d / 2 - tol || box.max.z > d / 2 + tol) problems.push(`sticks out of the footprint along Z: ${box.min.z.toFixed(2)} .. ${box.max.z.toFixed(2)} (d ${d})`);
+  const oh = m.overhangMm ?? {};
+  if (box.min.x < -w / 2 - (oh.left ?? 0) - tol || box.max.x > w / 2 + (oh.right ?? 0) + tol) problems.push(`sticks out of the footprint along X: ${box.min.x.toFixed(2)} .. ${box.max.x.toFixed(2)} (w ${w})`);
+  if (box.min.z < -d / 2 - (oh.back ?? 0) - tol || box.max.z > d / 2 + (oh.front ?? 0) + tol) problems.push(`sticks out of the footprint along Z: ${box.min.z.toFixed(2)} .. ${box.max.z.toFixed(2)} (d ${d})`);
   const plug = m.plugMm ?? 0;
   if (box.min.y < -plug - tol) problems.push(`goes under the table: y ${box.min.y.toFixed(2)}${plug ? ` (plugMm ${plug})` : ' (legs that plug in: declare plugMm)'}`);
   if (box.max.y > h + tol) problems.push(`taller than footprintMm.h: ${box.max.y.toFixed(2)} > ${h}`);

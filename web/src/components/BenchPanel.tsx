@@ -74,7 +74,7 @@ export function BenchPanel({ compact = false }: { compact?: boolean }) {
   const objects = state.objects.filter((o) => getKind(o.kind) && hasBody(o.kind));
   const card = useCardInserted();
   // a selected thing that went away is no longer selected
-  useEffect(() => host.select.keep((id) => id === DOT_ID || id === SD_ID || objects.some((o) => o.id === id)), [host.select, objects]);
+  useEffect(() => host.select.keep((id) => id === DOT_ID || id === SD_ID || state.objects.some((o) => o.id === id)), [host.select, state.objects]);
   const scroller = useRef<HTMLDivElement>(null);
   const first = [...sel][0];
   useEffect(() => {

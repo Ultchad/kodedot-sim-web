@@ -68,7 +68,7 @@ function validate(raw: unknown): BenchObject[] {
     if (!o || typeof o !== 'object') continue;
     const { id, area, kind, name, fields, near, pos, rot } = o as Record<string, unknown>;
     if (typeof id !== 'string' || seen.has(id) || typeof kind !== 'string' || typeof name !== 'string') continue;
-    if (typeof area !== 'string' || !AREA_IDS.has(area)) continue;
+    if (typeof area !== 'string' || !(AREA_IDS.has(area) || area === 'part')) continue;
     if (!fields || typeof fields !== 'object') continue;
     const clean: Record<string, FieldValue> = {};
     for (const [k, v] of Object.entries(fields as Record<string, unknown>)) {
@@ -244,6 +244,22 @@ export class BenchStore {
     this.commit({ objects: [...this.state.objects, obj] }, true);
     return obj;
   }
+  /**
+   * Puts a wired part on the table (its kind is the part's id in the library; the parts engine gets it from here).
+   * Its id is short and plain (p1, p2 ...): it is also the part's instance name in the engine and in wires.
+   */
+  addPart(partId: string, name: string, fields: Record<string, FieldValue> = {}, at?: Pos): BenchObject {
+    let n = 1;
+    while (this.get(`p${n}`)) n++;
+    let pos: Pos = at ?? { x: 0, z: 0 };
+    if (hasBody(partId)) {
+      const obs = this.obstaclesFor('');
+      pos = at ? (settle(partId, at, 0, obs) ?? freeSpot(partId, at, 0, obs)) : freeSpot(partId, { x: 120, z: 90 }, 0, obs);
+    }
+    const obj: BenchObject = { id: `p${n}`, area: 'part', kind: partId, name, fields: { ...fields }, near: false, pos, rot: 0 };
+    this.commit({ objects: [...this.state.objects, obj] }, true);
+    return obj;
+  }
   rename(id: string, name: string): void {
     const clean = name.trim();
     if (!clean) return;
@@ -276,6 +292,7 @@ export class BenchStore {
     if (!src) return null;
     const def = this.kindOf(src.kind);
     if (def?.single) return null;
+    if (src.area === 'part') return this.addPart(src.kind, src.name, src.fields, { x: src.pos.x + 10, z: src.pos.z + 10 });
     const n = this.countOf(src.kind) + 1;
     let pos = src.pos;
     if (hasBody(src.kind)) {

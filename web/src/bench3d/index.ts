@@ -4,8 +4,8 @@ export { PAL, INK, familyMaterial } from './materials';
 export { print, topQuad, frontQuad, movedQuad, quadGeometry, onPrintsRedrawn, rr, text, waves, powerSign, bolt, pinLabels, silkBox, FONT, FONT_HEAD, FONT_MONO, type Quad, type PrintDef } from './print';
 export { lamp, flatLamp, halo, glowing, setLamp, screen, drawScreen, part, instantiate, disposeInstance, countTriangles, isStatic } from './nodes';
 export {
-  defineModel, budgetFor, inspectModel, makeCtx, footprintOf, fromManifestMm, toManifestMm, terminalsFromManifest, partState,
-  type PartModel, type Terminal, type BuildCtx, type AnimEnv, type ModelReport, type PartState, type ManifestBody, type ManifestPin, type ManifestFace,
+  defineModel, budgetFor, inspectModel, makeCtx, footprintOf, overhangOf, fromManifestMm, toManifestMm, terminalsFromManifest, partState,
+  type PartModel, type Terminal, type BuildCtx, type AnimEnv, type ModelReport, type PartState, type ManifestBody, type ManifestPin, type ManifestFace, type Overhang,
 } from './contract';
 export * from './parts';
 export { markControl, controlOf, controlsIn, controlFromManifest, nextValue, turnDeg, turnValueAt, type Control, type ControlMark, type ControlMode, type ControlManifest } from './controls';

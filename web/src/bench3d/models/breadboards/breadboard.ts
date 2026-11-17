@@ -19,14 +19,14 @@
  * Dovetails: the manifest's body is the moulding WITHOUT its tabs, so the mouldings fill the footprint and the slots
  * are cut in the left and back edges. The tabs of the right and front edges stand outside the footprint, inside the
  * allowance the manifest declares for them (`body.overhang_mm`, 1.2 mm a side). They are built by `tabs()` and
- * switched off by DRAW_TABS for one reason: the kit's contract check (`inspectModel`) does not know the allowance
- * yet and fails a model that leaves its footprint by more than 0.25 mm. Set DRAW_TABS when it does.
+ * switched by DRAW_TABS; the model declares the allowance (`overhangMm: overhangOf(body)`) so the contract check
+ * (`inspectModel`) lets them reach that far outside the footprint.
  * Rails: in each pair the row further from the viewer is + (red line), the nearer one - (blue), the lines on the
  * outside of the pair, as in the parts' picture.svg.
  */
 import { MeshBuilder, type V3 } from '../../../device3d/meshBuilder';
 import {
-  FONT, INK, PAL, Shape, defineModel, footprintOf, fromManifestMm, print, terminalsFromManifest, text, topQuad,
+  FONT, INK, PAL, Shape, defineModel, footprintOf, fromManifestMm, overhangOf, print, terminalsFromManifest, text, topQuad,
   type BuildCtx, type Finish, type ManifestBody, type ManifestPin, type Object3D, type PartModel, type PartState, type Pt,
 } from '../../index';
 import { extrude, face, roundLoop, type Rect } from './builders';
@@ -47,8 +47,8 @@ export interface BoardManifest {
 const BODY: Finish = ['gloss', BODY_WHITE]; // ABS has a sheen; a cool white, so the board stands off the warm table
 const SLOT = 1.1; // how deep a dovetail slot is cut
 const TAB = 1.0; // how far a dovetail tab stands out: it fits the slot of the next board
-/** Build the tabs outside the footprint (see the header: off until the contract check honours `body.overhang_mm`). */
-const DRAW_TABS = false;
+/** Build the tabs outside the footprint, inside the allowance. */
+const DRAW_TABS = true;
 const RAIL_LINE = 2.1; // from a rail row to its coloured line
 const FOAM = 0.9; // the adhesive foam and its backing paper
 const BEVEL = 0.32;
@@ -366,6 +366,7 @@ export function breadboardModel(manifest: unknown, title: string, budget?: numbe
     id: m.id,
     title,
     footprintMm: footprintOf(m.body),
+    overhangMm: overhangOf(m.body),
     budget,
     terminals: terminalsFromManifest(m),
     build(ctx) {

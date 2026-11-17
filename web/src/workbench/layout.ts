@@ -59,6 +59,10 @@ export const SIZES: Record<string, { w: number; d: number; h: number }> = {
 };
 /** The Bench3D model that is the body of a kind (the microSD card is a fixture, not a bench kind). */
 export const modelIdOf = (kind: string): string => (kind === SD_ID ? 'sd.card' : kind);
+/** A wired part's footprint, from its manifest (the part id is its kind). */
+export function registerSize(kind: string, size: { w: number; d: number; h: number }): void {
+  SIZES[kind] = size;
+}
 export const hasBody = (kind: string): boolean => kind in SIZES;
 
 // ----------------------------------------------------------------------------------------------------------- zones

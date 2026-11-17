@@ -354,3 +354,49 @@ Estimates and limits
 - Seams for phase 2: `bodies.ts` draws any Bench3D model by id (static part instanced, dynamic part per copy, `animate` with a
   state object, controls picked by ray), `layout.ts` sizes come from the models' footprints, the store keeps `pos`/`rot` per
   object; wired parts need their own state source (the parts engine), terminals drawn from `model.terminals`, wires and a library.
+
+
+## Workbench phase 2 (2026-11-17, step 1 of 6 done: parts on the table)
+
+Run: `npm run build && node scripts/workbench2-check.mjs` (headless Chrome, fresh profile, the real page; last run: all 15 passed).
+
+Done
+- `scripts/prepare-parts.mjs` (part of `prepare:assets`): builds `parts/dist` when it is missing (`node parts/build-library.mjs`) and
+  copies the 39 packages, `library.json` and the engine's `part-worker.js` to `web/public/parts/` (git-ignored, like the adapter copy).
+- `web/src/parts/service.ts` (`PartsService`, in the host): the page's side of the parts engine. The bench store stays the truth:
+  a wired part is a bench object of area `part` (kind = the part's id, id = `p1`, `p2` ... which is also its instance name in the
+  engine, fields, `pos`, `rot`), made by `BenchStore.addPart`. The service fetches the library index, fetches a part's package the
+  first time it is needed, starts the engine lazily (`configureWorker({source})`, `new Bench()`, `attach` to the Dot's system
+  object through `SystemDevice.system()`), and makes the engine equal to the store (add, remove, fields), so parts survive
+  program restarts and reloads exactly like the wireless objects. It exposes the engine's `state()` per part and the hazards.
+- Bodies: `bodies.ts` draws a part with its Bench3D model when one exists (id = part id: the inputs and breadboards families are
+  in), otherwise with `parts/fallbackModel.ts`: a board of the manifest's body with the part's own picture as its top and a gold
+  mark at every terminal (also the body of parts users will import). The model's `animate` gets the part's engine state
+  (`PartState`), again on every engine change. Controls marked by the model (`bench3d/controls.ts`) are picked by ray: a
+  momentary control is held while the pointer is down, a toggle steps on a click, a knob follows the pointer round its axis;
+  each writes the part's field in the store, which reaches the engine.
+- Components tab: the library (search over names and keywords in the page language and English, category chips, click to place at
+  a free spot or drag onto the table), the parts on the table, and the selected part's card: fields from the manifest (number, enum,
+  switch), what every pin carries (volts or not connected) and whether the part has power, hazards with "Replace the part"
+  (`repairPart`), turn, duplicate, delete, show on the table. Moving, turning, deleting, duplicating and undo/redo are the bench's
+  own (the same code as the wireless objects).
+- Kit: `inspectModel` honours `overhangMm` (`overhangOf(manifest.body)`), the breadboards draw their dovetail tabs.
+- `workbench-check.mjs`: sections with their own page are retried once from their start when the page is lost under software GL
+  (the "detached Frame" after the last PASS).
+
+Checked by `workbench2-check.mjs`: the library lists 39 parts and search narrows it; breadboard, LED, resistor, push button and
+Uno R3 placed from the panel each get a body and an engine instance (`p1`..`p5`, separate places); the resistor set to 1000 ohm in
+the inspector is 1000 ohm in the engine and its two pins are listed; the push button's cap held with the mouse in the scene presses
+it (`pressed` true, false on release); Delete removes it from the table and the engine, Undo brings it back; after a reload the
+same parts, places and fields are in the engine again with bodies; no page errors.
+
+NOT done (phase 2 steps 2 to 6, in the coordinator's order)
+- Wires: no terminals in the scene, no click-to-connect, no wire bodies, no snapping of legs into breadboard holes, no module
+  mounting. The engine side is ready (`connect`, `groups`, `mountPart`); the page needs a `wires` list in the store, terminal
+  positions from `model.terminals` (and the Dot's header from `DEVICE_TERMINALS`), and the plug-in rule.
+- Code: no editor, no compiler wiring (`runtime/cc` is not added to the page's prebuild), no serial monitor.
+- Own parts ("Make your own"), Bluetooth and USB objects, export/import of the whole bench as one file.
+- The phase 2 proof (GPIO app driving an LED, blink compiled in the browser, servo, burnt LED and repair, Robotics module, frame
+  time with 60 parts and 40 wires) is therefore not written beyond what `workbench2-check.mjs` covers.
+- Parts have no undo-safe wiring yet, and a part's hazards are only shown in its card (not in the scene, apart from what its
+  model's `animate` draws).

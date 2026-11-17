@@ -11,6 +11,7 @@ export const AREA_TILE: Record<AreaId, string> = {
   usb: 'var(--tile-amber)',
   power: 'var(--tile-green)',
   motion: 'var(--tile-blue)',
+  part: 'var(--tile-amber)',
 };
 /** Glyph colour that reads on each tile. */
 export const AREA_TILE_INK: Record<AreaId, string> = {
@@ -23,4 +24,5 @@ export const AREA_TILE_INK: Record<AreaId, string> = {
   usb: '#191919',
   power: '#fff',
   motion: '#fff',
+  part: '#191919',
 };

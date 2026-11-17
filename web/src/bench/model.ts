@@ -1,7 +1,9 @@
 import type { TKey } from '../i18n/core';
 
 /** Every bench area of the design table. */
-export type AreaId = 'nfc' | 'rfid' | 'wifi' | 'ble' | 'ir' | 'sd' | 'usb' | 'power' | 'motion';
+/** 'part' is not a hardware area: it marks the wired parts of the parts engine, which share the table and the store. */
+export type AreaId = 'nfc' | 'rfid' | 'wifi' | 'ble' | 'ir' | 'sd' | 'usb' | 'power' | 'motion' | 'part';
+export const PART_AREA = 'part' as const;
 
 export type FieldValue = string | number | boolean;
 

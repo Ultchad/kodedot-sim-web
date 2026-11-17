@@ -237,6 +237,11 @@ export class SystemDevice implements RealDevice {
     return this.sysPromise;
   }
 
+  /** The system object itself, for what attaches to it directly (the parts engine). */
+  system(): Promise<AdapterSystem> {
+    return this.ensureSystem();
+  }
+
   onEvent(name: string, cb: (data: unknown) => void): () => void {
     const sub: { name: string; cb: (d: unknown) => void; off?: () => void } = { name, cb };
     this.evSubs.add(sub);

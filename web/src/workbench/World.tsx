@@ -26,6 +26,10 @@ import type { KodeDevice } from '../device/types';
 import { REMOTE_BUTTONS as REMOTE } from '../bench3d/models/wireless/ir-remote.model';
 import { onPrintsRedrawn } from '../bench3d/print';
 import { isEditableTarget, ownsArrowKeys } from '../lib/keys';
+import { fallbackModel, onPictureReady } from '../parts/fallbackModel';
+import type { PartsService } from '../parts/service';
+import { nextValue, turnValueAt } from '../bench3d/controls';
+import type { PartModel } from '../bench3d/contract';
 import { bodyDims } from '../lib/bodyModel';
 import type { Pick } from './bodies';
 import { DOT_ID, GRID, SD_ID, SIZES, clampToMat, hasBody, isFree, isNear, obstacles, settle, snap, zoneOf, type Placed, type Pos } from './layout';
@@ -40,6 +44,7 @@ export interface WorldDeps {
   device: KodeDevice;
   select: Selection;
   bus: WorkbenchBus;
+  parts: PartsService;
   applyPose(p: MotionPose): void;
   /** Default name of a new object of a kind, in the page language. */
   nameFor(kind: string): string;
@@ -72,7 +77,20 @@ const DEG_PER_PX = 0.45;
 
 export default function World({ deps, active, dark, storePose, onApi }: WorldProps) {
   const { gl, size, camera, invalidate } = useThree();
-  const world = useMemo(() => new BenchWorld(dark, { bench: deps.bench, live: deps.live, device: deps.device }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const world = useMemo(() => {
+    // a part without a model of its own gets a body made from its manifest (once per part id)
+    const made = new Map<string, PartModel>();
+    const parts = {
+      modelFor: (id: string) => {
+        const m = deps.parts.manifest(id);
+        if (!m) return null;
+        if (!made.has(id)) made.set(id, fallbackModel(m, deps.parts.picture(id)) as unknown as PartModel);
+        return made.get(id)!;
+      },
+      stateOf: (instance: string) => deps.parts.stateOf(instance),
+    };
+    return new BenchWorld(dark, { bench: deps.bench, live: deps.live, device: deps.device, parts });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const mats = useMemo(
     () => ({
       hit: new MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: BackSide }),
@@ -127,7 +145,17 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     const range = () => world.bodies.showRange(deps.bus.dragKind);
     sync();
     pick();
-    const offs = [deps.bench.subscribe(sync), deps.select.subscribe(pick), deps.bus.onDragKind(range), onPrintsRedrawn(invalidate)];
+    // the parts engine: a part's package arriving gives it a body; its state changing shows on its model
+    let known = -1;
+    const partsNews = () => {
+      const n = deps.parts.entries().length * 1000 + world.bodies.items.size;
+      const missing = deps.bench.getState().objects.some((o) => o.area === 'part' && !world.bodies.items.has(o.id));
+      if (missing || n !== known) sync();
+      known = n;
+      world.bodies.partsChanged();
+    };
+    onPictureReady.add(invalidate);
+    const offs = [deps.bench.subscribe(sync), deps.select.subscribe(pick), deps.bus.onDragKind(range), onPrintsRedrawn(invalidate), deps.parts.subscribe(partsNews), () => onPictureReady.delete(invalidate)];
     return () => offs.forEach((o) => o());
   }, [world, deps.bench, deps.select, deps.bus, invalidate]);
 
@@ -232,6 +260,36 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     const { bench, select, runtime } = live.current.deps;
     const id = hit.id;
 
+    // a control of a wired part: a button held, a switch flipped, a knob turned (bench3d/controls.ts)
+    if (hit.mark && hit.isPart) {
+      select.only(id);
+      const mark = hit.mark;
+      const cur = bench.get(id)?.fields[mark.field];
+      if (mark.mode === 'momentary') {
+        const v = mark.values ?? [false, true];
+        bench.setField(id, mark.field, v[1]);
+        watch(ne.pointerId, () => undefined, () => bench.setField(id, mark.field, v[0]));
+      } else if (mark.mode === 'toggle') {
+        bench.checkpoint();
+        bench.setField(id, mark.field, nextValue(mark, cur ?? (mark.values ?? [false])[0]));
+      } else {
+        // a knob: the field follows the pointer round the knob's own axis
+        const it = world.bodies.items.get(id);
+        const centre = new Vector3();
+        hit.node?.getWorldPosition(centre);
+        const p = new Vector3();
+        bench.checkpoint();
+        const turn = (ev: { clientX: number; clientY: number }) => {
+          if (!it || !tablePoint(ev.clientX, ev.clientY, p)) return;
+          const dx = p.x - centre.x, dz = p.z - centre.z;
+          const c = Math.cos(-it.ry), s = Math.sin(-it.ry);
+          bench.setField(id, mark.field, turnValueAt(mark, dx * c + dz * s, -dx * s + dz * c));
+        };
+        watch(ne.pointerId, turn, () => undefined);
+      }
+      invalidate();
+      return;
+    }
     // a button of the remote: pressing it sends, for as long as it is held
     if (hit.part) {
       select.only(id);
@@ -478,6 +536,12 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       const p = new Vector3();
       const { bench, select, nameFor, bus } = live.current.deps;
       bus.setDragKind(null);
+      if (kind.startsWith('part:') && tablePoint(e.clientX, e.clientY, p)) {
+        // a part out of the library: its package is fetched if need be, then it stands where it was dropped
+        const [id, name] = kind.slice(5).split('|');
+        void live.current.deps.parts.place(id, name || id, { x: p.x, z: p.z }).then((o) => o && select.only(o.id));
+        return;
+      }
       if (!getKind(kind) || !tablePoint(e.clientX, e.clientY, p)) return;
       bench.checkpoint();
       const obj = bench.add(kind, nameFor(kind), { x: p.x, z: p.z });

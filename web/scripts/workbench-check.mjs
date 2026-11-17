@@ -23,6 +23,18 @@ const check = (name, ok, detail = '') => {
 };
 
 let { page, problems, ctx } = await openPage(browser, { id: 'desk', w: 1440, h: 900 }, { mode: 'workbench' });
+/** Runs one section of the script that has its own page; a page lost under software GL (a detached frame, a missed deadline) gets a second go from the start of the section. */
+const section = async (name, fn) => {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      await ctx.close().catch(() => {});
+      if (i >= 1) throw e;
+      console.log(`      (${name}: ${String(e.message ?? e).split('\n')[0]}; once more)`);
+    }
+  }
+};
 const D = (fn, ...a) => page.evaluate(fn, ...a);
 const program = () => D(() => window.__dotbench.device().program.get());
 const status = () => D(() => window.__dotbench.device().status.get());
@@ -293,7 +305,7 @@ try {
   }
 
   // ---- 10. frame time with 1, 20 and 60 objects (the whole table in view, 1280 x 720 window)
-  if (!args.has('--no-perf')) {
+  if (!args.has('--no-perf')) await section('frame times', async () => {
     ({ page, problems, ctx } = await openPage(browser, { id: 'perf', w: 1280, h: 720 }, { mode: 'workbench' }));
     await waitRunning(page, 90000);
     await wbReady();
@@ -335,10 +347,11 @@ try {
     await sleep(1500);
     check('Render on demand: with the Dot stopped and nothing moving, no frame is drawn', (await D(() => window.__dotbench3d.rendered())) - f0 <= 1, `${(await D(() => window.__dotbench3d.rendered())) - f0} frames in 1.5 s`);
     await ctx.close();
-  }
+  });
 
   // ---- 11. screenshots: every object close up from two angles, a full table, three screen sizes
   if (!args.has('--no-shots')) {
+    await section('desktop screenshots', async () => {
     ({ page, problems, ctx } = await openPage(browser, { id: 'shots', w: 1440, h: 900 }, { mode: 'workbench', prefs: { 'dotbench.panel.console': false, 'dotbench.welcome': false } }));
     await waitRunning(page, 90000);
     await wbReady();
@@ -388,7 +401,9 @@ try {
       }
     }
     await ctx.close();
+    });
     for (const vp of [{ id: 'tablet', w: 820, h: 1180, touch: true, tablet: true }, { id: 'phone', w: 390, h: 844, touch: true, phone: true }]) {
+      await section(`${vp.id} screenshots`, async () => {
       ({ page, problems, ctx } = await openPage(browser, vp, { mode: 'workbench' }));
       await waitRunning(page, 90000);
       await wbReady();
@@ -405,6 +420,7 @@ try {
       await sleep(900);
       await shot(`table-${vp.id}-panel`);
       await ctx.close();
+      });
     }
   }
 } catch (e) {
