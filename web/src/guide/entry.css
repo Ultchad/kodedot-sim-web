@@ -1,4 +1,8 @@
 /* The guide's entry points in the page itself (the guide's own styles load with the guide: guide.css). */
+/* The site's layer order (Tailwind's), stated here too: this file may be bundled before index.css, and the first
+   statement decides the order. Without it these rules would put `components` under `base`. */
+@layer theme, base, components, utilities;
+
 @layer components {
   /* the quiet "How?" beside a text of the page */
   .guide-how {
