@@ -6,6 +6,8 @@ export const es: Messages = {
   'nav.console': 'Consola',
   'nav.apps': 'Apps',
   'nav.settings': 'Ajustes',
+  'nav.guide': 'Guía',
+  'guide.how': '¿Cómo?',
 
   'top.restart': 'Reiniciar',
   'top.stop': 'Detener',

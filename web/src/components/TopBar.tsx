@@ -8,6 +8,7 @@ import { LanguageSelect, MockToggle, RunButtons, ThemeChoice } from './Controls'
 import { Icon } from './Glyphs';
 import { ModelControls } from './ModelControls';
 import { Popover } from './ui';
+import { GuideButton } from '../guide/entry';
 
 /** The product's name as shown to people, the same in every language. Internal identifiers (.dotbench packages, storage keys) keep the old name for now. */
 export const PRODUCT_NAME = 'KodeDot Sim';
@@ -138,6 +139,7 @@ export function TopBar() {
       <AppPicker />
       <RunButtons />
       <div className="min-w-0 flex-1" />
+      <GuideButton />
       <DeviceMenu />
       <SettingsMenu />
     </header>

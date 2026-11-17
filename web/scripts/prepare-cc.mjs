@@ -21,6 +21,9 @@ if (!existsSync(index)) {
   process.exit(1);
 }
 if (!existsSync(join(gen, 'index.js')) || !readFileSync(join(gen, 'index.js')).equals(readFileSync(index))) copyFileSync(index, join(gen, 'index.js'));
+// what the compiler supports, as its own data: the guide renders it (src/guide/sketchData.ts), so the page cannot say something else
+const boards = join(repo, 'runtime', 'cc', 'boards.mjs');
+if (!existsSync(join(gen, 'boards.mjs')) || !readFileSync(join(gen, 'boards.mjs')).equals(readFileSync(boards))) copyFileSync(boards, join(gen, 'boards.mjs'));
 
 const strict = !!(process.env.VERCEL || process.env.CI);
 const fail = (why) => {

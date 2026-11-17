@@ -6,6 +6,8 @@ export const ptBR: Messages = {
   'nav.console': 'Console',
   'nav.apps': 'Apps',
   'nav.settings': 'Ajustes',
+  'nav.guide': 'Guia',
+  'guide.how': 'Como?',
 
   'top.restart': 'Reiniciar',
   'top.stop': 'Parar',
