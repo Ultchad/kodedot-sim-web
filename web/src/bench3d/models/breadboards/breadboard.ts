@@ -16,10 +16,11 @@
  * The body is the usual three mouldings (two rail strips and the terminal block with its centre channel) joined
  * along two seams, foam tape underneath. Sizes after the MB-102 family: holes 1.1 mm square under a 1.66 mm lead-in,
  * channel 3 mm wide, body 8.5 mm high.
- * Dovetails: the manifest's body is the moulding WITHOUT its tabs, and a model may not leave its footprint, so the
- * mouldings fill the footprint, the slots are cut in the left and back edges, and the tabs of the right and front
- * edges are not built (they would stand 1.1 mm outside; on boards placed side by side they are inside the
- * neighbour's slots anyway).
+ * Dovetails: the manifest's body is the moulding WITHOUT its tabs, so the mouldings fill the footprint and the slots
+ * are cut in the left and back edges. The tabs of the right and front edges stand outside the footprint, inside the
+ * allowance the manifest declares for them (`body.overhang_mm`, 1.2 mm a side). They are built by `tabs()` and
+ * switched off by DRAW_TABS for one reason: the kit's contract check (`inspectModel`) does not know the allowance
+ * yet and fails a model that leaves its footprint by more than 0.25 mm. Set DRAW_TABS when it does.
  * Rails: in each pair the row further from the viewer is + (red line), the nearer one - (blue), the lines on the
  * outside of the pair, as in the parts' picture.svg.
  */
@@ -36,7 +37,8 @@ const BODY_WHITE = '#d4dae0';
 /** What the builder reads of parts/breadboard-<size>/manifest.json. */
 export interface BoardManifest {
   id: string;
-  body: ManifestBody;
+  /** `overhang_mm`: how far a model may draw outside the body on each side (the dovetail tabs). */
+  body: ManifestBody & { overhang_mm?: { left?: number; right?: number; back?: number; front?: number } };
   pins: ManifestPin[];
   groups: { pins: string[] }[];
 }
@@ -44,6 +46,9 @@ export interface BoardManifest {
 // ---- the moulding (design values; everything about the holes' places comes from the manifest)
 const BODY: Finish = ['gloss', BODY_WHITE]; // ABS has a sheen; a cool white, so the board stands off the warm table
 const SLOT = 1.1; // how deep a dovetail slot is cut
+const TAB = 1.0; // how far a dovetail tab stands out: it fits the slot of the next board
+/** Build the tabs outside the footprint (see the header: off until the contract check honours `body.overhang_mm`). */
+const DRAW_TABS = false;
 const RAIL_LINE = 2.1; // from a rail row to its coloured line
 const FOAM = 0.9; // the adhesive foam and its backing paper
 const BEVEL = 0.32;
@@ -65,7 +70,7 @@ interface Trough {
   v: number;
 }
 interface Layout {
-  body: ManifestBody;
+  body: BoardManifest['body'];
   pitch: number;
   /** Half extents of the mouldings. */
   X: number;
@@ -273,7 +278,20 @@ function buildBody(L: Layout, ctx: BuildCtx): Shape {
   // the seams: a rail strip is a moulding of its own, a dark line runs between it and the terminal block
   for (const z of [seamTop, seamBot]) s.box('matte', '#1e2024', 0, z, 2 * X - 0.5, SEAM + 0.2, FOAM, top - 0.75, 0.05, 0, { ao: 0.7 });
 
+  if (DRAW_TABS) tabs(s, L);
   return s;
+}
+
+/**
+ * The dovetail tabs: on the right edge of each half of the terminal block and along the front rail strip, opposite
+ * the slots, no further out than the manifest allows on that side. Lower than the top face, as moulded.
+ */
+function tabs(s: Shape, L: Layout): void {
+  const { X, Z } = L;
+  const top = L.body.h_mm - 1.5;
+  const right = Math.min(TAB, L.body.overhang_mm?.right ?? 0), front = Math.min(TAB, L.body.overhang_mm?.front ?? 0);
+  if (right > 0.3) for (const z of L.slotsZ) s.prism(...BODY, dovetail(z, 0).map(([a, k]) => [X - 0.3 + k * (right + 0.3), a] as Pt), FOAM, top, 0.2, { ao: 0.6 });
+  if (front > 0.3) for (const x of L.slotsX) s.prism(...BODY, dovetail(x, 0).map(([a, k]) => [a, Z - 0.3 + k * (front + 0.3)] as Pt), FOAM, top, 0.2, { ao: 0.6 });
 }
 
 // ---------------------------------------------------------------------------------------------------- print
