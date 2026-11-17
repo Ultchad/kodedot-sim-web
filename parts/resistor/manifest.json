@@ -58,8 +58,8 @@
     "height": 32
   },
   "pins": [
-    {"name":"A","kind":"io","pos":{"x":12.7,"y":16},"mm":{"x":1.27,"y":1.6},"face":"bottom","label":{"en":"A"},"abs_max_mv":60000},
-    {"name":"B","kind":"io","pos":{"x":114.3,"y":16},"mm":{"x":11.43,"y":1.6},"face":"bottom","label":{"en":"B"},"abs_max_mv":60000}
+    {"name":"A","kind":"io","pos":{"x":12.7,"y":16},"mm":{"x":1.27,"y":1.6,"z":0},"face":"bottom","label":{"en":"A"},"abs_max_mv":60000},
+    {"name":"B","kind":"io","pos":{"x":114.3,"y":16},"mm":{"x":11.43,"y":1.6,"z":0},"face":"bottom","label":{"en":"B"},"abs_max_mv":60000}
   ],
   "fields": [
     {
@@ -88,6 +88,15 @@
         "pt-BR": "Corrente",
         "es": "Corriente"
       }
+    },
+    {
+      "name": "overpower",
+      "type": "boolean",
+      "label": {
+        "en": "Overpower (above 0.25 W)",
+        "pt-BR": "Excesso de potência (acima de 0,25 W)",
+        "es": "Exceso de potencia (por encima de 0,25 W)"
+      }
     }
   ],
   "visuals": [
@@ -114,7 +123,8 @@
           "field": "ohms"
         },
         "rated_mw": 250,
-        "current_output": "current_ma"
+        "current_output": "current_ma",
+        "overpower_output": "overpower"
       }
     ]
   }
