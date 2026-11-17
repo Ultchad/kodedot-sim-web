@@ -11,7 +11,7 @@ import {
   PAL, Shape, circleLoop, defineModel, footprintOf, glowing, part, partState, setLamp, terminalsFromManifest,
   type AnimEnv, type BuildCtx, type Finish, type Object3D, type PartModel, type PartState, type Pt, type V2, type V3,
 } from '../../index';
-import { asManifest, plate, ribbon, show, terminalOf, tint, visualColour, type PartManifest } from './common';
+import { asManifest, plate, ribbon, show, squareLead, terminalOf, tint, visualColour, type PartManifest } from './common';
 
 export const LENS_R = 2.5;
 export const FLANGE_R = 2.9;
@@ -96,8 +96,8 @@ export interface LedLook {
  */
 export function ledFrame(s: Shape, a: V3, k: V3, y = 0): void {
   const ax = a[0], kx = k[0];
-  s.box(...PAL.tin, ax, a[2], 0.5, 0.5, -LEG_LONG, y + 1.7, 0.05, 0.1, { cap: true, ao: 0.95 });
-  s.box(...PAL.tin, kx, k[2], 0.5, 0.5, -LEG_SHORT, y + 1.7, 0.05, 0.1, { cap: true, ao: 0.95 });
+  squareLead(s, ax, a[2], -LEG_LONG, y + 1.7);
+  squareLead(s, kx, k[2], -LEG_SHORT, y + 1.7);
   const dir = Math.sign(kx - ax) || 1; // +1: cathode on +X
   const X = (v: number) => v * dir;
   // the anode's post

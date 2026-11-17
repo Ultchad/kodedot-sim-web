@@ -87,6 +87,12 @@ export function ribbon(s: Shape, finish: Finish, at: { p: V3; n: V3 }[], w0: num
   s.add(finish[0], finish[1], mb.build());
 }
 
+/** A square lead standing at (x, z) from y0 up to y1 (the stamped leads of LEDs): four sharp sides, a light bevel. */
+export function squareLead(s: Shape, x: number, z: number, y0: number, y1: number, w = 0.5, finish: Finish = PAL.tin): void {
+  const h = w / 2;
+  s.prism(...finish, [[x - h, z - h], [x + h, z - h], [x + h, z + h], [x - h, z + h]], y0, y1, 0.06, { cap: true, ao: 0.95 });
+}
+
 /** A round lead through `pts` with rounded bends (like the kit's `lead`, with the tube's sides as a parameter). */
 export function bentLead(s: Shape, pts: V3[], d = 0.55, bend = 0.8, sides = 6, finish: Finish = PAL.tin): void {
   s.tube(...finish, roundCorners(pts, bend, 3), d / 2, sides);
