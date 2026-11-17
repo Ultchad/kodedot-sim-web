@@ -340,7 +340,7 @@ def cmd_build(a):
         return 1
     exports = A.exports(areas)
     mem = a.memory_mb or (K.MEMORY_MB if role == "kodeos" else 96)
-    pool = a.pool or (K.POOL if role == "kodeos" else 32)
+    pool = a.pool or (K.POOL if role == "kodeos" else 44)
     js = outdir / (name + ".js")
     tool = "em++" if role == "kodeos" else "emcc"   # C++ (ThorVG) needs libc++ on the link line
     link = [tool] + [str(j[1]) for j in jobs] + [str(p) for p in libs] + [
@@ -500,7 +500,7 @@ def main():
     b.add_argument("--role", choices=("app", "kodeos"), default="app",
                    help="app (default) or kodeos: build kodeOS itself (APPDIR is the kodeOS checkout)")
     b.add_argument("--memory-mb", type=int, default=None, help="wasm memory, MB (default 96, also for --role kodeos)")
-    b.add_argument("--pool", type=int, default=None, help="pthread pool size (default 32; kodeos: see dblib/kodeos.py)")
+    b.add_argument("--pool", type=int, default=None, help="pthread pool size (default 44, measured peak of the factory apps 30; kodeos: see dblib/kodeos.py)")
     b.add_argument("--map", action="store_true", help="also write a linker map next to the output (kodeos always does)")
     b.add_argument("--allow-undefined", action="store_true", help="link with unresolved symbols ignored (diagnostics)")
     pt = sub.add_parser("part", help="make parts for the bench: new, check, build, test, inspect (run `dotbench part` for details)")

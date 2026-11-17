@@ -41,6 +41,7 @@
 typedef struct { double p, r, h; } ori_t;     /* degrees */
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(motion, "motion", g_mu, DB_LOCK_MUTEX)
 static bool g_registered;
 static ori_t g_from, g_to = { 0, 0, 0 };
 static uint64_t g_t0, g_dur;                  /* transition start and length, us (g_dur 0 = still) */

@@ -45,6 +45,7 @@ enum { T_U8 = 1, T_U64 = 2, T_STR = 3, T_BLOB_IDX = 4, T_BLOB_CHUNK = 5, T_TOMB_
 static uint8_t g_nvs[NVS_BYTES] __attribute__((aligned(64)));
 static dbp_region_t *g_r;
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(nvs, "nvs", g_mu, DB_LOCK_MUTEX)
 static bool g_ready;
 static uint32_t g_serial;            /* highest serial seen/used */
 

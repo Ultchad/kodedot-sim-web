@@ -87,6 +87,7 @@ static struct {
 } g = { .cfg = { [IRK_LINK] = 1, [IRK_RX_FITTED] = 1, [IRK_REST_HIGH] = 1 } };
 
 static atomic_flag g_lk = ATOMIC_FLAG_INIT;
+DB_PAGE_REGISTER(ir, "ir", g_lk, DB_LOCK_FLAG)
 static volatile uint32_t g_wake;
 static pthread_once_t g_once = PTHREAD_ONCE_INIT;
 

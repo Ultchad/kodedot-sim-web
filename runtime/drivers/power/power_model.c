@@ -57,6 +57,7 @@ static const uint16_t OCV_MV[KBSP_CELL_OCV_POINTS] = KBSP_CELL_OCV_MV;
 static const uint8_t OCV_PCT[KBSP_CELL_OCV_POINTS] = KBSP_CELL_OCV_PCT;
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(power, "power", g_mu, DB_LOCK_MUTEX)
 static bool g_registered;
 /* the battery (bench side) */
 static double g_soc = 80.0;        /* % */

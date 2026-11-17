@@ -53,6 +53,7 @@ typedef struct { uint16_t n; uint8_t peak; } burst_t;
 typedef struct { int32_t type, a, b, c; } event_t;
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(haptic, "haptic", g_mu, DB_LOCK_MUTEX)
 static bool g_registered;
 static uint8_t g_reg[256];
 /* FIFO and playback */

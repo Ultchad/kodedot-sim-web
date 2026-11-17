@@ -62,6 +62,7 @@ typedef struct {
 } rb_obj_t;
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(rfid, "rfid", g_mu, DB_LOCK_MUTEX)
 static rb_obj_t g_obj[RB_MAX_OBJ];
 static rb_event_t g_ev[RB_EV_CAP];
 static uint32_t g_ev_seq, g_ev_tail;   /* g_ev_seq = events ever pushed; g_ev_tail = next to pop */

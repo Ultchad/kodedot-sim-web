@@ -54,6 +54,13 @@ static inline bool db_page_spin_take(volatile uint32_t *flag, uint32_t budget_ms
     }
 }
 
+/* Every lock a page-facing export takes registers itself here (a constructor in its file), so that tests/node/system/page_locks.test.mjs
+ * can hold each one from a worker (orphaned, or across a pthread_create that waits for the page's event loop) and call the exports. */
+enum { DB_LOCK_MUTEX = 0, DB_LOCK_SPIN32 = 1, DB_LOCK_FLAG = 2 };
+void db_page_register(const char *name, void *lock, int kind);
+#define DB_PAGE_REGISTER(id, name, lock, kind) \
+    __attribute__((constructor)) static void db_page_reg_##id(void) { db_page_register((name), (void *)&(lock), (kind)); }
+
 #define DB_PAGE_LOCK(m, busy_ret) do { if (!db_page_trylock((m), DB_PAGE_BUDGET_MS)) return busy_ret; } while (0)
 #define DB_PAGE_LOCK_V(m)         do { if (!db_page_trylock((m), DB_PAGE_BUDGET_MS)) return; } while (0)
 

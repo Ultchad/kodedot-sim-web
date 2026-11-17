@@ -30,6 +30,7 @@ typedef enum { PORT_ANY = 0, PORT_CABLE, PORT_PAGE } port_t;
 static uint8_t g_rx[RXQ];
 static unsigned g_head, g_tail;
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(console, "console", g_mu, DB_LOCK_MUTEX)
 static pthread_cond_t g_cv = PTHREAD_COND_INITIALIZER;
 static void (*g_on_byte)(uint8_t);
 static volatile bool g_rest;

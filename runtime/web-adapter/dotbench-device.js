@@ -1,6 +1,7 @@
 // dotbench web adapter: runs a .dotbench package (Kode Dot firmware compiled to WebAssembly) in a page.
 // Framework-free ES module, no bundler needed. See README.md.
 import { makeCaller } from "./page-call.js";
+import { watchThreads } from "./thread-watch.js";
 import { readZip } from "./zip.js";
 import { PersistManager } from "./persist.js";
 import { factoryEntries, packFactory, installFactory } from "./factory.js";
@@ -270,6 +271,7 @@ export class DotbenchDevice {
       const all = [...pkg.factoryEntries, ...extra];
       if (all.length) installFactory(M, packFactory(all));
     }
+    this._watchThreads(inst);
     inst.words = new Int32Array(M.HEAPU8.buffer, statePtr, 0x40);        // header .. boot block as Int32 (for Atomics)
     inst.restartSeen = Atomics.load(inst.words, OFF.restartSeq >> 2);
     for (const [area, mods] of Object.entries(pkg.glue)) {
@@ -302,6 +304,10 @@ export class DotbenchDevice {
     };
   }
 
+  _watchThreads(inst) { inst.threads = watchThreads(inst.M); }
+  /** {pool, peak, beyondPool} of the running program (zeros when stopped); beyondPool must stay 0. */
+  get threadStats() { const t = this._inst?.threads ?? this._lastThreads; return t ? { ...t } : { pool: 0, peak: 0, beyondPool: 0 }; }
+
   _caller(inst) { return (inst.caller ??= makeCaller(inst.M, { dead: () => inst.dead })); }
   /** {busy, retried, dropped, pending}: page calls that met a lock a firmware thread held (0 = the page never had to wait). */
   get pageCalls() { const c = this._inst?.caller; return c ? { ...c.stats, pending: c.pending() } : { busy: 0, retried: 0, dropped: 0, pending: 0 }; }
@@ -314,6 +320,7 @@ export class DotbenchDevice {
     this._drainText(inst);
     this._flushPartial();
     const M = inst.M;
+    this._lastThreads = inst.threads;
     inst.dead = true;
     inst.caller?.dispose();                              // from here on glue calls into the module are refused (see _glueContext)
     for (const mods of Object.values(inst.glue ?? {})) for (const h of mods) { try { h?.dispose?.(); } catch { /* best effort */ } }

@@ -21,6 +21,7 @@ extern int power_get(int id);                 /* runtime/drivers/power: G_CABLE 
 extern void power_set_usb(int plugged, int kind);
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(usb, "usb", g_mu, DB_LOCK_MUTEX)
 static pthread_cond_t g_rx_cv = PTHREAD_COND_INITIALIZER, g_tx_cv = PTHREAD_COND_INITIALIZER;
 static uint8_t g_rx[RX_SZ], g_tx[TX_SZ];
 static unsigned g_rx_n, g_rx_r, g_tx_n, g_tx_r;     /* count and read index */

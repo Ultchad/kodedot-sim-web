@@ -12,6 +12,7 @@
 
 /* ---- capture of what the I2S transmitter clocked out: stereo int16, gaps as zeros, from audio_cap_start() on ---- */
 static pthread_mutex_t g_cmu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(audio, "audio", g_cmu, DB_LOCK_MUTEX)
 static int16_t *g_cap; static uint32_t g_cap_cap, g_cap_n, g_cap_over; static bool g_cap_on;
 
 void kaud_cap_append(const int16_t *st, uint32_t n)

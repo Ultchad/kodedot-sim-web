@@ -121,7 +121,7 @@ def factory_manifest(files):
 
 # Link parameters of the OS role (apps: 96 MB, 32 workers, 1 MB main stack). Numbers are in STATUS-kodeos.md.
 MEMORY_MB = 96
-POOL = 48
+POOL = 64   # measured peak 42 (kodeOS booted, BLE and Wi-Fi on); a creation beyond the pool needs the page's event loop (docs/STATUS-panic.md)
 MAIN_STACK = "1MB"
 
 

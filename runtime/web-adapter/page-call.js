@@ -11,7 +11,7 @@
 // After stop (dead) nothing is called and the queue is dropped.
 
 /** Exports that only read or pop: a busy answer is not retried. Everything else is treated as a write. */
-export const READ_EXPORT = /(_get|_pop|_poll|_read|_recv|_info|_state|_stat|_stats|_list|_json|_layout|_usage|_obj_id|_is_near|_frame|_ptr|_len|_count|_name|_size|_flags|_bits|_gen|_index_of|_offset_ms|_cut_fired|_scratch|_mounted|_take|_cfg_get|_type|_key|_namespace)$/;
+export const READ_EXPORT = /(_get|_pop|_poll|_read|_recv|_info|_state|_stat|_stats|_list|_json|_layout|_usage|_obj_id|_is_near|_frame|_ptr|_len|_count|_name|_size|_flags|_bits|_gen|_index_of|_offset_ms|_cut_fired|_scratch|_mounted|_take|_cfg_get|_type|_key|_namespace|_read_blob)$/;
 
 export function makeCaller(M, { dead = () => false, retryMs = 5, maxTries = 400, queueMax = 512, warn = (...a) => console.warn(...a), schedule = (f, ms) => setTimeout(f, ms) } = {}) {
   const live = new Map();            // ptr -> size, every block the glue got from alloc()

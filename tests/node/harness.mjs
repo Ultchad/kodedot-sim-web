@@ -1,4 +1,5 @@
 // Test harness: unpack a .dotbench, boot it under Node, and give tests the bridge.
+import { watchThreads } from "../../runtime/web-adapter/thread-watch.js";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -66,6 +67,7 @@ export async function boot(pkgFile, opts = {}) {
     print: (s) => logs.push("[stdout] " + s),
     printErr: (s) => logs.push("[stderr] " + s),
   });
+  const threads = watchThreads(M); (globalThis.__dbThreads ??= []).push(threads);
   const statePtr = M._kweb_state();
   const dv = () => new DataView(M.HEAPU8.buffer, 0, M.HEAPU8.buffer.byteLength);
   const u32 = (off) => dv().getUint32(statePtr + off, true);
@@ -145,4 +147,17 @@ export async function boot(pkgFile, opts = {}) {
   };
   M.callMain([]);
   return api;
+}
+
+// Every program a test boots must stay inside its worker pool: beyond it a thread creation needs the page's event loop (docs/STATUS-panic.md).
+if (!globalThis.__dbThreadsHook) {
+  globalThis.__dbThreadsHook = true;
+  process.on("exit", (code) => {
+    const all = globalThis.__dbThreads ?? [];
+    const over = all.filter((t) => t.beyondPool > 0);
+    if (process.env.DB_THREADS_LOG) console.log("threads: peak " + Math.max(0, ...all.map((t) => t.peak)) + " of pool " + Math.max(0, ...all.map((t) => t.pool)) + " over " + all.length + " boot(s)");
+    const tight = all.filter((t) => t.peak > 0.8 * t.pool);
+    if (tight.length) { console.log("FAIL - a program used more than 80 % of its worker pool (peak " + Math.max(...tight.map((t) => t.peak)) + " of " + tight[0].pool + "): grow the pool (tools/dblib/kodeos.py POOL, tools/dotbench --pool)"); process.exitCode = code || 1; }
+    if (over.length) { console.log("FAIL - a program created " + over.reduce((n, t) => n + t.beyondPool, 0) + " thread(s) beyond its worker pool (peak " + Math.max(...over.map((t) => t.peak)) + " of " + over[0].pool + ")"); process.exitCode = code || 1; }
+  });
 }
