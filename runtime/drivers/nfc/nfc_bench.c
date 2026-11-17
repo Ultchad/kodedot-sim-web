@@ -33,13 +33,20 @@ void nfc_lock(void)
 {
     while (atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) sched_yield();
 }
-/* Every section that holds the lock may have changed the store (the fake driver writes tag memory, the page edits objects):
- * mark the whole region dirty once the lock is released. The host compares each dirty chunk with what it already holds, so
- * a section that changed nothing costs a compare, not a write. */
+/* Every section that holds the lock may have changed the store (the fake driver writes tag memory, the page edits objects), so at
+ * unlock the region is compared, a 4 KiB chunk at a time, with a shadow copy of what was last reported, and only chunks that differ
+ * are marked dirty. (Marking the whole region at every unlock made the persist generation counter move ~350-1750 times a second
+ * while kodeOS idled, which defeats the host's 800 ms "quiet" debounce.) The compare runs under the lock, before it is released. */
+static uint8_t g_shadow[sizeof g_region];
 void nfc_unlock(void)
 {
+    if (g_reg) {
+        for (uint32_t o = 0; o < sizeof g_region; o += 4096u) {
+            uint32_t n = sizeof g_region - o < 4096u ? (uint32_t)(sizeof g_region - o) : 4096u;
+            if (memcmp(g_shadow + o, g_region + o, n) != 0) { memcpy(g_shadow + o, g_region + o, n); dbp_dirty(g_reg, o, n); }
+        }
+    }
     atomic_flag_clear_explicit(&g_lk, memory_order_release);
-    if (g_reg) dbp_dirty(g_reg, 0, sizeof g_region);
 }
 
 uint32_t nfc_now_ms(void)
