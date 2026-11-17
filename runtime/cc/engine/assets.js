@@ -44,14 +44,15 @@ export class Assets {
 
   /** a Response for one file: from the cache, or the network (with progress, sha check and a cache write behind it) */
   async response(name, { verify = true } = {}) {
-    const info = this.fileInfo(name), url = isNode ? null : new URL(name, this.base).href;
+    const info = { ...this.fileInfo(name), name }, url = isNode ? null : new URL(name, this.base).href;
     if (isNode) {
       const bytes = await (await import("node:fs/promises")).readFile(this.base + name);
       this.#count(name, bytes.length, info, true);
-      return new Response(bytes, { headers: { "content-type": name.endsWith(".wasm") || name.includes(".wasm.") ? "application/wasm" : "application/octet-stream" } });
+      const out = info.encoding === "gzip" ? (await import("node:zlib")).gunzipSync(bytes) : bytes;
+      return new Response(out, { headers: { "content-type": name.includes(".wasm") ? "application/wasm" : "application/octet-stream" } });
     }
     const hit = await this.cache?.match(url);
-    if (hit) { this.loaded.fromCache += info.size; this.#count(name, info.size, info, true); return hit; }
+    if (hit) { this.loaded.fromCache += info.size; this.#count(name, info.size, info, true); return this.#decode(hit, info); }
     const r = await fetch(url);
     if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
     let body = r.body;
@@ -67,7 +68,12 @@ export class Assets {
       },
     }));
     this.loaded.fromNetwork += info.size;
-    return new Response(counted, { headers: { "content-type": r.headers.get("content-type") ?? "application/octet-stream" } });
+    return this.#decode(new Response(counted, { headers: { "content-type": r.headers.get("content-type") ?? "application/octet-stream" } }), info);
+  }
+  /** files the build stored gzipped (the cache keeps the stored bytes, so the check and the progress count what travelled) */
+  #decode(res, info) {
+    if (info.encoding !== "gzip") return res;
+    return new Response(res.body.pipeThrough(new DecompressionStream("gzip")), { headers: { "content-type": info.name?.includes(".wasm") ? "application/wasm" : "application/octet-stream" } });
   }
 
   #seen = new Map();
