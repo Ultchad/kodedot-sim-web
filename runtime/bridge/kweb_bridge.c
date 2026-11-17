@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
+#include "page_lock.h"
 #include "kweb_bridge.h"
 
 #include <emscripten.h>
@@ -73,7 +74,7 @@ static in_evt_t g_in[IN_RING];
 static volatile uint32_t g_in_head, g_in_tail;     /* head: producer, tail: consumer */
 static volatile uint32_t g_in_wake;
 static volatile uint32_t g_in_dropped;
-static pthread_once_t g_pump_once = PTHREAD_ONCE_INIT;
+static volatile uint32_t g_pump_state;             /* 0 none, 1 being created, 2 running (never pthread_once: see ensure_pump) */
 
 static void apply(const in_evt_t *e)
 {
@@ -116,6 +117,18 @@ static void start_pump(void)
     pthread_attr_setstacksize(&at, 128 * 1024);
     pthread_create(&th, &at, pump, NULL);
 }
+/* Starts the pump once. NOT pthread_once: a firmware task that calls it first runs pthread_create inside the once, and a worker's
+ * pthread_create is proxied to the page's main thread (it waits for that thread's event loop); a kweb_touch() on the main thread that
+ * found the once in progress would wait for it, spinning inside wasm, and neither could ever continue (the settings-check hang after a
+ * boot, docs/STATUS-panic.md). Here a caller that finds the pump being created simply goes on: the event waits in the ring. */
+static void ensure_pump(void)
+{
+    if (__atomic_load_n(&g_pump_state, __ATOMIC_ACQUIRE) != 0u) return;
+    uint32_t none = 0u;
+    if (!__atomic_compare_exchange_n(&g_pump_state, &none, 1u, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) return;
+    start_pump();
+    __atomic_store_n(&g_pump_state, 2u, __ATOMIC_RELEASE);
+}
 static void push(in_evt_t e)
 {
     uint32_t h = __atomic_load_n(&g_in_head, __ATOMIC_RELAXED);
@@ -129,24 +142,27 @@ static void push(in_evt_t e)
 EMSCRIPTEN_KEEPALIVE void kweb_button(int id, int pressed)
 {
     if (id < 0 || (unsigned)id >= KWEB_BTN_COUNT) return;
-    pthread_once(&g_pump_once, start_pump);
+    ensure_pump();
     push((in_evt_t){ .kind = 0, .id = (uint8_t)id, .down = pressed ? 1 : 0 });
 }
 
 EMSCRIPTEN_KEEPALIVE void kweb_touch(int x, int y, int down)
 {
-    pthread_once(&g_pump_once, start_pump);
+    ensure_pump();
     push((in_evt_t){ .kind = 1, .down = down ? 1 : 0, .x = (int16_t)x, .y = (int16_t)y });
 }
 
-void kweb_set_button_hook(kweb_input_hook_t hook) { g_button_hook = hook; pthread_once(&g_pump_once, start_pump); }
-void kweb_set_touch_hook(kweb_input_hook_t hook) { g_touch_hook = hook; pthread_once(&g_pump_once, start_pump); }
+void kweb_set_button_hook(kweb_input_hook_t hook) { g_button_hook = hook; ensure_pump(); }
+void kweb_set_touch_hook(kweb_input_hook_t hook) { g_touch_hook = hook; ensure_pump(); }
 
 /* ---- the text ring -----------------------------------------------------------
  * Producers (any C thread) append records [u8 channel][u16 len LE][len bytes]
  * under a spin lock. The page drains with kweb_text_drain(). If the ring is
  * full the OLDEST whole records are discarded (counted in text_dropped), so a
  * page that stopped draining never blocks the firmware. */
+volatile uint32_t g_dbpage_busy;
+EMSCRIPTEN_KEEPALIVE uint32_t dbpage_busy_take(void) { return __atomic_exchange_n(&g_dbpage_busy, 0u, __ATOMIC_RELAXED); }
+
 static void lock(void)
 {
     while (__atomic_exchange_n(&g_state.text_lock, 1u, __ATOMIC_ACQUIRE)) {
@@ -215,7 +231,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t kweb_text_drain(uint8_t *dst, uint32_t cap)
 {
     state_init();
     uint32_t out = 0;
-    lock();
+    if (!db_page_spin_take((volatile uint32_t *)&g_state.text_lock, DB_PAGE_BUDGET_MS)) return 0;   /* the page never spins unbounded */
     uint32_t t = g_state.text_tail;
     uint32_t h = g_state.text_head;
     while (t != h) {

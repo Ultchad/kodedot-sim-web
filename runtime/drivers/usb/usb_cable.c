@@ -7,6 +7,7 @@
  *   TX (Dot -> computer) 64 KB here (the board's driver ring is 2 KB and the host drains at line rate): a full ring makes the
  *   writer wait, then drop, as khal_console_esp.c cable_put does.
  * Threads: the page calls the exports (write a ring and return); firmware tasks call usb_cable_read/write. */
+#include "page_lock.h"
 #include <pthread.h>
 #include <stdatomic.h>
 #include <string.h>
@@ -71,7 +72,7 @@ int32_t usb_cable_read(void *buf, size_t want, uint32_t timeout_ms)
  * port is taken by a charger the power area holds (the bench's charger object) so two things never share one connector. */
 EMSCRIPTEN_KEEPALIVE int usb_plug(int plugged, int host)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (plugged && !g_plugged && power_get(7) != 0) { pthread_mutex_unlock(&g_mu); return -1; }
     bool was = g_plugged;
     g_plugged = plugged != 0; g_host = g_plugged && host != 0;
@@ -85,7 +86,7 @@ EMSCRIPTEN_KEEPALIVE int usb_plug(int plugged, int host)
 /* The computer opens or closes its serial port while the cable stays in. */
 EMSCRIPTEN_KEEPALIVE void usb_host(int host)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     if (g_plugged) { g_host = host != 0; g_rx_n = g_rx_r = g_tx_n = g_tx_r = 0; g_stalled = false; }
     pthread_cond_broadcast(&g_rx_cv); pthread_cond_broadcast(&g_tx_cv);
     pthread_mutex_unlock(&g_mu);
@@ -95,7 +96,7 @@ EMSCRIPTEN_KEEPALIVE void usb_host(int host)
 EMSCRIPTEN_KEEPALIVE int usb_send(const uint8_t *data, int len)
 {
     int n = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (usb_cable_up()) {
         for (; n < len && g_rx_n < RX_SZ; n++) g_rx[(g_rx_r + g_rx_n++) % RX_SZ] = data[n];
         g_rx_dropped += (unsigned)(len - n); g_rx_total += (unsigned)n;
@@ -108,7 +109,7 @@ EMSCRIPTEN_KEEPALIVE int usb_send(const uint8_t *data, int len)
 EMSCRIPTEN_KEEPALIVE int usb_recv(uint8_t *out, int cap)
 {
     int n = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     while (n < cap && g_tx_n) { out[n++] = g_tx[g_tx_r]; g_tx_r = (g_tx_r + 1) % TX_SZ; g_tx_n--; }
     if (n) pthread_cond_broadcast(&g_tx_cv);
     pthread_mutex_unlock(&g_mu);
@@ -118,7 +119,7 @@ EMSCRIPTEN_KEEPALIVE int usb_recv(uint8_t *out, int cap)
 EMSCRIPTEN_KEEPALIVE int usb_get(int id)
 {
     int v = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     switch (id) {
     case 0: v = g_plugged; break; case 1: v = g_host; break; case 2: v = (int)(RX_SZ - g_rx_n); break; case 3: v = (int)g_tx_n; break;
     case 4: v = (int)g_rx_dropped; break; case 5: v = (int)g_tx_dropped; break; case 6: v = g_stalled; break; case 7: v = (int)g_gen; break;

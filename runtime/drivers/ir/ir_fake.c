@@ -16,6 +16,7 @@
  *
  * Threading: every export runs on the page's thread and only takes a spin lock for a plain memory copy. The callback is never
  * called under the lock and never from the page's thread. */
+#include "page_lock.h"
 #include <emscripten.h>
 #include <emscripten/threading.h>
 #include <pthread.h>
@@ -91,6 +92,16 @@ static pthread_once_t g_once = PTHREAD_ONCE_INIT;
 
 static void lock(void) { while (atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) sched_yield(); }
 static void unlock(void) { atomic_flag_clear_explicit(&g_lk, memory_order_release); }
+/* The page's thread: a bounded try, never an unbounded spin (page_lock.h). */
+static bool page_lock(void)
+{
+    if (!atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) return true;
+    uint64_t t0 = db_page_now_us();
+    for (;;) {
+        if (!atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) return true;
+        if (db_page_now_us() - t0 >= (uint64_t)DB_PAGE_BUDGET_MS * 1000u) { db_page_note_busy(); return false; }
+    }
+}
 
 static uint32_t now_ms(void)
 {
@@ -328,7 +339,7 @@ EMSCRIPTEN_KEEPALIVE int ir_rx_inject(const uint16_t *us, int n, uint32_t carrie
     int cnt = n > (int)KDRV_IR_RX_MAX_SYMBOLS ? (int)KDRV_IR_RX_MAX_SYMBOLS : n;
     for (int i = 0; i < cnt; i++) { tmp[i].mark_us = us[2 * i]; tmp[i].space_us = us[2 * i + 1]; }
     int rc;
-    lock();
+    if (!page_lock()) return 0;
     if (!g.init) { g.stat[IRS_DROP_NOINIT]++; rc = -4; }
     else if (!link_ok()) { g.stat[IRS_DROP_LINK]++; rc = -1; }
     else if (g.cfg[IRK_RX_DEAF] || !g.cfg[IRK_RX_FITTED]) { g.stat[IRS_DROP_DEAF]++; rc = -2; }
@@ -347,7 +358,7 @@ EMSCRIPTEN_KEEPALIVE int ir_rx_inject(const uint16_t *us, int n, uint32_t carrie
 EMSCRIPTEN_KEEPALIVE int ir_tx_pop(uint32_t *hdr, uint16_t *sym)
 {
     int n = 0;
-    lock();
+    if (!page_lock()) return 0;
     if (g.q_tail != g.q_head) {
         txrec_t *r = &g.q[g.q_tail % TXQ];
         hdr[0] = r->seq; hdr[1] = r->start_ms; hdr[2] = r->dur_us; hdr[3] = r->carrier; hdr[4] = r->n; hdr[5] = r->flags;
@@ -362,7 +373,7 @@ EMSCRIPTEN_KEEPALIVE int ir_tx_pop(uint32_t *hdr, uint16_t *sym)
 EMSCRIPTEN_KEEPALIVE void ir_set(int key, int val)
 {
     if (key < 0 || key >= IRK_COUNT) return;
-    lock();
+    if (!page_lock()) return;
     if (key == IRK_DISARM) { if (val) { g.armed = false; g.ready = false; } }
     else g.cfg[key] = val;
     unlock();
@@ -371,7 +382,7 @@ EMSCRIPTEN_KEEPALIVE void ir_set(int key, int val)
 EMSCRIPTEN_KEEPALIVE int ir_get(int key)
 {
     if (key < 0 || key >= IRK_COUNT) return -1;
-    lock();
+    if (!page_lock()) return 0;
     int v = g.cfg[key];
     unlock();
     return v;
@@ -381,7 +392,7 @@ EMSCRIPTEN_KEEPALIVE int ir_get(int key)
  * drop_carrier, drop_link, drop_noinit, tx_lost, echoes, arms, takes. */
 EMSCRIPTEN_KEEPALIVE void ir_stats(uint32_t *out)
 {
-    lock();
+    if (!page_lock()) return;
     memcpy(out, g.stat, sizeof g.stat);
     out[IRS_INIT] = g.init;
     out[IRS_ARMED] = g.armed;
@@ -393,7 +404,7 @@ EMSCRIPTEN_KEEPALIVE void ir_stats(uint32_t *out)
 /* Back to a clean link for a test: config defaults, counters, queues, no capture. The driver stays initialised. */
 EMSCRIPTEN_KEEPALIVE void ir_reset(void)
 {
-    lock();
+    if (!page_lock()) return;
     g.cfg[IRK_LINK] = 1; g.cfg[IRK_RX_DEAF] = 0; g.cfg[IRK_TX_DARK] = 0; g.cfg[IRK_RX_FITTED] = 1;
     g.cfg[IRK_REST_HIGH] = 1; g.cfg[IRK_ECHO] = 0; g.cfg[IRK_STRETCH_US] = 0;
     g.ready = false; g.rx_len = 0;

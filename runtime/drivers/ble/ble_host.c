@@ -20,6 +20,7 @@
  * Threading: ble_in / ble_out_pop / the info exports run on the page's thread and only take g_mu for a memory copy. Firmware callbacks
  * (state, pair, hear, console rx/raw/sent) are called on the host thread or on the firmware caller's thread, as on the board, always with
  * g_mu held (recursive): they must not block, which is their contract on the board too. Waiters (scan, find) sleep on a separate cond. */
+#include "page_lock.h"
 #include <emscripten.h>
 #include <emscripten/threading.h>
 #include <errno.h>
@@ -335,7 +336,15 @@ static struct {
 } g = { .conn = CONN_NONE, .rng = 0x9e3779b9u, .last_passkey = -1 };
 
 static void lock(void) { pthread_mutex_lock(&g_mu); }
-static void unlock(void) { pthread_mutex_unlock(&g_mu); }
+static bool g_spawn_wanted;                    /* set by start_locked(), served by unlock(): see spawn_host_thread() */
+static void spawn_host_thread(void);
+static void unlock(void)
+{
+    bool spawn = g_spawn_wanted && !g.thread;
+    if (spawn) { g.thread = true; g_spawn_wanted = false; }
+    pthread_mutex_unlock(&g_mu);
+    if (spawn) spawn_host_thread();
+}
 static void wake(void) { pthread_cond_signal(&g_hcv); }
 static void wbits_set(unsigned b) { pthread_mutex_lock(&g_wmu); g_wbits |= b; pthread_cond_broadcast(&g_wcv); pthread_mutex_unlock(&g_wmu); }
 static void wbits_clear(unsigned b) { pthread_mutex_lock(&g_wmu); g_wbits &= ~b; pthread_mutex_unlock(&g_wmu); }
@@ -1369,11 +1378,11 @@ static void start_thread_once(void)
     pthread_mutex_init(&g_mu, &ma);
     pthread_cond_init(&g_hcv, NULL);
 }
-static void ensure_thread(void)
+/* pthread_create from a worker is proxied to the page's main thread and waits for its event loop; a lock held across it can be wanted by
+ * the page (every export here), so the host thread is created only after g_mu is released (docs/STATUS-panic.md). */
+static void spawn_host_thread(void)
 {
-    pthread_once(&g_once, start_thread_once);
-    if (!g.thread) {
-        g.thread = true;
+    {
         pthread_t th;
         pthread_attr_t at;
         pthread_attr_init(&at);
@@ -1391,13 +1400,7 @@ static inline void api_lock(void) { pthread_once(&g_once, start_thread_once); lo
 static bool page_lock(uint32_t budget_ms)
 {
     pthread_once(&g_once, start_thread_once);
-    struct timespec t0, t;
-    clock_gettime(CLOCK_MONOTONIC, &t0);
-    for (;;) {
-        if (0 == pthread_mutex_trylock(&g_mu)) return true;
-        clock_gettime(CLOCK_MONOTONIC, &t);
-        if ((uint64_t)(t.tv_sec - t0.tv_sec) * 1000u + (uint64_t)(t.tv_nsec - t0.tv_nsec + 1000000000L) / 1000000u - 1000u >= budget_ms) return false;
-    }
+    return db_page_trylock(&g_mu, budget_ms);
 }
 
 uint8_t kdrv_ble_scan_count(void) { api_lock(); uint8_t n = g.count; unlock(); return n; }
@@ -1559,7 +1562,7 @@ static kode_status_t start_locked(void)
     if (g.up) return KODE_OK;
     g.conn = CONN_NONE;
     if (!link_ok()) { KLOG_E(TAG, "the C5 refused to bring its BT controller up"); return KODE_ERROR; }
-    ensure_thread();
+    g_spawn_wanted = true;                      /* the host thread is created by unlock_spawn(), after g_mu is released (see there) */
     bonds_load();
     {   /* the controller's address: the C5's Wi-Fi MAC with the last byte + 2 (BT is the third of its four) */
         static const uint8_t mac[6] = { 0x68, 0x67, 0x25, 0xc5, 0x00, 0x01 };

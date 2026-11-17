@@ -19,6 +19,7 @@
  *
  * Threading: chip accessors run on SDK task threads, the bench exports on the page's thread.
  * One mutex guards everything; nothing inside it calls the SDK. */
+#include "page_lock.h"
 #include <math.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -391,14 +392,14 @@ EMSCRIPTEN_KEEPALIVE void power_set_level(double pct)
 {
     if (!(pct >= 0)) pct = 0;
     if (pct > 100) pct = 100;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     g_soc = pct; g_ovr_mv = 0; g_sim_t = now_us();
     pthread_mutex_unlock(&g_mu);
 }
 /* kind: 1 USB host (500 mA), 2 adapter (3.25 A). Plugging also leaves ship mode, as VBUS does. */
 EMSCRIPTEN_KEEPALIVE void power_set_usb(int plugged, int kind)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     bool p = plugged != 0;
     if (kind == CABLE_SDP || kind == CABLE_ADAPTER) g_cable = kind;
     if (p) {
@@ -412,13 +413,13 @@ EMSCRIPTEN_KEEPALIVE void power_set_usb(int plugged, int kind)
 }
 EMSCRIPTEN_KEEPALIVE void power_set_temp(double c)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     g_temp_c = c < -40 ? -40 : c > 80 ? 80 : c;
     pthread_mutex_unlock(&g_mu);
 }
 EMSCRIPTEN_KEEPALIVE void power_set_load(int ma)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     g_load_ma = ma < 0 ? 0 : ma > 3000 ? 3000 : ma;
     pthread_mutex_unlock(&g_mu);
 }
@@ -430,14 +431,14 @@ EMSCRIPTEN_KEEPALIVE void power_set_voltage(int mv)        /* open-circuit mV, 0
 }
 EMSCRIPTEN_KEEPALIVE void power_set_sim_speed(double x)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     g_sim = x > 0 ? x : 0; g_sim_t = now_us();
     pthread_mutex_unlock(&g_mu);
 }
 EMSCRIPTEN_KEEPALIVE int power_get(int id)
 {
     uint64_t now = now_us();
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     calc_t c; snapshot(now, &c);
     int v = 0;
     switch (id) {
@@ -463,7 +464,7 @@ EMSCRIPTEN_KEEPALIVE int power_get(int id)
 EMSCRIPTEN_KEEPALIVE int power_event_pop(int32_t *out)
 {
     int got = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (g_ev_r != g_ev_w) {
         event_t e = g_ev[g_ev_r++ & 63];
         out[0] = e.type; out[1] = e.a; out[2] = e.b; out[3] = e.c;

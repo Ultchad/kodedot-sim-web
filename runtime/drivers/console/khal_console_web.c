@@ -7,6 +7,7 @@
  *
  * The reader task, line mode (both ports, remembering which spoke last), raw mode (pump run on the reader task, reading only the
  * port that asked, as khal_console_esp.c), rest and the request handshake are the board's logic. A write goes to both ports. */
+#include "page_lock.h"
 #include <pthread.h>
 #include <string.h>
 #include <time.h>
@@ -39,7 +40,7 @@ static void (*g_on_armed)(void);
 
 EMSCRIPTEN_KEEPALIVE void kweb_console_input(const char *s, int len)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     for (int i = 0; i < len; i++) {
         unsigned n = (g_head + 1) % RXQ;
         if (n == g_tail) break;

@@ -7,6 +7,7 @@
     "kweb_button",
     "kweb_touch",
     "kweb_text_drain",
+    "dbpage_busy_take",
     "kweb_text_pending",
     "kweb_text_echo",
     "malloc",

@@ -2,6 +2,7 @@
  * The bench objects of the NFC area and the C functions the page calls (exports in area.json).
  * Threading: every export runs on the page's thread. They only touch plain memory under a short
  * spin lock (no SDK call, no sleep, no allocation inside), exactly what the area guide allows. */
+#include "page_lock.h"
 #include <emscripten.h>
 #include <sched.h>
 #include <stdatomic.h>
@@ -54,13 +55,12 @@ void nfc_unlock(void)
  * page-facing exports take it with a bounded try and answer -9 (busy); the page asks again at its next poll. */
 static bool nfc_lock_page(void)
 {
-    struct timespec t0, t;
-    clock_gettime(CLOCK_MONOTONIC, &t0);
-    while (atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) {
-        clock_gettime(CLOCK_MONOTONIC, &t);
-        if ((t.tv_sec - t0.tv_sec) * 1000L + (t.tv_nsec - t0.tv_nsec) / 1000000L >= 20) return false;
+    if (!atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) return true;
+    uint64_t t0 = db_page_now_us();
+    for (;;) {
+        if (!atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) return true;
+        if (db_page_now_us() - t0 >= 20000u) { db_page_note_busy(); return false; }
     }
-    return true;
 }
 
 uint32_t nfc_now_ms(void)

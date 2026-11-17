@@ -17,6 +17,7 @@
  *   record : u16 magic 0x4B52, u8 type, u8 nslen, u8 keylen, u8 flags, u16 datalen, u32 serial, u32 aux, u32 crc,
  *            ns, key, data, padded to 4
  */
+#include "page_lock.h"
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -24,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <emscripten.h>
+#include <emscripten/threading.h>
 #include "dotbench_persist.h"
 #include "khal_nvs.h"
 
@@ -243,13 +245,22 @@ static void init_locked(void)
 /* ---- validation helpers ---- */
 static bool name_ok(const char *s) { return s && *s && strlen(s) <= NAME_MAX_CH; }
 
-#define LOCK() pthread_mutex_lock(&g_mu); init_locked()
+/* The store is shared by firmware tasks and by the page (dbnvs_*, which call the same khal_nvs_* code): on the page's thread the lock is a
+ * bounded try, and a refused call answers an error plus the busy flag (the glue asks again), see page_lock.h. */
+static bool nvs_enter(void)
+{
+    if (emscripten_is_main_browser_thread()) { if (!db_page_trylock(&g_mu, DB_PAGE_BUDGET_MS)) return false; }
+    else pthread_mutex_lock(&g_mu);
+    init_locked();
+    return true;
+}
+#define LOCK_OR(busy_ret) do { if (!nvs_enter()) return busy_ret; } while (0)
 #define UNLOCK() pthread_mutex_unlock(&g_mu)
 
 /* Read a key-defining record's data into out (cap) and set *len. Statuses follow nvs_get_*: NOT_FOUND = DENIED, mismatch/length = ERROR. */
 static kode_status_t get_typed(const char *ns, const char *key, uint8_t type, void *out, size_t cap, size_t *len_out, bool exact)
 {
-    LOCK();
+    LOCK_OR(KODE_ERROR);
     kode_status_t st = KODE_DENIED;
     ent_t e = lookup(ns, key);
     if (e.found) {
@@ -284,13 +295,13 @@ done:
 
 static kode_status_t put_small(const char *ns, const char *key, uint8_t type, const void *v, uint32_t len)
 {
-    LOCK();
+    LOCK_OR(KODE_ERROR);
     kode_status_t st = append(type, ns, key, v, len, ++g_serial, 0);
     UNLOCK();
     return st;
 }
 
-kode_status_t khal_nvs_init(void) { LOCK(); UNLOCK(); return KODE_OK; }
+kode_status_t khal_nvs_init(void) { LOCK_OR(KODE_ERROR); UNLOCK(); return KODE_OK; }
 
 kode_status_t khal_nvs_get_str(const char *ns, const char *key, char *out, size_t cap)
 {
@@ -342,7 +353,7 @@ kode_status_t khal_nvs_set_blob(const char *ns, const char *key, const void *val
 {
     if (!value || !len || !name_ok(ns) || !name_ok(key)) return KODE_ERROR;
     if (len > 0x7FFFFFu) return KODE_ERROR;
-    LOCK();
+    LOCK_OR(KODE_ERROR);
     uint32_t ver = ++g_serial, nch = (uint32_t)((len + BLOB_CHUNK - 1) / BLOB_CHUNK);
     kode_status_t st = KODE_OK;
     for (uint32_t i = 0; i < nch && st == KODE_OK; i++) {
@@ -356,7 +367,7 @@ kode_status_t khal_nvs_set_blob(const char *ns, const char *key, const void *val
 kode_status_t khal_nvs_erase(const char *ns, const char *key)
 {
     if (!name_ok(ns) || !name_ok(key)) return KODE_OK;     /* nothing there: the postcondition holds */
-    LOCK();
+    LOCK_OR(KODE_ERROR);
     kode_status_t st = KODE_OK;
     if (lookup(ns, key).found) st = append(T_TOMB_KEY, ns, key, NULL, 0, ++g_serial, 0);
     UNLOCK();
@@ -365,7 +376,7 @@ kode_status_t khal_nvs_erase(const char *ns, const char *key)
 kode_status_t khal_nvs_erase_namespace(const char *ns)
 {
     if (!ns || !name_ok(ns)) return KODE_ERROR;
-    LOCK();
+    LOCK_OR(KODE_ERROR);
     bool any = false;
     { FOR_EACH_REC(p, off, h, rns, rkey, rd) if (h.type != T_TOMB_NS && h.nslen == strlen(ns) && !memcmp(rns, ns, h.nslen)) any = true; (void)rkey; (void)rd; END_EACH(off) }
     kode_status_t st = KODE_OK;
@@ -400,7 +411,7 @@ kode_status_t khal_nvs_key(const char *ns, uint16_t idx, char *out, size_t cap)
 {
     if (!out || !cap) return KODE_ERROR;
     if (!name_ok(ns)) return KODE_DENIED;
-    LOCK();
+    LOCK_OR(KODE_ERROR);
     nth_t n = { idx, 0, out, cap, KODE_DENIED, { 0 } };
     visit_live(ns, nth_key, &n);
     UNLOCK();
@@ -419,7 +430,7 @@ static bool nth_ns(const char *ns, const char *key, uint8_t t, uint32_t sz, void
 kode_status_t khal_nvs_namespace(uint16_t idx, char *out, size_t cap)
 {
     if (!out || !cap) return KODE_ERROR;
-    LOCK();
+    LOCK_OR(KODE_ERROR);
     nsl_t *n = calloc(1, sizeof *n);
     if (!n) { UNLOCK(); return KODE_ERROR; }
     n->idx = idx; n->out = out; n->cap = cap; n->st = KODE_DENIED;
@@ -441,7 +452,7 @@ static bool dump_cb(const char *ns, const char *key, uint8_t t, uint32_t sz, voi
 /* "ns\tkey\ttype\tsize\n" lines into out (NUL-terminated); returns bytes or -1 if it did not fit whole. */
 EMSCRIPTEN_KEEPALIVE int dbnvs_list(char *out, uint32_t cap)
 {
-    LOCK();
+    LOCK_OR(-1);
     dump_t d = { out, cap ? cap - 1 : 0, 0 };
     visit_live(NULL, dump_cb, &d);
     if (cap) out[d.n] = 0;
@@ -451,7 +462,7 @@ EMSCRIPTEN_KEEPALIVE int dbnvs_list(char *out, uint32_t cap)
 /* Value of a key as raw bytes (strings without the NUL; u8/u64 little endian). Returns length, -1 absent, -2 too small. */
 EMSCRIPTEN_KEEPALIVE int dbnvs_get(const char *ns, const char *key, uint8_t *out, uint32_t cap)
 {
-    LOCK();
+    LOCK_OR(-1);
     ent_t e = lookup(ns, key);
     int r = -1;
     if (e.found) {
@@ -471,7 +482,7 @@ EMSCRIPTEN_KEEPALIVE int dbnvs_get(const char *ns, const char *key, uint8_t *out
 }
 EMSCRIPTEN_KEEPALIVE int dbnvs_type(const char *ns, const char *key)
 {
-    LOCK(); ent_t e = lookup(ns, key); UNLOCK();
+    LOCK_OR(-1); ent_t e = lookup(ns, key); UNLOCK();
     return !e.found ? 0 : e.type == T_U8 ? 1 : e.type == T_U64 ? 2 : e.type == T_STR ? 3 : 4;
 }
 EMSCRIPTEN_KEEPALIVE int dbnvs_set(const char *ns, const char *key, int type, const uint8_t *data, uint32_t len)
@@ -490,7 +501,7 @@ EMSCRIPTEN_KEEPALIVE int dbnvs_erase_ns(const char *ns) { return khal_nvs_erase_
 /* Factory reset of the whole store. */
 EMSCRIPTEN_KEEPALIVE int dbnvs_wipe(void)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, -1);
     for (uint32_t p = 0; p < NPAGES; p++) wipe_page(p);
     g_ready = false; g_serial = 0;
     init_locked();
@@ -500,7 +511,7 @@ EMSCRIPTEN_KEEPALIVE int dbnvs_wipe(void)
 /* Capacity, in bytes: live payload and total. */
 EMSCRIPTEN_KEEPALIVE int dbnvs_usage(uint32_t *used_pages, uint32_t *total_pages)
 {
-    LOCK();
+    LOCK_OR(-1);
     if (used_pages) *used_pages = (uint32_t)(NPAGES - (uint32_t)free_pages());
     if (total_pages) *total_pages = NPAGES;
     UNLOCK();
