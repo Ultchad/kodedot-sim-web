@@ -644,7 +644,7 @@ export function animateUno(st: PartState, obj: Object3D, env: AnimEnv): boolean 
   const held = st.fields[RESET_FIELD] === true;
   const cap = part(obj, RESET_FIELD);
   if (cap) cap.position.y = (cap.userData.restY as number) - (held ? TRAVEL : 0);
-  setLamp(obj, PRESS, 0xfff1d0, held ? 0.75 : 0);
+  setLamp(obj, PRESS, 0xffb238, held ? 1.3 : 0);
   return again;
 }
 

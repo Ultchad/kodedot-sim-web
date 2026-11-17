@@ -194,6 +194,8 @@ function corners(g: G, x: number, z: number, half: number, len = 0.9): void {
   g.stroke();
 }
 const mono = { weight: 700, font: FONT_MONO } as const;
+/** Whether a legend centred on (x, z) would lie under a switch or its outline. */
+const underSwitch = (switches: readonly Switch[], x: number, z: number): boolean => switches.some((sw) => Math.abs(sw.x - x) < 3.6 && Math.abs(sw.z - z) < 2.4);
 
 /**
  * The marking of a module's shield, as the laser leaves it: dull grey on the metal, read with the antenna up (so
@@ -274,10 +276,12 @@ function buildClassic(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], switches: Sw
         [X(26.2), Z(21), X(28.2), Z(21), X(28.8), Z(21.6), X(28.8), Z(22.6)],
       ]);
       g.fillStyle = INK.silk;
-      for (const r of rows) for (const p of r.pins) pinLabel(g, p.label, p.x, r.z - Math.sign(r.z) * 2.2, 1.2);
+      // (a name that would lie under a switch is left out: half a word beside a switch reads as a mistake)
+      for (const r of rows) for (const p of r.pins) if (!underSwitch(switches, p.x, r.z - Math.sign(r.z) * 2.2)) pinLabel(g, p.label, p.x, r.z - Math.sign(r.z) * 2.2, 1.2);
       text(g, 'ESP32-DevKitC', X(33.6), Z(13.95), 1.45, { weight: 700, font: FONT, spacing: 0.03 });
       text(g, 'V4', X(40.1), Z(14), 1.05, mono);
-      for (const sw of switches) text(g, sw.name.toUpperCase(), sw.x - 3.5, sw.z, sw.name === 'en' ? 1.05 : 0.95, { ...mono, align: 'right' });
+      // each switch's name on the side of it that looks at the middle of the board
+      for (const sw of switches) text(g, sw.name.toUpperCase(), sw.x, sw.z - Math.sign(sw.z) * 2.75, sw.name === 'en' ? 1.05 : 0.95, mono);
       text(g, 'PWR', pwrAt.x, pwrAt.z - 1.6, 0.9, mono);
       corners(g, X(36.2), Z(9.2), 3.05);
       dot(g, X(32.9), Z(12.5));
@@ -377,7 +381,7 @@ const CAP = ['matte', '#3a3a40'] as const;
 /** How far a plunger goes down when its switch is held (it stands 0.6 mm proud). */
 const TRAVEL = 0.45;
 /** The light of a press: a small glow over a held switch, round its plunger, so that a press reads from the Workbench's camera. */
-const PRESS = 0xfff1d0;
+const PRESS = 0xffb238;
 const pressOf = (name: string): string => `press:${name}`;
 
 /**
@@ -426,7 +430,7 @@ export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState
         const down = st.fields[held[i][1]] === true;
         const cap = part(obj, held[i][0]);
         if (cap) cap.position.y = down ? -TRAVEL : 0;
-        setLamp(obj, held[i][2], PRESS, down ? 0.7 : 0);
+        setLamp(obj, held[i][2], PRESS, down ? 1.3 : 0);
       }
       if (!rgb) return;
       const o = st.outputs;
@@ -448,10 +452,14 @@ export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState
           dim: partState({ outputs: { rgb_r: 10, rgb_g: 10, rgb_b: 40, led: 0 }, visuals: { led: 1 } }),
           white: partState({ outputs: { rgb_r: 0, rgb_g: 0, rgb_b: 0, led: 1 }, visuals: { led: 1 } }),
           idle: partState({ outputs: { led: 0 }, visuals: { led: 0 } }),
+          'boot-held': partState({ fields: { boot: true }, outputs: { rgb_r: 0, rgb_g: 150, rgb_b: 130, led: 0 }, visuals: { led: 1 } }),
+          'reset-held': partState({ fields: { en: true }, outputs: { led: 0 }, visuals: { led: 0 } }),
           unpowered: partState({ power: { on: false, reason: 'no supply' }, outputs: { rgb_r: 0, rgb_g: 150, rgb_b: 130 }, visuals: { led: 1 } }),
         }
       : {
           powered: partState({ outputs: { led: 1 }, visuals: { led: 1 } }),
+          'boot-held': partState({ fields: { boot: true }, outputs: { led: 1 }, visuals: { led: 1 } }),
+          'en-held': partState({ fields: { en: true }, outputs: { led: 0 }, visuals: { led: 0 } }),
           unpowered: partState({ power: { on: false, reason: 'no supply' }, outputs: { led: 1 }, visuals: { led: 1 } }),
         },
   });
