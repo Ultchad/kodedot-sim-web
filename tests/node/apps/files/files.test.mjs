@@ -93,7 +93,7 @@ await T.check("an empty file says so", async () => {
 });
 
 const names = () => fs().list("/storage").map((f) => f.name).sort();
-const wipe = async () => { for (let i = 0; i < 14; i++) { await app.tap(333, 316); await sleep(120); } };
+const wipe = async () => { for (let i = 0; i < 14; i++) { await app.tap(333, 316); await sleep(120); } await app.tap(79, 369); await sleep(250); };   // an empty field starts in capitals: back to small letters
 const typeKeys = async (keys) => { for (const [x, y] of keys) { await app.tap(x, y); await sleep(120); } };
 
 await T.check("Rename retypes the name and the file is renamed", async () => {

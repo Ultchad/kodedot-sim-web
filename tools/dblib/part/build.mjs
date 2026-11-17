@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { inoToCpp } from "./ino2cpp.mjs";
+import { sketchToCpp, fieldsHeader, packageEntries } from "./shared.mjs";
 import { writeZip } from "./zipwrite.mjs";
 import { checkWasmModule, ABI1_EXPORTS } from "../../../runtime/web-adapter/dotpart.js";
 
@@ -34,15 +34,7 @@ const coreOf = (m) => { const c = m?.behaviour?.core ?? "esp32"; if (!CORES[c]) 
 const FLAGS = (api, core, extra = []) => ["-Os", "-std=gnu++17", "-fno-exceptions", "-fno-rtti", "-ffunction-sections", "-fdata-sections", "-I", path.join(CORE_DIR, "variants", core), "-I", CORE_DIR, "-I", api, "-I", path.join(api, "api/deprecated-avr-comp"),
   "-DARDUINO=10819", ...CORES[core], "-DHOST", "-Wno-main", ...extra].map(sh).join(" ");
 
-/** generated header: FIELD_<NAME> and OUTPUT_<NAME> indexes, in manifest order. */
-export function fieldsHeader(m) {
-  const nums = (m.fields ?? []).filter((f) => ["number", "integer", "boolean", "enum"].includes(f.type));
-  const id = (s) => s.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
-  let o = "// GENERATED from manifest.json by `dotbench part build`. Do not edit.\n#pragma once\n";
-  o += nums.length ? "enum { " + nums.map((f, i) => `FIELD_${id(f.name)} = ${i}`).join(", ") + " };\n" : "";
-  o += (m.outputs ?? []).length ? "enum { " + m.outputs.map((f, i) => `OUTPUT_${id(f.name)} = ${i}`).join(", ") + " };\n" : "";
-  return o;
-}
+export { fieldsHeader };   // moved to shared.mjs (the browser compile service uses it too)
 
 /** The core archive, built once per (core sources, API sources, emcc) and cached. */
 export function ensureCore(log = () => {}, core = "esp32") {
@@ -118,10 +110,9 @@ export function compileWasm(dir, m, log = () => {}) {
     objs.push(o);
   };
   if (ino.length) {
-    // the IDE concatenates the sketch files; the first listed one comes first
-    const text = ino.map((p) => fs.readFileSync(p, "utf8")).join("\n");
+    // the IDE concatenates the sketch files; the first listed one comes first, and every file keeps its own name and line numbers (#line)
     const out = path.join(outDir, "sketch.cpp");
-    fs.writeFileSync(out, inoToCpp(text, path.relative(dir, ino[0])));
+    fs.writeFileSync(out, sketchToCpp(ino.map((p) => [path.relative(dir, p), fs.readFileSync(p, "utf8")])).cpp);
     compileOne(out, "sketch", "c++");
   }
   for (const s of sources) if (/\.(cpp|cc|c)$/.test(s)) compileOne(path.join(dir, s), "src_" + s.replace(/[^A-Za-z0-9]/g, "_"), s.endsWith(".c") ? "c" : "c++");
@@ -141,17 +132,8 @@ export async function checkWasm(wasm) {
   return checkWasmModule(mod);
 }
 
-/** Files of the folder that go into the package: [name, bytes][] */
+/** Files of the folder that go into the package: [name, bytes][] (the list itself is shared.mjs packageEntries) */
 export function packageFiles(dir, m, wasm) {
-  const files = [], seen = new Set();
-  const add = (name, bytes) => { if (!seen.has(name)) { seen.add(name); files.push([name, bytes]); } };
-  const manifest = JSON.parse(JSON.stringify(m)); delete manifest.$schema;
-  if (wasm) manifest.behaviour.wasm_sha256 = createHash("sha256").update(wasm).digest("hex");
-  add("manifest.json", Buffer.from(JSON.stringify(manifest, null, 2) + "\n"));
-  if (m.picture?.file) { const p = readIf(path.join(dir, m.picture.file)); if (!p) throw new Error(`picture ${m.picture.file} not found`); add(m.picture.file, p); }
-  if (wasm) add(m.behaviour.entry, wasm);
-  if (m.behaviour.type === "wasm") for (const s of m.behaviour.sources ?? []) { const p = readIf(path.join(dir, s)); if (p) add(s, p); }
-  for (const n of ["LICENSE", "LICENSE.txt", "LICENSE.md", "NOTICE"]) { const p = readIf(path.join(dir, n)); if (p) add(n, p); }
-  return files;
+  return packageEntries(m, wasm, wasm ? createHash("sha256").update(wasm).digest("hex") : null, (name) => readIf(path.join(dir, name)));
 }
 export function zipPackage(files) { return writeZip(files); }

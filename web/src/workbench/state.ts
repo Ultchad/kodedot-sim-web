@@ -4,7 +4,7 @@
  */
 import { DOT_ID, SD_ID } from './layout';
 
-export type WorkbenchCommand = { type: 'focus-dot' } | { type: 'frame-all' } | { type: 'focus'; id: string };
+export type WorkbenchCommand = { type: 'focus-dot' } | { type: 'frame-all' } | { type: 'focus'; id: string } | { type: 'shake' };
 
 const NONE: ReadonlySet<string> = new Set();
 

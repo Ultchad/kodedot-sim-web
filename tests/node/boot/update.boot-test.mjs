@@ -1,6 +1,6 @@
 // Updates for a device that already exists (docs/STATUS-boot.md "Updates and factory resets"): the site ships more and newer factory apps than the
 // stored Dot has. Each phase is a "page load" on the same persistence directory.
-//   1 migration: a store from before records (only `seeded`, three apps) + a list of nine -> nine apps, user data kept
+//   1 migration: a store from before records (only `seeded`, three apps) + the factory list -> all of it, user data kept
 //   2 a factory app the user removed stays removed across an update (and a changed package for it does not bring it back)
 //   3 a changed package replaces the installed one, the app's saved data survives
 //   4 apps the user installed (also one under a factory app's name) are never touched
@@ -24,7 +24,7 @@ const projects = (sys) => sys.list().map((a) => a.project);
 const close = async (sys) => { await sys.flushPersist(); sys.stop(); sys.dispose?.(); };
 const dir = tmpDir();
 
-await check("1 migration: an old store (seeded flag, three apps) gets the six new apps; settings and files stay", async () => {
+await check("1 migration: an old store (seeded flag, three apps) gets the new apps; settings and files stay", async () => {
   const a = makeSystem(dir, { factory: factoryJson });
   await bootOs(a);
   assert.deepEqual(projects(a), FACTORY);
@@ -40,8 +40,8 @@ await check("1 migration: an old store (seeded flag, three apps) gets the six ne
   const b = makeSystem(dir, { factory: fullFactoryJson });
   const updates = []; b.on("update", (r) => updates.push(r));
   await bootOs(b);
-  assert.deepEqual(projects(b).sort(), [...FULL_FACTORY].sort(), "nine apps");
-  assert.deepEqual(updates[0].installed.sort(), FULL_FACTORY.filter((n) => !FACTORY.includes(n)).sort(), "the six new ones were installed");
+  assert.deepEqual(projects(b).sort(), [...FULL_FACTORY].sort(), "the whole factory list");
+  assert.deepEqual(updates[0].installed.sort(), FULL_FACTORY.filter((n) => !FACTORY.includes(n)).sort(), "the new ones were installed");
   assert.deepEqual(updates[0].updated, [], "the three old ones are the same bytes: untouched");
   assert.equal(b.area("nvs").get("dbtest", "volume").value, 9);
   assert.equal(dec.decode(b.area("storage").read("/storage/dbtest/note.txt")), "kept");
@@ -61,7 +61,7 @@ await check("2 a factory app the user removed stays removed across updates; unse
   const c = makeSystem(dir, { factory: fullFactoryJson, fetch: async (n) => (n === "light.dotbench" ? newLight : null) });
     await bootOs(c);
   assert.ok(!projects(c).includes("light"), "light is still removed");
-  assert.equal(projects(c).length, 8);
+  assert.equal(projects(c).length, FULL_FACTORY.length - 1, "every factory app but the removed one");
   assert.equal(c._bundles().factoryRecords()["light.dotbench"].removed, true, "recorded as removed by the user, not as never seen");
   assert.deepEqual(c.lastUpdate.updated, [], "the changed package of a removed app is not installed");
   assert.deepEqual(c.lastUpdate.installed, []);

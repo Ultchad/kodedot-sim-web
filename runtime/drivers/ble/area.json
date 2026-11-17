@@ -1,0 +1,19 @@
+{
+  "area": "ble",
+  "description": "Bluetooth Low Energy: the SDK's kdrv_ble.c (a NimBLE host over esp-hosted) is replaced by a host fake that keeps its rules (console ring, app characteristics, battery, scan table, find/hear, pulsed adverts, pairing with a passkey on the Dot, 3 bonds persisted in a region, permission checks); the page's Sensor and Phone bench objects are the other side of the air",
+  "supersedes": {
+    "components/kdrv/radio/src/kdrv_ble.c": "web fake: runtime/drivers/ble replaces the NimBLE host (NimBLE is not in this tree) and answers the whole of kdrv_ble.h from bench objects. kdrv_ble_adv.c, kdrv_ble_app.c, kdrv_ble_bonds.c, kdrv_ble_heard.c, kdrv_ble_find.c and AO_Radio stay the SDK's."
+  },
+  "sdkconfig": {
+    "CONFIG_BT_ENABLED": "y",
+    "CONFIG_KODEOS_BLE": "y",
+    "CONFIG_KODEOS_BLE_CONSOLE": "y"
+  },
+  "sources": ["*.c"],
+  "exports": [
+    "ble_in", "ble_out_pop", "ble_cfg", "ble_cfg_get", "ble_stat", "ble_set_addr", "ble_info", "ble_gatt_json",
+    "ble_bond_inject", "ble_blob_ptr", "ble_blob_len", "ble_blob_commit", "ble_reset_counters", "ble_test_pair_reject"
+  ],
+  "js": ["ble.js"],
+  "test_apps": ["sdk:examples/ble_peripheral", "area:../../../tests/node/ble/apps/ble_api"]
+}

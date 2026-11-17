@@ -29,8 +29,8 @@ export const wifiKinds: KindDef[] = [
       { key: 'internet', labelKey: 'field.internet', type: 'toggle' },
       { key: 'on', labelKey: 'field.powered', type: 'toggle' },
     ],
-    defaults: { ssid: 'Dot-Bench', security: 'open', password: 'dotbench1', signal: -45, channel: '6', internet: true, on: true },
-    unique: (n) => ({ ssid: n === 1 ? 'Dot-Bench' : `Dot-Bench ${n}` }),
+    defaults: { ssid: 'Home WiFi', security: 'open', password: '12345678', signal: -45, channel: '6', internet: true, on: true },
+    unique: (n) => ({ ssid: n === 1 ? 'Home WiFi' : `Home WiFi ${n}` }),
     presence: { on: 'presence.inRange', off: 'presence.outOfRange' },
   },
 ];

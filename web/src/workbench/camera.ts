@@ -75,6 +75,10 @@ export class OrbitRig {
     const halfV = (hd * c + hw * s) * Math.cos(pol) + height * Math.sin(pol);
     g.x = (r.x0 + r.x1) / 2;
     g.z = (r.z0 + r.z1) / 2;
+    // seen from an angle, what stands on the table rises above its far edge: aim a little this side of the middle
+    const lean = Math.sin(pol) * (0.1 * (hd * c + hw * s) + height * 0.25);
+    g.x += Math.sin(az) * lean;
+    g.z += Math.cos(az) * lean;
     g.az = nearestTurn(az, this.cur.az);
     g.pol = pol;
     g.dist = Math.max((halfV * margin) / t, (halfW * margin) / (t * Math.max(0.2, aspect))) + (hd * c + hw * s) * Math.sin(pol);

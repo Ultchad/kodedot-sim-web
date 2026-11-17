@@ -186,7 +186,8 @@ export function qfn(s: Shape, o: ChipAt & { size: number; perSide: number; pitch
     pinOne(s, -o.size / 2 + 0.7, o.size / 2 - 0.7, 0.85);
     for (let q = 0; q < 4; q++) {
       s.with(new Matrix4().makeRotationY((q * Math.PI) / 2), () => {
-        for (let i = 0; i < o.perSide; i++) s.box(...PAL.tin, (i - (o.perSide - 1) / 2) * pitch, o.size / 2 + 0.04, pitch * 0.5, 0.2, 0, 0.3, 0.02, 0, { ao: 1 });
+        // the pads only show as tinned marks at the foot of the body: flat, two triangles each
+        for (let i = 0; i < o.perSide; i++) s.rect(...PAL.tin, (i - (o.perSide - 1) / 2) * pitch, o.size / 2 + 0.07, pitch * 0.5, 0.26, 0.03);
       });
     }
   });

@@ -57,7 +57,7 @@ export class Shape {
     const a = this.acc[family];
     const base = a.pos.length / 3;
     const mat = local ? this.stack[this.stack.length - 1].clone().multiply(local) : this.stack[this.stack.length - 1];
-    tmpC.set(colour).convertSRGBToLinear();
+    tmpC.set(colour); // a hex colour is sRGB: three converts it to the linear working space once, here
     for (let i = 0; i < m.positions.length; i += 3) {
       tmpV.set(m.positions[i], m.positions[i + 1], m.positions[i + 2]).applyMatrix4(mat);
       a.pos.push(tmpV.x, tmpV.y, tmpV.z);
@@ -78,35 +78,28 @@ export class Shape {
     const n = loop.length;
     const b = Math.max(0, Math.min(bevel, (y1 - y0) * 0.5));
     const ao = o.ao ?? 0.74;
-    let cx = 0, cz = 0;
-    for (const [x, z] of loop) {
-      cx += x / n;
-      cz += z / n;
-    }
-    // outward normals in the footprint plane
+    // outward normals in the footprint plane, from the way the loop turns (so notches and other concave
+    // outlines get walls that face out of the material, not towards the middle of the shape)
+    const turn = signedArea(loop) >= 0 ? 1 : -1;
     const out: V2[] = loop.map((_, i) => {
       const a = loop[(i + n - 1) % n], c = loop[(i + 1) % n];
-      let nx = c[1] - a[1], nz = -(c[0] - a[0]);
+      const nx = (c[1] - a[1]) * turn, nz = -(c[0] - a[0]) * turn;
       const l = Math.hypot(nx, nz) || 1;
-      nx /= l;
-      nz /= l;
-      return (loop[i][0] - cx) * nx + (loop[i][1] - cz) * nz < 0 ? [-nx, -nz] : [nx, nz];
+      return [nx / l, nz / l];
     });
     const up: V3 = [0, 1, 0];
     const top = loop.map(([x, z], i) => mb.vertex([x - out[i][0] * b, y1, z - out[i][1] * b], up));
     const holes = o.holes ?? [];
     mb.polygon(top, holes.map((h) => h.map(([x, z]) => mb.vertex([x, y1, z], up))), (p) => [p[0], p[2]], up);
     for (const h of holes) {
-      // the wall of a hole faces its own middle
+      // the wall of a hole faces into the hole (whatever the hole's shape and the way its loop turns)
       const m = h.length;
-      let hx = 0, hz = 0;
-      for (const [x, z] of h) {
-        hx += x / m;
-        hz += z / m;
-      }
-      const inw: V3[] = h.map(([x, z]) => {
-        const l = Math.hypot(hx - x, hz - z) || 1;
-        return [(hx - x) / l, 0, (hz - z) / l];
+      const ht = signedArea(h) >= 0 ? -1 : 1;
+      const inw: V3[] = h.map((_, i) => {
+        const a = h[(i + m - 1) % m], c = h[(i + 1) % m];
+        const nx = (c[1] - a[1]) * ht, nz = -(c[0] - a[0]) * ht;
+        const l = Math.hypot(nx, nz) || 1;
+        return [nx / l, 0, nz / l];
       });
       const h0 = h.map(([x, z], i) => mb.vertex([x, y1, z], inw[i], [0, 0], 0.55));
       const h1 = h.map(([x, z], i) => mb.vertex([x, y0, z], inw[i], [0, 0], 0.3));
@@ -225,6 +218,14 @@ export class Shape {
     this.add(family, colour, mb.build(), m);
   }
 
+  /** A flat rectangle lying at height `y` (two triangles): a pad, a mark, a label area that needs no thickness. */
+  rect(family: Family, colour: string, cx: number, cz: number, w: number, d: number, y: number): void {
+    const mb = new MeshBuilder();
+    const up: V3 = [0, 1, 0];
+    const v = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => mb.vertex([cx + (a * w) / 2, y, cz + (b * d) / 2], up));
+    mb.quad(v[0], v[1], v[2], v[3], up);
+    this.add(family, colour, mb.build());
+  }
   /** A cylinder between two points with flat ends (a pin, an axle, a lying capacitor body). */
   rod(family: Family, colour: string, a: V3, b: V3, r: number, seg = 12): void {
     this.tube(family, colour, [a, b], r, seg);
@@ -291,6 +292,16 @@ export class Shape {
 function mk(): Acc {
   return { pos: [], nrm: [], col: [], idx: [] };
 }
+/** Twice the signed area of a loop in the footprint plane (its sign says which way the loop turns). */
+function signedArea(l: Pt[]): number {
+  let s = 0;
+  for (let i = 0; i < l.length; i++) {
+    const a = l[i], b = l[(i + 1) % l.length];
+    s += a[0] * b[1] - b[0] * a[1];
+  }
+  return s;
+}
+
 /** The convex outline round a set of points in the footprint plane (two circles make a teardrop or a stadium). */
 export function convexHull(points: Pt[]): Pt[] {
   const p = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);

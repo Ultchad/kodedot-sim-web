@@ -96,6 +96,7 @@ export function StatusBar({ show3d }: { show3d: boolean }) {
 /** Keyboard and pointer help as a popover: it does not move the device when it opens. */
 function KeysHelp({ show3d }: { show3d: boolean }) {
   const { t } = useI18n();
+  const workbench = useHost().mode === 'workbench';
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   const rows: [string, string][] = [
@@ -122,7 +123,7 @@ function KeysHelp({ show3d }: { show3d: boolean }) {
               </div>
             ))}
           </dl>
-          <p className="m-0 text-[13.5px] leading-snug text-ink2">{t(show3d ? 'device.hint3d' : 'device.hint2d')}</p>
+          <p className="m-0 text-[13.5px] leading-snug text-ink2">{t(workbench ? 'wb.keys' : show3d ? 'device.hint3d' : 'device.hint2d')}</p>
         </div>
       </Popover>
     </>

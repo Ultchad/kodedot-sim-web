@@ -10,7 +10,9 @@ const KW = (en, pt, es) => ({ en, "pt-BR": pt, es });
 // ---- Uno family header layout, millimetres from the top-left, USB end on the left, top view (Arduino R3 mechanical drawing, 0.1 inch pitch, the 0.16 inch gap between D7 and D8)
 const UNO_W = 68.58, UNO_D = 53.34, TOP_Y = 2.54, BOT_Y = 50.8;
 // The body box includes the connector overhang: the USB-B (R3) sticks out about 6.4 mm past the board's left edge, the DC jack about as much; the R4 USB-C less (the box keeps the larger allowance). All x below are measured from the box's left edge = the board's left edge minus OVER.
-const OVER = 6.4, CONTACT_Z = 11.4;   // CONTACT_Z: height of a female header socket's mouth above the table (1.6 mm board + 8.5 mm socket + ~1.3 mm of mouth), where a wire or a shield pin meets the header
+let OVER = 6.4; const CONTACT_Z = 11.4;   // CONTACT_Z: height of a female header socket's mouth above the table (1.6 mm board + 8.5 mm socket + ~1.3 mm of mouth), where a wire or a shield pin meets the header
+// stepped board outline and the four 3.2 mm mounting holes, mm from the board's left edge and top edge (the modeller's measurement of the Uno R3 drawing)
+const UNO_OUTLINE = [[0, 0], [64.516, 0], [66.04, 1.524], [66.04, 12.954], [68.58, 15.494], [68.58, 48.26], [66.04, 50.8], [66.04, 53.34], [0, 53.34]], UNO_HOLES = [[13.97, 50.8], [15.24, 2.54], [66.04, 17.78], [66.04, 45.72]];
 const inch = (i) => Math.round(i * 25.4 * 100) / 100;
 const X = (i) => Math.round((OVER + i * 25.4) * 100) / 100;   // x of a header position given in inches from the board's left edge (Arduino Uno R3 drawing: D0 and A5 at 2.5 in = 63.5 mm)
 function unoPins(v) {
@@ -102,21 +104,22 @@ export function boards() {
         "Arduino Uno R4 WiFi: todo lo del R4 Minima más una matriz de LED de 12 x 8 (ArduinoLEDMatrix, loadFrame y renderBitmap; los 96 píxeles son las tres salidas de 32 bits matrix0, matrix1, matrix2, el bit 31 de matrix0 es el LED superior izquierdo, fila a fila, para que la página lo dibuje) y una radio WiFi que NO conecta: WiFi.begin() deja la placa desconectada y lo avisa en la consola de la pieza. Las secuencias y el texto de ArduinoGraphics en la matriz no están implementados.") },
   ];
   for (const v of UNO) {
+    OVER = v.core === "uno-r3" ? 6.4 : 1.9;   // USB-B sticks out 6.4 mm, the R4's USB-C 1.9 mm
     const pins = unoPins(v.core);
     const outputs = [...(v.matrix ? [0, 1, 2].map((i) => ({ name: "matrix" + i, type: "number", label: L(`LED matrix word ${i}`, `Matriz de LED, palavra ${i}`, `Matriz de LED, palabra ${i}`) })) : []), ...LIFE];
     out.push(writePart({ id: "dotbench." + v.id, dir: v.id, w: UNO_W + OVER, d: UNO_D, h: 15, scale: 8, category: "mcu", tags: v.tags, keywords: v.kw, name: v.name, desc: cat(v.desc, NOEMU),
-      extra: { logic_mv: 5000, ...(v.core === "uno-r3" ? { vih_pct: 60 } : {}) }, pins, groups: unoGroups(),
+      extra: { logic_mv: 5000, ...(v.core === "uno-r3" ? { vih_pct: 60 } : {}), outline: UNO_OUTLINE.map(([x, y]) => ({ x: Math.round((OVER + x) * 1000) / 1000, y })), refs: UNO_HOLES.map(([x, y], i) => ({ name: "hole" + (i + 1), kind: "hole", diameter_mm: 3.2, mm: { x: Math.round((OVER + x) * 100) / 100, y, z: 0 } })) }, pins, groups: unoGroups(),
       fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }],
       ...(outputs ? { outputs } : {}),
       visuals: [{ id: "led", effect: "glow", x: Math.round((OVER + 31) * 8), y: 64, r: 7, color: "#f5c518", source: { gpio: 13 } }],
       behaviour: { type: "wasm", entry: "behaviour.wasm", abi: 1, core: v.core, memory_kb: 1024, stack_kb: 64, sources: ["src/main.ino"] },
-      svg: ({ px }) => { const o = px(OVER), B = [[0, 0], [66.04, 0], [68.58, 2.54], [68.58, 34.29], [67.31, 35.56], [67.31, 51.8], [66.04, 53.34], [0, 53.34]].map(([x, y]) => `${(o + px(x)).toFixed(1)},${px(y).toFixed(1)}`).join(" ");
+      svg: ({ px }) => { const o = px(OVER), B = UNO_OUTLINE.map(([x, y]) => `${(o + px(x)).toFixed(1)},${px(y).toFixed(1)}`).join(" ");
         return `<polygon points="${B}" fill="${v.core === "uno-r3" ? "#00878f" : "#0b6e7a"}" stroke="#034a52" stroke-width="3"/>`
         + `<rect x="0" y="${px(8)}" width="${px(OVER + 10)}" height="${px(12)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><text x="${px(OVER / 2 + 3)}" y="${px(14.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#333">${v.core === "uno-r3" ? "USB-B" : "USB-C"}</text>`
         + `<rect x="0" y="${px(36)}" width="${px(OVER + 8)}" height="${px(10)}" fill="#222" stroke="#000" stroke-width="2"/><text x="${px(OVER / 2 + 2)}" y="${px(41.5)}" text-anchor="middle" font-family="monospace" font-size="10" fill="#aaa">DC</text>`
         + `<rect x="${px(OVER + 30)}" y="${px(18)}" width="${px(16)}" height="${px(16)}" fill="#1b1b1b"/><text x="${px(OVER + 38)}" y="${px(27.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#bbb">${v.core === "uno-r3" ? "ATmega328P" : "RA4M1"}</text>`
         + (v.matrix ? `<rect x="${px(OVER + 44)}" y="${px(22)}" width="${px(21)}" height="${px(14)}" fill="#101010" stroke="#444" stroke-width="2"/>` : "")
-        + `<text x="${px(OVER + 2)}" y="${px(30)}" font-family="sans-serif" font-size="15" font-weight="bold" fill="#fff">${v.title.replace("Arduino ", "")}</text><circle id="led" cx="${px(OVER + 31)}" cy="64" r="7" fill="#f5c518" opacity="0.25"/>` + pinDots(pins, px, 4); },
+        + `<text x="${px(OVER + 2)}" y="${px(30)}" font-family="sans-serif" font-size="15" font-weight="bold" fill="#fff">${v.title.replace("Arduino ", "")}</text><circle id="led" cx="${px(OVER + 31)}" cy="64" r="7" fill="#f5c518" opacity="0.25"/>` + UNO_HOLES.map(([x, y]) => `<circle cx="${(o + px(x)).toFixed(1)}" cy="${px(y)}" r="${px(1.6)}" fill="#0a0a0a" stroke="#c9a227" stroke-width="1.5"/>`).join("") + pinDots(pins, px, 4); },
       files: { "src/main.ino": blinkIno(v) },
       tests: { "blink.test.json": blinkTest(v.matrix ? [{ comment: "the heart is on the matrix while the LED is on", expect_output: { name: "matrix0", value: 0x3184a444 } }, { expect_output: { name: "matrix2", value: 0x100a0040 } }] : []) } }));
   }
