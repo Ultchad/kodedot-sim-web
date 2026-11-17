@@ -37,6 +37,8 @@ interface At {
   turn?: number;
 }
 
+/** A solder joint: bright, but not the white of a polished shell. */
+const SOLDER: Finish = ['metal', '#b3b7bd'];
 /** Body colours of chip passives: thick-film resistors are black, ceramic capacitors tan. */
 export const RES: Finish = ['matte', '#1c1c1f'];
 /** Moulded chip packages: a shade lighter than the black solder mask they sit on, as epoxy is. */
@@ -53,7 +55,7 @@ export function legRow(s: Shape, pts: readonly V3[], o: { under: number; top: nu
     // the housing's top is hidden by the board: no bevel there
     s.box(...PAL.plasticBlack, x, z, PITCH - 0.12, PITCH - 0.12, 0, o.under, 0, 0, { ao: 0.72 });
     s.box(...PAL.gold, x, z, 0.64, 0.64, -o.plug, 0.2, 0, 0, { cap: true, ao: 0.82 });
-    s.disc(...PAL.tin, x, z, 0.82, o.top, o.top + 0.72, 0.5, o.seg, { ao: 0.86 });
+    s.disc(...SOLDER, x, z, 0.82, o.top, o.top + 0.72, 0.5, o.seg, { ao: 0.86 });
   }
 }
 
@@ -104,19 +106,19 @@ export function radioModule(s: Shape, o: RadioModuleOptions): RadioModuleOut {
     const ze = o.z + side * (wid / 2 + 0.03);
     for (let i = 0; i < nSide; i++) {
       const px = o.x + len - 1.5 - i * 1.27;
-      s.rect(...PAL.gold, px, ze - side * 0.4, 0.72, 0.8, yp);
+      s.rect(...PADS, px, ze - side * 0.4, 0.72, 0.8, yp);
       edge.push([[px - 0.36, y0 + 0.04, ze], [px + 0.36, y0 + 0.04, ze], [px + 0.36, yp, ze], [px - 0.36, yp, ze]]);
     }
-    faces(s, PAL.gold, edge, [0, 0, side], 0.9);
+    faces(s, PADS, edge, [0, 0, side], 0.9);
   }
   const end: [V3, V3, V3, V3][] = [];
   const xe = o.x + len + 0.03;
   for (let i = 0; i < nEnd; i++) {
     const pz = o.z + (i - (nEnd - 1) / 2) * 1.27;
-    s.rect(...PAL.gold, xe - 0.4, pz, 0.8, 0.72, yp);
+    s.rect(...PADS, xe - 0.4, pz, 0.8, 0.72, yp);
     end.push([[xe, y0 + 0.04, pz - 0.36], [xe, y0 + 0.04, pz + 0.36], [xe, yp, pz + 0.36], [xe, yp, pz - 0.36]]);
   }
-  faces(s, PAL.gold, end, [1, 0, 0], 0.9);
+  faces(s, PADS, end, [1, 0, 0], 0.9);
   // the antenna: feed and short at one side, then a square meander across the width
   const teeth = o.teeth ?? 5;
   const uNear = 1.0, uFar = ant - 1.9, v0 = -wid / 2 + 2.3, step = (wid - 3.6) / (2 * teeth);
@@ -139,6 +141,8 @@ export function radioModule(s: Shape, o: RadioModuleOptions): RadioModuleOut {
 }
 /** Copper under black solder mask, as the antenna trace of a module shows: a shade off the board, no more. */
 const ANTENNA: Finish = ['pcb', '#3a362c'];
+/** Immersion gold on a module's castellations: paler than a header's hard gold. */
+const PADS: Finish = ['metal', '#cbb06a'];
 /** The shield of a module: satin nickel silver, duller than fresh solder. */
 const CAN: Finish = ['metal', '#9fa3a9'];
 
