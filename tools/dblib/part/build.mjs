@@ -17,7 +17,7 @@ const readIf = (p) => (fs.existsSync(p) ? fs.readFileSync(p) : null);
 
 export function env() {
   const emsdk = process.env.DOTBENCH_EMSDK || "/home/claude/tools/emsdk";
-  const api = process.env.DOTBENCH_ARDUINO_API || "/home/claude/src/third/ArduinoCore-API";
+  const api = process.env.DOTBENCH_ARDUINO_API || path.join(ROOT, "third_party/ArduinoCore-API");   // vendored, pinned (see its VERSION)
   const cache = process.env.DOTBENCH_CACHE || path.join(os.homedir(), ".cache", "dotbench");
   return { emsdk, api, cache };
 }
