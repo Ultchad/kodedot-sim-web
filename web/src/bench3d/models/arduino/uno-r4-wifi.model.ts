@@ -23,7 +23,7 @@ import {
 } from '../../index';
 import {
   C0402, C0603, C0805, F1812, L0603, LED0603, R0402, SC70_6, SOD123, SOT143, SOT23, TOP, animateUno, chips, dcJack, dots, drawCaption, drawPinLabels, emptyLands, eraseHoles, flatDiode,
-  inductor, inverse, jstSh4, leadless, ledBodies, ledLamps, legend, plate, qfpLean, resetButton, resetCap, smallOutline, sot223, trafficOutputs, unoBoard, unoGeo, type ChipSize, type UnoLeds,
+  inductor, inverse, jstSh4, leadless, ledBodies, ledLamps, legend, plate, qfpLean, resetButton, resetCap, resetPress, smallOutline, sot223, trafficOutputs, unoBoard, unoGeo, type ChipSize, type UnoLeds,
   type UnoManifest,
 } from './uno';
 
@@ -38,8 +38,12 @@ const USB = { x: -0.65, y: 15.47 }, JACK = { x: Math.max(-2.04, -geo.x0), y: 45.
 const RADIO = { x: 10.575, y: 31.845, w: 15.4, d: 20.65, can: 14.2 }; // lying: its length along x, the antenna at the left end
 const MCU = { x: 52.75, y: 17.49, size: 10 };
 const ICSP = { x: 64.9, y: 25.4 }, QWIIC = { x: 68.2, y: 38.99 }, ESP = { x: 18.8, y: 11.38 }, JOFF = { x: 20.32, y: 50.8 };
-const RESET = { x: 6.35, y: 3.94 };
-const LEDS: UnoLeds = { l: [26.42, 11.18], tx: [26.42, 16.76], rx: [26.42, 19.05], on: [64.9, 13.79, 315], size: LED0603, onReach: 1.6 };
+/** The reset button: where the manifest has the control (an estimate there; the PCB document has it at 6.35, 3.94). */
+const RESET = geo.control('reset');
+/** The transistor that stands right of the word RESET (the word ends before it). */
+const Q_RESET = { x: 12.52, y: 9.27 };
+/** L (pin 13) lights where the manifest's `visuals.led` is; TX, RX and ON as the PCB document has them. */
+const LEDS: UnoLeds = { l: geo.visual('led'), tx: [26.42, 16.76], rx: [26.42, 19.05], on: [64.9, 13.79, 315], size: LED0603, onReach: 1.6 };
 /** The LED matrix: 12 x 8 at 2.1 mm, each LED turned 45 degrees; `margin` is how far the light may spill. */
 const MX = { x0: 34.41 - 1.05, y0: 26.81 - 1.05, pitch: 2.1, cols: 12, rows: 8, margin: 1.0 };
 const mxX = (c: number) => MX.x0 + (c + 0.5) * MX.pitch, mxY = (r: number) => MX.y0 + (r + 0.5) * MX.pitch;
@@ -98,7 +102,7 @@ export default defineModel<PartState>({
       unoBoard(s, geo, MASK, ctx.seg);
       usbC(s, { x: USB.x, z: USB.y, y: TOP, turn: 1 });
       dcJack(s, JACK.x, JACK.y, 1, ctx.seg);
-      resetButton(s, RESET.x, RESET.y);
+      resetButton(s, RESET);
       canTop = moduleCan(s, { x: RADIO.x, z: RADIO.y, y: TOP, w: RADIO.w, d: RADIO.d, canD: RADIO.can, turn: 3 });
       chipTop = qfpLean(s, { x: MCU.x, z: MCU.y, size: MCU.size, perSide: 16, h: 1.45 });
       pinHeader(s, { x: ICSP.x, z: ICSP.y, y: TOP, n: 3, rows: 2, turn: 1 });
@@ -121,7 +125,7 @@ export default defineModel<PartState>({
       smallOutline(s, [9.12, 15.47, 180], SOT143);
       smallOutline(s, [12.52, 14.07, 180], SC70_6);
       smallOutline(s, [12.52, 16.87, 180], SC70_6);
-      for (const at of [[12.52, 9.27, 0], [63.27, 33.31, 180], [66.67, 33.31, 180]] as const) smallOutline(s, at, SOT23);
+      for (const at of [[Q_RESET.x, Q_RESET.y, 0], [63.27, 33.31, 180], [66.67, 33.31, 180]] as const) smallOutline(s, at, SOT23);
       chips(s, C0805, [[1.85, 9.19], [30.64, 26.19], [30.64, 28.14], [30.66, 30.09], [30.66, 32.04], [23.2, 36.09, 90], [25.22, 36.09, 90], [31.02, 40.98, 90], [17.59, 42.93, 90]]);
       chips(s, C0603, [[44.35, 15.39], [60.95, 17.46], [44.25, 23.46]]);
       chips(s, L0603, [[45.99, 11.91], [59.51, 11.91]]);
@@ -170,7 +174,7 @@ export default defineModel<PartState>({
           legend(c, 'TX', LEDS.tx[0] - 2.6, LEDS.tx[1], 1.45);
           legend(c, 'RX', LEDS.rx[0] - 2.6, LEDS.rx[1], 1.45);
           legend(c, 'ON', LEDS.on[0] - 1.9, LEDS.on[1] + 1.7, 1.35);
-          legend(c, 'RESET', 6.2, 8.1, 1.6);
+          legend(c, 'RESET', Math.min(RESET[0] - 0.15, Q_RESET.x - 4.1), RESET[1] + 4.16, 1.6);
           legend(c, 'ICSP', ICSP.x, ICSP.y - 4.85, 1.35);
           // the three pins in line with the power sockets: battery switch-off, ground, the clock's backup supply
           legend(c, 'OFF', JOFF.x - 2.54, 47.75, 1.22, true);
@@ -225,7 +229,8 @@ export default defineModel<PartState>({
         },
       }),
       matrix,
-      resetCap(geo, RESET.x, RESET.y, ['matte', '#eeebe3'], ctx.seg),
+      resetCap(geo, manifest, ['matte', '#eeebe3'], ctx.seg),
+      resetPress(geo, manifest),
       ...ledLamps(geo, LEDS),
     );
     return root;

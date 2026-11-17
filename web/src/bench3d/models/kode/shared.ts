@@ -2,7 +2,7 @@
  * Shared builders of the Kode module family (the add-on modules that plug onto the Dot's 2x10 expansion header J3).
  *
  * The family's look, read off the owner's reference pictures (never copied): a matte black rounded-square board
- * with a gold-ringed mounting hole in each corner, gold silkscreen, black sockets, a 2x10 right-angle pin header at
+ * with a plain drilled mounting hole in each corner, gold silkscreen, black sockets, a 2x10 right-angle pin header at
  * the edge that meets the Dot (the three bare-board modules); a moulded block with a tongue, in the Dot's own
  * plastic, with two whip antennas (the two cased modules, case.ts).
  *
@@ -109,22 +109,27 @@ export function moduleBoard(m: KodeManifest, o: { thick?: number; inset?: number
   return { loop: roundedRectLoop((x0 + x1) / 2, (far + near) / 2, x1 - x0, near - far, r, o.seg ?? 6), x0, x1, far, near, top, under, holes };
 }
 /**
- * A board with any outline: solder mask round an FR4 core, drilled holes with their tinned rings. Returns the height
+ * A board with any outline: solder mask round an FR4 core, drilled holes with their pale edge. Returns the height
  * of its top face. (The kit's `pcb` is this with a rounded rectangle.)
  */
 export function outlineBoard(s: Shape, o: { loop: Pt[]; y?: number; thick?: number; finish?: Finish; holes?: { x: number; z: number; d: number }[]; ring?: Finish }): number {
   const y = o.y ?? 0, t = o.thick ?? 1.6;
   const holes = (o.holes ?? []).map((h) => circleLoop(h.x, h.z, h.d / 2, 14));
   s.prism(...(o.finish ?? PAL.pcbBlack), o.loop, y, y + t, 0.12, { cap: true, ao: 0.9, holes });
-  for (const h of o.holes ?? []) s.prism(...(o.ring ?? RING), circleLoop(h.x, h.z, h.d / 2 + 0.4, 18), y + t, y + t + 0.04, 0, { holes: [circleLoop(h.x, h.z, h.d / 2, 14)], ao: 1 });
+  for (const h of o.holes ?? []) s.prism(...(o.ring ?? HOLE_EDGE), circleLoop(h.x, h.z, h.d / 2 + 0.28, 18), y + t, y + t + 0.04, 0, { holes: [circleLoop(h.x, h.z, h.d / 2, 14)], ao: 1 });
   return y + t;
 }
 
 // ------------------------------------------------------------------------------------------------------- headers
 /** The boards' silkscreen as the pictures show it: a warm gold, a little softer than the kit's amber ink. */
 export const SILK = '#f0a83e';
-/** The dull gold of the bare rings round the mounting holes and of the fiducials (the picture shows them faint). */
+/** The dull gold of the fiducials (the picture shows them faint). */
 export const RING: Finish = ['matte', '#a5843a'];
+/**
+ * The edge of a mounting hole: the store picture, looked at closely, shows plain drilled holes with a thin pale edge
+ * (the board's core where the mask stops), not a gilded ring.
+ */
+export const HOLE_EDGE: Finish = ['matte', '#6f746a'];
 /**
  * A legend in the boards' silkscreen hand: a wide, even, heavy monospace (the kit's mono face, thickened with its own
  * outline, since the page ships it in one weight). Centred on (x, y) unless `align` says otherwise; `size` is the em
@@ -209,29 +214,37 @@ export function stripBetween(a: V3, b: V3): { x: number; z: number; turn: number
  * top, the wire entries on the far face (-Z, the board's edge) and the small clamp windows on the near face.
  * `n` ways along X centred on `x`, the screws on the line z = `z`. Sizes follow the pitch (5.08 mm: 7.6 deep, 9.5 high)
  * unless `h` (the height of the screw heads above the board: give it from the terminals) or `d` say otherwise.
+ * The screws stand in the middle of the block's depth unless `back` says how far the block reaches behind them
+ * (towards -Z): a block that may not pass the edge it stands at ends there, and keeps its near face where it was.
+ * Returns the block's own numbers; `d` is the depth it really has, `back` and `front` its two faces from the screws.
  */
-export function screwBlock(s: Shape, o: { x: number; z: number; y: number; n: number; pitch?: number; h?: number; d?: number; finish?: Finish; seg?: number }): { h: number; r: number; d: number } {
+export function screwBlock(
+  s: Shape,
+  o: { x: number; z: number; y: number; n: number; pitch?: number; h?: number; d?: number; back?: number; finish?: Finish; seg?: number },
+): { h: number; r: number; d: number; back: number; front: number } {
   const pitch = o.pitch ?? 5.08, w = o.n * pitch, fin = o.finish ?? PAL.plasticBlack;
-  const d = o.d ?? pitch * 1.5, h = o.h ?? pitch * 1.85, r = pitch * 0.33, seg = o.seg ?? 16;
+  const full = o.d ?? pitch * 1.5, h = o.h ?? pitch * 1.85, r = pitch * 0.33, seg = o.seg ?? 16;
+  // the screw's well must stay whole: the block never ends nearer than that behind the screws
+  const front = full / 2, back = Math.max(r + 0.55, Math.min(full / 2, o.back ?? full / 2)), d = back + front, mid = (front - back) / 2;
   s.at(o.x, o.y, o.z, () => {
-    s.box(...fin, 0, 0, w, d, 0, h, 0.35, 0.45, { ao: 0.9 });
+    s.box(...fin, 0, mid, w, d, 0, h, 0.35, 0.45, { ao: 0.9 });
     for (let i = 0; i < o.n; i++) {
       const px = (i - (o.n - 1) / 2) * pitch;
       // the screw's well (the screw itself is the model's, so that it can show a live output)
       s.disc('matte', '#070708', px, 0, r + 0.35, h, h + 0.03, 0, seg, { ao: 1 });
       // wire entry on the far face, clamp window on the near one
-      s.with(new Matrix4().makeTranslation(px, h * 0.36, -d / 2).multiply(new Matrix4().makeRotationX(-Math.PI / 2)), () => {
+      s.with(new Matrix4().makeTranslation(px, h * 0.36, -back).multiply(new Matrix4().makeRotationX(-Math.PI / 2)), () => {
         s.prism('matte', '#060607', rect(0, 0, pitch * 0.62, pitch * 0.6), 0, 0.03, 0, { ao: 1 });
         s.prism(...PAL.tin, rect(0, -pitch * 0.2, pitch * 0.5, pitch * 0.12), 0.03, 0.05, 0, { ao: 1 });
       });
-      s.with(new Matrix4().makeTranslation(px, h * 0.3, d / 2).multiply(new Matrix4().makeRotationX(Math.PI / 2)), () => {
+      s.with(new Matrix4().makeTranslation(px, h * 0.3, front).multiply(new Matrix4().makeRotationX(Math.PI / 2)), () => {
         s.prism('matte', '#060607', rect(0, 0, pitch * 0.42, pitch * 0.42), 0, 0.03, 0, { ao: 1 });
         s.prism(...PAL.tin, rect(0, 0, pitch * 0.2, pitch * 0.2), 0.03, 0.05, 0, { ao: 1 });
       });
-      if (i > 0) s.prism('matte', '#050506', rect(px - pitch / 2, 0, 0.14, d - 0.6), h, h + 0.03, 0, { ao: 1 });
+      if (i > 0) s.prism('matte', '#050506', rect(px - pitch / 2, mid, 0.14, d - 0.6), h, h + 0.03, 0, { ao: 1 });
     }
   });
-  return { h, r, d };
+  return { h, r, d, back, front };
 }
 
 // --------------------------------------------------------------------------------------------------- small parts

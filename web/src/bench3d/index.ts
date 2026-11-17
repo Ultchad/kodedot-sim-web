@@ -8,7 +8,7 @@ export {
   type PartModel, type Terminal, type BuildCtx, type AnimEnv, type ModelReport, type PartState, type ManifestBody, type ManifestPin, type ManifestFace, type Overhang,
 } from './contract';
 export * from './parts';
-export { markControl, controlOf, controlsIn, controlFromManifest, nextValue, turnDeg, turnValueAt, type Control, type ControlMark, type ControlMode, type ControlManifest } from './controls';
+export { markControl, hitPad, controlOf, controlsIn, controlFromManifest, nextValue, turnDeg, turnValueAt, type Control, type ControlMark, type ControlMode, type ControlManifest } from './controls';
 export { circleLoop, roundedRectLoop, roundPolygon, type Pt } from '../lib/bodyModel';
 export type { V2, V3 } from '../device3d/meshBuilder';
 export { Matrix4, Group, type Object3D } from 'three';

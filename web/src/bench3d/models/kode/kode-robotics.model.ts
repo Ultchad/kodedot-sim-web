@@ -4,7 +4,7 @@
  * Sources: parts/kode-robotics/manifest.json (the footprint: a 45 x 40.5 mm board plus the header's pins; the four
  * mounting holes; every terminal; the connector's seat: measured from the picture by the parts engineer, an
  * ESTIMATE) and the maker's store picture (ref-4, never copied) for everything seen: the black rounded-square board
- * with a gold-ringed hole in each corner; on the far edge, left to right, the "motor B" terminal block, the four
+ * with a plain drilled hole in each corner; on the far edge, left to right, the "motor B" terminal block, the four
  * straight "stepper" pins and the "motor A" block (black blocks, big bright slotted screws, 3.81 mm apart); the three
  * "servo" pins and the I2C sockets down the left edge, the sensor sockets down the right, each contact named in gold
  * beside it; the small QFN driver in the middle with its two sense resistors above it, a small part on either side
@@ -24,7 +24,7 @@
  * pulled low while its pull-up rail is fed) makes the driver chip glow red hot, with its heat on the board round it.
  */
 import manifest from '../../../../../parts/kode-robotics/manifest.json';
-import { PAL, PITCH, Shape, defineModel, footprintOf, glowing, halo, partState, print, setLamp, terminalsFromManifest, topQuad, type PartState, type Pt } from '../../index';
+import { PAL, PITCH, Shape, defineModel, footprintOf, glowing, halo, overhangOf, partState, print, setLamp, terminalsFromManifest, topQuad, type PartState, type Pt } from '../../index';
 import { RING, SILK, asManifest, chipPassive, connectorOf, moduleBoard, outlineBoard, pinPoints, pinStrip, rightAngleHeader, screwBlock, socketStrip, silkText, stripBetween, tailRows } from './shared';
 
 const M = asManifest(manifest);
@@ -47,6 +47,14 @@ const OUTS = [
 /** The terminal blocks: pitch and height (the screw heads are the terminals) from the manifest. */
 const MOT_PITCH = Math.abs(at.MOTA_2[0] - at.MOTA_1[0]);
 const BLOCK = { h: at.MOTA_1[1] - TOP, d: MOT_PITCH * 1.5, r: MOT_PITCH * 0.33 };
+/**
+ * What the manifest lets the part draw outside its body. The picture shows the two blocks hanging over the far edge;
+ * the manifest (batch 5) puts their screws 2 mm from that edge, which a block of this pitch (5.7 mm deep, its screws
+ * in the middle) passes by 0.86 mm, and gives the body no `overhang_mm.back`. So the blocks end at the edge of the
+ * footprint, thinner behind their screws than they are, and take their whole depth the day the manifest allows it.
+ */
+const OVERHANG = overhangOf(M.body);
+const BLOCK_BACK = (screws: number): number => Math.min(BLOCK.d / 2, screws - (-D / 2 - (OVERHANG.back ?? 0)));
 /** A straight pin's length above its 2.5 mm plastic, and a socket's height: up to their terminals. */
 const PIN_LEN = at.STP_1[1] - TOP - 2.5;
 const SOCKET_H = at.J403_GND[1] - TOP;
@@ -86,12 +94,13 @@ export default defineModel<PartState>({
   id: M.id,
   title: 'Kode Robotics module',
   footprintMm: footprintOf(M.body),
+  overhangMm: OVERHANG,
   build(ctx) {
     const s = new Shape();
     outlineBoard(s, { loop: B.loop, y: B.under, thick: TOP - B.under, holes: B.holes });
 
     // the far edge: motor B block, stepper pins, motor A block
-    for (const [a, b] of [['MOTB_1', 'MOTB_2'], ['MOTA_1', 'MOTA_2']] as const) screwBlock(s, { x: (at[a][0] + at[b][0]) / 2, z: at[a][2], y: TOP, n: 2, pitch: MOT_PITCH, h: BLOCK.h, d: BLOCK.d, seg: ctx.seg(16) });
+    for (const [a, b] of [['MOTB_1', 'MOTB_2'], ['MOTA_1', 'MOTA_2']] as const) screwBlock(s, { x: (at[a][0] + at[b][0]) / 2, z: at[a][2], y: TOP, n: 2, pitch: MOT_PITCH, h: BLOCK.h, d: BLOCK.d, back: BLOCK_BACK(at[a][2]), seg: ctx.seg(16) });
     for (const o of OUTS) s.box('matte', '#3c3d42', at[o.pin][0], at[o.pin][2], BLOCK.r * 1.7, 0.45, TOP + BLOCK.h + 0.14, TOP + BLOCK.h + 0.17, 0, 0, { ao: 1 });
     pinStrip(s, { ...stripBetween(at.STP_1, at.STP_4), y: TOP, n: 4, length: PIN_LEN });
     // the left edge: servo pins, then the I2C sockets; the right edge: the sensor sockets
@@ -146,20 +155,28 @@ export default defineModel<PartState>({
             g.stroke();
           }
           // the far edge: each connector's name under it, with the corner marks that tie it to its part
-          const named = (t: string, x0: number, x1: number, face: number, size: number) => {
-            label(t, (x0 + x1) / 2, face + 0.45 + 0.35 + size * 0.36, size);
+          // (a block's outline runs the whole way down its right side, as the picture shows; the others are corners)
+          const named = (t: string, x0: number, x1: number, face: number, size: number, side = face - 1) => {
+            // the name stands under the middle of its part, moved along just enough to stay off a mounting hole
+            const z = face + 0.45 + 0.35 + size * 0.36, half = (t.length * size * 0.6) / 2;
+            let x = (x0 + x1) / 2;
+            for (const h of B.holes) {
+              const r = h.d / 2 + 0.6;
+              if (Math.abs(h.z - z) < r + size * 0.4 && Math.abs(h.x - x) < r + half) x = h.x + Math.sign(x - h.x) * (r + half);
+            }
+            label(t, x, z, size);
             g.beginPath();
             g.moveTo(x0, face - 1);
             g.lineTo(x0, face + 0.45);
             g.lineTo(x0 + 1.4, face + 0.45);
-            g.moveTo(x1, face - 1);
+            g.moveTo(x1, side);
             g.lineTo(x1, face + 0.45);
             g.lineTo(x1 - 1.4, face + 0.45);
             g.stroke();
           };
           const face = at.MOTB_1[2] + BLOCK.d / 2;
-          named('motor B', at.MOTB_1[0] - MOT_PITCH / 2 - 0.3, at.MOTB_2[0] + MOT_PITCH / 2 + 0.3, face, 2);
-          named('motor A', at.MOTA_1[0] - MOT_PITCH / 2 - 0.3, at.MOTA_2[0] + MOT_PITCH / 2 + 0.3, face, 2);
+          named('motor B', at.MOTB_1[0] - MOT_PITCH / 2 - 0.3, at.MOTB_2[0] + MOT_PITCH / 2 + 0.3, face, 2, B.far + 0.4);
+          named('motor A', at.MOTA_1[0] - MOT_PITCH / 2 - 0.3, at.MOTA_2[0] + MOT_PITCH / 2 + 0.3, face, 2, B.far + 0.4);
           named('stepper', at.STP_1[0] - PITCH / 2 - 0.3, at.STP_4[0] + PITCH / 2 + 0.3, at.STP_1[2] + PITCH / 2, 1.9);
           // the outline of every passive
           g.lineWidth = 0.14;
@@ -178,6 +195,14 @@ export default defineModel<PartState>({
           g.lineTo(end, tails - 1.25);
           g.lineTo(end, EDGE - PITCH - 0.2);
           g.stroke();
+          // the print is one flat sheet and the board under it is drilled: nothing is printed across a hole
+          g.globalCompositeOperation = 'destination-out';
+          for (const h of B.holes) {
+            g.beginPath();
+            g.arc(h.x, h.z, h.d / 2 + 0.35, 0, Math.PI * 2);
+            g.fill();
+          }
+          g.globalCompositeOperation = 'source-over';
         },
       }),
       glowing('u501', chip),
