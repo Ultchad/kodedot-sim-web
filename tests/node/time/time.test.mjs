@@ -38,18 +38,20 @@ await check("a clock set by the page survives a reset, a power cycle and a new p
   const bench = await new Bench().open();
   let run = await boot(bench, RESET.POWERON);
   const target = Date.UTC(2031, 5, 7, 8, 9, 10);
-  run.glue(tmm).set(target);
-  assert.ok(Math.abs(utcOf((await cli(run, "time")).text) - target) < 3000, "the firmware sees it");
+  run.glue(tmm).set(target); const setAt = Date.now();
+  // the device clock keeps running while the boots happen (slowly on a loaded host), so compare with target + time elapsed since the set
+  const want = () => target + (Date.now() - setAt);
+  assert.ok(Math.abs(utcOf((await cli(run, "time")).text) - want()) < 3000, "the firmware sees it");
   await run.stop();
   run = await boot(bench, RESET.EXTERNAL);                     // reset
-  assert.ok(Math.abs(run.glue(tmm).now() - target) < 4000, "after reset: " + new Date(run.glue(tmm).now()).toISOString());
+  assert.ok(Math.abs(run.glue(tmm).now() - want()) < 2000, "after reset: " + new Date(run.glue(tmm).now()).toISOString());
   await run.stop();
   run = await boot(bench, RESET.POWERON);                      // power-on
-  assert.ok(Math.abs(run.glue(tmm).now() - target) < 6000, "after power-on");
+  assert.ok(Math.abs(run.glue(tmm).now() - want()) < 2000, "after power-on");
   await run.stop();
   const reloaded = await new Bench({ dir: bench.dir }).open();  // page reload: only the durable store is left
   run = await boot(reloaded, RESET.POWERON);
-  assert.ok(Math.abs(run.glue(tmm).now() - target) < 8000, "after a reload");
+  assert.ok(Math.abs(run.glue(tmm).now() - want()) < 2000, "after a reload");
   run.glue(tmm).resetToHost();
   assert.ok(Math.abs(run.glue(tmm).now() - Date.now()) < 1500, "back on the host clock");
   await run.stop();

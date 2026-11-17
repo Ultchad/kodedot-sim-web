@@ -12,7 +12,8 @@ kos="${DOTBENCH_KODEOS:-/home/claude/src/KodeOS}"
 echo "== dotbench build $kos --role kodeos"
 "$root/tools/dotbench" build "$kos" --role kodeos | tail -1
 rc=0
-for t in "$here"/*.kodeos-test.mjs; do
+# kodeOS-role tests of every area: tests/node/<area>/*.kodeos-test.mjs (kodeos' own first, e.g. radio/kodeos_radio)
+for t in $(ls "$here"/../*/*.kodeos-test.mjs); do
   echo "== ${t#$root/} (Node)"
   timeout 600 node --expose-gc "$t" || rc=1
 done

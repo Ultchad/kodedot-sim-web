@@ -7,7 +7,7 @@ import { Bench, RESET, pkgPath, sleep, glueMods } from "../persist/host.mjs";
 let failed = false;
 const check = async (name, fn) => { try { await fn(); console.log("ok   - " + name); } catch (e) { failed = true; console.log("FAIL - " + name + "\n" + e.stack); } };
 const strip = (s) => s.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "");
-const press = async (run, id) => { run.button(id, true); await sleep(80); run.button(id, false); };
+const press = async (run, id) => { run.button(id, true); await sleep(250); run.button(id, false); };   // held long enough for a starved host to see the level
 /** Type one console line and return the reply lines (">..." up to the terminating >ok / >err). */
 async function cli(run, line, ms = 6000) {
   const start = run.logText().length;
@@ -22,6 +22,16 @@ async function cli(run, line, ms = 6000) {
   }
 }
 const TOP = 4, BOT = 5;
+/** Press a button until the firmware reacts (`seen` matches the log after the press). A press that lands in the first
+ *  moments after the folder line can be lost under heavy host load (the button AO polls with a 30 ms settle), and nothing is
+ *  logged for a lost press; this retries the INPUT only, every assertion on what the firmware then does is unchanged. */
+const pressUntil = async (run, id, seen, ms = 2500, tries = 3) => {
+  for (let k = 0; k < tries; k++) {
+    const from = run.logText().length;
+    await press(run, id);
+    try { await run.waitFor(() => seen.test(run.logText().slice(from)), ms, "reaction to button " + id); return; } catch (e) { if (k === tries - 1) throw e; }
+  }
+};
 
 // ---------------------------------------------------------------- examples/storage, unmodified
 await check("examples/storage: first boot formats, writes a line, reads it back; the next boot appends and reads two", async () => {
@@ -41,7 +51,7 @@ await check("examples/storage: first boot formats, writes a line, reads it back;
   await run.waitFor(() => /folder \/storage\/storage_demo is there/.test(run.logText()), 20000, "folder 2");
   assert.match(run.logText(), /storage boot number 2;/, "the boot counter (a setting in NVS) survived");
   assert.doesNotMatch(run.logText(), /will not mount/, "the volume mounted as it was, no format");
-  await press(run, BOT);                                   // read what boot 1 left, before writing anything
+  await pressUntil(run, BOT, /reading \/storage/);          // read what boot 1 left, before writing anything
   await run.waitFor(() => /1 lines read/.test(run.logText()), 5000, "read of boot 1's file");
   assert.match(run.logText(), /boot 1 press 1 at \d+ ms/, "the file written by the previous boot was read back");
   await press(run, TOP);                                   // the demo starts a new log on the first press of a boot...
@@ -62,13 +72,17 @@ await check("examples/storage: 20 restarts; each boot reads what the one before 
     await run.waitFor(() => /folder \/storage\/storage_demo is there/.test(run.logText()), 20000, "folder " + i);
     assert.match(run.logText(), new RegExp(`storage boot number ${i};`));
     if (i > 1) {
-      await press(run, BOT);
+      await pressUntil(run, BOT, /reading \/storage/);
       await run.waitFor(() => /lines read/.test(run.logText()), 5000, "read of the previous boot's file " + i);
       assert.match(run.logText(), new RegExp(`boot ${i - 1} press 2 at`), "boot " + (i - 1) + "'s second line is on the volume");
     }
-    await press(run, TOP); await sleep(120); await press(run, TOP); await sleep(250);
+    const written = () => (run.logText().match(/line written/g) ?? []).length;
+    for (let k = 1; k <= 2; k++) {                          // each write must be answered before the next press (the demo ignores a press while its buffer is lent)
+      await pressUntil(run, TOP, /line written|write failed/, 4000);
+      await run.waitFor(() => written() >= k, 8000, "write " + k + " of boot " + i);
+    }
     const before = (run.logText().match(/lines read/g) ?? []).length;
-    await press(run, BOT);
+    await pressUntil(run, BOT, /reading \/storage/);        // (ignored by the demo while a write still holds its buffer: slow host)
     await run.waitFor(() => (run.logText().match(/lines read/g) ?? []).length > before, 5000, "read " + i);
     assert.match(run.logText(), new RegExp(`boot ${i} press 2 at`));
     await run.stop();

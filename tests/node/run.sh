@@ -18,7 +18,7 @@ command -v emcc >/dev/null 2>&1 || { . "$emsdk/emsdk_env.sh" >/dev/null 2>&1; }
 if [ "${1:-}" = "--rebuild" ]; then shift; rm -rf "$build/lib" "$build/obj"; fi
 areas=("$@")
 if [ ${#areas[@]} -eq 0 ]; then
-  mapfile -t areas < <(cd "$here" && for d in */; do d="${d%/}"; [ "$d" != acceptance ] && ls "$d"/*.test.mjs >/dev/null 2>&1 && echo "$d"; done)
+  mapfile -t areas < <(cd "$here" && for d in */; do d="${d%/}"; [ "$d" != acceptance ] && [ -n "$(ls "$d"/*.test.mjs "$d"/*/*.test.mjs 2>/dev/null)" ] && echo "$d"; done)
 fi
 
 echo "== dotbench sdk"
@@ -48,9 +48,17 @@ echo "== rtos unit tests"
 "$root/runtime/rtos/test/run.sh" | tail -2
 
 rc=0
-for t in "$here"/acceptance/*.test.mjs $(for a in "${areas[@]}"; do ls "$here/$a"/*.test.mjs; done); do
+# an area's tests: tests/node/<area>/*.test.mjs and one level down (tests/node/apps/<app>/<app>.test.mjs)
+for t in "$here"/acceptance/*.test.mjs $(for a in "${areas[@]}"; do ls "$here/$a"/*.test.mjs "$here/$a"/*/*.test.mjs 2>/dev/null; done); do
   echo "== ${t#$here/} (Node)"
   timeout 600 node --expose-gc "$t" || rc=1
 done
+# whole-device suites (kodeOS role, apps inside kodeOS): with no area given they run too; NODE_SKIP_OS=1 skips them
+if [ $# -eq 0 ] && [ -z "${NODE_SKIP_OS:-}" ]; then
+  for r in kodeos boot; do
+    echo "== tests/node/$r/run.sh"
+    "$here/$r/run.sh" || rc=1
+  done
+fi
 [ $rc -eq 0 ] && echo "ALL TESTS PASSED" || echo "TESTS FAILED"
 exit $rc

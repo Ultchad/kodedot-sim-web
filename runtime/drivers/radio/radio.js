@@ -131,7 +131,7 @@ export default function create(ctx) {
   function take(slotAddr) {
     const a = I(), base = slotAddr >> 2, h = ctx.heap();
     let end = slotAddr + 32; while (h[end] && end < slotAddr + 63) end++;
-    const op = td.decode(h.subarray(slotAddr + 32, end));
+    const op = td.decode(h.slice(slotAddr + 32, end));   // a copy: TextDecoder refuses views of shared memory in Chrome
     const inPtr = a[base + 2] >>> 0, inLen = a[base + 3] >>> 0;
     const input = h.slice(inPtr, inPtr + inLen);
     const fn = w.ops.get(op);

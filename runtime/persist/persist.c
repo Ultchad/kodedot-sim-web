@@ -94,6 +94,7 @@ void dbp_write(dbp_region_t *r, uint32_t off, const void *src, uint32_t len)
     if (len > r->size - off) len = r->size - off;
     len = cut_allow(len);
     if (!len) return;
+    if (memcmp(r->buf + off, src, len) == 0) return;   /* a write that leaves the bytes as they are is not a change: no dirty bit, no generation bump */
     memcpy(r->buf + off, src, len);
     dbp_dirty(r, off, len);
 }
@@ -104,6 +105,11 @@ void dbp_fill(dbp_region_t *r, uint32_t off, int byte, uint32_t len)
     if (len > r->size - off) len = r->size - off;
     len = cut_allow(len);
     if (!len) return;
+    {   /* same rule as dbp_write: filling with what is already there changes nothing */
+        const uint8_t *p = r->buf + off; uint32_t i = 0;
+        while (i < len && p[i] == (uint8_t)byte) i++;
+        if (i == len) return;
+    }
     memset(r->buf + off, byte, len);
     dbp_dirty(r, off, len);
 }

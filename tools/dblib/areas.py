@@ -67,6 +67,21 @@ def load_areas(root, role="app"):
                          % (role, f, b[0].name, b[0].dir.relative_to(root), b[0].supersedes[f],
                             a.name, a.dir.relative_to(root), a.supersedes[f]))
             seen[f] = (a, None)
+    # Two areas shipping a header with the same relative path shadow each other on the include path (the first
+    # directory wins), which broke the build once (esp_image_format.h). Fail loudly instead.
+    hdrs = {}
+    for a in areas:
+        inc = a.dir / "include"
+        if not inc.is_dir():
+            continue
+        for h in sorted(inc.rglob("*")):
+            if h.is_file():
+                rel = h.relative_to(inc).as_posix()
+                if rel in hdrs and hdrs[rel] != a.name:
+                    sys.exit("dotbench: build error (role '%s'): header %s exists in the include folders of two areas: '%s' and '%s'.\n"
+                             "  One shadows the other on the include path. Keep one header that serves both."
+                             % (role, rel, hdrs[rel], a.name))
+                hdrs[rel] = a.name
     return areas
 
 

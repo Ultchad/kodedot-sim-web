@@ -15,6 +15,9 @@ export const pkgFile = (name) => path.join(buildDir(), "apps", name, name + ".do
 export const pkgBytes = (name) => new Uint8Array(fs.readFileSync(pkgFile(name)));
 export const tmpDir = (p = "dbboot-") => fs.mkdtempSync(path.join(os.tmpdir(), p));
 export const FACTORY = ["kody_kart", "display_lvgl", "buttons_led"];
+/** The real factory set (tools/factory-apps.json): what a fresh device carries. */
+export const FULL_FACTORY = JSON.parse(fs.readFileSync(path.join(root, "tools/factory-apps.json"), "utf8")).apps.map((a) => a.name);
+export const fullFactoryJson = { format: 1, apps: FULL_FACTORY.map((n) => n + ".dotbench") };
 export const factoryJson = { format: 1, apps: FACTORY.map((n) => n + ".dotbench") };
 
 /** A system on `dir` (the persistence directory): the same device across "page reloads" when the dir is reused. */
