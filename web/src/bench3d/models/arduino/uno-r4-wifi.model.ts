@@ -42,12 +42,12 @@ let w0 = 0, w1 = 0, w2 = 0;
 function drawMatrix(g: CanvasRenderingContext2D, w: number): void {
   const k = w / (MX.cols * MX.pitch + 2 * MX.margin);
   for (let pass = 0; pass < 3; pass++) {
-    g.fillStyle = pass === 0 ? 'rgba(255,36,18,0.24)' : pass === 1 ? 'rgba(255,44,22,0.62)' : '#ff6a48';
+    g.fillStyle = pass === 0 ? 'rgba(255,30,14,0.3)' : pass === 1 ? 'rgba(255,34,16,0.66)' : '#d0240e';
     for (let i = 0; i < MX.cols * MX.rows; i++) {
       const word = i < 32 ? w0 : i < 64 ? w1 : w2;
       if (!((word >>> (31 - (i & 31))) & 1)) continue;
       const cx = (MX.margin + ((i % MX.cols) + 0.5) * MX.pitch) * k, cy = (MX.margin + (Math.floor(i / MX.cols) + 0.5) * MX.pitch) * k;
-      if (pass === 2) g.fillRect(cx - 0.6 * k, cy - 0.32 * k, 1.2 * k, 0.64 * k);
+      if (pass === 2) g.fillRect(cx - 0.68 * k, cy - 0.42 * k, 1.36 * k, 0.84 * k);
       else {
         g.beginPath();
         g.arc(cx, cy, (pass === 0 ? 1.45 : 0.9) * k, 0, Math.PI * 2);
@@ -84,7 +84,7 @@ export default defineModel<PartState>({
       pinHeader(s, { x: VRTC.x, z: VRTC.y, y: TOP, n: 3 });
       jstSh4(s, qx, QWIIC.y, 3);
       // the matrix: 96 chip LEDs
-      for (let r = 0; r < MX.rows; r++) for (let c = 0; c < MX.cols; c++) slab(s, ['matte', '#ded8c6'], mxX(c), mxY(r), 1.3, 0.8, TOP, TOP + 0.5);
+      for (let r = 0; r < MX.rows; r++) for (let c = 0; c < MX.cols; c++) slab(s, ['matte', '#c9c4b6'], mxX(c), mxY(r), 1.3, 0.8, TOP, TOP + 0.5);
       // the buck converter by the jack
       inductor(s, 17.4, 36.6);
       qfn(s, { x: 16.6, z: 30.6, y: TOP, size: 3, perSide: 4 });
@@ -99,7 +99,7 @@ export default defineModel<PartState>({
     });
     const root = s.toObject();
     const matrix = screen('matrix', geo.quad(MX.x0 + (MX.cols * MX.pitch) / 2, MX.y0 + (MX.rows * MX.pitch) / 2, TOP + 0.56, (MX.cols * MX.pitch) / 2 + MX.margin, (MX.rows * MX.pitch) / 2 + MX.margin), 12, { lit: false });
-    makeGlow(matrix, RED, 2.4);
+    makeGlow(matrix, RED, 1.2);
     root.add(
       print({
         name: 'silk',

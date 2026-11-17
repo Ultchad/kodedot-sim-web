@@ -417,7 +417,7 @@ export function ledGlows(g: UnoGeo, leds: UnoLeds): Object3D[] {
     const x0 = Math.min(...pts.map((p) => p[0])) - HALO, x1 = Math.max(...pts.map((p) => p[0])) + HALO;
     const y0 = Math.min(...pts.map((p) => p[1])) - HALO, y1 = Math.max(...pts.map((p) => p[1])) + HALO;
     const m = screen(name, g.quad((x0 + x1) / 2, (y0 + y1) / 2, TOP + 0.04, (x1 - x0) / 2, (y1 - y0) / 2), GLOW_PPM, { lit: false });
-    makeGlow(m, colour, 2.0);
+    makeGlow(m, colour, 1.25);
     const spec: GlowSpec = { px: pts.flatMap((p) => [(p[0] - x0) * GLOW_PPM, (p[1] - y0) * GLOW_PPM]) };
     m.userData.glow = spec;
     return m;
@@ -433,7 +433,7 @@ function drawGlow(c: CanvasRenderingContext2D): void {
     const l = glowLevel[i];
     if (l <= 0) continue;
     for (let ring = 0; ring < 4; ring++) {
-      c.fillStyle = ring === 0 ? 'rgba(255,255,255,0.07)' : ring === 1 ? 'rgba(255,255,255,0.1)' : ring === 2 ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.26)';
+      c.fillStyle = ring === 0 ? 'rgba(255,255,255,0.09)' : ring === 1 ? 'rgba(255,255,255,0.13)' : ring === 2 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.32)';
       c.globalAlpha = l;
       c.beginPath();
       c.arc(glowSpec.px[i * 2], glowSpec.px[i * 2 + 1], (HALO - ring * 0.55) * GLOW_PPM, 0, Math.PI * 2);
