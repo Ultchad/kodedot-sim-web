@@ -3,24 +3,22 @@
 @font-face{font-family:Outfit;font-weight:700;src:url(../../node_modules/@fontsource/outfit/files/outfit-latin-700-normal.woff2)}
 @font-face{font-family:"DM Sans";font-weight:500;src:url(../../node_modules/@fontsource/dm-sans/files/dm-sans-latin-500-normal.woff2)}
 *{box-sizing:border-box;margin:0}
-body{width:1200px;height:630px;background:#C2BAB3;overflow:hidden;position:relative;font-family:"DM Sans";color:#191919}
-.card{position:absolute;left:28px;top:28px;right:28px;bottom:28px;border-radius:40px;background:#DED7CD}
-.halo{position:absolute;right:-60px;top:-120px;width:760px;height:760px;border-radius:50%;background:#C2BAB3}
-.dev{position:absolute;left:600px;top:0;height:630px}
-.glow{position:absolute;left:640px;top:-40px;width:560px;height:710px;background:radial-gradient(closest-side,#CFC8C0,#C2BAB3 100%)}
-.txt{position:absolute;left:84px;top:0;bottom:0;width:560px;display:flex;flex-direction:column;justify-content:center}
-.tag{align-self:flex-start;background:#DED7CD;color:#191919;font-size:22px;font-weight:500;padding:9px 20px;border-radius:999px;margin-bottom:26px}
-h1{font-family:Outfit;font-weight:700;font-size:112px;line-height:.95;letter-spacing:-.045em}
-p{font-size:31px;line-height:1.28;color:#4A4742;margin-top:26px;font-weight:500;max-width:470px}
-.pills{display:flex;gap:10px;margin-top:34px}
-.pill{font-family:Outfit;font-weight:600;font-size:23px;padding:10px 22px;border-radius:999px;background:#FFAC00;color:#191919}
-.pill.b{background:#028AC2;color:#fff}.pill.w{background:#DED7CD}
+body{width:1200px;height:630px;background:#EFE7DA;overflow:hidden;position:relative;font-family:"DM Sans";color:#191919}
+/* the workbench, full bleed: screenshots/og-scene.png is the stage at 1087 x 720 (2x); a 1087 x 571 band of it fills the card */
+.scene{position:absolute;left:0;top:-70px;width:1200px;height:auto}
+.card{position:absolute;left:28px;top:28px;bottom:28px;width:468px;border-radius:40px;background:#DED7CD;box-shadow:0 18px 50px rgba(60,45,25,.18);
+  padding:0 44px;display:flex;flex-direction:column;justify-content:center}
+.tag{align-self:flex-start;background:#EFE9DF;color:#191919;font-size:20px;font-weight:500;padding:8px 18px;border-radius:999px;margin-bottom:22px}
+h1{font-family:Outfit;font-weight:700;font-size:92px;line-height:.95;letter-spacing:-.045em}
+p{font-size:27px;line-height:1.28;color:#4A4742;margin-top:22px;font-weight:500}
+.pills{display:flex;flex-wrap:wrap;gap:9px;margin-top:28px}
+.pill{font-family:Outfit;font-weight:600;font-size:20px;padding:8px 18px;border-radius:999px;background:#FFAC00;color:#191919;white-space:nowrap}
+.pill.b{background:#028AC2;color:#fff}.pill.w{background:#EFE9DF}.pill.r{background:#D7362B;color:#fff}
 </style></head><body>
-<div class="glow"></div>
-<img class="dev" src="../../screenshots/og-device.png">
-<div class="txt">
+<img class="scene" src="../../screenshots/og-scene.png">
+<div class="card">
 <div class="tag">kodedot.murilogp.dev</div>
 <h1>KodeDot<br>Sim</h1>
-<p>A Kode Dot simulator that runs in your browser.</p>
-<div class="pills"><span class="pill">kodeOS</span><span class="pill b">Real apps</span><span class="pill w">3D device</span></div>
+<p>The Kode Dot in your browser: run real apps, wire parts, write code.</p>
+<div class="pills"><span class="pill">kodeOS</span><span class="pill b">Real apps</span><span class="pill w">3D workbench</span><span class="pill r">Arduino + ESP32</span></div>
 </div></body></html>
