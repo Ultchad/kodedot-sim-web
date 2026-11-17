@@ -2033,6 +2033,8 @@ EMSCRIPTEN_KEEPALIVE int ble_blob_commit(uint32_t len)
     if (g_reg) dbp_dirty(g_reg, BLOB_OFF, 8u + len);
     return 0;
 }
+/* What the Reject button on kodeOS's pairing card ends up calling (kdrv_ble_pair_reject): for tests that cannot touch the card. */
+EMSCRIPTEN_KEEPALIVE int ble_test_pair_reject(void) { return (int)kdrv_ble_pair_reject(); }
 /* A hook for tests: forget everything this module keeps in memory (not the persisted region). */
 EMSCRIPTEN_KEEPALIVE void ble_reset_counters(void)
 {
