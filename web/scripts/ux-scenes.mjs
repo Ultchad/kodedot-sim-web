@@ -100,6 +100,7 @@ async function ensureMotionObject(page, vp) {
   await clickIf(page, '[data-testid=area-motion]');
   await sleep(150);
   if (!(await has(page, '[data-testid=bench-object]'))) {
+    await clickIf(page, '[data-testid="area-motion"]');
     await clickIf(page, '[data-testid="add-motion.pose"]');
     await sleep(200);
   }

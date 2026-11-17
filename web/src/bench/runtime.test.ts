@@ -184,6 +184,16 @@ describe('BenchRuntime: NFC', () => {
     expect(nfc.objs.size).toBe(1); // the one made before the bad edit
   });
 
+  it('the error goes away once a later edit applies', () => {
+    const nfc = fakeNfc();
+    const { bench, live } = setup({ nfc: nfc.api });
+    const o = bench.add('nfc.tag')!;
+    bench.setField(o.id, 'uid', 'zz');
+    expect(live.get(o.id).entries.some((e) => e.key === 'live.error')).toBe(true);
+    bench.setField(o.id, 'uid', '04:11:22:33:44:55:66');
+    expect(live.get(o.id).entries.some((e) => e.key === 'live.error')).toBe(false);
+  });
+
   it('reads count up on the object', () => {
     const nfc = fakeNfc();
     const { bench, dev, live } = setup({ nfc: nfc.api });

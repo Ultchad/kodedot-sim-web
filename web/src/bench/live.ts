@@ -53,6 +53,13 @@ export class LiveStore {
     this.set(id, { data: { ...cur.data, ...data } });
   }
 
+  /** Removes the entries with a key (an error that is over once the next edit applies). */
+  dropKey(id: string, key: TKey): void {
+    const cur = this.get(id);
+    if (!cur.entries.some((e) => e.key === key)) return;
+    this.set(id, { entries: cur.entries.filter((e) => e.key !== key) });
+  }
+
   clear(id: string): void {
     if (this.map.delete(id)) this.bump();
   }

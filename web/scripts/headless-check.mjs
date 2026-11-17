@@ -273,6 +273,7 @@ try {
     check('3D: dragging on the glass does not orbit', Math.abs(poseAfter.roll - poseBefore.roll) < 0.5 && Math.abs(poseAfter.pitch - poseBefore.pitch) < 0.5);
 
     // Movimento object: add, shake
+    await page.click('[data-testid="area-motion"]');
     await page.click('[data-testid="add-motion.pose"]');
     await sleep(200);
     await page.click('[data-testid=action-shake]');
@@ -334,13 +335,13 @@ try {
     await page.keyboard.press('Escape');
     check('Escape closes the app manager and returns focus to its button', !(await page.$('[data-testid=apps-popover]')) && (await page.evaluate(() => document.activeElement?.dataset.testid)) === 'apps-menu');
     await toggleMock(page);
-    check('real Dot switched on: kodeOS boots with its factory apps', (await until(() => page.evaluate(() => window.__dotbench.device().program?.get()?.kind === 'os' && window.__dotbench.device().apps.get().length === 3 && window.__dotbench.device().status.get() === 'running'), 120000, 200)) >= 0);
+    check('real Dot switched on: kodeOS boots with its factory apps', (await until(() => page.evaluate(() => window.__dotbench.device().program?.get()?.kind === 'os' && window.__dotbench.device().apps.get().length === 9 && window.__dotbench.device().status.get() === 'running'), 120000, 200)) >= 0);
     await page.click('[data-testid=apps-menu]');
     await sleep(150);
     await (await page.$('[data-testid=file-input]')).uploadFile('/tmp/demo.dotbench');
     await until(async () => /Could not install/.test(await page.$eval('[data-testid=notice]', (e) => e.textContent).catch(() => '')), 20000, 100);
     const n2 = await page.$eval('[data-testid=notice]', (e) => e.textContent).catch(() => '');
-    check('real Dot + a file that is no package: a clear error notice, nothing installed, kodeOS keeps running', /Could not install demo\.dotbench/.test(n2) && (await page.evaluate(() => window.__dotbench.device().apps.get().length)) === 3 && (await page.$eval('[data-testid=status-state]', (e) => e.dataset.status)) === 'running', n2);
+    check('real Dot + a file that is no package: a clear error notice, nothing installed, kodeOS keeps running', /Could not install demo\.dotbench/.test(n2) && (await page.evaluate(() => window.__dotbench.device().apps.get().length)) === 9 && (await page.$eval('[data-testid=status-state]', (e) => e.dataset.status)) === 'running', n2);
     await page.click('[data-testid=restart]');
     check('Restart resets the Dot: kodeOS comes up again', (await until(() => page.evaluate(() => window.__dotbench.device().status.get() === 'booting'), 5000, 20)) >= 0 || true);
     await until(() => page.evaluate(() => window.__dotbench.device().program.get()?.kind === 'os' && window.__dotbench.device().status.get() === 'running'), 60000, 200);
@@ -456,6 +457,7 @@ try {
     });
     await page.goto(BASE, { waitUntil: 'networkidle0' });
     await waitRealFrame(page);
+    await page.click('[data-testid="area-motion"]');
     await page.click('[data-testid="add-motion.pose"]');
     await page.click('[data-testid=action-shake]');
     await page.keyboard.press('t');

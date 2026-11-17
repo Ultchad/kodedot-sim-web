@@ -183,7 +183,7 @@ export class BenchRuntime {
           if (next !== undefined) st.handles.set(obj.id, next);
         }
         st.applied.set(obj.id, sig);
-        this.failed.delete(obj.id);
+        if (this.failed.delete(obj.id)) this.live.dropKey(obj.id, 'live.error');
       } catch (e) {
         this.failed.set(obj.id, sig);
         this.ctx.say(obj.id, 'live.error', 'bad', { why: errorText(e) });

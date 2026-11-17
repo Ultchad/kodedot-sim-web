@@ -50,7 +50,7 @@ export function Field({ def, obj }: { def: FieldDef; obj: BenchObject }) {
       {t(def.labelKey)}
       <input
         id={id}
-        className={`field-input ${def.type === 'text' && def.mono ? 'font-mono text-[14px]' : ''}`}
+        className={`field-input ${def.type === 'text' && def.mono ? 'font-mono !px-3 !text-[12px] tracking-tight' : ''}`}
         type={def.type === 'number' ? 'number' : 'text'}
         placeholder={def.type === 'text' ? def.placeholder : undefined}
         autoComplete="off"

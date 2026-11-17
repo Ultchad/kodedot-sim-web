@@ -64,11 +64,12 @@ function routerBySsid(st: DriverState, ssid: string): string | undefined {
 export const wifiDriver: AreaDriver<WifiApi, Router> = {
   area: 'wifi',
   deviceArea: 'wifi',
+  // the SDK's radio world emits the station's events under the area "radio" (wifi.js says "area:wifi:*"; it is the radio's emit)
   events: [
-    'area:wifi:connected',
-    'area:wifi:got-ip',
-    'area:wifi:disconnected',
-    'area:wifi:join-failed',
+    'area:radio:connected',
+    'area:radio:got-ip',
+    'area:radio:disconnected',
+    'area:radio:join-failed',
     'area:net:http',
     'area:net:unreachable',
     'area:net:ping',
