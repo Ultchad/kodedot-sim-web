@@ -19,8 +19,8 @@
  * as a red-hot collar round the socket: the simulator's own way of speaking, not a part of the board.
  */
 import manifest from '../../../../../parts/kode-maker/manifest.json';
-import { FONT, INK, PAL, PITCH, Shape, defineModel, footprintOf, glowing, part, partState, print, roundedRectLoop, rr, setLamp, terminalsFromManifest, text, topQuad, type PartState } from '../../index';
-import { asManifest, connectorOf, earOutline, outlineBoard, pinPoints, rightAngleHeader, socketStrip, stripBetween } from './shared';
+import { FONT, PAL, PITCH, Shape, defineModel, footprintOf, glowing, part, partState, print, roundedRectLoop, rr, setLamp, terminalsFromManifest, text, topQuad, type PartState } from '../../index';
+import { SILK, asManifest, connectorOf, earOutline, outlineBoard, pinPoints, rightAngleHeader, socketStrip, stripBetween } from './shared';
 
 const M = asManifest(manifest);
 const terminals = terminalsFromManifest(M);
@@ -112,7 +112,7 @@ export default defineModel<PartState>({
         quad: topQuad(0, 0, TOP + 0.02, W / 2, D / 2),
         ppm: 16,
         draw(g) {
-          g.fillStyle = g.strokeStyle = INK.amber;
+          g.fillStyle = g.strokeStyle = SILK;
           const bold = (t: string, x: number, z: number, size: number, angle = 0, align: CanvasTextAlign = 'center') => text(g, t, x, z, size, { font: FONT, weight: 700, angle, align });
           // the legend of each socket, turned as on the real board, between the row and the far edge
           for (const so of SOCKETS) if (so.gpio !== undefined) bold(String(so.gpio), so.x, S_FIRST[2] - PITCH / 2 - 1.15, 1.15, -Math.PI / 2);

@@ -12,8 +12,8 @@
  * the parts are their usual ones (camera head 8.5 x 8.5 x 5.5 mm, oscillator 3.2 x 2.5 mm, SOT-23-5 regulators).
  */
 import manifest from '../../../../../parts/kode-camera-shape/manifest.json';
-import { FONT, INK, PAL, PITCH, Shape, defineModel, footprintOf, print, silkBox, terminalsFromManifest, text, topQuad, type Finish, type PartState, type Pt } from '../../index';
-import { asManifest, chipPassive, connectorOf, earOutline, fpcConnector, outlineBoard, rightAngleHeader, sot23 } from './shared';
+import { FONT, PAL, PITCH, Shape, defineModel, footprintOf, print, silkBox, terminalsFromManifest, text, topQuad, type Finish, type PartState, type Pt } from '../../index';
+import { SILK, asManifest, chipPassive, connectorOf, earOutline, fpcConnector, outlineBoard, rightAngleHeader, sot23 } from './shared';
 
 const M = asManifest(manifest);
 const terminals = terminalsFromManifest(M);
@@ -83,11 +83,11 @@ export default defineModel<PartState>({
         ppm: 16,
         draw(g) {
           g.translate(0, OZ);
-          g.fillStyle = INK.amber;
+          g.fillStyle = SILK;
           const h = CAM.size;
           const ref = (t: string, x: number, z: number) => text(g, t, x, z, 1.05, { font: FONT, weight: 700 });
           // where the head sits, and the documented reference designators
-          silkBox(g, CAM.x - h / 2 - 1.1, CAM.z - h / 2 - 1.1, h + 2.2, h + 2.2, 0.9, 0.16, INK.amber);
+          silkBox(g, CAM.x - h / 2 - 1.1, CAM.z - h / 2 - 1.1, h + 2.2, h + 2.2, 0.9, 0.16, SILK);
           ref('J501', J501.x + J501.w / 2 + 2.8, J501.z + 0.2);
           ref('U501', 13, -15.9);
           ref('U502', 13, -9.3);

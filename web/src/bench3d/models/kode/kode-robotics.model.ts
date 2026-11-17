@@ -20,8 +20,8 @@
  * pulled low while its pull-up rail is fed) makes the driver chip glow red hot on a scorched patch of board.
  */
 import manifest from '../../../../../parts/kode-robotics/manifest.json';
-import { FONT, INK, PAL, PITCH, Shape, defineModel, footprintOf, glowing, part, partState, print, setLamp, terminalsFromManifest, text, topQuad, type PartState, type Pt } from '../../index';
-import { asManifest, chipPassive, connectorOf, earOutline, outlineBoard, pinPoints, pinStrip, rightAngleHeader, screwBlock, socketStrip, stripBetween } from './shared';
+import { FONT, PAL, PITCH, Shape, defineModel, footprintOf, glowing, part, partState, print, setLamp, terminalsFromManifest, text, topQuad, type PartState, type Pt } from '../../index';
+import { SILK, asManifest, chipPassive, connectorOf, earOutline, outlineBoard, pinPoints, pinStrip, rightAngleHeader, screwBlock, socketStrip, stripBetween } from './shared';
 
 const M = asManifest(manifest);
 const terminals = terminalsFromManifest(M);
@@ -108,7 +108,7 @@ export default defineModel<PartState>({
         quad: topQuad(0, 0, TOP + 0.02, W / 2, D / 2),
         ppm: 16,
         draw(g) {
-          g.fillStyle = g.strokeStyle = INK.amber;
+          g.fillStyle = g.strokeStyle = SILK;
           g.lineWidth = 0.2;
           const label = (t: string, x: number, z: number, align: CanvasTextAlign = 'left', size = 1.7) => text(g, t, x, z, size, { font: FONT, weight: 700, align });
           // the side connectors: each contact's name beside it, and the corner brackets of their outlines

@@ -33,6 +33,8 @@ export interface KodeManifest {
   };
   /** Terminals that are one net on the board. */
   groups?: readonly { pins: readonly string[] }[];
+  /** The side silhouette of a moulded housing: points (y: depth from the back, z: height), in manifest millimetres. */
+  profile?: readonly { y: number; z: number }[];
   /** Reference points that are not terminals (the antenna jacks of the cased modules). */
   refs?: readonly { name: string; kind: string; mm: { x: number; y: number; z: number }; length_mm?: number }[];
 }
@@ -141,6 +143,8 @@ export function outlineBoard(s: Shape, o: { loop: Pt[]; y?: number; thick?: numb
 }
 
 // ------------------------------------------------------------------------------------------------------- headers
+/** The boards' silkscreen as the pictures show it: a warm gold, a little softer than the kit's amber ink. */
+export const SILK = '#f0a83e';
 /** The bright tin of the modules' header pins (the pictures show them almost white). */
 export const PIN_TIN: Finish = ['metal', '#e3e5e9'];
 /**
@@ -251,22 +255,22 @@ export const BRASS: Finish = ['metal', '#e6d291'];
 /**
  * A whip antenna on its SMA jack, standing along +Y from the face it is screwed into at (x, y, z), as the reference
  * pictures show it: a thin gold flange on the face, a round collar, the hex coupling nut (8 mm across flats), then the
- * black whip: a short step at its foot, a slight taper, two fine grooves below the tip (`grooves`: how far below, mm)
+ * black whip: a slight step at its foot, a slight taper, two fine grooves below the tip (`grooves`: how far below, mm)
  * and a round tip. `length` is the whole height above the face, `d` the whip's diameter at its foot.
  */
 export function whipAntenna(s: Shape, o: { x: number; y: number; z: number; length: number; d?: number; grooves?: number; seg?: number }): void {
   const seg = o.seg ?? 16, R = (o.d ?? 8.4) / 2, L = o.length;
   s.at(o.x, o.y, o.z, () => {
     s.disc(...BRASS, 0, 0, 4.1, 0, 0.5, 0.15, seg, { ao: 0.9 });
-    s.disc(...BRASS, 0, 0, 3.2, 0.5, 3.9, 0, seg, { ao: 0.8 });
+    s.disc(...BRASS, 0, 0, 3.2, 0.5, 3.3, 0, seg, { ao: 0.8 });
     const hex: Pt[] = [];
     // each corner of the nut is two points a hair apart, so that its six faces shade flat
     for (let i = 0; i < 6; i++) for (const e of [-0.03, 0.03]) hex.push([Math.cos((i * Math.PI) / 3 + e) * 4.62, Math.sin((i * Math.PI) / 3 + e) * 4.62]);
-    s.prism(...BRASS, hex, 3.9, 9.2, 0.3, { cap: true, ao: 0.95 });
+    s.prism(...BRASS, hex, 3.3, 8.3, 0.3, { cap: true, ao: 0.95 });
     // the whip
-    const y0 = 9.2, Rt = R * 0.88, tip = Rt * 0.9, g0 = L - tip - (o.grooves ?? 4);
+    const y0 = 8.3, Rt = R * 0.88, tip = Rt * 0.9, g0 = L - tip - (o.grooves ?? 4);
     const taper = (y: number) => R + ((Rt - R) * (y - y0)) / (L - tip - y0);
-    const prof: [number, number][] = [[R + 0.25, y0], [R + 0.25, y0 + 1.7], [taper(y0 + 2), y0 + 2]];
+    const prof: [number, number][] = [[R + 0.12, y0], [R + 0.12, y0 + 1.3], [taper(y0 + 1.5), y0 + 1.5]];
     for (const g of [g0 - 2.2, g0]) prof.push([taper(g), g], [taper(g) - 0.3, g + 0.22], [taper(g) - 0.3, g + 0.5], [taper(g + 0.72), g + 0.72]);
     prof.push([Rt, L - tip]);
     for (let i = 1; i <= 6; i++) {

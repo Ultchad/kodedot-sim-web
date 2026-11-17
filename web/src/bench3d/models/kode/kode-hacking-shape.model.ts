@@ -2,14 +2,15 @@
  * Kode multi-radio ("hacking") module (KDFCK001), SHAPE ONLY: the object, with no behaviour, no lamp, nothing that
  * answers.
  *
- * Sources: parts/kode-hacking-shape/manifest.json (the 20 terminals of the interposer's 2x10; its body is an
- * estimate made before the pictures below came) and the owner's reference pictures ref-4, ref-6 (alone) and ref-5
- * (on the Dot): the same moulding as the Mesh module's, in soft black. case.ts holds the measures and says how the
- * model is hung on the manifest. The maker's moulded name is not reproduced.
+ * Sources: parts/kode-hacking-shape/manifest.json (body 47 x 35 x 95 mm with the whips; the housing's side profile;
+ * the 20 terminals of the interposer's 2x10 and its seat; the antenna reference points SMA1 and SMA2 with their
+ * lengths: all measured from the pictures, `body.estimate`) and the owner's reference pictures ref-4, ref-6 (alone)
+ * and ref-5 (on the Dot): the same moulding as the Mesh module's. case.ts says what the pictures add.
+ * In the soft black of the Dot's own buttons. The maker's moulded name is not reproduced.
  */
 import manifest from '../../../../../parts/kode-hacking-shape/manifest.json';
-import { defineModel, terminalsFromManifest, type PartState } from '../../index';
-import { buildCasedModule, casedFootprint } from './case';
+import { defineModel, footprintOf, terminalsFromManifest, type PartState } from '../../index';
+import { buildCasedModule } from './case';
 import { asManifest } from './shared';
 
 const M = asManifest(manifest);
@@ -17,9 +18,9 @@ const M = asManifest(manifest);
 export default defineModel<PartState>({
   id: M.id,
   title: 'Kode multi-radio module (shape only)',
-  footprintMm: casedFootprint(M),
+  footprintMm: footprintOf(M.body),
   build(ctx) {
-    return buildCasedModule(M, { shell: ['matte', '#4d4d51'] }, ctx);
+    return buildCasedModule(M, { shell: ['matte', '#3e3e41'] }, ctx);
   },
   terminals: terminalsFromManifest(M),
 });
