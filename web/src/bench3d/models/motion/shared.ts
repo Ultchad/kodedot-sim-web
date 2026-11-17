@@ -75,7 +75,7 @@ export const towardsZ = (x: number, y: number, z: number): Matrix4 => new Matrix
 export const turnY = (quarter: number): Matrix4 => new Matrix4().makeRotationY((-quarter * Math.PI) / 2);
 
 // ------------------------------------------------------------------------------------------------------- wiring
-export const WIRE = { red: '#c8242c', black: '#1c1c1f', brown: '#6b3f22', orange: '#ee7a1b', yellow: '#f0c419', blue: '#1b66c9', green: '#1f9d55', pink: '#e2679a', white: '#eceae4' } as const;
+export const WIRE = { red: '#c8242c', black: '#1c1c1f', brown: '#8b5a2e', orange: '#ee7a1b', yellow: '#f0c419', blue: '#1b66c9', green: '#1f9d55', pink: '#e2679a', white: '#eceae4' } as const;
 /** KIT: an insulated hook-up wire along `pts` (corners rounded). */
 export function wire(s: Shape, colour: string, pts: V3[], o: { d?: number; bend?: number; seg?: number } = {}): void {
   s.tube('matte', colour, roundCorners(pts, o.bend ?? 1.6, 4), (o.d ?? 1.2) / 2, o.seg ?? 6);
