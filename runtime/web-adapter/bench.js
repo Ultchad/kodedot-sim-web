@@ -14,7 +14,7 @@
 // Terminals are "<instance>.<pin>"; the device is the instance "device": EXP1..EXP14, V33, V5, GND (DEVICE_TERMINALS has the J3 pin numbers).
 import { BenchClock } from "./bench-clock.js";
 import { computeNets, solveSources, solveNetwork, digital, conflicts } from "./bench-solver.js";
-import { readDotpart, describeDotpart } from "./dotpart.js";
+import { readDotpart, describeDotpart, checkWasmModule, sha256Hex } from "./dotpart.js";
 import { DeclarativePart, evalExpr } from "./bench-declarative.js";
 
 export const DEVICE = "device", VDD_DEVICE = 3300, V5_MV = 5000, DEVICE_SERIES_OHMS = 68, DEVICE_PULL_OHMS = 45000, GND_OHMS = 0.01;
@@ -100,7 +100,7 @@ export class Bench {
     const fields = {};
     for (const f of m.fields ?? []) fields[f.name] = f.default;
     for (const [k, v] of Object.entries(o.fields ?? {})) if (k in fields) fields[k] = this._coerce(m.fields.find((f) => f.name === k), v);
-    const part = { instance, id: m.id, def, label: o.label ?? instance, pos: { x: 0, y: 0, rot: 0, ...(o.pos ?? {}) }, fields, outputs: {}, impl: null, starting: null, startP: null, console: [], consoleTail: "",
+    const part = { instance, id: m.id, def, label: o.label ?? instance, pos: { x: 0, y: 0, rot: 0, ...(o.pos ?? {}) }, fields, outputs: {}, impl: null, starting: null, startP: null, console: [], consoleTail: "", code: null, storage: null,
       pins: new Map(m.pins.map((p) => [p.name, p])) };
     for (const out of m.outputs ?? []) part.outputs[out.name] = out.type === "boolean" ? false : 0;
     this.parts.set(instance, part);
@@ -389,7 +389,7 @@ export class Bench {
       if (o !== DEVICE) vdd = this._partMv(this.parts.get(o), look) || VDD_DEVICE;
       let mvNow = n.mv;
       if (n.pwm) mvNow = ((now * n.pwm.hz) % 1e6) / 1e6 < n.pwm.duty ? n.mvHigh : n.mvLow;
-      out.set(t, [n.floating ? 0 : digital(mvNow, vdd, lvl0.get(t) ?? 0), vdd]);
+      out.set(t, [n.floating ? 0 : digital(mvNow, vdd, lvl0.get(t) ?? 0, o === DEVICE ? undefined : (this.parts.get(o)?.def.manifest.vih_pct ?? 75) / 100), vdd]);
     }
     return out;
   }
@@ -627,6 +627,7 @@ export class Bench {
       }
     }
     if (!sel.length) {
+      if (n(master.mosi) === n(master.miso)) return { result: R.OK, r: Uint8Array.from(w) };       // MOSI wired to MISO: the bus loops back
       const miso = this._netInfo(master.miso), pulled = miso.srcs.some((s) => s.kind === "pull" && s.mv > VDD_DEVICE / 2);
       return { result: R.OK, r: new Uint8Array(w.length).fill(pulled ? 0xff : 0) };
     }
@@ -673,6 +674,39 @@ export class Bench {
     part.impl = null; part.starting = null; part.startP = null; part.console = []; part.consoleTail = "";
     this._touch(); await this._startWasm(part);
   }
+
+  // ---------------------------------------------------------------- code parts (a board carries its own sketch)
+  /** What a wasm part runs: {source, wasm, sha256, name, custom}. The package's own sketch and binary until setPartCode replaces them. */
+  getPartCode(instance) {
+    const p = this._part(instance), b = p.def.manifest.behaviour;
+    if (b.type !== "wasm") throw new Error(`${instance} is not a code part`);
+    if (p.code) return { source: p.code.source, wasm: p.code.wasm, sha256: p.code.sha256, name: p.code.name, custom: true };
+    const f = (b.sources ?? []).find((x) => x.endsWith(".ino")) ?? (b.sources ?? [])[0];
+    return { source: f && p.def.files?.has(f) ? new TextDecoder().decode(p.def.files.get(f)) : "", wasm: p.def.wasm, sha256: b.wasm_sha256 ?? null, name: p.def.manifest.id, custom: false };
+  }
+  /**
+   * "Compile and upload": give ONE board new source text and a new binary (from `dotbench part build`, or the in-browser compiler), then restart just that
+   * part. The binary must pass the ABI 1 allow-list; anything else throws (nothing is accepted silently). The part's EEPROM is kept, like flash.
+   * @param {string} instance @param {{source?: string, wasm: Uint8Array, name?: string}} code
+   */
+  async setPartCode(instance, code) {
+    const p = this._part(instance);
+    if (p.def.manifest.behaviour.type !== "wasm") throw new Error(`${instance} is not a code part`);
+    const wasm = code?.wasm instanceof Uint8Array ? code.wasm : code?.wasm instanceof ArrayBuffer ? new Uint8Array(code.wasm) : null;
+    if (!wasm?.length) throw new Error("setPartCode needs the compiled wasm (Uint8Array)");
+    if (wasm.length > 4 << 20) throw new Error("the binary is over 4 MiB");
+    const mod = await WebAssembly.compile(wasm), bad = checkWasmModule(mod);
+    if (bad.length) throw new Error(`the binary is not an ABI 1 part: ${bad[0]}`);
+    const sha256 = await sha256Hex(wasm);
+    p.code = { source: String(code.source ?? ""), wasm: wasm.slice(), sha256, name: code.name ?? "sketch", _module: mod };
+    this._touch(); this._emit("part", { type: "code", instance, sha256 });
+    if (this._power.get(instance)) await this.restartPart(instance);
+    return { sha256, bytes: wasm.length };
+  }
+  /** Back to the sketch and binary that came in the package. */
+  async clearPartCode(instance) { const p = this._part(instance); p.code = null; this._emit("part", { type: "code", instance, sha256: null }); if (this._power.get(instance)) await this.restartPart(instance); }
+  /** The serial monitor of one board: the last lines it printed (a "console" event delivers each new line as it comes). */
+  serialLog(instance) { const p = this._part(instance); return [...p.console, ...(p.consoleTail ? [p.consoleTail] : [])]; }
 
   // ---------------------------------------------------------------- time
   /** Stepped clock: advance virtual time by `us` (fires timers, such as contact bounce, in order; wasm parts run until they park). */
@@ -746,7 +780,8 @@ export class Bench {
     return {
       format: "dotbench-layout", version: 1, name,
       device: { rails: { V33: "app", V5: "app" }, header: "kode-dot-j3" },
-      parts: [...this.parts.values()].map((p) => ({ instance: p.instance, part: { id: p.id, version: p.def.manifest.version, sha256: p.def.sha256 }, label: p.label, pos: { ...p.pos }, fields: { ...p.fields } })),
+      parts: [...this.parts.values()].map((p) => ({ instance: p.instance, part: { id: p.id, version: p.def.manifest.version, sha256: p.def.sha256 }, label: p.label, pos: { ...p.pos }, fields: { ...p.fields },
+        ...(p.code ? { code: { source: p.code.source, wasm_b64: b64(p.code.wasm), sha256: p.code.sha256, name: p.code.name } } : {}), ...(p.storage ? { storage_b64: b64(p.storage) } : {}) })),
       wires: [...this.wires.values()].map((w) => ({ id: w.id, from: w.from, to: w.to, ...(w.color ? { color: w.color } : {}) })),
     };
   }
@@ -764,6 +799,9 @@ export class Bench {
       if (lp.part.version && lp.part.version !== def.manifest.version) notes.push(`${lp.instance}: layout was made with ${lp.part.id} ${lp.part.version}, ${def.manifest.version} is loaded`);
       const fields = {}; for (const [k, v] of Object.entries(lp.fields ?? {})) { try { this._coerce((def.manifest.fields ?? []).find((f) => f.name === k), v); fields[k] = v; } catch { notes.push(`${lp.instance}: field ${k} dropped`); } }
       this.addPart(lp.part.id, { instance: lp.instance, label: lp.label, pos: lp.pos, fields });
+      const np = this.parts.get(lp.instance);
+      if (lp.code?.wasm_b64 && def.manifest.behaviour.type === "wasm") np.code = { source: String(lp.code.source ?? ""), wasm: unb64(lp.code.wasm_b64), sha256: lp.code.sha256 ?? null, name: lp.code.name ?? "sketch" };     // checked against the ABI 1 allow-list when the part starts
+      if (lp.storage_b64 && def.manifest.behaviour.type === "wasm") np.storage = unb64(lp.storage_b64);
     }
     for (const w of layout.wires ?? []) {
       try { this.connect(w.from, w.to, { id: w.id, color: w.color }); } catch (e) { dropped.push(`${w.from} - ${w.to}: ${e.message}`); }
@@ -777,3 +815,6 @@ export class Bench {
     this.parts.clear(); this.wires.clear(); this.clock.dispose();
   }
 }
+
+const b64 = (u8) => { if (typeof Buffer !== "undefined") return Buffer.from(u8).toString("base64"); let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = (t) => { if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(t, "base64")); const s = atob(t), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };

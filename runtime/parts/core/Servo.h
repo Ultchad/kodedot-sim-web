@@ -2,6 +2,7 @@
 // by default (the library's MIN_PULSE_WIDTH / MAX_PULSE_WIDTH), so write(0..180) lands where the real library would put the pulse.
 #pragma once
 #include "Arduino.h"
+#include "dotbench_abi.h"
 #define MIN_PULSE_WIDTH 544
 #define MAX_PULSE_WIDTH 2400
 #define DEFAULT_PULSE_WIDTH 1500

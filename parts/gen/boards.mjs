@@ -99,7 +99,7 @@ export function boards() {
     const pins = unoPins(v.core);
     const outputs = v.matrix ? [0, 1, 2].map((i) => ({ name: "matrix" + i, type: "number", label: L(`LED matrix word ${i}`, `Matriz de LED, palavra ${i}`, `Matriz de LED, palabra ${i}`) })) : undefined;
     out.push(writePart({ id: "dotbench." + v.id, dir: v.id, w: UNO_W, d: UNO_D, h: 15, scale: 8, category: "mcu", tags: v.tags, keywords: v.kw, name: v.name, desc: cat(v.desc, NOEMU),
-      extra: { logic_mv: 5000 }, pins, groups: unoGroups(),
+      extra: { logic_mv: 5000, ...(v.core === "uno-r3" ? { vih_pct: 60 } : {}) }, pins, groups: unoGroups(),
       fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }],
       ...(outputs ? { outputs } : {}),
       visuals: [{ id: "led", effect: "glow", x: Math.round(inch(1.2) * 8 + 40), y: 64, r: 7, color: "#f5c518", source: { gpio: 13 } }],

@@ -144,6 +144,7 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
       },
       "description": "Terminals joined inside the part (a breadboard's terminal strips and power rails): every pin of a group is one net, always, powered or not."
     },
+    "vih_pct": {"type": "integer", "minimum": 30, "maximum": 90, "description": "Input high threshold as a percentage of the logic supply (default 75). An ATmega328P reads 3.0 V as high on 5 V (60), so a 3.3 V Dot can drive an Uno R3 directly."},
     "logic_mv": {"type": "integer", "minimum": 500, "maximum": 60000, "description": "A board with an on-board regulator: the logic high level of its pins, whatever voltage its supply pin sees."},
     "tags": {"type": "array", "maxItems": 12, "items": {"type": "string", "pattern": "^[a-z0-9-]{1,24}$"}},
     "picture": {

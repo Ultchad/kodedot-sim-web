@@ -6,6 +6,8 @@
 #include "api/HardwareSerial.h"
 #include "api/HardwareI2C.h"
 #include "api/HardwareSPI.h"
+#include "api/itoa.h"
+#include "api/deprecated-avr-comp/avr/dtostrf.h"
 #undef SPIClass
 #include <stdio.h>
 #include <stdarg.h>
@@ -21,6 +23,12 @@ using namespace arduino;
 #define PROGMEM
 #endif
 typedef bool boolean;
+#ifndef _BV
+#define _BV(b) (1UL << (b))
+#endif
+#ifndef PSTR
+#define PSTR(s) (s)
+#endif
 
 // --- analog, as every board's core has them: resolution comes from the board's variant (pins_arduino.h) ---
 void analogReadResolution(uint8_t bits);

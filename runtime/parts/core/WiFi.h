@@ -3,7 +3,7 @@
 // scans find nothing. The first call prints one note in the part's console (not on Serial, so sketches that parse Serial still work).
 #pragma once
 #include "Arduino.h"
-#include <IPAddress.h>
+#include "dotbench_abi.h"
 #include <string.h>
 
 enum wl_status_t { WL_NO_SHIELD = 255, WL_IDLE_STATUS = 0, WL_NO_SSID_AVAIL = 1, WL_SCAN_COMPLETED = 2, WL_CONNECTED = 3, WL_CONNECT_FAILED = 4, WL_CONNECTION_LOST = 5, WL_DISCONNECTED = 6 };
@@ -12,7 +12,7 @@ enum wifi_mode_t { WIFI_OFF = 0, WIFI_STA = 1, WIFI_AP = 2, WIFI_AP_STA = 3 };
 
 static inline void dp_wifi_note(const char *what) {
   static bool said = false; if (said) return; said = true;
-  char b[160]; int n = snprintf(b, sizeof b, "WiFi is not simulated by dotbench: %s -> not connected (no network is reachable from a sketch).", what);
+  char b[160]; int n = snprintf(b, sizeof b, "WiFi is not simulated by dotbench: %s -> not connected (no network is reachable from a sketch).\n", what);
   dp_log((const uint8_t *)b, n);
 }
 class WiFiClass {
