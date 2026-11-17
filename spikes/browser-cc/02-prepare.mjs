@@ -35,7 +35,7 @@ lap(`headers: kept ${inc.size} sysroot files, dropped ${(dropped / 1e6).toFixed(
 const orig = await import(path.join(YW, "bundle.js"));
 const coreTree = {}; for (const [p, d] of dotInc) { const parts = p.split("/"); let t = coreTree; for (const s of parts.slice(0, -1)) t = t[s] ??= {}; t[parts.at(-1)] = d; }
 coreTree.dotcore.src = { "dotcore.cpp": fs.readFileSync(path.join(CORE, "dotcore.cpp")) };
-coreTree.dotcore.src["wasi_shim.cpp"] = fs.readFileSync(path.join(HERE, "core/wasi_shim.cpp"));      // browser flavour only, see the file
+for (const f of ["wasi_shim.cpp", "libc_extras.cpp"]) coreTree.dotcore.src[f] = fs.readFileSync(path.join(HERE, "core", f));      // browser flavour only, see the file
 for (const n of ["Print", "Stream", "String", "IPAddress", "Common"]) coreTree.dotcore.src[n + ".cpp"] = fs.readFileSync(path.join(API, "api", n + ".cpp"));
 const objs = [];
 for (const n of Object.keys(coreTree.dotcore.src)) {

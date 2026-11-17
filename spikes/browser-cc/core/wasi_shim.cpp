@@ -38,7 +38,12 @@ err_t W(fd_advise)(u32, u64, u64, u32) { return NOSYS; }
 err_t W(fd_allocate)(u32, u64, u64) { return NOSYS; }
 err_t W(fd_datasync)(u32) { return NOSYS; }
 err_t W(fd_sync)(u32) { return NOSYS; }
-err_t W(fd_fdstat_get)(u32, P) { return BADF; }
+err_t W(fd_fdstat_get)(u32 fd, uint8_t *st) {      // stdin/out/err look like a terminal, so stdio line-buffers (a printf("..\n") shows at once)
+  if (fd > 2) return BADF;
+  for (int i = 0; i < 24; i++) st[i] = 0;
+  st[0] = 2;                                      // filetype = character device
+  return OK;
+}
 err_t W(fd_fdstat_set_flags)(u32, u32) { return BADF; }
 err_t W(fd_fdstat_set_rights)(u32, u64, u64) { return BADF; }
 err_t W(fd_filestat_get)(u32, P) { return BADF; }

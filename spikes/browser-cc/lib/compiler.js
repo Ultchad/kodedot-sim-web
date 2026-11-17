@@ -23,17 +23,31 @@ export class SketchCompiler {
    * @param {{ino: string, manifest: object, file?: string, extraSources?: Record<string,string>}} req
    * @returns {Promise<{ok:boolean, wasm?:Uint8Array, diagnostics:object[], stderr:string, ms:{cc:number, ld:number, total:number}}>}
    */
-  async compile({ ino, manifest, file = "main.ino", extraSources = {} }) {
+  async compile({ ino, manifest, file = "main.ino", extraSources = {}, board = null }) {
     const t0 = performance.now(), b = manifest.behaviour ?? {};
     const cpp = inoToCpp(ino, file);
-    const files = { "sketch.cpp": cpp, gen: { "dotbench_fields.h": fieldsHeader(manifest) }, src: { ...extraSources } };
-    const cc = await compileCpp(this.rt.runLLVM, files, { src: "/sketch.cpp", out: "/sketch.o", incs: ["/gen", "/src"] });
+    // extraSources: path (relative to /src, e.g. "MyLib/MyLib.cpp", "util.h") -> text. .h files go on the include path, .c/.cpp/.cc get compiled and linked.
+    const src = {};
+    for (const [p, text] of Object.entries(extraSources)) { const parts = p.split("/"); let d = src; for (const x of parts.slice(0, -1)) d = d[x] ??= {}; d[parts.at(-1)] = text; }
+    const files = { "sketch.cpp": cpp, gen: { "dotbench_fields.h": fieldsHeader(manifest) }, src };
+    const incDirs = new Set(["/gen", "/src"]);
+    for (const p of Object.keys(extraSources)) { const parts = p.split("/"); incDirs.add("/src" + (parts.length > 1 ? "/" + parts.slice(0, -1).join("/") : "")); }
+    const incs = [...incDirs];
+    let stderr = "", diagnostics = [];
+    const jobs = [{ src: "/sketch.cpp", out: "/sketch.o", lang: "c++", name: "main.ino" }];
+    let k = 0;
+    for (const p of Object.keys(extraSources)) { const m = /\.(cpp|cc|cxx|c)$/.exec(p); if (m) jobs.push({ src: "/src/" + p, out: `/obj${k++}.o`, lang: m[1] === "c" ? "c" : "c++", name: p }); }
+    const objs = {};
+    for (const j of jobs) {
+      const cc = await compileCpp(this.rt.runLLVM, files, { src: j.src, out: j.out, lang: j.lang, incs });
+      stderr += cc.stderr; diagnostics.push(...parseDiagnostics(cc.stderr));
+      if (!cc.ok) { const t1 = performance.now(); return { ok: false, diagnostics, stderr, ms: { cc: t1 - t0, ld: 0, total: t1 - t0 } }; }
+      objs[j.out.slice(1)] = cc.obj;
+    }
     const t1 = performance.now();
-    const diagnostics = parseDiagnostics(cc.stderr);
-    if (!cc.ok) return { ok: false, diagnostics, stderr: cc.stderr, ms: { cc: t1 - t0, ld: 0, total: t1 - t0 } };
-    const ld = await runTool(this.rt.runLLVM, linkArgs({ objs: ["/sketch.o"], memKb: b.memory_kb ?? 1024, stackKb: b.stack_kb ?? 64 }), { "sketch.o": cc.obj });
+    const ld = await runTool(this.rt.runLLVM, linkArgs({ objs: Object.keys(objs).map((o) => "/" + o), memKb: b.memory_kb ?? 1024, stackKb: b.stack_kb ?? 64 }), objs);
     const t2 = performance.now();
-    const stderr = cc.stderr + ld.stderr;
+    stderr += ld.stderr;
     if (!ld.ok) return { ok: false, diagnostics: [...diagnostics, ...linkDiagnostics(ld.stderr)], stderr, ms: { cc: t1 - t0, ld: t2 - t1, total: t2 - t0 } };
     const wasm = getFile(ld.files, "/out.wasm");
     return { ok: true, wasm, diagnostics, stderr, ms: { cc: t1 - t0, ld: t2 - t1, total: t2 - t0 } };
