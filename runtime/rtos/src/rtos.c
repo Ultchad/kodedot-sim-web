@@ -803,8 +803,24 @@ static BaseType_t recv_common(Queue_t *q, void *item, TickType_t ticks, bool pee
     return ok;
 }
 
+/* Test hook (tests/node/system/ao_overflow.test.mjs): the named task sleeps for ms the next time it goes to wait for a queue item, as a thread
+ * the host scheduler does not run for a while (a loaded machine) would. The tick keeps posting; this shows which queue overflows first. */
+static char g_stall_name[16];
+static volatile uint32_t g_stall_ms;
+__attribute__((used)) void dotbench_rtos_test_stall(const char *name, uint32_t ms)
+{
+    strncpy(g_stall_name, name ? name : "", sizeof g_stall_name - 1);
+    __atomic_store_n(&g_stall_ms, ms, __ATOMIC_SEQ_CST);
+}
 BaseType_t xQueueReceive(QueueHandle_t q, void *item, TickType_t ticks)
 {
+    if (__atomic_load_n(&g_stall_ms, __ATOMIC_RELAXED) && ticks != 0) {
+        tcb_t *me = self();
+        if (me && 0 == strncmp(me->name, g_stall_name, sizeof me->name)) {
+            uint32_t ms = __atomic_exchange_n(&g_stall_ms, 0u, __ATOMIC_SEQ_CST);
+            if (ms) { struct timespec ts = { ms / 1000u, (long)(ms % 1000u) * 1000000L }; nanosleep(&ts, NULL); }
+        }
+    }
     return q ? recv_common(q, item, ticks, false) : pdFALSE;
 }
 BaseType_t xQueueReceiveFromISR(QueueHandle_t q, void *item, BaseType_t *woken)
@@ -867,6 +883,25 @@ void *xQueueGetMutexHolder(QueueHandle_t h)
     return holder;
 }
 
+/* Diagnostics (panic dump): copies up to `max` queued items (oldest first) of a queue whose items are pointers. */
+int dotbench_rtos_queue_peek_ptrs(QueueHandle_t h, void **out, int max)
+{
+    Queue_t *q = h;
+    if (q == NULL || q->item_size != sizeof(void *)) return 0;
+    pthread_mutex_lock(&g_k);
+    int n = 0;
+    for (UBaseType_t i = 0; i < q->waiting && n < max; i++) {
+        memcpy(&out[n++], q->buf + (size_t)((q->head + i) % q->length) * q->item_size, sizeof(void *));
+    }
+    pthread_mutex_unlock(&g_k);
+    return n;
+}
+const char *dotbench_rtos_thread_desc(char *buf, int cap)
+{
+    tcb_t *t = self();
+    snprintf(buf, (size_t)cap, "%s id=%u adopted=%d th=%lx", t->name, (unsigned)t->id, t->adopted, (unsigned long)t->th);
+    return buf;
+}
 UBaseType_t uxQueueMessagesWaiting(const QueueHandle_t h)
 {
     Queue_t *q = h;
@@ -1056,18 +1091,23 @@ static void *timer_service(void *unused)
     return NULL;
 }
 
-static void timer_service_ensure_locked(void)
+/* Decide under g_k, create OUTSIDE it: a pthread_create that finds the worker pool empty is proxied to the browser's main thread and waits for it,
+ * and the main thread may at that moment be waiting (page-side exports) for a lock that needs g_k. Never hold g_k across a thread creation. */
+static bool timer_service_claim_locked(void)
 {
-    if (!g_tmr_started) {
-        g_tmr_started = true;
-        cond_init(&g_tmr_cv);
-        pthread_t th;
-        pthread_attr_t a;
-        pthread_attr_init(&a);
-        pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
-        pthread_create(&th, &a, timer_service, NULL);
-        pthread_attr_destroy(&a);
-    }
+    if (g_tmr_started) return false;
+    g_tmr_started = true;
+    cond_init(&g_tmr_cv);
+    return true;
+}
+static void timer_service_spawn(void)
+{
+    pthread_t th;
+    pthread_attr_t a;
+    pthread_attr_init(&a);
+    pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
+    pthread_create(&th, &a, timer_service, NULL);
+    pthread_attr_destroy(&a);
 }
 
 static TimerHandle_t timer_make(struct tmrTimerControl *t, const char *name, TickType_t period,
@@ -1075,10 +1115,11 @@ static TimerHandle_t timer_make(struct tmrTimerControl *t, const char *name, Tic
 {
     t->name = name; t->period = period; t->reload = reload != 0; t->id = id; t->cb = cb;
     pthread_mutex_lock(&g_k);
-    timer_service_ensure_locked();
+    bool spawn = timer_service_claim_locked();
     t->next = g_timers;
     g_timers = t;
     pthread_mutex_unlock(&g_k);
+    if (spawn) timer_service_spawn();
     return t;
 }
 TimerHandle_t xTimerCreate(const char *name, TickType_t period, BaseType_t reload, void *id,
@@ -1137,3 +1178,4 @@ void vTimerSetTimerID(TimerHandle_t t, void *id) { t->id = id; }
 const char *pcTimerGetName(TimerHandle_t t) { return t->name; }
 TickType_t xTimerGetPeriod(TimerHandle_t t) { return t->period; }
 void vTimerSetReloadMode(TimerHandle_t t, BaseType_t r) { t->reload = r != 0; }
+

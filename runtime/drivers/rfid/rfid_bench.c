@@ -10,6 +10,7 @@
  *  device -> reader     : the PARLIO bit stream of an emulation is decoded here (independent decoder) as a door
  *                         reader would, if the reader's field is on and its clock matches.
  * Threading: one mutex, held for microseconds, never across an SDK call. Exports are safe from the page's thread. */
+#include "page_lock.h"
 #include <emscripten.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -61,6 +62,7 @@ typedef struct {
 } rb_obj_t;
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(rfid, "rfid", g_mu, DB_LOCK_MUTEX)
 static rb_obj_t g_obj[RB_MAX_OBJ];
 static rb_event_t g_ev[RB_EV_CAP];
 static uint32_t g_ev_seq, g_ev_tail;   /* g_ev_seq = events ever pushed; g_ev_tail = next to pop */
@@ -441,7 +443,7 @@ static int hv(int h) { return h >= 0 && h < RB_MAX_OBJ && g_obj[h].used; }
 
 X void rfid_world_reset(void)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     memset(g_obj, 0, sizeof g_obj);
     g_ev_tail = g_ev_seq;
     g_fault = 0;
@@ -452,7 +454,7 @@ X int rfid_obj_create(int kind)
 {
     int h = -1;
     if (kind < RB_CARD || kind > RB_READER) return -1;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     for (int i = 0; i < RB_MAX_OBJ && h < 0; i++) if (!g_obj[i].used) h = i;
     if (h >= 0) {
         rb_obj_t *o = &g_obj[h];
@@ -469,7 +471,7 @@ X int rfid_obj_create(int kind)
 
 X void rfid_obj_remove(int h)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     if (hv(h)) { memset(&g_obj[h], 0, sizeof g_obj[h]); readers_eval(); }
     pthread_mutex_unlock(&g_mu);
 }
@@ -477,7 +479,7 @@ X void rfid_obj_remove(int h)
 X int rfid_obj_near(int h, int near)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (hv(h)) {
         rb_obj_t *o = &g_obj[h];
         if ((o->near != 0) != (near != 0)) {
@@ -496,19 +498,19 @@ X int rfid_obj_near(int h, int near)
 X int rfid_obj_leave_after(int h, uint32_t blocks, uint32_t samples)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (hv(h)) { g_obj[h].leave_blocks = blocks; g_obj[h].leave_samples = samples; g_obj[h].prog_count = 0; ok = 1; }
     pthread_mutex_unlock(&g_mu);
     return ok;
 }
 
-X int rfid_obj_is_near(int h) { pthread_mutex_lock(&g_mu); int r = hv(h) && g_obj[h].near; pthread_mutex_unlock(&g_mu); return r; }
+X int rfid_obj_is_near(int h) { DB_PAGE_LOCK(&g_mu, 0); int r = hv(h) && g_obj[h].near; pthread_mutex_unlock(&g_mu); return r; }
 
 /* card (and reader expected ID): id points at 5 bytes */
 X int rfid_card_set(int h, const uint8_t *id, int rf)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (hv(h) && g_obj[h].kind == RB_CARD && (rf == 16 || rf == 32 || rf == 64)) {
         memcpy(g_obj[h].id, id, 5); g_obj[h].rf = (uint32_t)rf;
         g_obj[h].read_samples = 0; g_obj[h].read_reported = 0;
@@ -522,7 +524,7 @@ X int rfid_card_set(int h, const uint8_t *id, int rf)
 X int rfid_t5577_set(int h, const uint32_t *t)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (hv(h) && g_obj[h].kind == RB_T5577) {
         rb_obj_t *o = &g_obj[h];
         memcpy(o->blk, t, 32);
@@ -538,7 +540,7 @@ X int rfid_t5577_set(int h, const uint32_t *t)
 X int rfid_t5577_get(int h, uint32_t *t)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (hv(h) && g_obj[h].kind == RB_T5577) {
         rb_obj_t *o = &g_obj[h];
         memcpy(t, o->blk, 32);
@@ -553,7 +555,7 @@ X int rfid_t5577_get(int h, uint32_t *t)
 X int rfid_obj_id(int h, uint8_t *id)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (hv(h)) {
         rb_obj_t *o = &g_obj[h];
         if (o->kind == RB_CARD) { memcpy(id, o->id, 5); ok = 1; }
@@ -566,7 +568,7 @@ X int rfid_obj_id(int h, uint8_t *id)
 X int rfid_reader_set(int h, const uint8_t *expect, uint32_t field_hz, int field_on, uint32_t delay_ms)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (hv(h) && g_obj[h].kind == RB_READER) {
         rb_obj_t *o = &g_obj[h];
         memcpy(o->id, expect, 5); o->field_hz = field_hz; o->field_on = field_on != 0; o->delay_ms = delay_ms;
@@ -583,7 +585,7 @@ X int rfid_reader_set(int h, const uint8_t *expect, uint32_t field_hz, int field
 X int rfid_reader_get(int h, uint32_t *out, uint8_t *id)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (hv(h) && g_obj[h].kind == RB_READER) {
         rb_obj_t *o = &g_obj[h];
         readers_eval();
@@ -595,13 +597,13 @@ X int rfid_reader_get(int h, uint32_t *out, uint8_t *id)
     return ok;
 }
 
-X void rfid_fault_set(uint32_t mask) { pthread_mutex_lock(&g_mu); g_fault = mask; pthread_mutex_unlock(&g_mu); }
+X void rfid_fault_set(uint32_t mask) { DB_PAGE_LOCK_V(&g_mu); g_fault = mask; pthread_mutex_unlock(&g_mu); }
 
 /* out: u32[12] = flags(1 carrier,2 boost,4 adc,8 emulating,16 pull high,32 emu decodes), carrier hz, emu in hz, emu out hz,
  * emu periods/bit, gaps seen, programs, rejects, sample clock lo, vt lo, emu_ext, rep; id: the ID the emulated frame carries */
 X void rfid_state(uint32_t *out, uint8_t *id)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     readers_eval();
     out[0] = (uint32_t)(d.carrier ? 1 : 0) | (d.boost ? 2u : 0) | (d.adc_run ? 4u : 0) | (d.emu_on ? 8u : 0) | (d.pull ? 16u : 0) | (d.emu_decoded ? 32u : 0);
     out[1] = d.carrier_hz; out[2] = d.emu_in_hz; out[3] = d.emu_out_hz; out[4] = d.emu_ppb;
@@ -614,7 +616,7 @@ X void rfid_state(uint32_t *out, uint8_t *id)
 /* Evaluate the readers (their clocks run on the wall) and report how many events wait. */
 X int rfid_poll(void)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     readers_eval();
     int n = (int)(g_ev_seq - g_ev_tail);
     pthread_mutex_unlock(&g_mu);
@@ -625,7 +627,7 @@ X int rfid_poll(void)
 X int rfid_ev_pop(rb_event_t *out)
 {
     int ok = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     if (g_ev_tail < g_ev_seq) { *out = g_ev[g_ev_tail % RB_EV_CAP]; g_ev_tail++; ok = 1; }
     pthread_mutex_unlock(&g_mu);
     return ok;

@@ -12,6 +12,7 @@
  *
  * Threading: chip accessors run on the SDK's task threads, exports on the page's thread.
  * One mutex guards the model; nothing inside it calls the SDK. */
+#include "page_lock.h"
 #include <math.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -52,6 +53,7 @@ typedef struct { uint16_t n; uint8_t peak; } burst_t;
 typedef struct { int32_t type, a, b, c; } event_t;
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(haptic, "haptic", g_mu, DB_LOCK_MUTEX)
 static bool g_registered;
 static uint8_t g_reg[256];
 /* FIFO and playback */
@@ -250,14 +252,14 @@ void dotbench_haptic_register(void)
 /* ---- bench side, called on the page's thread -------------------------------------------- */
 EMSCRIPTEN_KEEPALIVE void haptic_poll(void)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     advance(now_us());
     pthread_mutex_unlock(&g_mu);
 }
 EMSCRIPTEN_KEEPALIVE int haptic_get(int id)
 {
     int v = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     advance(now_us());
     switch (id) {
     case G_GAIN: v = g_reg[R_PLAYCFG2]; break;
@@ -282,7 +284,7 @@ EMSCRIPTEN_KEEPALIVE int haptic_get(int id)
 EMSCRIPTEN_KEEPALIVE int haptic_event_pop(int32_t *out)
 {
     int got = 0;
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     advance(now_us());
     if (g_ev_r != g_ev_w) {
         event_t e = g_ev[g_ev_r++ & 63];

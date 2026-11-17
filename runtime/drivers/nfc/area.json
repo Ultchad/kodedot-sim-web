@@ -20,7 +20,8 @@
     "nfc_event_pop",
     "nfc_event_lost",
     "nfc_chip_fitted",
-    "nfc_reset_bench"
+    "nfc_reset_bench",
+    "nfc_test_orphan_lock"
   ],
   "sdkconfig": {
     "CONFIG_KODEOS_NFC": "y"

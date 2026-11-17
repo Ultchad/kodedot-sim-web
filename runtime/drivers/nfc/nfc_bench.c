@@ -2,6 +2,7 @@
  * The bench objects of the NFC area and the C functions the page calls (exports in area.json).
  * Threading: every export runs on the page's thread. They only touch plain memory under a short
  * spin lock (no SDK call, no sleep, no allocation inside), exactly what the area guide allows. */
+#include "page_lock.h"
 #include <emscripten.h>
 #include <sched.h>
 #include <stdatomic.h>
@@ -49,6 +50,19 @@ void nfc_unlock(void)
     atomic_flag_clear_explicit(&g_lk, memory_order_release);
 }
 
+/* The page's thread must not wait unboundedly for this lock (it spins in wasm and never returns to the event loop, while a firmware thread that
+ * holds a lock the holder of this one waits for may be blocked on the main thread: pthread_create with an empty worker pool is proxied to it). The
+ * page-facing exports take it with a bounded try and answer -9 (busy); the page asks again at its next poll. */
+static bool nfc_lock_page(void)
+{
+    if (!atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) return true;
+    uint64_t t0 = db_page_now_us();
+    for (;;) {
+        if (!atomic_flag_test_and_set_explicit(&g_lk, memory_order_acquire)) return true;
+        if (db_page_now_us() - t0 >= 20000u) { db_page_note_busy(); return false; }
+    }
+}
+
 uint32_t nfc_now_ms(void)
 {
     struct timespec ts;
@@ -87,7 +101,7 @@ static nfc_obj_t *obj_of(int id)
 EMSCRIPTEN_KEEPALIVE int nfc_obj_create(int kind)
 {
     if (kind < NFC_KIND_T2T || kind > NFC_KIND_READER) return -1;
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_store_t *st = nfc_store();
     int id = -1;
     for (uint32_t i = 0; i < NFC_SLOTS; i++) {
@@ -107,7 +121,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_create(int kind)
 /* Destroy an object (it leaves the desk; a device that had it activated finds it gone). */
 EMSCRIPTEN_KEEPALIVE int nfc_obj_destroy(int id)
 {
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o) {
@@ -123,7 +137,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_destroy(int id)
 EMSCRIPTEN_KEEPALIVE int nfc_obj_set_identity(int id, const uint8_t *uid, int uid_len, int atqa, int sak)
 {
     if (uid_len < 0 || uid_len > (int)NFC_UID_MAX || (uid_len && !uid)) return -2;
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o) {
@@ -140,7 +154,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_set_identity(int id, const uint8_t *uid, int ui
 EMSCRIPTEN_KEEPALIVE int nfc_obj_set_memory(int id, const uint8_t *data, int len, int offset)
 {
     if (len < 0 || offset < 0 || offset + len > (int)NFC_MEM_BYTES || (len && !data)) return -2;
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o) {
@@ -156,7 +170,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_set_memory(int id, const uint8_t *data, int len
 EMSCRIPTEN_KEEPALIVE int nfc_obj_set_mem_len(int id, int len)
 {
     if (len < 0 || len > (int)NFC_MEM_BYTES) return -2;
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o) {
@@ -169,7 +183,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_set_mem_len(int id, int len)
 
 EMSCRIPTEN_KEEPALIVE int nfc_obj_set_flags(int id, int flags)
 {
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o) {
@@ -184,7 +198,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_set_flags(int id, int flags)
  * AMP / MOD: a reader's field amplitude byte and its modulation depth. */
 EMSCRIPTEN_KEEPALIVE int nfc_obj_set_param(int id, int key, int value)
 {
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o) {
@@ -206,7 +220,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_set_param(int id, int key, int value)
 /* Bring an object near the antenna (1) or take it away (0). */
 EMSCRIPTEN_KEEPALIVE int nfc_obj_near(int id, int near_)
 {
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o) {
@@ -227,7 +241,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_near(int id, int near_)
 EMSCRIPTEN_KEEPALIVE int nfc_obj_info(int id, uint32_t *out)
 {
     if (!out) return -2;
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o) {
@@ -247,7 +261,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_info(int id, uint32_t *out)
 EMSCRIPTEN_KEEPALIVE int nfc_obj_read_blob(int id, int which, uint8_t *dst, int off, int len)
 {
     if (!dst || off < 0 || len < 0) return -2;
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int n = -1;
     if (o) {
@@ -272,7 +286,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_obj_read_blob(int id, int which, uint8_t *dst, int 
  * -2 the device is not emulating / not selected (nothing answers); -3 page out of range. */
 EMSCRIPTEN_KEEPALIVE int nfc_reader_read(int id, int block)
 {
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_obj_t *o = obj_of(id);
     int rc = -1;
     if (o && o->kind == NFC_KIND_READER && o->near_) rc = nfc_drv_reader_read_locked(id - 1, block);
@@ -284,7 +298,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_reader_read(int id, int block)
 EMSCRIPTEN_KEEPALIVE int nfc_state(uint32_t *out)
 {
     if (!out) return -2;
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_drv_state_locked(out);
     nfc_unlock();
     return 0;
@@ -294,7 +308,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_state(uint32_t *out)
 EMSCRIPTEN_KEEPALIVE int nfc_event_pop(uint32_t *out)
 {
     if (!out) return -2;
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     int rc = 0;
     if (g_ev_tail != g_ev_head) {
         memcpy(out, g_ev[g_ev_tail % EV_RING], 16);
@@ -311,7 +325,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t nfc_event_lost(void) { return g_ev_lost; }
  * takes effect at the next boot; it is kept across restarts like the rest of the store. */
 EMSCRIPTEN_KEEPALIVE int nfc_chip_fitted(int fitted)
 {
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     nfc_store()->chip_absent = fitted ? 0u : 1u;
     nfc_unlock();
     return 0;
@@ -320,7 +334,7 @@ EMSCRIPTEN_KEEPALIVE int nfc_chip_fitted(int fitted)
 /* Remove every object and clear the chip setting. */
 EMSCRIPTEN_KEEPALIVE int nfc_reset_bench(void)
 {
-    nfc_lock();
+    if (!nfc_lock_page()) return -9;
     for (uint32_t i = 0; i < NFC_SLOTS; i++) {
         if (g_store.obj[i].used && g_store.obj[i].near_) nfc_drv_object_near_locked((int)i, false);
     }
@@ -328,4 +342,12 @@ EMSCRIPTEN_KEEPALIVE int nfc_reset_bench(void)
     g_store.magic = STORE_MAGIC;
     nfc_unlock();
     return 0;
+}
+
+/* Test hook (tests/node/nfc/page_lock.test.mjs): a thread takes the lock and exits holding it, as a terminated worker leaves it. */
+#include <pthread.h>
+static void *orphan_main(void *a) { (void)a; nfc_lock(); return NULL; }
+EMSCRIPTEN_KEEPALIVE void nfc_test_orphan_lock(void)
+{
+    pthread_t th; pthread_create(&th, NULL, orphan_main, NULL); pthread_join(th, NULL);
 }

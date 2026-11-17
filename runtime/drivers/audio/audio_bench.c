@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
  * Exports of the audio area (area.json "exports") and the wire capture the Node tests assert on.
  * Every export is safe from the page's thread: an atomic store, a pointer read, or one short mutex section. */
+#include "page_lock.h"
 #include <emscripten.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -11,6 +12,7 @@
 
 /* ---- capture of what the I2S transmitter clocked out: stereo int16, gaps as zeros, from audio_cap_start() on ---- */
 static pthread_mutex_t g_cmu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(audio, "audio", g_cmu, DB_LOCK_MUTEX)
 static int16_t *g_cap; static uint32_t g_cap_cap, g_cap_n, g_cap_over; static bool g_cap_on;
 
 void kaud_cap_append(const int16_t *st, uint32_t n)
@@ -40,7 +42,7 @@ void kaud_cap_silence(uint64_t n)
 /* Start capturing at most max_frames (capacity is allocated here); returns 1 on success. Restarting discards the old capture. */
 X int audio_cap_start(uint32_t max_frames)
 {
-    pthread_mutex_lock(&g_cmu);
+    DB_PAGE_LOCK(&g_cmu, 0);
     g_cap_on = false;
     free(g_cap);
     g_cap = max_frames ? (int16_t *)calloc(max_frames, 4u) : NULL;
@@ -49,7 +51,7 @@ X int audio_cap_start(uint32_t max_frames)
     pthread_mutex_unlock(&g_cmu);
     return g_cap_on;
 }
-X void audio_cap_stop(void) { pthread_mutex_lock(&g_cmu); g_cap_on = false; pthread_mutex_unlock(&g_cmu); }
+X void audio_cap_stop(void) { DB_PAGE_LOCK_V(&g_cmu); g_cap_on = false; pthread_mutex_unlock(&g_cmu); }
 X uint32_t audio_cap_frames(void) { return g_cap_n; }
 X uint32_t audio_cap_overflow(void) { return g_cap_over; }
 /* Address of the captured stereo frames (valid until the next audio_cap_start). */

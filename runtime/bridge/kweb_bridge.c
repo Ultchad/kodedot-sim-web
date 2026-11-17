@@ -1,4 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
+#include "page_lock.h"
+#include <sched.h>
 #include "kweb_bridge.h"
 
 #include <emscripten.h>
@@ -48,6 +50,8 @@ static void state_init(void)
     __atomic_store_n(&g_state.magic, KWEB_MAGIC, __ATOMIC_RELEASE);
 }
 
+#include <pthread.h>
+#include <unistd.h>
 __attribute__((constructor(102))) static void kweb_ctor(void) { state_init(); }
 
 EMSCRIPTEN_KEEPALIVE kweb_state_t *kweb_state(void)
@@ -71,7 +75,7 @@ static in_evt_t g_in[IN_RING];
 static volatile uint32_t g_in_head, g_in_tail;     /* head: producer, tail: consumer */
 static volatile uint32_t g_in_wake;
 static volatile uint32_t g_in_dropped;
-static pthread_once_t g_pump_once = PTHREAD_ONCE_INIT;
+static volatile uint32_t g_pump_state;             /* 0 none, 1 being created, 2 running (never pthread_once: see ensure_pump) */
 
 static void apply(const in_evt_t *e)
 {
@@ -105,6 +109,8 @@ static void *pump(void *arg)
     }
     return NULL;
 }
+static volatile int g_pump_test;                 /* tests only: start_pump makes an idle thread instead of a second pump */
+static void *dbp_nop_pump(void *a) { (void)a; return NULL; }
 static void start_pump(void)
 {
     pthread_t th;
@@ -112,8 +118,30 @@ static void start_pump(void)
     pthread_attr_init(&at);
     pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
     pthread_attr_setstacksize(&at, 128 * 1024);
-    pthread_create(&th, &at, pump, NULL);
+    pthread_create(&th, &at, g_pump_test ? dbp_nop_pump : pump, NULL);
 }
+/* Starts the pump once. NOT pthread_once: a firmware task that calls it first runs pthread_create inside the once, and a worker's
+ * pthread_create is proxied to the page's main thread (it waits for that thread's event loop); a kweb_touch() on the main thread that
+ * found the once in progress would wait for it, spinning inside wasm, and neither could ever continue (the settings-check hang after a
+ * boot, docs/STATUS-panic.md). Here a caller that finds the pump being created simply goes on: the event waits in the ring. */
+static void ensure_pump(void)
+{
+    if (__atomic_load_n(&g_pump_state, __ATOMIC_ACQUIRE) != 0u) return;
+    uint32_t none = 0u;
+    if (!__atomic_compare_exchange_n(&g_pump_state, &none, 1u, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) return;
+    emscripten_futex_wake((void *)&g_pump_state, 1);     /* (a test waits on the state) */
+    start_pump();
+    __atomic_store_n(&g_pump_state, 2u, __ATOMIC_RELEASE);
+}
+/* test hook: a firmware worker is the first to start the pump, as kweb_set_touch_hook does at boot; the page's thread calls kweb_touch meanwhile */
+static void *pump_worker_main(void *a) { (void)a; ensure_pump(); return NULL; }
+EMSCRIPTEN_KEEPALIVE void dbpage_test_pump_via_worker(void)
+{
+    g_pump_test = 1; __atomic_store_n(&g_pump_state, 0u, __ATOMIC_SEQ_CST);
+    pthread_t th; pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
+    pthread_create(&th, &at, pump_worker_main, NULL);
+}
+EMSCRIPTEN_KEEPALIVE volatile uint32_t *dbpage_test_pump_state_ptr(void) { return &g_pump_state; }
 static void push(in_evt_t e)
 {
     uint32_t h = __atomic_load_n(&g_in_head, __ATOMIC_RELAXED);
@@ -127,24 +155,78 @@ static void push(in_evt_t e)
 EMSCRIPTEN_KEEPALIVE void kweb_button(int id, int pressed)
 {
     if (id < 0 || (unsigned)id >= KWEB_BTN_COUNT) return;
-    pthread_once(&g_pump_once, start_pump);
+    ensure_pump();
     push((in_evt_t){ .kind = 0, .id = (uint8_t)id, .down = pressed ? 1 : 0 });
 }
 
 EMSCRIPTEN_KEEPALIVE void kweb_touch(int x, int y, int down)
 {
-    pthread_once(&g_pump_once, start_pump);
+    ensure_pump();
     push((in_evt_t){ .kind = 1, .down = down ? 1 : 0, .x = (int16_t)x, .y = (int16_t)y });
 }
 
-void kweb_set_button_hook(kweb_input_hook_t hook) { g_button_hook = hook; pthread_once(&g_pump_once, start_pump); }
-void kweb_set_touch_hook(kweb_input_hook_t hook) { g_touch_hook = hook; pthread_once(&g_pump_once, start_pump); }
+void kweb_set_button_hook(kweb_input_hook_t hook) { g_button_hook = hook; ensure_pump(); }
+void kweb_set_touch_hook(kweb_input_hook_t hook) { g_touch_hook = hook; ensure_pump(); }
 
 /* ---- the text ring -----------------------------------------------------------
  * Producers (any C thread) append records [u8 channel][u16 len LE][len bytes]
  * under a spin lock. The page drains with kweb_text_drain(). If the ring is
  * full the OLDEST whole records are discarded (counted in text_dropped), so a
  * page that stopped draining never blocks the firmware. */
+volatile uint32_t g_dbpage_busy;
+EMSCRIPTEN_KEEPALIVE uint32_t dbpage_busy_take(void) { return __atomic_exchange_n(&g_dbpage_busy, 0u, __ATOMIC_RELAXED); }
+
+/* ---- the registry of page-facing locks and the test hooks (see page_lock.h) ---- */
+#include <stdatomic.h>
+#define DBP_MAX 24
+static struct { const char *name; void *lock; int kind; } g_dbp[DBP_MAX];
+static int g_dbp_n;
+static volatile int g_dbp_state[DBP_MAX];            /* per lock: 0 idle, 1 held across a pthread_create, 2 done */
+void db_page_register(const char *name, void *lock, int kind)
+{
+    if (g_dbp_n < DBP_MAX) { g_dbp[g_dbp_n].name = name; g_dbp[g_dbp_n].lock = lock; g_dbp[g_dbp_n].kind = kind; g_dbp_n++; }
+}
+static void dbp_take(int i)
+{
+    switch (g_dbp[i].kind) {
+    case DB_LOCK_MUTEX: pthread_mutex_lock((pthread_mutex_t *)g_dbp[i].lock); break;
+    case DB_LOCK_SPIN32: while (__atomic_exchange_n((volatile uint32_t *)g_dbp[i].lock, 1u, __ATOMIC_ACQUIRE)) sched_yield(); break;
+    default: while (atomic_flag_test_and_set_explicit((atomic_flag *)g_dbp[i].lock, memory_order_acquire)) sched_yield(); break;
+    }
+}
+static void dbp_drop(int i)
+{
+    switch (g_dbp[i].kind) {
+    case DB_LOCK_MUTEX: pthread_mutex_unlock((pthread_mutex_t *)g_dbp[i].lock); break;
+    case DB_LOCK_SPIN32: __atomic_store_n((volatile uint32_t *)g_dbp[i].lock, 0u, __ATOMIC_RELEASE); break;
+    default: atomic_flag_clear_explicit((atomic_flag *)g_dbp[i].lock, memory_order_release); break;
+    }
+}
+static void *dbp_nop(void *a) { (void)a; return NULL; }
+static void *dbp_orphan_main(void *a) { dbp_take((int)(intptr_t)a); return NULL; }           /* exits holding it: what a terminated worker leaves */
+static void *dbp_hold_main(void *a)                                                        /* holds it across a pthread_create, as firmware threads do */
+{
+    int i = (int)(intptr_t)a;
+    dbp_take(i);
+    __atomic_store_n(&g_dbp_state[i], 1, __ATOMIC_SEQ_CST);
+    emscripten_futex_wake((void *)&g_dbp_state[i], 1);
+    pthread_t th; pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
+    pthread_create(&th, &at, dbp_nop, NULL);                                                /* proxied to the page's main thread: waits for its event loop */
+    dbp_drop(i);
+    __atomic_store_n(&g_dbp_state[i], 2, __ATOMIC_SEQ_CST);
+    return NULL;
+}
+static void dbp_spawn(void *(*f)(void *), int i)
+{
+    pthread_t th; pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
+    pthread_create(&th, &at, f, (void *)(intptr_t)i);
+}
+EMSCRIPTEN_KEEPALIVE int dbpage_lock_count(void) { return g_dbp_n; }
+EMSCRIPTEN_KEEPALIVE const char *dbpage_lock_name(int i) { return i >= 0 && i < g_dbp_n ? g_dbp[i].name : ""; }
+EMSCRIPTEN_KEEPALIVE void dbpage_test_orphan(int i) { if (i >= 0 && i < g_dbp_n) { dbp_spawn(dbp_orphan_main, i); } }
+EMSCRIPTEN_KEEPALIVE void dbpage_test_hold_create(int i) { if (i >= 0 && i < g_dbp_n) { g_dbp_state[i] = 0; dbp_spawn(dbp_hold_main, i); } }
+EMSCRIPTEN_KEEPALIVE int *dbpage_test_state_ptr(int i) { return (int *)&g_dbp_state[i < 0 || i >= DBP_MAX ? 0 : i]; }
+
 static void lock(void)
 {
     while (__atomic_exchange_n(&g_state.text_lock, 1u, __ATOMIC_ACQUIRE)) {
@@ -152,6 +234,7 @@ static void lock(void)
     }
 }
 static void unlock(void) { __atomic_store_n(&g_state.text_lock, 0u, __ATOMIC_RELEASE); }
+DB_PAGE_REGISTER(text_ring, "text-ring", g_state.text_lock, DB_LOCK_SPIN32)
 
 static uint8_t ring_byte(uint32_t pos) { return g_state.text[pos % KWEB_TEXT_RING_BYTES]; }
 
@@ -213,7 +296,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t kweb_text_drain(uint8_t *dst, uint32_t cap)
 {
     state_init();
     uint32_t out = 0;
-    lock();
+    if (!db_page_spin_take((volatile uint32_t *)&g_state.text_lock, DB_PAGE_BUDGET_MS)) return 0;   /* the page never spins unbounded */
     uint32_t t = g_state.text_tail;
     uint32_t h = g_state.text_head;
     while (t != h) {

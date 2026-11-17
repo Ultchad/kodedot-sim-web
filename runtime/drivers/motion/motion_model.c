@@ -24,6 +24,7 @@
  *
  * Threading: chip accessors run on SDK task threads, the bench exports on the page's thread.
  * One mutex guards everything; nothing inside it calls the SDK. */
+#include "page_lock.h"
 #include <math.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -40,6 +41,7 @@
 typedef struct { double p, r, h; } ori_t;     /* degrees */
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+DB_PAGE_REGISTER(motion, "motion", g_mu, DB_LOCK_MUTEX)
 static bool g_registered;
 static ori_t g_from, g_to = { 0, 0, 0 };
 static uint64_t g_t0, g_dur;                  /* transition start and length, us (g_dur 0 = still) */
@@ -461,7 +463,7 @@ void dotbench_motion_register(void)
 EMSCRIPTEN_KEEPALIVE void motion_set_orientation(double pitch, double roll, double heading, double ms)
 {
     uint64_t now = now_us();
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     ori_t cur = ori_at(now);
     ori_t to = { pitch, roll, fmod(fmod(heading, 360.0) + 360.0, 360.0) };
     double dh = fabs(fmod(to.h - cur.h + 540.0, 360.0) - 180.0);
@@ -477,7 +479,7 @@ EMSCRIPTEN_KEEPALIVE void motion_shake(double peak_g, double ms, double hz, doub
 {
     uint64_t now = now_us();
     double n = sqrt(dx * dx + dy * dy + dz * dz);
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     if (n < 1e-9) { dx = 1; dy = 0.6; dz = 0.3; n = sqrt(1 + 0.36 + 0.09); }
     g_sh_dir[0] = dx / n; g_sh_dir[1] = dy / n; g_sh_dir[2] = dz / n;
     g_sh_peak = peak_g; g_sh_hz = hz > 0 ? hz : 6;
@@ -487,14 +489,14 @@ EMSCRIPTEN_KEEPALIVE void motion_shake(double peak_g, double ms, double hz, doub
 /* A disturbing field on the board's axes, mG (a magnet near the sensor); 0,0,0 removes it. */
 EMSCRIPTEN_KEEPALIVE void motion_set_magnet(double mx, double my, double mz)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     g_magnet[0] = mx; g_magnet[1] = my; g_magnet[2] = mz;
     pthread_mutex_unlock(&g_mu);
 }
 /* The Earth's field where the bench is: horizontal (toward magnetic north) and downward, mG. */
 EMSCRIPTEN_KEEPALIVE void motion_set_field(double horizontal_mg, double down_mg)
 {
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK_V(&g_mu);
     g_field_h = horizontal_mg; g_field_d = down_mg;
     pthread_mutex_unlock(&g_mu);
 }
@@ -505,7 +507,7 @@ enum { G_PITCH_X100, G_ROLL_X100, G_HEADING_X100, G_MOVING, G_SHAKING, G_AX, G_A
 EMSCRIPTEN_KEEPALIVE int motion_get(int id)
 {
     uint64_t now = now_us();
-    pthread_mutex_lock(&g_mu);
+    DB_PAGE_LOCK(&g_mu, 0);
     ori_t o = ori_at(now);
     double a[3], w[3], f[3];
     accel_g(now, a); gyro_dps(now, w); field_mg(now, f);
