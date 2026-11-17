@@ -27,19 +27,25 @@ const osFrames = () => log().split("kgui first frame").length - 1;
 const lit = () => { const f = sys.frame(); let n = 0; for (let i = 0; i < f.data.length; i += 4) if (f.data[i] | f.data[i + 1] | f.data[i + 2]) n++; return n / (f.data.length / 4); };
 const swipeUp = async () => { for (let y = 420; y >= 200; y -= 20) { sys.touch(200, y, true); await sleep(30); } sys.touch(200, 200, false); await sleep(1500); };
 
-/** Lock screen -> launcher -> "All" -> `swipes` swipes. Always from a fresh power-on, so the list starts at the top. */
+const copies = () => (log().match(/'buttons_led' copied to/g) || []).length;
+/** First boot: wait for kodeOS's first frame and for AppMgr's one-per-second copying of the apps to the card to end (it makes swipes lag). */
+async function firstBoot() {
+  await waitFor(() => osFrames() > 0 && sys.program?.kind === "os", 120000, "kodeOS first frame", sys);
+  await waitFor(() => copies() > 0, 60000, "AppMgr finished its copies", sys);
+}
+/** Power-on reset to a known kodeOS (lock screen). The log ring is emptied first, so "first frame" can only be the new boot's. */
+async function resetOs() {
+  sys.lines.length = 0;
+  await sys.powerOnReset();
+  await waitFor(() => osFrames() > 0 && sys.program?.kind === "os", 120000, "kodeOS first frame", sys);
+  await sleep(4000);
+}
 let ranApp = false;   // once an app has run, the group list shows it as a shortcut tile on top and "All" sits lower
 async function openAll(swipes) {
   await sleep(1500);
   await swipeLeft(sys); await sleep(5000);
   await tap(sys, 200, ranApp ? 170 : 72); await sleep(2500);
   for (let i = 0; i < swipes; i++) await swipeUp();
-}
-const copies = () => (log().match(/'buttons_led' copied to/g) || []).length;
-/** Wait for kodeOS's first frame and for AppMgr's one-per-second copying of the apps to the card to end (it makes swipes lag). */
-async function bootOs(n0 = osFrames(), c0 = copies()) {
-  await waitFor(() => osFrames() > n0 && sys.program?.kind === "os", 120000, "kodeOS first frame", sys);
-  await waitFor(() => copies() > c0, 60000, "AppMgr finished its copies", sys);
 }
 /** From a power-on kodeOS: launch `name` by touch and wait for its first screen. */
 async function launchByTouch(name) {
@@ -49,7 +55,9 @@ async function launchByTouch(name) {
   await waitFor(() => sys.program?.kind === "app", 60000, name + " starts", sys);
   assert.equal(sys.program.name, NAMES[name]);
   ranApp = true;
-  await waitFor(() => lit() > 0.02, 30000, name + " draws its first screen", sys);
+  // buttons_led has no screen (it drives the LED); its first "screen" is the green LED and its log line
+  if (name === "buttons_led") await waitFor(() => /buttons_led green/.test(log()), 30000, "buttons_led shows green on the LED", sys);
+  else await waitFor(() => lit() > 0.02, 30000, name + " draws its first screen", sys);
   await sleep(2500);
 }
 /** Hold the bottom button until kodeOS is back. @returns ms the press took until the OS was running */
@@ -64,7 +72,7 @@ async function holdHome() {
 
 await check("first boot: the nine factory apps are listed by kodeOS with names, versions and icons", async () => {
   await sys.start();
-  await bootOs(0, 0);
+  await firstBoot();
   const l = sys.list();
   assert.deepEqual(l.map((a) => a.project), FULL_FACTORY);
   assert.deepEqual(l.map((a) => a.name), FULL_FACTORY.map((n) => NAMES[n]));
@@ -82,10 +90,10 @@ await check("first boot: the nine factory apps are listed by kodeOS with names, 
 
 await check("each of the nine launches from kodeOS by touch, shows its first screen, and returns with the bottom-button hold", async () => {
   for (const n of FULL_FACTORY) {
-    { const n0 = osFrames(), c0 = copies(); await sys.powerOnReset(); await bootOs(n0, c0); }
+    await resetOs();
     await launchByTouch(n);
     shot(sys, path.join(shots, `app-${n}.png`));
-    assert.ok(lit() > 0.02, n + " first screen is not black");
+    if (n !== "buttons_led") assert.ok(lit() > 0.02, n + " first screen is not black");
     const ms = await holdHome();
     // The SDK's home hold is 3000 ms. Kody Kart goes home on its own 1000 ms hold (kart_ao.c HOME_HOLD_MS); the two SDK examples are
     // built without the home hold, so the ordinary 600 ms hold of AO_Boot sends them home (buttons_led also resets on the press itself).
@@ -100,7 +108,7 @@ await check("each of the nine launches from kodeOS by touch, shows its first scr
 });
 
 await check("data of an app survives going back to kodeOS: a tag saved in NFC is still in Saved after relaunching", async () => {
-  { const n0 = osFrames(), c0 = copies(); await sys.powerOnReset(); await bootOs(n0, c0); }
+  await resetOs();
   await launchByTouch("nfc_kit");
   const nfc = sys.area("nfc");
   assert.ok(nfc, "the nfc glue is present");
@@ -120,7 +128,7 @@ await check("data of an app survives going back to kodeOS: a tag saved in NFC is
   await holdHome();
   await waitFor(() => /kgui back from an app/.test(log().slice(-20000)), 60000, "kodeOS", sys);
   await sleep(1500);
-  { const n0 = osFrames(), c0 = copies(); await sys.powerOnReset(); await bootOs(n0, c0); }   // and a power cycle for good measure
+  await resetOs();   // and a power cycle for good measure
   assert.equal(sys.area("storage").stat("/storage/nfc_kit/saved.bin").size, size, "the file is untouched by the OS");
   await launchByTouch("nfc_kit");
   await tap(sys, 205, 208); await sleep(3000);                                    // Saved
