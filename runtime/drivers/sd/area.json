@@ -1,6 +1,6 @@
 {
   "area": "sd",
-  "description": "Virtual microSD: khal_sdmmc over region 'sd-card' (2..32 MiB, FatFs drive 1), insert/remove/new-card from the page, write-protect (sd.js)",
+  "description": "Virtual microSD: khal_sdmmc over a sparse card store (sdcard.c: dense <= 32 MB, page-table pool above, up to 256 GB nominal), FatFs drive 1, insert/remove/new-card from the page, write-protect (sd.js)",
   "supersedes": {
     "components/khal/sdmmc/src/khal_sdmmc_esp.c": "web: virtual card on region 'sd-card' (runtime/drivers/sd/khal_sdmmc_web.c)"
   },
@@ -13,7 +13,8 @@
     "dbsd_page_set_inserted",
     "dbsd_page_new_card",
     "dbsd_page_set_wp",
-    "dbsd_page_state"
+    "dbsd_page_state",
+    "dbsd_page_stats"
   ],
   "test_apps": [
     "sdk:examples/storage"

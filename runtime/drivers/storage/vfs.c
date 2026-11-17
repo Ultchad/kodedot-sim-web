@@ -142,6 +142,22 @@ void dbv_seed_result(int *files, uint32_t *bytes, int *errs)
     if (errs) *errs = s_seed_res.errs;
 }
 
+/* mkfs parameters. The flash volume is a super-floppy (as IDF formats it). A microSD gets what a card has: an MBR with one
+ * partition, FAT32 where the size needs it, and for big cards a large cluster (the way people format 64 / 128 GB cards for
+ * devices that cannot read exFAT: 32 KiB), the data area aligned to 1 MiB. The sparse card (sd/sdcard.c) stores none of the zeros. */
+static MKFS_PARM mkfs_opt(int v)
+{
+    MKFS_PARM o = { FM_ANY | FM_SFD, 0, 0, 0, (v == DBV_FLASH) ? 4096u : 0u };
+    if (v == DBV_SD) {
+        uint32_t mb = dbd_sd_sectors() >> 11;
+        o.fmt = FM_ANY;                                      /* partitioned: MBR */
+        if (mb >= 32768u) o.au_size = 32768u;                /* >= 32 GB: 32 KiB clusters */
+        if (mb >= 256u) o.align = 2048u;                     /* 1 MiB */
+    }
+    return o;
+}
+#define MKFS_WORK 32768u
+
 static int mount_locked(int v, int fmt, int *formatted)
 {
     if (formatted) *formatted = 0;
@@ -151,10 +167,10 @@ static int mount_locked(int v, int fmt, int *formatted)
     if (v == DBV_SD && !dbp_devstate()->sd_initialised) fmt = 1;   /* the factory card ships formatted */
     FRESULT r = f_mount(&s_fs[v], k_drive[v], 1);
     if (r == FR_NO_FILESYSTEM && fmt) {
-        MKFS_PARM opt = { FM_ANY | FM_SFD, 0, 0, 0, (v == DBV_FLASH) ? 4096u : 0u };
-        void *work = malloc(4096);
+        MKFS_PARM opt = mkfs_opt(v);
+        void *work = malloc(MKFS_WORK);
         if (!work) return FR_NOT_ENOUGH_CORE;
-        r = f_mkfs(k_drive[v], &opt, work, 4096);
+        r = f_mkfs(k_drive[v], &opt, work, MKFS_WORK);
         free(work);
         if (r == FR_OK) { r = f_mount(&s_fs[v], k_drive[v], 1); if (formatted) *formatted = 1; if (r == FR_OK) seed_locked(v); }
     }
@@ -184,9 +200,9 @@ int dbv_format(int v)
     if (v == DBV_SD && !dbd_sd_present()) r = FR_NOT_READY;
     else {
         f_mount(NULL, k_drive[v], 0); s_mnt[v] = 0;
-        MKFS_PARM opt = { FM_ANY | FM_SFD, 0, 0, 0, (v == DBV_FLASH) ? 4096u : 0u };
-        void *work = malloc(4096);
-        r = work ? (int)f_mkfs(k_drive[v], &opt, work, 4096) : FR_NOT_ENOUGH_CORE;
+        MKFS_PARM opt = mkfs_opt(v);
+        void *work = malloc(MKFS_WORK);
+        r = work ? (int)f_mkfs(k_drive[v], &opt, work, MKFS_WORK) : FR_NOT_ENOUGH_CORE;
         free(work);
         if (r == FR_OK) r = mount_locked(v, 0, NULL);
     }
@@ -712,29 +728,20 @@ int dbsd_set_write_protect(int wp)
     dbp_devstate_t *d = dbp_devstate();
     d->sd_write_protect = wp ? 1 : 0; dbp_devstate_changed(); return 0;
 }
-/* A different card: new capacity and serial, blank or FAT formatted. The card slot is emptied while the new
- * card is made, then it is inserted (generation +1 each way: anything mounted is gone). */
+/* A different card: new capacity and serial, blank or FAT formatted. Lock-free: the page only writes the slot state and asks
+ * the firmware side to reset the card's table (sdcard.c, at its next access). A formatted card is made at its first
+ * mount (sd_initialised = 0 means "format at the first mount", as for the factory card); a blank one has no FAT. */
 int dbsd_new_card(int mb, int format)
 {
     if (mb < (int)DBV_SD_MIN_MB || mb > (int)DBV_SD_MAX_MB) return -EINVAL;
     dbp_devstate_t *d = dbp_devstate();
-    dbp_region_t *r = dbp_find("sd-card");
-    if (!r) return -ENODEV;
-    if (!try_lock()) return -EBUSY;
-    int was = d->sd_inserted;
-    d->sd_inserted = 0; __atomic_add_fetch(&d->sd_generation, 1, __ATOMIC_SEQ_CST);
-    f_mount(NULL, k_drive[DBV_SD], 0); s_mnt[DBV_SD] = 0;
-    { uint32_t old = d->sd_capacity_mb, hi = (uint32_t)mb > old ? (uint32_t)mb : old;
-      uint32_t n = hi << 20; if (n > dbp_size(r)) n = dbp_size(r);
-      dbp_fill(r, 0, 0, n); }
     d->sd_capacity_mb = (uint32_t)mb; d->sd_serial += 0x01010101u; d->sd_write_protect = 0;
-    d->sd_inserted = 1; d->sd_initialised = 1; __atomic_add_fetch(&d->sd_generation, 1, __ATOMIC_SEQ_CST);
+    d->sd_initialised = format ? 0 : 1;
+    d->sd_inserted = 1;
+    __atomic_add_fetch(&d->sd_generation, 1, __ATOMIC_SEQ_CST);
     dbp_devstate_changed();
-    int rc = 0;
-    if (format) { int rr = mount_locked(DBV_SD, 1, NULL); if (rr) rc = -EIO; f_mount(NULL, k_drive[DBV_SD], 0); s_mnt[DBV_SD] = 0; }
-    (void)was;
-    unlock();
-    return rc;
+    dbsd_card_changed();
+    return 0;
 }
 EMSCRIPTEN_KEEPALIVE int dbfs_page_sd_mount(void)
 {
@@ -746,6 +753,8 @@ EMSCRIPTEN_KEEPALIVE int dbfs_page_sd_mount(void)
 EMSCRIPTEN_KEEPALIVE int dbfs_page_sd_unmount(void) { dbv_unmount(DBV_SD); return 0; }
 EMSCRIPTEN_KEEPALIVE int dbsd_page_set_inserted(int i) { return dbsd_set_inserted(i); }
 EMSCRIPTEN_KEEPALIVE int dbsd_page_new_card(int mb, int format) { return dbsd_new_card(mb, format); }
+/* stats: [stored lo, stored hi, bound lo, bound hi, layout (1 sparse, 2 dense), known, pool bytes, 0] into scratch data */
+EMSCRIPTEN_KEEPALIVE int dbsd_page_stats(void) { dbsd_stats((uint32_t *)(void *)(s_scr + SCR_DATA)); return 0; }
 EMSCRIPTEN_KEEPALIVE int dbsd_page_set_wp(int wp) { return dbsd_set_write_protect(wp); }
 /* state: [inserted, capacity_mb, serial, write_protect, generation, mounted] into scratch data */
 EMSCRIPTEN_KEEPALIVE int dbsd_page_state(void)
