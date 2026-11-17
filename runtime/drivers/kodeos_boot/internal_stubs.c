@@ -23,6 +23,13 @@ size_t kdrv_ble_app_host_bytes(void)
     return 0;
 }
 
+/* kdrv_ble.c, the bond store: kodeOS's factory reset (AO_Radio's wipe, step 2 "BLE") asks the radio worker to forget every bonded peer
+ * (kdrv_ble_unpair). There is no BLE host here, so no peer was ever bonded and nothing can be left over: the true answer is "done,
+ * nothing to do", not a "not implemented" failure (that stopped the whole reset half way: "Partly done"). This lives in the stub layer
+ * of the role, next to the file it stands in for (kdrv_ble.c is superseded by this area); a BLE area would replace it with the real call.
+ * kdrv_ble_bonds() keeps the generated stub's answer, 0, which agrees. */
+kode_status_t kdrv_ble_unpair(void) { return KODE_OK; }
+
 /* kdrv_station_i2c.c: the E5 station's private I2C bus, used by kdrv_pcf8574.c and kdrv_ads1115.c */
 kode_status_t kdrv_station_i2c_write(uint8_t addr, const uint8_t *tx, size_t n)
 {
