@@ -55,7 +55,7 @@ LOGS="${UPSTREAM_LOGS:-/tmp/upstream-logs}"; mkdir -p "$LOGS"
 SCRATCH="${UPSTREAM_SCRATCH:-/tmp/dotbench-page}"
 RETRIES="${UPSTREAM_RETRIES:-1}"
 # the hardware areas the owner's acceptance list names; every one has a suite under tests/node/<area>/
-AREAS="${UPSTREAM_AREAS:-system ble nfc rfid ir wifi radio usb storage sd persist nvs audio}"
+AREAS="${UPSTREAM_AREAS:-system ble nfc rfid ir wifi radio usb power storage sd persist nvs audio}"
 # tests known to fail on main with the OLD pins too, so they cannot judge a new release (docs/STATUS-upstream.md says why each is here;
 # an empty UPSTREAM_SKIP_TESTS= runs everything)
 export NODE_TEST_RETRIES="${UPSTREAM_TEST_RETRIES:-2}"   # per test file: the IR replay-gap check sits on a 1 ms boundary and fails about one run in three, alone
