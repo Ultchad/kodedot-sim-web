@@ -942,7 +942,7 @@ State this in the manual (section 10) so nobody debugs the wrong thing:
 
 The official modules (stage 5) and the wireless bench objects are `.dotpart` files shipped inside the site (ids `dotbench.*`), loaded by the same loader. They prove the format against real parts.
 
-### 6.1 Robotics module (sketch)
+### 6.1 Robotics module (sketch; SUPERSEDED, see Appendix B item 9)
 
 Pin names follow a common dual H-bridge (DRV8833 class: `IN1..IN4`, `nSLEEP`, `nFAULT`, supply `VM`). **The AT8833CQ datasheet and the Robotics module schematic are not in the SDK; verify this table against them before shipping.** The positions of the module on J3 are likewise assumed.
 
@@ -1251,3 +1251,20 @@ Full commands, numbers and what fought us: `spikes/arduino/README.md`; raw outpu
 | Blocking strategy | Atomics.wait Worker chosen; Asyncify +47 to +86 % size, cannot nest sleeps (7.4) |
 | Busy loop containment | heartbeat freezes, `terminate()` 3 to 11 ms |
 | Not proven | browser run; the real router (nets, conflicts, several parts on one bus); GPIO input and edge interrupts end to end; SPI; I2C master to a bench part; third-party libraries; Preferences, Wi-Fi, BLE stubs; interrupt masking; worker CSP in browsers |
+
+---
+
+## Appendix B. Errata from the implementation (2026-11, branch `area/parts`)
+
+Corrections only; the full list of departures is in `docs/STATUS-parts.md`.
+
+1. 5.4 and 1.4: with no radio link the SDK switches J3's 3V3 by resetting the C5 (`C5_EN` driven low) and letting it go; only with a link does it send the hosted GPIO 5 request. The bench follows both (exp link word 10, `v33_pulse`, and the `area:radio:c5-gpio` event).
+2. 3.x (declarative elements): `led` and `buzzer` exist in addition to the listed elements; `wireless` is validated but inert.
+3. 3.x (fields): a code part receives only `number`, `integer`, `boolean` and `enum` fields.
+4. 4 and 5.7: the Worker is created through `configureWorker`; under `worker-src blob:` the page passes the module source and the runtime builds a blob module Worker. In Node the runtime always uses `worker_threads`.
+5. 5.5: bus transfers are instantaneous; baud is only compared (3 % tolerance); an I2C or SPI request is answered in the bench's `service()` turn, not at wire speed.
+6. 5.2: there is no 1 ms power-glitch filter; power is evaluated at each solve.
+7. 3.x (`push-button`): the draft `latch` field is gone; the `pressed` field is the held state.
+8. 7: `dotbench part test` runs the scenario steps `advance_ms`, `set_field`, `press`, `serial_in`, `expect_serial`, `i2c`, `spi`, `set_pin`, `pullup`, `pwm`, `expect_pin`, `expect_output` (`value`, `min` or `max`), `expect_visual`, `uart_listen`, `uart_send`, `expect_uart`.
+9. 6.1 (Robotics): the pin table of the sketch (`IN1..IN4`, `SLEEP`, `VM`, `P_SDA`) was an assumption and is replaced by the researched table (`/home/claude/research/06-official-modules-spec.md` 3.2, from docs.kode.diy), now the built-in `dotbench.kode-robotics` generated from `parts/gen/data/modules.json`: upright, GPIO8 SCL, 9 SDA, 10 spare, 11 servo, 12 nFAULT, 13 BIN1, 14 BIN2, 21 AIN2, 19 nSLEEP, 20 AIN1, 17/18/15/16 the sensor header; turned maps position p to 15 - p. Not published and therefore marked `assumed` (manifest description in 3 languages, `STATUS-parts.md`): the AT8833CQ truth table (taken as a DRV8833), the order of the stepper header pins, the rail of nFAULT's pull-up. The module mounts through the new `mount` manifest block and `bench.mountPart`, not by wires.
+10. Modules: manifest `mount` (`via`, `orientations`, `pins:[{pin, gpio, source}]`, `rails`), `body.estimate`, category `kode-module`; bench `mountPart`, `unmountPart`, `mounted`, `setUsbPower` (see `STATUS-parts.md`).

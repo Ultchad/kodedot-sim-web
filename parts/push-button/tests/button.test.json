@@ -1,0 +1,62 @@
+{
+  "name": "push button makes and breaks the contact",
+  "steps": [
+    {
+      "comment": "B to ground, A pulled up by the tester: the open button leaves A high",
+      "set_pin": {
+        "pin": "B",
+        "level": 0
+      }
+    },
+    {
+      "pullup": "A"
+    },
+    {
+      "expect_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    },
+    {
+      "set_field": {
+        "pressed": true
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "expect_pin": {
+        "pin": "A",
+        "level": 0
+      }
+    },
+    {
+      "set_field": {
+        "pressed": false
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "expect_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    },
+    {
+      "comment": "a press() holds the contact for its time",
+      "press": {
+        "field": "pressed",
+        "ms": 100
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    }
+  ]
+}

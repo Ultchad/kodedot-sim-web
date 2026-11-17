@@ -31,7 +31,7 @@ You need the `dotbench` command-line tool (the same one that builds Kode Dot app
    - A part is **off until its power pin is on a rail and its ground pin is wired to GND**. The Kode Dot app must switch the rail on first (`kode_pin_power_3v3(true)`).
 5. **Add fields** for anything you want to change while it runs: a temperature slider, an address, a switch. Each has a `name` (lowercase), a label in three languages, a `default`, and limits.
 6. **Choose the behaviour.**
-   - **No code**: copy `examples/lm75-declarative.manifest.json` or `examples/button-module.manifest.json` and change it. Elements available: `switch`, `bridge`, `divider`, `source`, `drive`, `i2c_slave`, `h_bridge`, `servo`, `wireless`. Values come from your fields.
+   - **No code**: copy `examples/lm75-declarative.manifest.json` or `examples/button-module.manifest.json` and change it. Elements available: `switch`, `bridge`, `divider`, `source`, `drive`, `i2c_slave`, `h_bridge`, `servo`, `led`, `buzzer`, `wireless` (accepted, but the bench does not simulate wireless media yet). Values come from your fields.
    - **Arduino code**: edit `src/main.ino`. Read a field with `dotbenchField(FIELD_TEMPERATURE)`, publish a value to the picture with `dotbenchOutput(OUTPUT_READS, n)`. The header `dotbench_fields.h` is generated from your manifest when you build.
 7. **Make the picture react** with `visuals` (an LED that glows, a text with a number) and let people poke it with `controls` (a button you can press on the picture).
 8. **Check and test.**
@@ -39,14 +39,14 @@ You need the `dotbench` command-line tool (the same one that builds Kode Dot app
    dotbench part check .     # manifest, picture, pin and field references, translations
    dotbench part test .      # builds your code and runs tests/*.test.json
    ```
-   Edit `tests/sensor.test.json` to match your part. Steps: `advance_ms`, `set_field`, `expect_serial`, `i2c`, `expect_output`.
+   Edit `tests/sensor.test.json` to match your part. Steps: `advance_ms`, `set_field`, `press`, `expect_serial`, `serial_in`, `i2c`, `spi`, `set_pin`, `expect_pin`, `uart_send`, `expect_uart`, `expect_output`.
 9. **Build the part file:** `dotbench part build .` produces `<id>-<version>.dotpart`.
 10. **Try it in the browser.** Open dotbench, tab **Make your own**, drop the `.dotpart` in **Check my part**, read what the import dialog says (what it runs, which pins, what it cannot do), then import it. Add it to the bench, wire `3V3` and `GND`, then the signal pins to the header (`EXP1` to `EXP14`), and run your Kode Dot app.
 
 ## Things to know
 
 - **What the Kode Dot can do on the header:** digital in and out, PWM out (1 to 40000 Hz), analog read on `EXP8` to `EXP12` and `EXP14`, I2C **master**, SPI **master**, UART 8N1. It cannot be a slave on I2C or SPI, so your part is the slave.
-- **Arduino rules:** write a normal sketch. For an I2C slave use `Wire.begin((uint8_t)address, SDA, SCL, 100000)` (with the cast). Supported: GPIO, interrupts, `analogRead`, PWM (`analogWrite`, `ledc*`), `millis/delay`, `Serial` (shown in the part's console), `Serial1/2`, `Wire`. Not supported: FreeRTOS tasks, WiFi, Bluetooth, SD, NeoPixel and other bit-timed libraries. SPI and `Preferences` are planned.
+- **Arduino rules:** write a normal sketch. For an I2C slave use `Wire.begin((uint8_t)address, SDA, SCL, 100000)` (with the cast). Supported: GPIO, interrupts, `analogRead`, PWM (`analogWrite`, `ledc*`), `millis/delay`, `Serial` (shown in the part's console), `Serial1/2`, `Wire`, `SPI` as a master, `dacWrite`, `Preferences` (kept in memory until the part loses power; not saved). Not supported: FreeRTOS tasks, WiFi, Bluetooth, SD, NeoPixel and other bit-timed libraries, an SPI slave.
 - **Time is virtual.** `delay()` and `millis()` follow the bench clock, so pausing or stepping the bench pauses your sketch.
 - **Libraries:** copy a library folder into `libraries/`. Libraries that touch AVR registers do not work.
 - **Limits of the simulation:** signals are DC levels and bus transactions. PWM is frequency and duty, not edges. Bit-banged protocols, I2C clock stretching and current are not simulated.
@@ -63,5 +63,5 @@ You need the `dotbench` command-line tool (the same one that builds Kode Dot app
 | "5 V on a 3.3 V pin" | a 5 V rail or a 5 V part driving a 3.3 V pin |
 | `check` says a position is outside the picture | `pos` or a region exceeds `picture.width/height` |
 | `test` says "undeclared identifier" for a function | add a prototype above its first use |
-| "crashed" badge on the part | your code trapped (out of memory, bad pointer); it reboots up to 3 times |
+| "crashed" badge on the part | your code trapped (out of memory, bad pointer); the part stops and a warning is shown; restart the part from its menu |
 | "busy loop" badge | `loop()` never calls `delay()` or anything blocking |

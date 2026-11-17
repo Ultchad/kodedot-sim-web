@@ -1,0 +1,17 @@
+{
+  "name": "sockets are plain terminals (the mount itself is tested on the bench)",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "S5",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "S5",
+        "level": 1
+      }
+    }
+  ]
+}

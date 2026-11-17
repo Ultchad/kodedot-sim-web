@@ -1,0 +1,162 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.capacitor-electrolytic",
+  "name": {
+    "en": "Electrolytic capacitor",
+    "pt-BR": "Capacitor eletrolítico",
+    "es": "Condensador electrolítico"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A polarised electrolytic capacitor, 1 uF to 10000 uF, 25 V. Same virtual-time model as the ceramic one. Hazards like the real part: more than 1 V backwards for 40 ms and it bursts (open circuit, polarity hazard, until you replace it); over 25 V it fails too. The plus lead is the long one.",
+    "pt-BR": "Um capacitor eletrolítico polarizado, de 1 uF a 10000 uF, 25 V. Mesmo modelo no tempo virtual do cerâmico. Riscos como no real: mais de 1 V ao contrário por 40 ms e ele estoura (circuito aberto, aviso de polaridade, até você trocar a peça); acima de 25 V também falha. O terminal positivo é o mais longo.",
+    "es": "Un condensador electrolítico polarizado, de 1 uF a 10000 uF, 25 V. Mismo modelo en tiempo virtual que el cerámico. Riesgos como el real: más de 1 V al revés durante 40 ms y revienta (circuito abierto, aviso de polaridad, hasta cambiar la pieza); por encima de 25 V también falla. El terminal positivo es el largo."
+  },
+  "category": "passive",
+  "tags": [
+    "capacitor",
+    "electrolytic",
+    "polarised",
+    "passive"
+  ],
+  "keywords": {
+    "en": [
+      "capacitor",
+      "electrolytic",
+      "polarized",
+      "polarity",
+      "smoothing",
+      "farad"
+    ],
+    "pt-BR": [
+      "capacitor",
+      "eletrolítico",
+      "polarizado",
+      "polaridade",
+      "filtro",
+      "farad"
+    ],
+    "es": [
+      "condensador",
+      "capacitor",
+      "electrolítico",
+      "polarizado",
+      "polaridad",
+      "faradio"
+    ]
+  },
+  "body": {
+    "w_mm": 6.5,
+    "d_mm": 6.5,
+    "h_mm": 11
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 65,
+    "height": 65
+  },
+  "pins": [
+    {"name":"POS","kind":"io","pos":{"x":20,"y":32.5},"mm":{"x":2,"y":3.25},"face":"bottom","label":{"en":"+"},"abs_max_mv":60000},
+    {"name":"NEG","kind":"io","pos":{"x":45.4,"y":32.5},"mm":{"x":4.54,"y":3.25},"face":"bottom","label":{"en":"-"},"abs_max_mv":60000}
+  ],
+  "fields": [
+    {
+      "name": "uf",
+      "type": "number",
+      "label": {
+        "en": "Capacitance",
+        "pt-BR": "Capacitância",
+        "es": "Capacidad"
+      },
+      "min": 1,
+      "max": 10000,
+      "step": 1,
+      "unit": "µF",
+      "default": 100,
+      "ui": "input"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "volts_mv",
+      "type": "number",
+      "unit": "mV",
+      "label": {
+        "en": "Voltage + to -",
+        "pt-BR": "Tensão + para -",
+        "es": "Tensión + a -"
+      }
+    },
+    {
+      "name": "reversed",
+      "type": "boolean",
+      "label": {
+        "en": "Backwards",
+        "pt-BR": "Ao contrário",
+        "es": "Al revés"
+      }
+    },
+    {
+      "name": "burst",
+      "type": "boolean",
+      "label": {
+        "en": "Burst",
+        "pt-BR": "Estourado",
+        "es": "Reventado"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "value",
+      "effect": "text",
+      "x": 33,
+      "y": 30,
+      "color": "#e8eef5",
+      "source": {
+        "field": "uf"
+      }
+    },
+    {
+      "id": "burst",
+      "effect": "opacity",
+      "x": 33,
+      "y": 33,
+      "r": 30,
+      "color": "#000000",
+      "source": {
+        "output": "burst"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "capacitor",
+        "a": "POS",
+        "b": "NEG",
+        "farads": {
+          "field": "uf",
+          "scale": 0.000001
+        },
+        "esr_ohms": 0.3,
+        "polarity": {
+          "plus": "POS",
+          "reverse_mv": 1000
+        },
+        "max_mv": 25000,
+        "voltage_output": "volts_mv",
+        "reversed_output": "reversed",
+        "failed_output": "burst"
+      }
+    ]
+  }
+}

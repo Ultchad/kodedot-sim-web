@@ -1,0 +1,45 @@
+{
+  "name": "9 V between plus and minus",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "NEG",
+        "level": 0
+      }
+    },
+    {
+      "comment": "plus floats at 9 V above minus (the Dot drives minus to 0 V)",
+      "expect_pin": {
+        "pin": "POS",
+        "mv_min": 8900,
+        "mv_max": 9100
+      }
+    },
+    {
+      "set_field": {
+        "volts": 6
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "POS",
+        "mv_min": 5900,
+        "mv_max": 6100
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "NEG",
+        "level": null
+      }
+    },
+    {
+      "comment": "alone, minus is the reference: 0 V and plus 6 V",
+      "expect_pin": {
+        "pin": "POS",
+        "mv_min": 5900,
+        "mv_max": 6100
+      }
+    }
+  ]
+}

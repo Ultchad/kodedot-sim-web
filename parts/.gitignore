@@ -1,0 +1,13 @@
+# build outputs of `dotbench part test` and `part build` inside a part folder (the library build writes to dist/)
+*/*.dotpart
+!led/*.dotpart
+!buzzer/*.dotpart
+!esp32-*/*.dotpart
+!hdc1080/*.dotpart
+!potentiometer/*.dotpart
+!push-button/*.dotpart
+!rgb-led/*.dotpart
+!servo/*.dotpart
+!slide-switch/*.dotpart
+# generated board folders keep their package in dist/ only
+esp32-s3-devkitc/*.dotpart

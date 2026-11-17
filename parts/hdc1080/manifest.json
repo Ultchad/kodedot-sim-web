@@ -1,0 +1,252 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "id": "dotbench.hdc1080",
+  "name": {
+    "en": "HDC1080 temperature and humidity",
+    "pt-BR": "HDC1080 temperatura e umidade",
+    "es": "HDC1080 temperatura y humedad"
+  },
+  "description": {
+    "en": "A model of the TI HDC1080 at I2C address 0x40, register level: 0x00 temperature, 0x01 humidity (16 bit, big endian), 0x02 configuration, 0xFB to 0xFD serial number, 0xFE manufacturer 0x5449, 0xFF device 0x1050. Set the temperature and humidity in the panel. Conversion time is not modelled: a read always returns the current value.",
+    "pt-BR": "Um modelo do HDC1080 da TI no endereço I2C 0x40, em nível de registrador: 0x00 temperatura, 0x01 umidade (16 bits, big endian), 0x02 configuração, 0xFB a 0xFD número de série, 0xFE fabricante 0x5449, 0xFF dispositivo 0x1050. Ajuste temperatura e umidade no painel. O tempo de conversão não é modelado: a leitura sempre devolve o valor atual.",
+    "es": "Un modelo del HDC1080 de TI en la dirección I2C 0x40, a nivel de registro: 0x00 temperatura, 0x01 humedad (16 bits, big endian), 0x02 configuración, 0xFB a 0xFD número de serie, 0xFE fabricante 0x5449, 0xFF dispositivo 0x1050. Ajusta temperatura y humedad en el panel. El tiempo de conversión no se modela: una lectura siempre devuelve el valor actual."
+  },
+  "category": "sensor",
+  "tags": [
+    "i2c",
+    "temperature",
+    "humidity",
+    "sensor"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 200,
+    "height": 150
+  },
+  "pins": [
+    {
+      "name": "VCC",
+      "kind": "power_in",
+      "pos": {
+        "x": 30,
+        "y": 134
+      },
+      "min_mv": 2700,
+      "max_mv": 5500,
+      "typ_ma": 1,
+      "mm": {
+        "x": 5.08,
+        "y": 10.5
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "GND",
+      "kind": "ground",
+      "pos": {
+        "x": 77,
+        "y": 134
+      },
+      "mm": {
+        "x": 7.62,
+        "y": 10.5
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "SDA",
+      "kind": "io",
+      "pos": {
+        "x": 123,
+        "y": 134
+      },
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 10.16,
+        "y": 10.5
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "SCL",
+      "kind": "io",
+      "pos": {
+        "x": 170,
+        "y": 134
+      },
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 12.7,
+        "y": 10.5
+      },
+      "face": "bottom"
+    }
+  ],
+  "fields": [
+    {
+      "name": "temperature",
+      "type": "number",
+      "label": {
+        "en": "Temperature",
+        "pt-BR": "Temperatura",
+        "es": "Temperatura"
+      },
+      "min": -40,
+      "max": 125,
+      "step": 0.1,
+      "unit": "°C",
+      "default": 23.5,
+      "ui": "slider"
+    },
+    {
+      "name": "humidity",
+      "type": "number",
+      "label": {
+        "en": "Humidity",
+        "pt-BR": "Umidade",
+        "es": "Humedad"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 0.5,
+      "unit": "%",
+      "default": 45,
+      "ui": "slider"
+    }
+  ],
+  "visuals": [
+    {
+      "id": "t",
+      "effect": "text",
+      "x": 100,
+      "y": 50,
+      "w": 120,
+      "h": 24,
+      "color": "#ffffff",
+      "source": {
+        "field": "temperature"
+      }
+    },
+    {
+      "id": "h",
+      "effect": "text",
+      "x": 100,
+      "y": 82,
+      "w": 120,
+      "h": 24,
+      "color": "#9fd4ff",
+      "source": {
+        "field": "humidity"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "i2c_slave",
+        "sda": "SDA",
+        "scl": "SCL",
+        "address": 64,
+        "pointer_bytes": 1,
+        "auto_increment": false,
+        "registers": [
+          {
+            "reg": 0,
+            "size": 2,
+            "access": "ro",
+            "value": {
+              "field": "temperature",
+              "scale": 397.1878787878788,
+              "offset": 15887.515151515152,
+              "endian": "big"
+            }
+          },
+          {
+            "reg": 1,
+            "size": 2,
+            "access": "ro",
+            "value": {
+              "field": "humidity",
+              "scale": 655.36,
+              "offset": 0,
+              "endian": "big"
+            }
+          },
+          {
+            "reg": 2,
+            "size": 2,
+            "access": "rw",
+            "default": 4096
+          },
+          {
+            "reg": 251,
+            "size": 2,
+            "access": "ro",
+            "default": 4660
+          },
+          {
+            "reg": 252,
+            "size": 2,
+            "access": "ro",
+            "default": 22136
+          },
+          {
+            "reg": 253,
+            "size": 2,
+            "access": "ro",
+            "default": 39612
+          },
+          {
+            "reg": 254,
+            "size": 2,
+            "access": "ro",
+            "default": 21577
+          },
+          {
+            "reg": 255,
+            "size": 2,
+            "access": "ro",
+            "default": 4176
+          }
+        ]
+      }
+    ]
+  },
+  "body": {
+    "w_mm": 20,
+    "d_mm": 12,
+    "h_mm": 3
+  },
+  "keywords": {
+    "en": [
+      "hdc1080",
+      "temperature",
+      "humidity",
+      "i2c",
+      "sensor"
+    ],
+    "pt-BR": [
+      "hdc1080",
+      "temperatura",
+      "umidade",
+      "i2c",
+      "sensor"
+    ],
+    "es": [
+      "hdc1080",
+      "temperatura",
+      "humedad",
+      "i2c",
+      "sensor"
+    ]
+  }
+}
