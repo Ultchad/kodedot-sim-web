@@ -5,8 +5,7 @@
  * the A end (COM to A), at `b` at the B end, as in the real switch and in the part's picture.
  */
 import manifestJson from '../../../../../parts/slide-switch/manifest.json';
-import { Matrix4, PAL, Shape, defineModel, footprintOf, part, partState, roundedRectLoop, terminalsFromManifest, type PartState } from '../../index';
-import { controlFromManifest, markControl } from './controls';
+import { Matrix4, PAL, Shape, controlFromManifest, defineModel, footprintOf, markControl, part, partState, roundedRectLoop, terminalsFromManifest, type PartState } from '../../index';
 import { approach, asManifest, fieldDefault, flatLeg } from './shared';
 
 const manifest = asManifest(manifestJson);

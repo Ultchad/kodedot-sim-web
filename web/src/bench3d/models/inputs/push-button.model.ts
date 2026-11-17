@@ -8,8 +8,7 @@
  * 0.7 mm so that a press can be seen from the Workbench's camera.
  */
 import manifestJson from '../../../../../parts/push-button/manifest.json';
-import { PAL, Shape, defineModel, footprintOf, part, partState, terminalsFromManifest, type PartState } from '../../index';
-import { controlFromManifest, markControl } from './controls';
+import { PAL, Shape, controlFromManifest, defineModel, footprintOf, markControl, part, partState, terminalsFromManifest, type PartState } from '../../index';
 import { approach, asManifest, flatLeg } from './shared';
 
 const manifest = asManifest(manifestJson);

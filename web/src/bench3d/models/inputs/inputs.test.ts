@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { instantiate, makeCtx, part, partState, type PartModel, type PartState } from '../../index';
-import { controlOf, controlsIn, nextValue, turnDeg, turnValueAt } from './controls';
+import { controlOf, controlsIn, instantiate, makeCtx, nextValue, part, partState, turnDeg, turnValueAt, type PartModel, type PartState } from '../../index';
 import antenna from './antenna.model';
 import button from './push-button.model';
 import buzzer from './buzzer.model';

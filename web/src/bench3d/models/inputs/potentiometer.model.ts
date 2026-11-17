@@ -7,8 +7,7 @@
  * towards the terminals. The frame carries only the marking of a real pot: taper and value.
  */
 import manifestJson from '../../../../../parts/potentiometer/manifest.json';
-import { PAL, Shape, defineModel, footprintOf, part, partState, print, terminalsFromManifest, text, topQuad, type PartState, type Pt } from '../../index';
-import { controlFromManifest, markControl, turnDeg } from './controls';
+import { PAL, Shape, controlFromManifest, defineModel, footprintOf, markControl, part, partState, print, terminalsFromManifest, text, topQuad, turnDeg, type PartState, type Pt } from '../../index';
 import { asManifest, fieldDefault, flatLeg } from './shared';
 
 const manifest = asManifest(manifestJson);
@@ -28,6 +27,7 @@ const BODY_D = FRONT - BACK, BODY_Z = (FRONT + BACK) / 2, BODY_W = W - 0.9;
 const HOUSING = 6.0, FRAME = 6.7, BUSH = 9.4;
 const SHAFT_R = 3.0;
 const INK = '#2b2a2d';
+const HOUSING_BLUE = ['matte', '#1f62ad'] as const; // the housing's own blue, deeper than PAL.plasticBlue
 
 /** The knurled top of the shaft: a ring of flat teeth. */
 function knurl(r: number, teeth: number, depth: number): Pt[] {
@@ -48,7 +48,7 @@ export default defineModel<PartState>({
   build(ctx) {
     const s = new Shape();
     // housing, then the steel frame: a plate on top, a strap down each side, two tabs folded over the front
-    s.box(...PAL.plasticBlue, 0, BODY_Z, BODY_W, BODY_D, 0, HOUSING, 1.0, 0.3, { cap: true, ao: 0.78 });
+    s.box(...HOUSING_BLUE, 0, BODY_Z, BODY_W, BODY_D, 0, HOUSING, 1.0, 0.3, { cap: true, ao: 0.78 });
     s.box(...PAL.tin, 0, BODY_Z, BODY_W, BODY_D, HOUSING, FRAME, 1.0, 0.16, { ao: 1 });
     for (const sx of [-1, 1]) {
       s.box(...PAL.tin, sx * (BODY_W / 2 + 0.1), BODY_Z, 0.3, 3.4, 0, FRAME - 0.2, 0, 0.1, { cap: true, ao: 0.85 });

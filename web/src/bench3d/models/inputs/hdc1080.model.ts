@@ -5,10 +5,10 @@
  * four-pin 2.54 mm header soldered pins-down: its plastic (2.54 mm) is under the board and is what the part stands
  * on, the 6.1 mm contacts go into the breadboard, the short tails come through the pads and are soldered on top.
  * The pins are the manifest's terminals, named in silkscreen. Nothing on the board is invented: the real breakouts
- * have no LED, so nothing lights; the print is the part number, its bus address, the pin names and the references.
+ * have no LED, so nothing lights; the print is the part number, the pin names and the references.
  */
 import manifestJson from '../../../../../parts/hdc1080/manifest.json';
-import { INK, PAL, PITCH, Shape, circleLoop, defineModel, footprintOf, pad, pcb, pinLabels, print, silkBox, terminalsFromManifest, text, topQuad, type Finish, type PartState } from '../../index';
+import { INK, PAL, PITCH, Shape, circleLoop, defineModel, footprintOf, pad, pcb, pinLabels, print, silkBox, terminalsFromManifest, text, topQuad, type PartState } from '../../index';
 import { asManifest, chip2 } from './shared';
 
 const manifest = asManifest(manifestJson);
@@ -16,8 +16,6 @@ const terminals = terminalsFromManifest(manifest);
 const { w: W, d: D } = footprintOf(manifest.body);
 const LEGS = 6; // the long side of a header pin, below its plastic
 const STRIP = 2.54; // the header's plastic: the board sits on it
-const PURPLE: Finish = ['pcb', '#56308f']; // candidate for PAL (pcbPurple)
-const ADDRESS = Number(manifest.behaviour?.elements?.find((e) => e.type === 'i2c_slave')?.address ?? 0x40);
 const NAME = manifest.name.en.split(' ')[0];
 
 // the header row is where the manifest puts it; everything else is laid out from the board's edges and the pins
@@ -36,7 +34,7 @@ export default defineModel<PartState>({
   terminals,
   build(ctx) {
     const s = new Shape();
-    const top = pcb(s, { w: W, d: D, y: STRIP, r: 1.2, finish: PURPLE, holes: HOLES.map((h) => ({ ...h, plated: false })) });
+    const top = pcb(s, { w: W, d: D, y: STRIP, r: 1.2, finish: PAL.pcbPurple, holes: HOLES.map((h) => ({ ...h, plated: false })) });
     for (const h of HOLES) s.prism(...PAL.gold, circleLoop(h.x, h.z, h.d / 2 + 0.75, ctx.seg(18)), top, top + 0.04, 0, { holes: [circleLoop(h.x, h.z, h.d / 2, 14)], ao: 1 });
     // the header: one notched block of plastic per pin under the board, the pin through it and through its pad
     // (square for pin 1), a solder fillet round the tail
@@ -90,7 +88,6 @@ export default defineModel<PartState>({
           }
 
           // silkscreen: the pin names over the header, the sensor's outline and pin 1, references, the part number
-          // and the address it answers at
           pinLabels(g, terminals.map((t) => t.id), terminals[0].pos[0], ROW_Z - 1.75, PITCH_X, 0.86);
           silkBox(g, U1.x - U1.size / 2 - 0.55, U1.z - U1.size / 2 - 0.3, U1.size + 1.1, U1.size + 0.6, 0.3, 0.14);
           g.fillStyle = INK.silk;
@@ -102,8 +99,7 @@ export default defineModel<PartState>({
           text(g, 'R1', sda - 1.0, PARTS_Z + 0.3, 0.62, { weight: 600 });
           text(g, 'R2', scl + 1.05, PARTS_Z + 0.3, 0.62, { weight: 600 });
           const left = (HOLES[0].x + HOLES[0].d / 2 + 0.75 + U1.x - U1.size / 2 - 0.55) / 2;
-          text(g, NAME, left, U1.z - 0.55, 1.05, { weight: 800, spacing: 0.04 });
-          text(g, `I2C 0x${ADDRESS.toString(16).toUpperCase()}`, left, U1.z + 0.95, 0.8, { weight: 700 });
+          text(g, NAME, left, U1.z, 1.1, { weight: 800, spacing: 0.04 });
         },
       }),
     );

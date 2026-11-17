@@ -57,14 +57,7 @@ export default defineModel<PartState>({
         quad: topQuad(0, 0, TOP + 0.02, R - 1.5, R - 1.5),
         ppm: 20,
         draw(g) {
-          // moulded marks catch the light: the "+" beside the positive pin, a ring round the sound hole, the seal's seat
-          g.strokeStyle = 'rgba(255,255,255,0.16)';
-          g.lineWidth = 0.16;
-          for (const r of [HOLE + 0.6, R - 2.4]) {
-            g.beginPath();
-            g.arc(0, 0, r, 0, Math.PI * 2);
-            g.stroke();
-          }
+          // the one mark a real buzzer carries: the "+" moulded beside the positive pin
           g.strokeStyle = 'rgba(236,232,224,0.86)';
           g.lineWidth = 0.34;
           g.lineCap = 'round';
