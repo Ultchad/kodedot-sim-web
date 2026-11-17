@@ -12,9 +12,10 @@
  *
  * Candidates for the kit (parts.ts): `outlineBoard` (a board with any outline), `rightAngleHeader`, `socketStrip`
  * and `pinStrip` (lean strips, for boards that lie flat on the table: no tails under the board), `screwBlock`,
- * `chipPassive`, `sot23`, `fpcConnector`, `whipAntenna`, `roundedBar` (a soft moulded bar from a side profile).
+ * `chipPassive`, `sot23`, `fpcConnector`, `whipAntenna`, `moulding` (a solid with real fillets from a side profile).
  */
-import { Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, roundPolygon, type Finish, type ManifestBody, type ManifestPin, type Pt, type V3 } from '../../index';
+import { ShapeUtils, Vector2 } from 'three';
+import { Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, type Finish, type ManifestBody, type ManifestPin, type Pt, type V3 } from '../../index';
 
 // ------------------------------------------------------------------------------------------------- the manifest
 /** What the models of this family read of parts/<id>/manifest.json. */
@@ -246,44 +247,44 @@ export function sot23(s: Shape, o: { x: number; z: number; y: number; turn?: num
   });
 }
 /** Gold flash over brass (SMA parts): paler than the kit's contact gold. */
-export const BRASS: Finish = ['metal', '#dcc27c'];
+export const BRASS: Finish = ['metal', '#e6d291'];
 /**
- * A whip antenna on its SMA jack, standing along +Y from the face it is screwed into at (x, y, z): the jack's flange
- * and thread, the antenna's hex coupling nut and stepped collar (brass), then the black whip: a slight step above
- * the collar, a gentle taper, two grooves near the top and a rounded tip. `length` is the whole height above the face.
+ * A whip antenna on its SMA jack, standing along +Y from the face it is screwed into at (x, y, z), as the reference
+ * pictures show it: a thin gold flange on the face, a round collar, the hex coupling nut (8 mm across flats), then the
+ * black whip: a short step at its foot, a slight taper, two fine grooves below the tip (`grooves`: how far below, mm)
+ * and a round tip. `length` is the whole height above the face, `d` the whip's diameter at its foot.
  */
-export function whipAntenna(s: Shape, o: { x: number; y: number; z: number; length: number; d?: number; seg?: number }): void {
-  const seg = o.seg ?? 16, R = (o.d ?? 8) / 2, L = o.length;
+export function whipAntenna(s: Shape, o: { x: number; y: number; z: number; length: number; d?: number; grooves?: number; seg?: number }): void {
+  const seg = o.seg ?? 16, R = (o.d ?? 8.4) / 2, L = o.length;
   s.at(o.x, o.y, o.z, () => {
-    s.disc(...BRASS, 0, 0, 4.3, 0, 0.6, 0.2, seg, { ao: 0.9 });
-    s.disc('metal', '#c4a961', 0, 0, 3.2, 0.6, 2.3, 0, seg, { ao: 0.85 });
+    s.disc(...BRASS, 0, 0, 4.1, 0, 0.5, 0.15, seg, { ao: 0.9 });
+    s.disc(...BRASS, 0, 0, 3.2, 0.5, 3.9, 0, seg, { ao: 0.8 });
     const hex: Pt[] = [];
-    for (let i = 0; i < 6; i++) hex.push([Math.cos((i * Math.PI) / 3 + Math.PI / 6) * 4.62, Math.sin((i * Math.PI) / 3 + Math.PI / 6) * 4.62]);
-    s.prism(...BRASS, hex, 2.3, 6.9, 0.4, { cap: true, ao: 0.95 });
-    s.disc(...BRASS, 0, 0, 3.7, 6.9, 7.4, 0.2, seg, { ao: 1 });
-    // the whip: a step above the collar, a gentle taper, two fine grooves, a round tip
-    const y0 = 7.4, tip = R * 0.8, Rt = R * 0.92, run = L - tip - y0;
-    const yg = y0 + run * (run < 16 ? 0.55 : 0.82);
-    const prof: [number, number][] = [[R, y0], [R, y0 + 1.4], [R - 0.15, y0 + 1.6]];
-    const taper = (y: number) => R - 0.15 + ((Rt - (R - 0.15)) * (y - (y0 + 1.6))) / (L - tip - (y0 + 1.6));
-    for (const g of [yg, yg + 1.1]) prof.push([taper(g), g], [taper(g) - 0.14, g + 0.12], [taper(g) - 0.14, g + 0.34], [taper(g + 0.46), g + 0.46]);
+    // each corner of the nut is two points a hair apart, so that its six faces shade flat
+    for (let i = 0; i < 6; i++) for (const e of [-0.03, 0.03]) hex.push([Math.cos((i * Math.PI) / 3 + e) * 4.62, Math.sin((i * Math.PI) / 3 + e) * 4.62]);
+    s.prism(...BRASS, hex, 3.9, 9.2, 0.3, { cap: true, ao: 0.95 });
+    // the whip
+    const y0 = 9.2, Rt = R * 0.88, tip = Rt * 0.9, g0 = L - tip - (o.grooves ?? 4);
+    const taper = (y: number) => R + ((Rt - R) * (y - y0)) / (L - tip - y0);
+    const prof: [number, number][] = [[R + 0.25, y0], [R + 0.25, y0 + 1.7], [taper(y0 + 2), y0 + 2]];
+    for (const g of [g0 - 2.2, g0]) prof.push([taper(g), g], [taper(g) - 0.3, g + 0.22], [taper(g) - 0.3, g + 0.5], [taper(g + 0.72), g + 0.72]);
     prof.push([Rt, L - tip]);
     for (let i = 1; i <= 6; i++) {
       const a = (i / 6) * (Math.PI / 2);
       prof.push([Math.max(0, Rt * Math.cos(a)), L - tip + tip * Math.sin(a)]);
     }
-    s.lathe('matte', '#1a1a1c', 0, 0, prof, seg);
+    s.lathe('soft', '#1c1c1e', 0, 0, prof, seg);
   });
 }
 
-/** A convex counter-clockwise polygon with every edge moved inwards by `d`. */
-function insetConvex(v: Pt[], d: number): Pt[] {
+/** A closed loop (counter-clockwise) with every edge moved inwards by its own distance. */
+function insetLoop(v: Pt[], d: number[]): Pt[] {
   const n = v.length;
   const lines = v.map((p, i) => {
     const q = v[(i + 1) % n];
     const l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
     const nx = -(q[1] - p[1]) / l, ny = (q[0] - p[0]) / l; // inward normal of a counter-clockwise loop
-    return { px: p[0] + nx * d, py: p[1] + ny * d, dx: (q[0] - p[0]) / l, dy: (q[1] - p[1]) / l };
+    return { px: p[0] + nx * d[i], py: p[1] + ny * d[i], dx: (q[0] - p[0]) / l, dy: (q[1] - p[1]) / l };
   });
   return v.map((_, i) => {
     const a = lines[(i + n - 1) % n], b = lines[i];
@@ -292,72 +293,108 @@ function insetConvex(v: Pt[], d: number): Pt[] {
     return [a.px + a.dx * t, a.py + a.dy * t] as Pt;
   });
 }
+/** A loop with its corners rounded, hollow (reflex) corners included: `seg` segments per corner, whatever its angle. */
+function roundLoop(v: Pt[], radii: number[], seg: number): Pt[] {
+  const n = v.length, out: Pt[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = v[i], a = v[(i + n - 1) % n], b = v[(i + 1) % n];
+    const ux = a[0] - p[0], uy = a[1] - p[1], vx = b[0] - p[0], vy = b[1] - p[1];
+    const ul = Math.hypot(ux, uy) || 1, vl = Math.hypot(vx, vy) || 1;
+    const interior = Math.acos(Math.max(-1, Math.min(1, (ux * vx + uy * vy) / (ul * vl))));
+    const r = Math.min(radii[i], 0.45 * ul * Math.tan(interior / 2), 0.45 * vl * Math.tan(interior / 2));
+    const t = r / Math.tan(interior / 2), bl = Math.hypot(ux / ul + vx / vl, uy / ul + vy / vl) || 1;
+    const k = r / Math.sin(interior / 2);
+    const cx = p[0] + ((ux / ul + vx / vl) / bl) * k, cy = p[1] + ((uy / ul + vy / vl) / bl) * k;
+    const a0 = Math.atan2(p[1] + (uy / ul) * t - cy, p[0] + (ux / ul) * t - cx);
+    let da = Math.atan2(p[1] + (vy / vl) * t - cy, p[0] + (vx / vl) * t - cx) - a0;
+    while (da > Math.PI) da -= 2 * Math.PI;
+    while (da < -Math.PI) da += 2 * Math.PI;
+    for (let q = 0; q <= seg; q++) out.push([cx + r * Math.cos(a0 + (da * q) / seg), cy + r * Math.sin(a0 + (da * q) / seg)]);
+  }
+  return out;
+}
+export interface MouldingOptions {
+  /** Rings across each end fillet, and segments round each corner of the profile. */
+  steps?: number;
+  seg?: number;
+  /** Baked shade of a vertex (1 = none), from its place and its normal: the form shadow a moulding throws on itself. */
+  shade?(p: V3, n: V3): number;
+}
 /**
- * A moulded bar with soft edges everywhere: the side profile `verts` (a convex counter-clockwise polygon in (z, y),
- * each corner rounded to its `radii`) swept along X from x0 to x1, the two ends rounded to radius `r` (a quarter
- * circle towards the end faces). One smooth-shaded skin; the bevel of a prism cannot do an edge this soft.
+ * A moulded solid with real fillets: the side profile `verts` (a counter-clockwise loop in (z, y); hollow corners
+ * allowed, so an L is one skin) swept along X from x0 to x1. Each corner of the profile is rounded to its
+ * `cornerR`; each edge `i` (from vertex i to i + 1) meets the two end faces in a fillet of its own radius `endR[i]`.
+ * One smooth-shaded skin with computed normals, and flat end faces.
  */
-export function roundedBar(s: Shape, finish: Finish, verts: Pt[], radii: number[], x0: number, x1: number, r: number, o: { steps?: number; seg?: number; m?: Matrix4 } = {}): void {
-  const steps = o.steps ?? 4, seg = o.seg ?? 4;
-  const station = (d: number): Pt[] => roundPolygon(insetConvex(verts, d), radii.map((q) => Math.max(q - d, 0.04)), seg);
-  // from the left end face to the right one: the inset shrinks to nothing, stays, then grows again
-  const cuts: { x: number; d: number; nx: number }[] = [];
-  for (let k = steps; k >= 0; k--) {
-    const a = (k / steps) * (Math.PI / 2);
-    cuts.push({ x: x0 + r - r * Math.sin(a), d: r * (1 - Math.cos(a)), nx: -Math.sin(a) });
-  }
-  for (let k = 0; k <= steps; k++) {
-    const a = (k / steps) * (Math.PI / 2);
-    cuts.push({ x: x1 - r + r * Math.sin(a), d: r * (1 - Math.cos(a)), nx: Math.sin(a) });
-  }
-  const pos: number[] = [], nrm: number[] = [], idx: number[] = [];
-  const rings = cuts.map((c) => station(c.d));
-  const n = rings[0].length;
-  rings.forEach((ring, ci) => {
-    const c = cuts[ci], k = Math.sqrt(Math.max(0, 1 - c.nx * c.nx));
-    ring.forEach(([z, y], j) => {
-      const a = ring[(j + n - 1) % n], b = ring[(j + 1) % n];
-      let nz = b[1] - a[1], ny = -(b[0] - a[0]); // outward normal of a counter-clockwise loop, in (z, y)
-      const l = Math.hypot(nz, ny) || 1;
-      nz /= l;
-      ny /= l;
-      pos.push(c.x, y, z);
-      nrm.push(c.nx, ny * k, nz * k);
-    });
+export function moulding(s: Shape, finish: Finish, verts: Pt[], cornerR: number[], endR: number[], x0: number, x1: number, o: MouldingOptions = {}): void {
+  const steps = o.steps ?? 6, seg = o.seg ?? 5, n = verts.length;
+  const R = Math.max(...endR);
+  const hollow = verts.map((p, i) => {
+    const a = verts[(i + n - 1) % n], b = verts[(i + 1) % n];
+    return (p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0]) < 0;
   });
+  // the profile at depth `d` behind an end face: each edge stands back by what its own fillet takes there
+  const station = (d: number): Pt[] => {
+    const e = endR.map((r) => (d >= r ? 0 : r - Math.sqrt(Math.max(0, r * r - (r - d) * (r - d)))));
+    const radii = cornerR.map((r, i) => {
+      const m = (e[(i + n - 1) % n] + e[i]) / 2;
+      return hollow[i] ? r + m : Math.max(r - m, 0.06);
+    });
+    return roundLoop(insetLoop(verts, e), radii, seg);
+  };
+  const cuts: { x: number; ring: Pt[] }[] = [];
+  for (let k = 0; k <= steps; k++) {
+    const d = R * (1 - Math.cos((k / steps) * (Math.PI / 2)));
+    cuts.push({ x: x0 + d, ring: station(d) });
+  }
+  for (let k = steps; k >= 0; k--) cuts.push({ x: x1 - R * (1 - Math.cos((k / steps) * (Math.PI / 2))), ring: cuts[k].ring });
+  const m = cuts[0].ring.length, rows = cuts.length;
+  const pos: number[] = [], nrm: number[] = [], col: number[] = [], idx: number[] = [];
+  const P = (c: number, j: number): V3 => [cuts[c].x, cuts[c].ring[(j + m) % m][1], cuts[c].ring[(j + m) % m][0]];
+  for (let c = 0; c < rows; c++) for (let j = 0; j < m; j++) {
+    // the normal from the surface's own grid: along the ring, and along the sweep
+    const a = P(c, j - 1), b = P(c, j + 1), u = P(Math.max(0, c - 1), j), w = P(Math.min(rows - 1, c + 1), j);
+    const rx = b[0] - a[0], ry = b[1] - a[1], rz = b[2] - a[2], sx = w[0] - u[0], sy = w[1] - u[1], sz = w[2] - u[2];
+    let nx = ry * sz - rz * sy, ny = rz * sx - rx * sz, nz = rx * sy - ry * sx;
+    // outwards: a counter-clockwise ring in (z, y) has its outside to the right of its direction
+    if (ny * -rz + nz * ry < 0) {
+      nx = -nx;
+      ny = -ny;
+      nz = -nz;
+    }
+    const l = Math.hypot(nx, ny, nz) || 1, p = P(c, j);
+    pos.push(...p);
+    nrm.push(nx / l, ny / l, nz / l);
+    const sh = o.shade ? o.shade(p, [nx / l, ny / l, nz / l]) : 1;
+    col.push(sh, sh, sh);
+  }
   const tri = (a: number, b: number, c: number) => {
-    // wind each triangle so that it faces the way its corners' normals point
     const ux = pos[b * 3] - pos[a * 3], uy = pos[b * 3 + 1] - pos[a * 3 + 1], uz = pos[b * 3 + 2] - pos[a * 3 + 2];
     const vx = pos[c * 3] - pos[a * 3], vy = pos[c * 3 + 1] - pos[a * 3 + 1], vz = pos[c * 3 + 2] - pos[a * 3 + 2];
     const gx = uy * vz - uz * vy, gy = uz * vx - ux * vz, gz = ux * vy - uy * vx;
-    const out = gx * (nrm[a * 3] + nrm[b * 3] + nrm[c * 3]) + gy * (nrm[a * 3 + 1] + nrm[b * 3 + 1] + nrm[c * 3 + 1]) + gz * (nrm[a * 3 + 2] + nrm[b * 3 + 2] + nrm[c * 3 + 2]);
-    if (out >= 0) idx.push(a, b, c);
+    if (gx * (nrm[a * 3] + nrm[b * 3] + nrm[c * 3]) + gy * (nrm[a * 3 + 1] + nrm[b * 3 + 1] + nrm[c * 3 + 1]) + gz * (nrm[a * 3 + 2] + nrm[b * 3 + 2] + nrm[c * 3 + 2]) >= 0) idx.push(a, b, c);
     else idx.push(a, c, b);
   };
-  for (let ci = 0; ci < rings.length - 1; ci++) for (let j = 0; j < n; j++) {
-    const a = ci * n + j, b = ci * n + ((j + 1) % n), c = a + n, e = b + n;
-    tri(a, b, e);
-    tri(a, e, c);
+  for (let c = 0; c < rows - 1; c++) for (let j = 0; j < m; j++) {
+    const a = c * m + j, b = c * m + ((j + 1) % m);
+    tri(a, b, b + m);
+    tri(a, b + m, a + m);
   }
-  // the two end faces: a fan round the middle of the last ring
-  for (const [ci, sx] of [[0, -1], [rings.length - 1, 1]] as const) {
-    const ring = rings[ci], base = pos.length / 3;
-    let cz = 0, cy = 0;
+  // the two flat end faces
+  for (const [c, sx] of [[0, -1], [rows - 1, 1]] as const) {
+    const ring = cuts[c].ring, base = pos.length / 3;
     for (const [z, y] of ring) {
-      cz += z / n;
-      cy += y / n;
-    }
-    pos.push(cuts[ci].x, cy, cz);
-    nrm.push(sx, 0, 0);
-    for (const [z, y] of ring) {
-      pos.push(cuts[ci].x, y, z);
+      pos.push(cuts[c].x, y, z);
       nrm.push(sx, 0, 0);
+      const sh = o.shade ? o.shade([cuts[c].x, y, z], [sx, 0, 0]) : 1;
+      col.push(sh, sh, sh);
     }
-    for (let j = 0; j < n; j++) tri(base, base + 1 + j, base + 1 + ((j + 1) % n));
+    for (const f of ShapeUtils.triangulateShape(ring.map(([z, y]) => new Vector2(z, y)), [])) tri(base + f[0], base + f[1], base + f[2]);
   }
   const count = pos.length / 3;
-  s.add(finish[0], finish[1], { positions: new Float32Array(pos), normals: new Float32Array(nrm), colors: new Float32Array(count * 3).fill(1), uvs: new Float32Array(count * 2), indices: new Uint32Array(idx) }, o.m);
+  s.add(finish[0], finish[1], { positions: new Float32Array(pos), normals: new Float32Array(nrm), colors: new Float32Array(col), uvs: new Float32Array(count * 2), indices: new Uint32Array(idx) });
 }
+
 /** A flat-flex connector (0.5 mm pitch) lying on a board: body along X, the flap and the ribbon's entry at +Z before `turn`. */
 export function fpcConnector(s: Shape, o: { x: number; z: number; y: number; w: number; turn?: number }): void {
   const m = new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(new Matrix4().makeRotationY((-(o.turn ?? 0) * Math.PI) / 2));
