@@ -22,6 +22,8 @@ export interface WireParts {
   liftOf(instance: string): number;
   mountOf(instance: string): number[] | null;
   getVersion(): number;
+  /** Is the part standing in a board's holes (its legs are inside the board, not bare)? */
+  inHoles?(instance: string): boolean;
   /** The pins of a module's connector to the Dot: in the header when the module is mounted, so nothing can be wired to them there. */
   connector?(kind: string): ReadonlySet<string> | null;
 }
@@ -564,24 +566,30 @@ export class Wires {
         const mount = this.parts.mountOf(o.id);
         const lift = mount ? 0 : this.parts.liftOf(o.id);
         const plugged = mount ? (this.parts.connector?.(o.kind) ?? null) : null;
+        const inHoles = !mount && !!this.parts.inHoles?.(o.id);
         if (mount) this.m.fromArray(mount).premultiply(this.dotM);
         const hole = terms.length > 60;
         const size = sizeOf(o.kind, 0);
         for (const t of terms) {
           let pos: Vector3;
-          // the way a wire leaves, in the part's own frame: a side pin sideways, a hole or a socket upward, a leg under the
-          // body outward past the nearest side and a little up (never up through the body it carries)
+          // the way a wire leaves, in the part's own frame: a side pin sideways, a hole or a socket upward, a pin under
+          // the body (a leg, a module's connector) outward past the nearest side, never up through the body it carries
           const out = t.face === 'left' ? new Vector3(-1, 0, 0) : t.face === 'right' ? new Vector3(1, 0, 0) : t.face === 'front' ? new Vector3(0, 0, 1) : t.face === 'back' ? new Vector3(0, 0, -1) : new Vector3(0, 1, 0);
+          let drop = 0;
           if (t.face === 'bottom') {
-            if (Math.abs(t.x) / size.w >= Math.abs(t.z) / size.d && Math.abs(t.x) > 0.01) out.set(Math.sign(t.x) * 0.8, 0.6, 0);
-            else out.set(0, 0.6, (t.z < 0 ? -1 : 1) * 0.8);
+            // in a board's holes the leg is inside the board: the wire leaves along the board, rising off it
+            const up = inHoles ? 0.6 : 0, side = inHoles ? 0.8 : 1;
+            if (Math.abs(t.x) / size.w >= Math.abs(t.z) / size.d && Math.abs(t.x) > 0.01) out.set(Math.sign(t.x) * side, up, 0);
+            else out.set(0, up, (t.z < 0 ? -1 : 1) * side);
+            // a bare leg the part stands on: the wire holds it half way down, under the body
+            if (!mount && !inHoles && t.y < 0.5) drop = lift / 2;
           }
           if (mount) {
             pos = new Vector3(t.x, t.y, t.z).applyMatrix4(this.m);
             out.transformDirection(this.m);
           } else {
             const w = termWorld(t, o.pos, o.rot as Rot, lift);
-            pos = new Vector3(w.x, w.y, w.z);
+            pos = new Vector3(w.x, w.y - drop, w.z);
             const [ox, oz] = turn(out.x, out.z, o.rot as Rot);
             out.set(ox, out.y, oz);
           }

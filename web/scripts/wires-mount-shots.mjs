@@ -1,6 +1,6 @@
 // Pictures of the wires and of the Kode modules on the Dot, for looking at (headless Chrome on the built site).
 //
-//   npm run build && UX_PORT=4398 node scripts/wires-mount-shots.mjs [--out <folder>] [--only wires,cross,modules] [--cost]
+//   npm run build && UX_PORT=4398 node scripts/wires-mount-shots.mjs [--out <folder>] [--only wires,legs,cross,modules] [--cost]
 //
 // Scenes: a wire from the Dot's header to a breadboard seen close from two sides; three wires crossing a board; the Dot
 // with each of the five modules from the side at table level (anything under the table would show) and from above.
@@ -14,7 +14,7 @@ const arg = (n) => {
   return i < 0 ? null : process.argv[i + 1];
 };
 const out = arg('--out') ?? shots;
-const only = arg('--only')?.split(',') ?? ['wires', 'cross', 'modules'];
+const only = arg('--only')?.split(',') ?? ['wires', 'legs', 'cross', 'modules'];
 mkdirSync(out, { recursive: true });
 
 const MODULES = [
@@ -83,6 +83,18 @@ async function run() {
       for (let i = 0; i < 5; i++) await wire(`device.EXP${i + 1}`, `${bn}.${'abcde'[i]}${10 + i * 2}`, colors[i]);
       await view(0, -80, 250, 0.35, 0);
       await shot('wires-fan');
+    }
+
+    if (only.includes('legs')) {
+      // parts with legs that are not in a board stand on them (they used to sink them into the table)
+      await clear();
+      const led = await place('dotbench.led-red', -24, -90);
+      await place('dotbench.resistor', -6, -90);
+      await place('dotbench.potentiometer', 14, -90);
+      await place('dotbench.capacitor-electrolytic', 32, -90);
+      await wire('device.EXP4', `${led}.A`, '#2f9e57');
+      await view(4, -90, 190, 1.36, Math.PI * 0.86);
+      await shot('legged-parts-stand');
     }
 
     if (only.includes('cross')) {

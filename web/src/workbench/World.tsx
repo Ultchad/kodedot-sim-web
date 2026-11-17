@@ -103,7 +103,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       }
       return connectors.get(kind) ?? null;
     };
-    const wireParts = { terms: (kind: string) => deps.parts.terms(kind), liftOf: parts.liftOf, mountOf: parts.mountOf, getVersion: () => deps.parts.getVersion(), connector };
+    const wireParts = { terms: (kind: string) => deps.parts.terms(kind), liftOf: parts.liftOf, mountOf: parts.mountOf, getVersion: () => deps.parts.getVersion(), connector, inHoles: (instance: string) => deps.parts.liftOf(instance) > 0 };
     return new BenchWorld(dark, { bench: deps.bench, live: deps.live, device: deps.device, parts, wireParts });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const mats = useMemo(
