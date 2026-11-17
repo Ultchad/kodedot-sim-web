@@ -1,0 +1,50 @@
+{
+  "name": "RGB LED channels",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "COM",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "R",
+        "level": 1
+      }
+    },
+    {
+      "expect_output": {
+        "name": "r",
+        "min": 0.1,
+        "max": 0.9
+      }
+    },
+    {
+      "expect_output": {
+        "name": "g",
+        "value": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "b",
+        "value": 0
+      }
+    },
+    {
+      "comment": "the blue and green dies need more than 3 V: the pin's 3.3 V leaves little current",
+      "set_pin": {
+        "pin": "B",
+        "level": 1
+      }
+    },
+    {
+      "expect_output": {
+        "name": "b",
+        "min": 0,
+        "max": 0.1
+      }
+    }
+  ]
+}

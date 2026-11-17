@@ -1,0 +1,144 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "id": "dotbench.slide-switch",
+  "name": {
+    "en": "Slide switch (SPDT)",
+    "pt-BR": "Chave deslizante (SPDT)",
+    "es": "Interruptor deslizante (SPDT)"
+  },
+  "description": {
+    "en": "A two-position switch: COM connects to A or to B. Click it to slide.",
+    "pt-BR": "Uma chave de duas posições: COM liga em A ou em B. Clique para deslizar.",
+    "es": "Un interruptor de dos posiciones: COM conecta con A o con B. Haz clic para deslizar."
+  },
+  "category": "input",
+  "tags": [
+    "switch",
+    "input"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 150,
+    "height": 110
+  },
+  "pins": [
+    {
+      "name": "A",
+      "kind": "io",
+      "pos": {
+        "x": 30,
+        "y": 94
+      },
+      "abs_max_mv": 5500
+    },
+    {
+      "name": "COM",
+      "kind": "io",
+      "pos": {
+        "x": 75,
+        "y": 94
+      },
+      "abs_max_mv": 5500
+    },
+    {
+      "name": "B",
+      "kind": "io",
+      "pos": {
+        "x": 120,
+        "y": 94
+      },
+      "abs_max_mv": 5500
+    }
+  ],
+  "fields": [
+    {
+      "name": "position",
+      "type": "enum",
+      "label": {
+        "en": "Position",
+        "pt-BR": "Posição",
+        "es": "Posición"
+      },
+      "default": "a",
+      "values": [
+        {
+          "value": "a",
+          "label": {
+            "en": "A",
+            "pt-BR": "A",
+            "es": "A"
+          }
+        },
+        {
+          "value": "b",
+          "label": {
+            "en": "B",
+            "pt-BR": "B",
+            "es": "B"
+          }
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "field": "position",
+      "region": {
+        "x": 25,
+        "y": 20,
+        "w": 100,
+        "h": 40
+      },
+      "mode": "toggle"
+    }
+  ],
+  "visuals": [
+    {
+      "id": "knob",
+      "effect": "fill",
+      "x": 30,
+      "y": 28,
+      "w": 30,
+      "h": 24,
+      "color": "#e8eef5",
+      "source": {
+        "field": "position"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "switch",
+        "a": "COM",
+        "b": "A",
+        "closed": {
+          "field": "position",
+          "op": "eq",
+          "value": "a"
+        },
+        "bounce_ms": 2
+      },
+      {
+        "type": "switch",
+        "a": "COM",
+        "b": "B",
+        "closed": {
+          "field": "position",
+          "op": "eq",
+          "value": "b"
+        },
+        "bounce_ms": 2
+      }
+    ]
+  }
+}

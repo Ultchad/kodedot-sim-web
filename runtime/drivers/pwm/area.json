@@ -1,7 +1,7 @@
 {
   "area": "pwm",
-  "description": "LEDC PWM (stubbed)",
+  "description": "khal_pwm's port: channels and timers published to the bench model as (frequency, duty) per J3 position",
   "supersedes": {
-    "components/khal/pwm/src/khal_pwm_esp.c": "stubbed: LEDC peripheral"
+    "components/khal/pwm/src/khal_pwm_esp.c": "web fake: runtime/drivers/pwm/khal_pwm_port_web.c (LEDC calls replaced by dbx_pin_set; khal_pwm.c above it is the SDK's own)"
   }
 }

@@ -1,0 +1,288 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.esp32-button-led",
+  "name": {
+    "en": "ESP32: button toggles LED",
+    "pt-BR": "ESP32: botão alterna LED",
+    "es": "ESP32: botón alterna LED"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "An ESP32 running real Arduino code: a push button between IO4 and GND (the sketch enables the internal pull-up and uses a falling-edge interrupt) toggles the LED on IO5 and the on-board LED. Add a LED part (with its resistor) between IO5 and GND, a Push button part between IO4 and GND.",
+    "pt-BR": "Um ESP32 rodando código Arduino de verdade: um botão entre IO4 e GND (o sketch liga o pull-up interno e usa interrupção na borda de descida) alterna o LED em IO5 e o LED da placa. Adicione uma peça LED (com resistor) entre IO5 e GND e uma peça Botão entre IO4 e GND.",
+    "es": "Un ESP32 con código Arduino real: un pulsador entre IO4 y GND (el sketch activa el pull-up interno y usa una interrupción en flanco de bajada) alterna el LED de IO5 y el LED de la placa. Añade una pieza LED (con su resistencia) entre IO5 y GND y una pieza Pulsador entre IO4 y GND."
+  },
+  "category": "mcu",
+  "tags": [
+    "esp32",
+    "gpio",
+    "interrupt",
+    "arduino"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 480,
+    "height": 260
+  },
+  "pins": [
+    {
+      "name": "V33",
+      "kind": "power_in",
+      "pos": {
+        "x": 30,
+        "y": 238
+      },
+      "label": {
+        "en": "3V3"
+      },
+      "min_mv": 3000,
+      "max_mv": 3600,
+      "typ_ma": 60
+    },
+    {
+      "name": "GND",
+      "kind": "ground",
+      "pos": {
+        "x": 58,
+        "y": 238
+      },
+      "label": {
+        "en": "GND"
+      }
+    },
+    {
+      "name": "TX",
+      "kind": "io",
+      "gpio": 17,
+      "pos": {
+        "x": 86,
+        "y": 238
+      },
+      "label": {
+        "en": "TX"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "RX",
+      "kind": "io",
+      "gpio": 16,
+      "pos": {
+        "x": 114,
+        "y": 238
+      },
+      "label": {
+        "en": "RX"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "SDA",
+      "kind": "io",
+      "gpio": 21,
+      "pos": {
+        "x": 142,
+        "y": 238
+      },
+      "label": {
+        "en": "SDA"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "SCL",
+      "kind": "io",
+      "gpio": 22,
+      "pos": {
+        "x": 170,
+        "y": 238
+      },
+      "label": {
+        "en": "SCL"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO4",
+      "kind": "io",
+      "gpio": 4,
+      "pos": {
+        "x": 198,
+        "y": 238
+      },
+      "label": {
+        "en": "4"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO5",
+      "kind": "io",
+      "gpio": 5,
+      "pos": {
+        "x": 226,
+        "y": 238
+      },
+      "label": {
+        "en": "5"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO13",
+      "kind": "io",
+      "gpio": 13,
+      "pos": {
+        "x": 254,
+        "y": 238
+      },
+      "label": {
+        "en": "13"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO14",
+      "kind": "io",
+      "gpio": 14,
+      "pos": {
+        "x": 282,
+        "y": 238
+      },
+      "label": {
+        "en": "14"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO18",
+      "kind": "io",
+      "gpio": 18,
+      "pos": {
+        "x": 310,
+        "y": 238
+      },
+      "label": {
+        "en": "18"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO19",
+      "kind": "io",
+      "gpio": 19,
+      "pos": {
+        "x": 338,
+        "y": 238
+      },
+      "label": {
+        "en": "19"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO23",
+      "kind": "io",
+      "gpio": 23,
+      "pos": {
+        "x": 366,
+        "y": 238
+      },
+      "label": {
+        "en": "23"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO25",
+      "kind": "io",
+      "gpio": 25,
+      "pos": {
+        "x": 394,
+        "y": 238
+      },
+      "label": {
+        "en": "25"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO34",
+      "kind": "analog",
+      "gpio": 34,
+      "pos": {
+        "x": 422,
+        "y": 238
+      },
+      "label": {
+        "en": "34"
+      },
+      "abs_max_mv": 3600
+    },
+    {
+      "name": "IO35",
+      "kind": "analog",
+      "gpio": 35,
+      "pos": {
+        "x": 450,
+        "y": 238
+      },
+      "label": {
+        "en": "35"
+      },
+      "abs_max_mv": 3600
+    }
+  ],
+  "outputs": [
+    {
+      "name": "presses",
+      "type": "number",
+      "label": {
+        "en": "Presses counted",
+        "pt-BR": "Apertos contados",
+        "es": "Pulsaciones contadas"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "led",
+      "effect": "glow",
+      "x": 420,
+      "y": 70,
+      "r": 10,
+      "color": "#3ddc84",
+      "source": {
+        "gpio": 2
+      }
+    },
+    {
+      "id": "count",
+      "effect": "text",
+      "x": 330,
+      "y": 80,
+      "w": 120,
+      "h": 22,
+      "color": "#ffffff",
+      "source": {
+        "output": "presses"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "wasm",
+    "entry": "behaviour.wasm",
+    "abi": 1,
+    "memory_kb": 1024,
+    "stack_kb": 64,
+    "sources": [
+      "src/main.ino"
+    ]
+  }
+}

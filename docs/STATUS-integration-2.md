@@ -75,3 +75,36 @@ d. Persist dirty counter: fixed, see 6 above. Any other writer that marks dirty 
 - First boot: AppMgr copies the nine apps to the card one per second, about 10 s of load after the first frame; swipes in the list lag until it ends (the factory test waits for it).
 - After an app has run, kodeOS's group list shows it as a shortcut tile on top, so "All" is lower (y 170 instead of 72): touch tests must know.
 - The Node `system/restart` rss check fails here with old and new packages.
+
+## Round 2
+
+Merged into integ/verify: main (twice: persist close-out, fix/reset-upgrade), area/parts, area/usb, area/apps (ir_kit, wifi_kit, gpio_kit, ble_kit), area/ble.
+**Not merged:** the newer area/parts commits (HEAD 6f32739). Merging them means rebuilding both roles and rerunning everything; left for round 3.
+
+### Counts (quiet-machine reruns of every failure; the machine's load average was 8 to 19 from other sessions)
+- `tests/node/run.sh` (all areas, kodeOS and boot suites at the end): 1251 ok lines. Final state: every suite green except `system/restart` (rss growth, pre-existing since Round 1) and load flakes that pass alone (below).
+- `tests/node/usb/run.sh`: 16 install checks plus cable 8; new `combination.usb-test.mjs` 4 (kodeOS with a bench and a part; USB install into the full factory set).
+- `tests/node/parts/run.sh --browser`: bench 44, e2e_apps 32, browser PASSED. `tests/browser/run.sh`: PASSED (browser boot, audio, parts).
+- kodeOS role: radio 11, BLE pairing 38, BLE page 17, boot 13; app role BLE 95. Boot suite: boot, factory (thirteen apps), format, guard, reset (real BLE unpair), update all PASS.
+- Apps: ten test files, gpio_kit 9 plus gpio_kit_parts 7, ble_kit 6 (real BLE stack).
+
+### What the combination broke and how it was fixed
+1. **RFID read and write were dead** (rfid read 13 and write 29 failures): parts' pwm area supersedes the LEDC port that the rfid area had as weak stand-ins, so the carrier, the T5577 gaps and the carrier fault never reached the RFID model. Fix: the pwm port calls `rfid_pwm_*` (weak), rfid_idf.c keeps the model there. Commit 7b5d8bc.
+2. **Audio calls at boot take 1.5 s too long** (record, tone_volume, files): first call 2530 ms against 1057 ms before the BLE merge (bisected: 1dceb16 is fine). Only the first ~1.5 s of a boot without radio glue, while AO_Radio's link-up attempt times out; steady state identical. The audio and rfid benches now start after that attempt. Not load alone: BLE adds the stall. On hardware the link comes up; unverified there.
+3. Test counts that assumed nine apps (update and reset boot tests) now follow `tools/factory-apps.json`.
+4. persist region test: nine regions now, the extra one is exactly `ble`; limit is 16 (DBP_MAX_REGIONS), test updated to list them.
+5. radio.test ident_csr: asks again until AO_Radio answers (not reproduced here; the wait is the real condition, not a sleep).
+6. parts e2e: waits for later UART replies before counting them.
+
+### Checks asked for
+- (a) Console fake: kcli over the cable (usb 16), kodeOS and boot suites, page console in system-check and browser run: all pass.
+- (b) Rail: follows the radio (off after link-up, on through the app's Power page via the C5; gpio_kit_parts), and comes up with no radio glue (parts e2e).
+- (c) kodeOS with bench and one part: boots, 13 apps, rail follows radio, no J3/radio/BLE stub hit.
+- (d) USB install into 13 factory apps: accepted (14 listed, registry 14 entries, all have bundles). The real AppMgr never evicts: an oversize install is refused before a byte is sent and nothing is removed. Entry limit is 64; the synthesised images are ~432 B so thirteen fit easily (4160 KB region).
+- BLE notes: stand-ins removed and reset passes through real unpair. Start-up cost of a simple app: boot 680 ms to 740 ms, idle CPU 3.4% to 3.6%: does not matter (+44 KB package). BLE timing effect: item 2 above.
+
+### Page (scratch copy of main's web/, own port 4871)
+Build passes. Needed page changes: `scripts/factory-apps.json` to the thirteen names; `system-check.mjs` expects nine names and "ten apps": update the lists. The page itself lists, installs, reloads, removes and resets with 13. With the microSD in the slot kodeOS copies each factory app to the card after first boot (about 8 s per app on a loaded machine), so settings-check and bench-check (RFID tap) timed out under load 19; they passed against the real web's nine-app build. Rerun them on a quiet machine; they may need longer waits after boot.
+
+### Before merging integ/verify
+Package set (14) is in /home/claude/dotbench/build/apps/. Screenshots: docs/boot-shots/factory-list-*.png, docs/apps-shots/gpio_kit and ble_kit (real app, no canned copy). Busy and "off in Settings" pages of ble_kit are not reachable from an app and have no screenshot now.

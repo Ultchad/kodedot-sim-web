@@ -6,196 +6,621 @@
   "required": ["schemaVersion", "id", "name", "version", "author", "license", "description", "picture", "pins", "behaviour"],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
-    "schemaVersion": { "const": 1 },
-    "id": { "type": "string", "pattern": "^[a-z0-9]+([.-][a-z0-9]+){1,7}$", "maxLength": 80,
-            "description": "Globally unique, reverse-DNS style. The prefix dotbench. is reserved for built-in parts." },
-    "name": { "$ref": "#/$defs/localizedShort" },
-    "version": { "type": "string", "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$" },
-    "author": { "type": "object", "required": ["name"], "additionalProperties": false,
-      "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 80 },
-                      "url": { "type": "string", "format": "uri", "maxLength": 200 } } },
-    "license": { "type": "string", "minLength": 1, "maxLength": 80, "description": "SPDX license expression, e.g. MIT, GPL-3.0-or-later, CC-BY-4.0, LicenseRef-Proprietary." },
-    "description": { "$ref": "#/$defs/localizedLong" },
-    "category": { "enum": ["sensor", "actuator", "display", "input", "mcu", "wireless", "module", "other"], "default": "other" },
-    "tags": { "type": "array", "maxItems": 12, "items": { "type": "string", "pattern": "^[a-z0-9-]{1,24}$" } },
-    "picture": { "type": "object", "required": ["file", "width", "height"], "additionalProperties": false,
-      "properties": {
-        "file": { "type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]{1,80}\\.(png|webp|svg)$" },
-        "width": { "type": "integer", "minimum": 32, "maximum": 2048 },
-        "height": { "type": "integer", "minimum": 32, "maximum": 2048 } },
-      "description": "width/height define the coordinate space used by every pos, region and visual in this manifest." },
-    "model": { "type": "object", "required": ["file"], "additionalProperties": false,
-      "properties": { "file": { "type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]{1,80}\\.glb$" },
-                      "scale_mm": { "type": "number", "exclusiveMinimum": 0, "description": "Width of the picture in millimetres, to size the 3D model." } } },
-    "pins": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/pin" } },
-    "wireless": { "type": "array", "maxItems": 4, "items": { "$ref": "#/$defs/wirelessPort" } },
-    "fields": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/field" } },
-    "controls": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/control" } },
-    "outputs": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/output" } },
-    "visuals": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/visual" } },
-    "behaviour": { "oneOf": [ { "$ref": "#/$defs/behaviourWasm" }, { "$ref": "#/$defs/behaviourDeclarative" } ] },
-    "requires": { "type": "object", "additionalProperties": false,
-      "properties": { "dotbench": { "type": "string", "maxLength": 40, "description": "Semver range of the bench, e.g. >=1.0.0" } } },
-    "build": { "type": "object", "description": "Written by `dotbench part build`. Do not edit.",
+    "$schema": {"type": "string"},
+    "schemaVersion": {"const": 1},
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+([.-][a-z0-9]+){1,7}$",
+      "maxLength": 80,
+      "description": "Globally unique, reverse-DNS style. The prefix dotbench. is reserved for built-in parts."
+    },
+    "name": {"$ref": "#/$defs/localizedShort"},
+    "version": {"type": "string", "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$"},
+    "author": {
+      "type": "object",
+      "required": ["name"],
       "additionalProperties": false,
-      "properties": { "toolchain": { "type": "string" }, "dotcore": { "type": "string" }, "api": { "type": "string" },
-                      "sources_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } } }
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 80},
+        "url": {"type": "string", "format": "uri", "maxLength": 200}
+      }
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "description": "SPDX license expression, e.g. MIT, GPL-3.0-or-later, CC-BY-4.0, LicenseRef-Proprietary."
+    },
+    "description": {"$ref": "#/$defs/localizedLong"},
+    "category": {"enum": ["sensor", "actuator", "display", "input", "mcu", "wireless", "module", "other"], "default": "other"},
+    "tags": {"type": "array", "maxItems": 12, "items": {"type": "string", "pattern": "^[a-z0-9-]{1,24}$"}},
+    "picture": {
+      "type": "object",
+      "required": ["file", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]{1,80}\\.(png|webp|svg)$"},
+        "width": {"type": "integer", "minimum": 32, "maximum": 2048},
+        "height": {"type": "integer", "minimum": 32, "maximum": 2048}
+      },
+      "description": "width/height define the coordinate space used by every pos, region and visual in this manifest."
+    },
+    "model": {
+      "type": "object",
+      "required": ["file"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]{1,80}\\.glb$"},
+        "scale_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Width of the picture in millimetres, to size the 3D model."
+        }
+      }
+    },
+    "pins": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/pin"}},
+    "wireless": {"type": "array", "maxItems": 4, "items": {"$ref": "#/$defs/wirelessPort"}},
+    "fields": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/field"}},
+    "controls": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/control"}},
+    "outputs": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/output"}},
+    "visuals": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/visual"}},
+    "behaviour": {"oneOf": [{"$ref": "#/$defs/behaviourWasm"}, {"$ref": "#/$defs/behaviourDeclarative"}]},
+    "requires": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {"dotbench": {"type": "string", "maxLength": 40, "description": "Semver range of the bench, e.g. >=1.0.0"}}
+    },
+    "build": {
+      "type": "object",
+      "description": "Written by `dotbench part build`. Do not edit.",
+      "additionalProperties": false,
+      "properties": {
+        "toolchain": {"type": "string"},
+        "dotcore": {"type": "string"},
+        "api": {"type": "string"},
+        "sources_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
   },
   "$defs": {
-    "locale": { "type": "string", "pattern": "^[a-z]{2}(-[A-Z]{2})?$" },
-    "localizedShort": { "type": "object", "required": ["en"], "propertyNames": { "$ref": "#/$defs/locale" },
-      "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 48 } },
-    "localizedLong": { "type": "object", "required": ["en"], "propertyNames": { "$ref": "#/$defs/locale" },
-      "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 1000 },
-      "description": "en is required; pt-BR and es are expected by the Make your own checklist." },
-    "pinName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,23}$" },
-    "fieldName": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" },
-    "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
-    "point": { "type": "object", "required": ["x", "y"], "additionalProperties": false,
-      "properties": { "x": { "type": "number", "minimum": 0, "maximum": 2048 }, "y": { "type": "number", "minimum": 0, "maximum": 2048 } } },
-    "region": { "type": "object", "required": ["x", "y", "w", "h"], "additionalProperties": false,
-      "properties": { "x": { "type": "number", "minimum": 0 }, "y": { "type": "number", "minimum": 0 },
-                      "w": { "type": "number", "exclusiveMinimum": 0 }, "h": { "type": "number", "exclusiveMinimum": 0 } } },
-    "pin": { "type": "object", "required": ["name", "kind", "pos"], "additionalProperties": false,
+    "locale": {"type": "string", "pattern": "^[a-z]{2}(-[A-Z]{2})?$"},
+    "localizedShort": {
+      "type": "object",
+      "required": ["en"],
+      "propertyNames": {"$ref": "#/$defs/locale"},
+      "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 48}
+    },
+    "localizedLong": {
+      "type": "object",
+      "required": ["en"],
+      "propertyNames": {"$ref": "#/$defs/locale"},
+      "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 1000},
+      "description": "en is required; pt-BR and es are expected by the Make your own checklist."
+    },
+    "pinName": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,23}$"},
+    "fieldName": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$"},
+    "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "additionalProperties": false,
+      "properties": {"x": {"type": "number", "minimum": 0, "maximum": 2048}, "y": {"type": "number", "minimum": 0, "maximum": 2048}}
+    },
+    "region": {
+      "type": "object",
+      "required": ["x", "y", "w", "h"],
+      "additionalProperties": false,
       "properties": {
-        "name": { "$ref": "#/$defs/pinName" },
-        "kind": { "enum": ["io", "analog", "power_in", "power_out", "ground", "nc"],
-                  "description": "io: digital in/out. analog: also an analog source or sense. power_in: needs a supply. power_out: supplies a rail. ground: 0 V reference. nc: decorative." },
-        "label": { "$ref": "#/$defs/localizedShort" },
-        "gpio": { "type": "integer", "minimum": 0, "maximum": 255, "description": "The Arduino pin number firmware uses for this terminal (wasm behaviour only)." },
-        "pos": { "$ref": "#/$defs/point" },
-        "default": { "enum": ["z", "in", "in_pullup", "in_pulldown", "out_low", "out_high"], "default": "z", "description": "State after power-up, before firmware runs." },
-        "pullup_ohms":   { "type": "number", "minimum": 100, "maximum": 10000000 },
-        "pulldown_ohms": { "type": "number", "minimum": 100, "maximum": 10000000 },
-        "pull_rail": { "$ref": "#/$defs/pinName", "description": "Name of the power_in/power_out pin of this part a pull-up goes to. Defaults to the first power_in pin." },
-        "series_ohms": { "type": "number", "minimum": 0, "maximum": 100000, "default": 0 },
-        "abs_max_mv": { "type": "integer", "minimum": 0, "maximum": 60000, "default": 3600, "description": "Voltage above which the bench shows an over-voltage warning." },
-        "min_mv": { "type": "integer", "description": "power_in: lowest supply voltage at which the part runs." },
-        "max_mv": { "type": "integer", "description": "power_in: highest supply voltage the part tolerates." },
-        "typ_ma": { "type": "number", "minimum": 0, "description": "power_in: typical current, shown against the 5 V budget (0.5 A on the Kode Dot)." },
-        "out_mv": { "type": "integer", "description": "power_out: the voltage it supplies." }
+        "x": {"type": "number", "minimum": 0},
+        "y": {"type": "number", "minimum": 0},
+        "w": {"type": "number", "exclusiveMinimum": 0},
+        "h": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "pin": {
+      "type": "object",
+      "required": ["name", "kind", "pos"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/$defs/pinName"},
+        "kind": {
+          "enum": ["io", "analog", "power_in", "power_out", "ground", "nc"],
+          "description": "io: digital in/out. analog: also an analog source or sense. power_in: needs a supply. power_out: supplies a rail. ground: 0 V reference. nc: decorative."
+        },
+        "label": {"$ref": "#/$defs/localizedShort"},
+        "gpio": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "The Arduino pin number firmware uses for this terminal (wasm behaviour only)."
+        },
+        "pos": {"$ref": "#/$defs/point"},
+        "default": {
+          "enum": ["z", "in", "in_pullup", "in_pulldown", "out_low", "out_high"],
+          "default": "z",
+          "description": "State after power-up, before firmware runs."
+        },
+        "pullup_ohms": {"type": "number", "minimum": 100, "maximum": 10000000},
+        "pulldown_ohms": {"type": "number", "minimum": 100, "maximum": 10000000},
+        "pull_rail": {
+          "$ref": "#/$defs/pinName",
+          "description": "Name of the power_in/power_out pin of this part a pull-up goes to. Defaults to the first power_in pin."
+        },
+        "series_ohms": {"type": "number", "minimum": 0, "maximum": 100000, "default": 0},
+        "abs_max_mv": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000,
+          "default": 3600,
+          "description": "Voltage above which the bench shows an over-voltage warning."
+        },
+        "min_mv": {"type": "integer", "description": "power_in: lowest supply voltage at which the part runs."},
+        "max_mv": {"type": "integer", "description": "power_in: highest supply voltage the part tolerates."},
+        "typ_ma": {
+          "type": "number",
+          "minimum": 0,
+          "description": "power_in: typical current, shown against the 5 V budget (0.5 A on the Kode Dot)."
+        },
+        "out_mv": {"type": "integer", "description": "power_out: the voltage it supplies."}
       },
       "allOf": [
-        { "if": { "properties": { "kind": { "const": "power_in" } }, "required": ["kind"] }, "then": { "required": ["min_mv", "max_mv"] } },
-        { "if": { "properties": { "kind": { "const": "power_out" } }, "required": ["kind"] }, "then": { "required": ["out_mv"] } }
-      ] },
-    "wirelessPort": { "type": "object", "required": ["name", "medium", "role"], "additionalProperties": false,
+        {
+          "if": {"properties": {"kind": {"const": "power_in"}}, "required": ["kind"]},
+          "then": {"required": ["min_mv", "max_mv"]}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "power_out"}}, "required": ["kind"]},
+          "then": {"required": ["out_mv"]}
+        }
+      ]
+    },
+    "wirelessPort": {
+      "type": "object",
+      "required": ["name", "medium", "role"],
+      "additionalProperties": false,
       "properties": {
-        "name": { "$ref": "#/$defs/pinName" },
-        "medium": { "enum": ["nfc_a", "rfid_125k", "ble", "wifi", "ir"] },
-        "role": { "type": "string", "pattern": "^[a-z_]{2,24}$", "description": "Valid roles per medium: nfc_a target|initiator, rfid_125k tag|reader, ble peripheral|central, wifi ap|station, ir tx|rx." },
-        "range_mm": { "type": "number", "minimum": 0, "maximum": 100000 },
-        "pos": { "$ref": "#/$defs/point" },
-        "config": { "type": "object", "description": "Medium-specific; validated by the stage that owns the medium." }
-      } },
-    "field": { "oneOf": [
-      { "type": "object", "required": ["name", "type", "label", "default"], "additionalProperties": false,
-        "properties": { "name": { "$ref": "#/$defs/fieldName" }, "type": { "enum": ["number", "integer"] }, "label": { "$ref": "#/$defs/localizedShort" },
-          "min": { "type": "number" }, "max": { "type": "number" }, "step": { "type": "number", "exclusiveMinimum": 0 },
-          "unit": { "type": "string", "maxLength": 8 }, "default": { "type": "number" },
-          "ui": { "enum": ["input", "slider", "knob"], "default": "input" }, "advanced": { "type": "boolean" } } },
-      { "type": "object", "required": ["name", "type", "label", "default"], "additionalProperties": false,
-        "properties": { "name": { "$ref": "#/$defs/fieldName" }, "type": { "const": "boolean" }, "label": { "$ref": "#/$defs/localizedShort" },
-          "default": { "type": "boolean" }, "advanced": { "type": "boolean" } } },
-      { "type": "object", "required": ["name", "type", "label", "default", "values"], "additionalProperties": false,
-        "properties": { "name": { "$ref": "#/$defs/fieldName" }, "type": { "const": "enum" }, "label": { "$ref": "#/$defs/localizedShort" },
-          "default": { "type": ["number", "string"] },
-          "values": { "type": "array", "minItems": 2, "maxItems": 32, "items": { "type": "object", "required": ["value", "label"], "additionalProperties": false,
-            "properties": { "value": { "type": ["number", "string"] }, "label": { "$ref": "#/$defs/localizedShort" } } } },
-          "advanced": { "type": "boolean" } } },
-      { "type": "object", "required": ["name", "type", "label", "default"], "additionalProperties": false,
-        "properties": { "name": { "$ref": "#/$defs/fieldName" }, "type": { "const": "string" }, "label": { "$ref": "#/$defs/localizedShort" },
-          "default": { "type": "string", "maxLength": 256 }, "maxLength": { "type": "integer", "minimum": 1, "maximum": 256 },
-          "pattern": { "type": "string", "maxLength": 120 }, "advanced": { "type": "boolean" } } },
-      { "type": "object", "required": ["name", "type", "label", "default"], "additionalProperties": false,
-        "properties": { "name": { "$ref": "#/$defs/fieldName" }, "type": { "const": "bytes" }, "label": { "$ref": "#/$defs/localizedShort" },
-          "default": { "type": "string", "pattern": "^([0-9a-fA-F]{2})*$", "maxLength": 512, "description": "Hex string, e.g. a tag UID." },
-          "max_bytes": { "type": "integer", "minimum": 1, "maximum": 256 }, "advanced": { "type": "boolean" } } },
-      { "type": "object", "required": ["name", "type", "label", "default"], "additionalProperties": false,
-        "properties": { "name": { "$ref": "#/$defs/fieldName" }, "type": { "const": "color" }, "label": { "$ref": "#/$defs/localizedShort" },
-          "default": { "$ref": "#/$defs/color" }, "advanced": { "type": "boolean" } } }
-    ] },
-    "control": { "type": "object", "required": ["field", "region", "mode"], "additionalProperties": false,
-      "properties": { "field": { "$ref": "#/$defs/fieldName" }, "region": { "$ref": "#/$defs/region" },
-                      "mode": { "enum": ["toggle", "momentary", "drag_x", "drag_y", "rotate"] }, "label": { "$ref": "#/$defs/localizedShort" } } },
-    "output": { "type": "object", "required": ["name", "type"], "additionalProperties": false,
-      "properties": { "name": { "$ref": "#/$defs/fieldName" }, "type": { "enum": ["number", "boolean"] },
-                      "unit": { "type": "string", "maxLength": 8 }, "min": { "type": "number" }, "max": { "type": "number" },
-                      "label": { "$ref": "#/$defs/localizedShort" } } },
-    "visual": { "type": "object", "required": ["id", "effect", "source"], "additionalProperties": false,
+        "name": {"$ref": "#/$defs/pinName"},
+        "medium": {"enum": ["nfc_a", "rfid_125k", "ble", "wifi", "ir"]},
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z_]{2,24}$",
+          "description": "Valid roles per medium: nfc_a target|initiator, rfid_125k tag|reader, ble peripheral|central, wifi ap|station, ir tx|rx."
+        },
+        "range_mm": {"type": "number", "minimum": 0, "maximum": 100000},
+        "pos": {"$ref": "#/$defs/point"},
+        "config": {"type": "object", "description": "Medium-specific; validated by the stage that owns the medium."}
+      }
+    },
+    "field": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["name", "type", "label", "default"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"$ref": "#/$defs/fieldName"},
+            "type": {"enum": ["number", "integer"]},
+            "label": {"$ref": "#/$defs/localizedShort"},
+            "min": {"type": "number"},
+            "max": {"type": "number"},
+            "step": {"type": "number", "exclusiveMinimum": 0},
+            "unit": {"type": "string", "maxLength": 8},
+            "default": {"type": "number"},
+            "ui": {"enum": ["input", "slider", "knob"], "default": "input"},
+            "advanced": {"type": "boolean"}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["name", "type", "label", "default"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"$ref": "#/$defs/fieldName"},
+            "type": {"const": "boolean"},
+            "label": {"$ref": "#/$defs/localizedShort"},
+            "default": {"type": "boolean"},
+            "advanced": {"type": "boolean"}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["name", "type", "label", "default", "values"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"$ref": "#/$defs/fieldName"},
+            "type": {"const": "enum"},
+            "label": {"$ref": "#/$defs/localizedShort"},
+            "default": {"type": ["number", "string"]},
+            "values": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 32,
+              "items": {
+                "type": "object",
+                "required": ["value", "label"],
+                "additionalProperties": false,
+                "properties": {"value": {"type": ["number", "string"]}, "label": {"$ref": "#/$defs/localizedShort"}}
+              }
+            },
+            "advanced": {"type": "boolean"}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["name", "type", "label", "default"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"$ref": "#/$defs/fieldName"},
+            "type": {"const": "string"},
+            "label": {"$ref": "#/$defs/localizedShort"},
+            "default": {"type": "string", "maxLength": 256},
+            "maxLength": {"type": "integer", "minimum": 1, "maximum": 256},
+            "pattern": {"type": "string", "maxLength": 120},
+            "advanced": {"type": "boolean"}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["name", "type", "label", "default"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"$ref": "#/$defs/fieldName"},
+            "type": {"const": "bytes"},
+            "label": {"$ref": "#/$defs/localizedShort"},
+            "default": {
+              "type": "string",
+              "pattern": "^([0-9a-fA-F]{2})*$",
+              "maxLength": 512,
+              "description": "Hex string, e.g. a tag UID."
+            },
+            "max_bytes": {"type": "integer", "minimum": 1, "maximum": 256},
+            "advanced": {"type": "boolean"}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["name", "type", "label", "default"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"$ref": "#/$defs/fieldName"},
+            "type": {"const": "color"},
+            "label": {"$ref": "#/$defs/localizedShort"},
+            "default": {"$ref": "#/$defs/color"},
+            "advanced": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "control": {
+      "type": "object",
+      "required": ["field", "region", "mode"],
+      "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,23}$" },
-        "effect": { "enum": ["glow", "fill", "rotate", "opacity", "text", "bar"] },
-        "x": { "type": "number" }, "y": { "type": "number" }, "w": { "type": "number" }, "h": { "type": "number" }, "r": { "type": "number" },
-        "color": { "$ref": "#/$defs/color" },
-        "source": { "oneOf": [
-          { "type": "object", "required": ["pin"], "additionalProperties": false, "properties": { "pin": { "$ref": "#/$defs/pinName" } } },
-          { "type": "object", "required": ["gpio"], "additionalProperties": false, "properties": { "gpio": { "type": "integer", "minimum": 0, "maximum": 255 } },
-            "description": "A firmware pin with no terminal (an on-board LED)." },
-          { "type": "object", "required": ["output"], "additionalProperties": false, "properties": { "output": { "$ref": "#/$defs/fieldName" } } },
-          { "type": "object", "required": ["field"], "additionalProperties": false, "properties": { "field": { "$ref": "#/$defs/fieldName" } } } ] },
-        "scale": { "type": "object", "required": ["in", "out"], "additionalProperties": false,
-          "properties": { "in": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-                          "out": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 } } }
-      } },
-    "behaviourWasm": { "type": "object", "required": ["type", "entry", "abi"], "additionalProperties": false,
+        "field": {"$ref": "#/$defs/fieldName"},
+        "region": {"$ref": "#/$defs/region"},
+        "mode": {"enum": ["toggle", "momentary", "drag_x", "drag_y", "rotate"]},
+        "label": {"$ref": "#/$defs/localizedShort"}
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
       "properties": {
-        "type": { "const": "wasm" },
-        "entry": { "type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]{1,80}\\.wasm$" },
-        "abi": { "const": 1 },
-        "memory_kb": { "type": "integer", "minimum": 256, "maximum": 8192, "default": 1024 },
-        "stack_kb": { "type": "integer", "minimum": 16, "maximum": 512, "default": 64 },
-        "wasm_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "sources": { "type": "array", "maxItems": 64, "items": { "type": "string", "maxLength": 120 }, "description": "Informational: source files shipped under src/." }
-      } },
-    "expr": { "oneOf": [
-      { "type": ["number", "boolean", "string"] },
-      { "type": "object", "required": ["field"], "additionalProperties": false,
-        "properties": { "field": { "$ref": "#/$defs/fieldName" }, "scale": { "type": "number" }, "offset": { "type": "number" } } },
-      { "type": "object", "required": ["field", "op", "value"], "additionalProperties": false,
-        "properties": { "field": { "$ref": "#/$defs/fieldName" }, "op": { "enum": ["eq", "ne", "gt", "ge", "lt", "le"] }, "value": { "type": ["number", "boolean", "string"] } } } ] },
-    "behaviourDeclarative": { "type": "object", "required": ["type", "engine", "elements"], "additionalProperties": false,
-      "properties": { "type": { "const": "declarative" }, "engine": { "const": 1 },
-                      "elements": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/element" } } } },
-    "element": { "oneOf": [
-      { "type": "object", "required": ["type", "a", "b", "closed"], "additionalProperties": false,
-        "properties": { "type": { "const": "switch" }, "a": { "$ref": "#/$defs/pinName" }, "b": { "$ref": "#/$defs/pinName" }, "closed": { "$ref": "#/$defs/expr" },
-                        "bounce_ms": { "type": "number", "minimum": 0, "maximum": 20 } } },
-      { "type": "object", "required": ["type", "a", "b"], "additionalProperties": false,
-        "properties": { "type": { "const": "bridge" }, "a": { "$ref": "#/$defs/pinName" }, "b": { "$ref": "#/$defs/pinName" } } },
-      { "type": "object", "required": ["type", "top", "bottom", "wiper", "ohms", "position"], "additionalProperties": false,
-        "properties": { "type": { "const": "divider" }, "top": { "$ref": "#/$defs/pinName" }, "bottom": { "$ref": "#/$defs/pinName" }, "wiper": { "$ref": "#/$defs/pinName" },
-                        "ohms": { "type": "number", "minimum": 100 }, "position": { "$ref": "#/$defs/expr" } } },
-      { "type": "object", "required": ["type", "pin", "mv"], "additionalProperties": false,
-        "properties": { "type": { "const": "source" }, "pin": { "$ref": "#/$defs/pinName" }, "mv": { "$ref": "#/$defs/expr" },
-                        "ohms": { "type": "number", "minimum": 1, "default": 100 } } },
-      { "type": "object", "required": ["type", "pin", "level"], "additionalProperties": false,
-        "properties": { "type": { "const": "drive" }, "pin": { "$ref": "#/$defs/pinName" }, "mode": { "enum": ["push_pull", "open_drain"], "default": "push_pull" },
-                        "level": { "$ref": "#/$defs/expr" } } },
-      { "type": "object", "required": ["type", "sda", "scl", "address", "registers"], "additionalProperties": false,
-        "properties": { "type": { "const": "i2c_slave" }, "sda": { "$ref": "#/$defs/pinName" }, "scl": { "$ref": "#/$defs/pinName" },
-          "address": { "oneOf": [ { "type": "integer", "minimum": 8, "maximum": 119 }, { "type": "object", "required": ["field"], "additionalProperties": false, "properties": { "field": { "$ref": "#/$defs/fieldName" } } } ] },
-          "pointer_bytes": { "enum": [0, 1], "default": 1, "description": "1: first written byte selects the register. 0: no pointer, a read returns register 0." },
-          "auto_increment": { "type": "boolean", "default": true },
-          "registers": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "type": "object", "required": ["reg", "size", "access"], "additionalProperties": false,
-            "properties": { "reg": { "type": "integer", "minimum": 0, "maximum": 255 }, "size": { "type": "integer", "minimum": 1, "maximum": 4 },
-              "access": { "enum": ["ro", "rw"] }, "default": { "type": "integer", "minimum": 0 },
-              "value": { "type": "object", "required": ["field"], "additionalProperties": false,
-                "properties": { "field": { "$ref": "#/$defs/fieldName" }, "scale": { "type": "number", "default": 1 }, "offset": { "type": "number", "default": 0 },
-                                "signed": { "type": "boolean", "default": false }, "endian": { "enum": ["big", "little"], "default": "big" },
-                                "left_align_bits": { "type": "integer", "minimum": 0, "maximum": 16, "default": 0, "description": "Shift left, for registers whose low bits are unused (LM75: 7)." } } } } } } } },
-      { "type": "object", "required": ["type", "in1", "in2", "output"], "additionalProperties": false,
-        "properties": { "type": { "const": "h_bridge" }, "in1": { "$ref": "#/$defs/pinName" }, "in2": { "$ref": "#/$defs/pinName" },
-                        "output": { "$ref": "#/$defs/fieldName", "description": "Name of an outputs[] entry that receives speed in -1..1." },
-                        "enable": { "$ref": "#/$defs/pinName", "description": "Optional nSLEEP-style pin that must read high." } } },
-      { "type": "object", "required": ["type", "pin", "output"], "additionalProperties": false,
-        "properties": { "type": { "const": "servo" }, "pin": { "$ref": "#/$defs/pinName" }, "output": { "$ref": "#/$defs/fieldName" },
-                        "min_us": { "type": "number", "default": 1000 }, "max_us": { "type": "number", "default": 2000 },
-                        "range_deg": { "type": "number", "default": 180 } } },
-      { "type": "object", "required": ["type", "port"], "additionalProperties": false,
-        "properties": { "type": { "const": "wireless" }, "port": { "$ref": "#/$defs/pinName" },
-                        "config": { "type": "object", "description": "Medium-specific; may use { \"field\": name } values." } } }
-    ] }
+        "name": {"$ref": "#/$defs/fieldName"},
+        "type": {"enum": ["number", "boolean"]},
+        "unit": {"type": "string", "maxLength": 8},
+        "min": {"type": "number"},
+        "max": {"type": "number"},
+        "label": {"$ref": "#/$defs/localizedShort"}
+      }
+    },
+    "visual": {
+      "type": "object",
+      "required": ["id", "effect", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,23}$"},
+        "effect": {"enum": ["glow", "fill", "rotate", "opacity", "text", "bar"]},
+        "x": {"type": "number"},
+        "y": {"type": "number"},
+        "w": {"type": "number"},
+        "h": {"type": "number"},
+        "r": {"type": "number"},
+        "color": {"$ref": "#/$defs/color"},
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["pin"],
+              "additionalProperties": false,
+              "properties": {"pin": {"$ref": "#/$defs/pinName"}}
+            },
+            {
+              "type": "object",
+              "required": ["gpio"],
+              "additionalProperties": false,
+              "properties": {"gpio": {"type": "integer", "minimum": 0, "maximum": 255}},
+              "description": "A firmware pin with no terminal (an on-board LED)."
+            },
+            {
+              "type": "object",
+              "required": ["output"],
+              "additionalProperties": false,
+              "properties": {"output": {"$ref": "#/$defs/fieldName"}}
+            },
+            {
+              "type": "object",
+              "required": ["field"],
+              "additionalProperties": false,
+              "properties": {"field": {"$ref": "#/$defs/fieldName"}}
+            }
+          ]
+        },
+        "scale": {
+          "type": "object",
+          "required": ["in", "out"],
+          "additionalProperties": false,
+          "properties": {
+            "in": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+            "out": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
+          }
+        }
+      }
+    },
+    "behaviourWasm": {
+      "type": "object",
+      "required": ["type", "entry", "abi"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "wasm"},
+        "entry": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]{1,80}\\.wasm$"},
+        "abi": {"const": 1},
+        "memory_kb": {"type": "integer", "minimum": 256, "maximum": 8192, "default": 1024},
+        "stack_kb": {"type": "integer", "minimum": 16, "maximum": 512, "default": 64},
+        "wasm_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "sources": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "maxLength": 120},
+          "description": "Informational: source files shipped under src/."
+        }
+      }
+    },
+    "expr": {
+      "oneOf": [
+        {"type": ["number", "boolean", "string"]},
+        {
+          "type": "object",
+          "required": ["field"],
+          "additionalProperties": false,
+          "properties": {"field": {"$ref": "#/$defs/fieldName"}, "scale": {"type": "number"}, "offset": {"type": "number"}}
+        },
+        {
+          "type": "object",
+          "required": ["field", "op", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {"$ref": "#/$defs/fieldName"},
+            "op": {"enum": ["eq", "ne", "gt", "ge", "lt", "le"]},
+            "value": {"type": ["number", "boolean", "string"]}
+          }
+        }
+      ]
+    },
+    "behaviourDeclarative": {
+      "type": "object",
+      "required": ["type", "engine", "elements"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "declarative"},
+        "engine": {"const": 1},
+        "elements": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/element"}}
+      }
+    },
+    "element": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "a", "b", "closed"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "switch"},
+            "a": {"$ref": "#/$defs/pinName"},
+            "b": {"$ref": "#/$defs/pinName"},
+            "closed": {"$ref": "#/$defs/expr"},
+            "bounce_ms": {"type": "number", "minimum": 0, "maximum": 20}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "a", "b"],
+          "additionalProperties": false,
+          "properties": {"type": {"const": "bridge"}, "a": {"$ref": "#/$defs/pinName"}, "b": {"$ref": "#/$defs/pinName"}}
+        },
+        {
+          "type": "object",
+          "required": ["type", "top", "bottom", "wiper", "ohms", "position"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "divider"},
+            "top": {"$ref": "#/$defs/pinName"},
+            "bottom": {"$ref": "#/$defs/pinName"},
+            "wiper": {"$ref": "#/$defs/pinName"},
+            "ohms": {"type": "number", "minimum": 100},
+            "position": {"$ref": "#/$defs/expr"}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "pin", "mv"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "source"},
+            "pin": {"$ref": "#/$defs/pinName"},
+            "mv": {"$ref": "#/$defs/expr"},
+            "ohms": {"type": "number", "minimum": 1, "default": 100}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "pin", "level"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "drive"},
+            "pin": {"$ref": "#/$defs/pinName"},
+            "mode": {"enum": ["push_pull", "open_drain"], "default": "push_pull"},
+            "level": {"$ref": "#/$defs/expr"}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "sda", "scl", "address", "registers"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "i2c_slave"},
+            "sda": {"$ref": "#/$defs/pinName"},
+            "scl": {"$ref": "#/$defs/pinName"},
+            "address": {
+              "oneOf": [
+                {"type": "integer", "minimum": 8, "maximum": 119},
+                {
+                  "type": "object",
+                  "required": ["field"],
+                  "additionalProperties": false,
+                  "properties": {"field": {"$ref": "#/$defs/fieldName"}}
+                }
+              ]
+            },
+            "pointer_bytes": {
+              "enum": [0, 1],
+              "default": 1,
+              "description": "1: first written byte selects the register. 0: no pointer, a read returns register 0."
+            },
+            "auto_increment": {"type": "boolean", "default": true},
+            "registers": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "required": ["reg", "size", "access"],
+                "additionalProperties": false,
+                "properties": {
+                  "reg": {"type": "integer", "minimum": 0, "maximum": 255},
+                  "size": {"type": "integer", "minimum": 1, "maximum": 4},
+                  "access": {"enum": ["ro", "rw"]},
+                  "default": {"type": "integer", "minimum": 0},
+                  "value": {
+                    "type": "object",
+                    "required": ["field"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "field": {"$ref": "#/$defs/fieldName"},
+                      "scale": {"type": "number", "default": 1},
+                      "offset": {"type": "number", "default": 0},
+                      "signed": {"type": "boolean", "default": false},
+                      "endian": {"enum": ["big", "little"], "default": "big"},
+                      "left_align_bits": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 16,
+                        "default": 0,
+                        "description": "Shift left, for registers whose low bits are unused (LM75: 7)."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "in1", "in2", "output"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "h_bridge"},
+            "in1": {"$ref": "#/$defs/pinName"},
+            "in2": {"$ref": "#/$defs/pinName"},
+            "output": {"$ref": "#/$defs/fieldName", "description": "Name of an outputs[] entry that receives speed in -1..1."},
+            "enable": {"$ref": "#/$defs/pinName", "description": "Optional nSLEEP-style pin that must read high."}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "pin", "output"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "servo"},
+            "pin": {"$ref": "#/$defs/pinName"},
+            "output": {"$ref": "#/$defs/fieldName"},
+            "min_us": {"type": "number", "default": 1000},
+            "max_us": {"type": "number", "default": 2000},
+            "range_deg": {"type": "number", "default": 180}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "port"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "wireless"},
+            "port": {"$ref": "#/$defs/pinName"},
+            "config": {"type": "object", "description": "Medium-specific; may use { \"field\": name } values."}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "anode", "cathode", "output"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "led"},
+            "anode": {"$ref": "#/$defs/pinName"},
+            "cathode": {"$ref": "#/$defs/pinName"},
+            "output": {
+              "$ref": "#/$defs/fieldName",
+              "description": "Name of an outputs[] entry that receives the brightness, 0..1."
+            },
+            "vf_mv": {"type": "number", "minimum": 0, "maximum": 5000, "default": 1900, "description": "Forward voltage."},
+            "series_ohms": {
+              "oneOf": [
+                {"type": "number", "minimum": 0},
+                {
+                  "type": "object",
+                  "required": ["field"],
+                  "additionalProperties": false,
+                  "properties": {"field": {"$ref": "#/$defs/fieldName"}}
+                }
+              ],
+              "description": "Resistor in series with the LED (a number or a number field)."
+            },
+            "full_ma": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "default": 10,
+              "description": "Current at which brightness is 1."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "pin", "output"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "buzzer"},
+            "pin": {"$ref": "#/$defs/pinName"},
+            "ref": {
+              "$ref": "#/$defs/pinName",
+              "description": "Optional return pin; the buzzer sounds only when it is on the ground net."
+            },
+            "output": {
+              "$ref": "#/$defs/fieldName",
+              "description": "Name of an outputs[] entry that receives the sounding frequency in Hz (0 = silent)."
+            }
+          }
+        }
+      ]
+    }
   }
 }

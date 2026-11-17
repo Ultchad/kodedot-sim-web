@@ -1,0 +1,56 @@
+{
+  "name": "LED glows with current",
+  "steps": [
+    {
+      "comment": "nothing drives it: dark",
+      "expect_output": {
+        "name": "brightness",
+        "value": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "K",
+        "level": 0
+      }
+    },
+    {
+      "comment": "3.3 V through the header's resistors and 330 ohm is about 2.5 mA",
+      "expect_output": {
+        "name": "brightness",
+        "min": 0.2,
+        "max": 0.3
+      }
+    },
+    {
+      "set_field": {
+        "ohms": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "brightness",
+        "min": 0.5,
+        "max": 0.7
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "A",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "brightness",
+        "value": 0
+      }
+    }
+  ]
+}
