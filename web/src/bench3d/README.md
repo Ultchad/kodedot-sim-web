@@ -11,7 +11,7 @@ web/src/bench3d/
   materials.ts    PAL (finishes) and INK (print colours)
   parts.ts        builders: pcb, pinHeader, lead, soic/qfp/qfn, moduleCan, usbC/usbB/microUsb/barrelJack,
                   tactButton, electrolytic, ledDome, screwTerminal, heatsink, shaft, gear
-  print.ts        print(): silkscreen, legends, logos as decals; drawing helpers
+  print.ts        print(): silkscreen and legends as decals; drawing helpers
   nodes.ts        lamp(), glowing(), screen(), part(); instantiate() for hosts
   registry.ts     finds models/**/*.model.ts
   index.ts        import everything from here
@@ -146,7 +146,7 @@ thing. Textures: one per print, 6 to 12 px/mm, capped at 1024 px.
 - `models/wireless/nfc-tag.model.ts` (simple): two solids, one print. 398 triangles, 3 draw calls.
 - `models/wireless/wifi-router.model.ts` (complex): body in three families, feet, antennas, a print with legends, three
   lamps with a state machine in `animate`, four example states. 1,486 triangles.
-- `models/reference/kit-sampler.model.ts`: every builder of `parts.ts` on one invented board, with silkscreen and
+- `models/reference/kit-sampler.model.ts`: every builder of `parts.ts` on one made-up, unbranded board, with silkscreen and
   terminals computed from what the builders return. Copy from it.
 - `models/reference/led-5mm.model.ts` (wired): size and terminals from the manifest, legs with `plugMm`, a glowing
   dome, `PartState`, the hazard states `overcurrent` and `burnt`.
@@ -161,7 +161,7 @@ Do:
   1.5+ as a soft case). A sharp box is a brick.
 - Use `PAL` finishes. Metal is `tin`, `gold`, `copper`, `steel`; boards are `pcb*` with the FR4 look built in.
 - Add the small printed things that make a part recognisable: silkscreen outline and reference, pin labels
-  (`pinLabels`), polarity marks, a rating, a made-up maker's mark. Draw them in `print()`.
+  (`pinLabels`), polarity marks, a rating, a port's name, a button's symbol. Draw them in `print()`.
 - Give boards their real details: drilled mounting holes (`pcb({ holes })`), the header rows where they really are,
   the crystal, the regulator, the reset button.
 - A board with through-hole parts does not lie flat: its pins and solder joints poke out of the underside, so give
@@ -170,7 +170,12 @@ Do:
 
 Don't:
 - No white bricks, no single-colour blobs, no parts floating above the table or sinking into it.
-- No real brand logos or wordmarks, ever (invent a mark, or print the plain part number).
+- **No brands of any kind, real or invented** (the owner's rule for everything on the Workbench): no maker's name,
+  no logo or logo-like mark, no wordmark, printed, debossed or shown on a screen; and nothing that says or contains
+  "kode", "dot" or "dotbench". Print only functional, generic markings: pin and port names, LED legends, ratings
+  ("5 V 2 A", "8 GB", "125 kHz"), polarity, reference designators (U1, C3), a revision, button symbols, generic
+  standard signs (the contactless waves, the power sign). Where a real board carries its maker's name or logo, leave
+  that area blank. Live data the user typed (a network name on a screen) is data, not a brand.
 - No per-frame allocation, no timers, no listeners in a model. No random numbers in `build` (models must be the same
   on every visit).
 - No textures from files, no fetches: everything is built in code.

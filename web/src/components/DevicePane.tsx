@@ -95,7 +95,7 @@ function PanelToggle({ id, ctl }: { id: PanelId; ctl: PanelControl }) {
   return (
     <button type="button" className="chip" aria-expanded={ctl.open} aria-controls={`panel-${id}`} aria-label={hint} title={hint} onClick={ctl.toggle} data-testid={`drawer-${id}`}>
       <Icon name={id === 'bench' ? 'panelLeft' : 'panelRight'} className={id === 'console' ? 'order-2' : ''} />
-      <span className={ctl.open ? 'hidden @[680px]:inline' : ''}>{label}</span>
+      <span className={ctl.open ? 'hidden @[900px]:inline' : 'hidden @[560px]:inline'}>{label}</span>
     </button>
   );
 }
@@ -178,22 +178,22 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
             <div className="seg" role="group" aria-label={t('mode.label')}>
               <button type="button" className="chip" aria-pressed={!workbench} title={t('mode.device.hint')} onClick={() => host.setMode('device')} data-testid="mode-device">
                 <Icon name="device" />
-                <span className="hidden @[620px]:inline">{t('mode.device')}</span>
+                <span className="hidden @[700px]:inline">{t('mode.device')}</span>
               </button>
               <button type="button" className="chip" aria-pressed={workbench} disabled={host.glFailed} title={host.glFailed ? t('device.glFallback') : t('mode.workbench.hint')} onClick={() => host.setMode('workbench')} data-testid="mode-workbench">
                 <Icon name="table" />
-                <span className="hidden @[620px]:inline">{t('mode.workbench')}</span>
+                <span className="hidden @[700px]:inline">{t('mode.workbench')}</span>
               </button>
             </div>
             {workbench ? (
               <div className="flex items-center gap-2" role="group" aria-label={t('wb.toolbar')} data-testid="wb-tools">
                 <button type="button" className="chip" onClick={() => host.bus.send({ type: 'focus-dot' })} data-testid="wb-focus-dot" aria-label={t('wb.focusDot')} title={t('wb.focusDot')}>
                   <Icon name="target" />
-                  <span className="hidden @[760px]:inline">{t('wb.focusDot')}</span>
+                  <span className="hidden @[940px]:inline">{t('wb.focusDot')}</span>
                 </button>
                 <button type="button" className="chip" onClick={() => host.bus.send({ type: 'frame-all' })} data-testid="wb-frame-all" aria-label={t('wb.wholeTable')} title={t('wb.wholeTable')}>
                   <Icon name="recenter" />
-                  <span className="hidden @[760px]:inline">{t('wb.wholeTable')}</span>
+                  <span className="hidden @[940px]:inline">{t('wb.wholeTable')}</span>
                 </button>
                 <div className="seg" role="group">
                   <button type="button" className="chip" disabled={!benchUndo} onClick={() => host.bench.undo()} data-testid="wb-undo" aria-label={t('wb.undo')} title={`${t('wb.undo')} (Ctrl+Z)`}>
@@ -218,7 +218,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
               <>
                 <button type="button" className="chip" onClick={() => setResetSignal((n) => n + 1)} data-testid="recenter" aria-label={t('device.recenter')} title={t('device.recenter')}>
                   <Icon name="recenter" />
-                  <span className="hidden @[900px]:inline">{t('device.recenter')}</span>
+                  <span className="hidden @[940px]:inline">{t('device.recenter')}</span>
                 </button>
                 <label className="pill h-[var(--compact-h)] cursor-pointer !gap-2 !pl-1.5" title={t('device.tilt.hint')}>
                   <input
@@ -232,7 +232,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
                       if (e.target.checked && !host.bench.activeIn('motion')) host.applyPose(ZERO_POSE);
                     }}
                   />
-                  <span className="hidden font-semibold @[760px]:inline">{t('device.tilt')}</span>
+                  <span className="hidden font-semibold @[860px]:inline">{t('device.tilt')}</span>
                 </label>
               </>
             ) : (

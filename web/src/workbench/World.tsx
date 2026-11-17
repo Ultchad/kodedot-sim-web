@@ -636,8 +636,14 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         world.rig.jump();
         invalidate();
       },
-      focus: (id: string) => {
-        focusOn(id);
+      /** Frames one thing (a body, or 'dot') from a given side. */
+      focus: (id: string, az = 0, pol = 0.6, margin = 26) => {
+        const p = id === DOT_ID ? { kind: DOT_ID, pos: { x: 0, z: 0 } } : placedOf(id);
+        if (!p) return;
+        const sz = id === DOT_ID ? { w: 47, d: 77, h: 20 } : SIZES[p.kind];
+        const r = Math.max(sz.w, sz.d) / 2 + margin;
+        world.rig.frame({ x0: p.pos.x - r, x1: p.pos.x + r, z0: p.pos.z - r, z1: p.pos.z + r }, sz.h, aspect(), { pol, az });
+        world.rig.goal.az = az;
         world.rig.jump();
         invalidate();
       },

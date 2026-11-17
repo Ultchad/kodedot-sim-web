@@ -124,7 +124,7 @@ try {
   await sleep(600);
   let objs = await objects();
   const tag = objs.find((o) => o.kind === 'nfc.tag');
-  check('NFC: "Add an NFC tag" makes a text tag and puts it near', !!tag && tag.near && tag.fields.mode === 'text' && /bench/i.test(String(tag.fields.text)), JSON.stringify(tag?.fields));
+  check('NFC: "Add an NFC tag" makes a text tag and puts it near', !!tag && tag.near && tag.fields.mode === 'text' && /hello/i.test(String(tag.fields.text)), JSON.stringify(tag?.fields));
   await shot('nfc-1-tag-added');
   const opened = await openFromList('NFC', 2);
   check('NFC: the NFC app opens from kodeOS by touch', opened);
@@ -196,7 +196,7 @@ try {
   await sleep(2500);
   await shot('wifi-3-connected');
   const log3 = await logText();
-  check('Wi-Fi: the Dot joined and got an address (device log)', /joined 'Dot-Bench' as/i.test(log3), (log3.match(/.*joined 'Dot-Bench'.*/) ?? [''])[0]);
+  check('Wi-Fi: the Dot joined and got an address (device log)', /joined 'Home WiFi' as/i.test(log3), (log3.match(/.*joined 'Home WiFi'.*/) ?? [''])[0]);
 
   // ---- 4. Infrared (no shipped app transmits or arms the receiver: area-level)
   await tab('ir');

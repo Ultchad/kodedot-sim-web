@@ -1,5 +1,5 @@
 /**
- * Every builder of parts.ts on one invented board: the kit's sampler. It is here to be looked at (run the shot script
+ * Every builder of parts.ts on one made-up, unbranded board: the kit's sampler. It is here to be looked at (run the shot script
  * on `ref.kit-sampler`) and copied from; it is not a part of any library.
  */
 import {
@@ -64,8 +64,7 @@ export default defineModel<{ led: number; power: boolean }>({
         draw(g) {
           pinLabels(g, LABELS, -18 - 4.5 * PITCH, -24.8, PITCH, 1.25, { vertical: true, align: 'right' });
           g.fillStyle = INK.silk;
-          text(g, 'KIT SAMPLER', 8, 16.5, 2.6, { weight: 800, spacing: 0.4 });
-          text(g, 'rev A  ·  bench3d', 8, 20.2, 1.5, { weight: 600 });
+          text(g, 'REV A', 8, 17.5, 2.2, { weight: 800, spacing: 0.4 });
           text(g, 'U1', -30, -17.3, 1.3);
           text(g, 'U2', -12, -18, 1.3);
           text(g, 'U3', 4, -17, 1.3);
@@ -74,7 +73,7 @@ export default defineModel<{ led: number; power: boolean }>({
           text(g, 'SW1', 2, 11.8, 1.3);
           silkBox(g, -33.2, -15.3, 6.4, 6.6);
           silkBox(g, 21, -21, 18, 26, 0.6);
-          // a meander antenna printed on the radio module, and the mark of this made-up maker
+          // a meander antenna printed on the radio module
           g.strokeStyle = INK.gold;
           g.lineWidth = 0.35;
           g.beginPath();
@@ -85,10 +84,6 @@ export default defineModel<{ led: number; power: boolean }>({
             g.lineTo(23.8 + i * 2.6, -19.8);
           }
           g.stroke();
-          g.fillStyle = INK.amber;
-          g.beginPath();
-          g.arc(-4, 17.4, 1.5, 0, Math.PI * 2);
-          g.fill();
         },
       }),
       lamp('pwr', [14, top + 0.5, 20], [1.0, 0.45, 0.6]),

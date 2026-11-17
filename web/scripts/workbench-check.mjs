@@ -352,10 +352,7 @@ try {
         await sleep(1600);
       }
       for (const [name, az, pol] of [['a', 0.45, 0.9], ['b', -2.3, 1.15]]) {
-        await D((i, a, p) => {
-          window.__dotbenchWb.focus(i);
-          window.__dotbenchWb.setView({ az: a, pol: p });
-        }, id, az, pol);
+        await D((i, a, p) => window.__dotbenchWb.focus(i, a, p), id, az, pol);
         await sleep(900);
         await (await page.$('[data-testid=stage]')).screenshot({ path: join(shots, `object-${kind}-${name}.png`) });
       }
