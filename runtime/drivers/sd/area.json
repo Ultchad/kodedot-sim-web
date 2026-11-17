@@ -15,7 +15,8 @@
     "dbsd_page_set_wp",
     "dbsd_page_state",
     "dbsd_page_stats",
-    "dbsd_page_sectors"
+    "dbsd_page_sectors",
+    "dbsd_page_apply"
   ],
   "test_apps": [
     "sdk:examples/storage"

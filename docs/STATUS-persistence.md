@@ -23,7 +23,9 @@ AO_Storage, the console file verbs. Superseded (reason in each `area.json`): `kh
 |---|---|---|---|
 | `nvs` | 64 KiB (`partitions.csv`: nvs 0x10000) | khal_nvs record log | |
 | `flash-fs` | 2 MiB (`partitions.csv`: storage 0x200000) | FAT volume mounted at `/storage` | |
-| `sd-card` | 32 MiB static, card size 2..32 MiB selectable | the virtual card's sectors, `/sdcard` | |
+| `sd-card` | 32 MiB static | the virtual card: dense sectors of a card <= 32 MB, or the first pool of a bigger one (section 12) | |
+| `sd-map` | 68 KiB | the big card's page table (header + directory), section 12 | |
+| `sd-pool2` | 24 MiB static | second pool of a card > 32 MB | |
 | `dev-state` | 4 KiB | RTC offset, SD slot state (inserted, capacity, serial, write protect, generation) | |
 | `keep` | 1 MiB (boot_web.c) | RTC RAM | RETAIN: cleared at power-on, never mirrored |
 | `apps` | (boot-model engineer) | | |
@@ -80,7 +82,7 @@ firmware takes, taken with a bounded try (never blocks the page; `EBUSY` after ~
 
 ## 5. microSD
 
-A virtual card (`khal_sdmmc_web.c`, `sd.js`). CID/CSD identity is synthetic (`DOTSD`, SDHC, 4-bit, 20 MHz). A factory device ships with an 8 MB FAT card inserted. Capacity 2..32 MB
+A virtual card (`khal_sdmmc_web.c`, `sd.js`). CID/CSD identity is synthetic (`DOTSD`, SDHC, 4-bit, 20 MHz). A factory device ships with an 8 MB FAT card inserted. Capacity 2 MB..256 GB nominal, section 12
 (`sd.swap(mb, {format})`: a new card with its own serial, blank or FAT formatted; its sectors are the `sd-card` region, so the old card is gone). The SDK has no card-detect
 event, and neither does this: insert does NOT mount, the firmware mounts (`sd_mount` / its boot probe), as on the board. A blank card answers `sd_mount` like the board does
 (`KODE_IO_ERROR`, "no FAT volume"). Write protect: `EROFS`.
@@ -144,3 +146,58 @@ at stop, a file and the clock set from the page too, "erase device" empties Inde
 * **kodeOS stand-in**: `runtime/drivers/kodeos_boot/storage_memfs.c` supersedes `kdrv_fs.c` just as `storage/kdrv_fs_web.c` does: two areas superseding one file is a build error, so drop the stand-in (and its MEMFS) when merging. The factory tree (`factory/storage/**`) must be copied onto `/storage` once on first boot: not done here. Suggested: after `kdrv_fs_mount` returns with a fresh format (kdrv_fs_web.c knows `formatted`), call a seeding function that writes the embedded tree through `fopen` on `/storage` (the volume is 2024 KB; the pack is 324 KB), and record a marker file.
 * nvs: main's `khal_nvs_web.c` (128 KiB arena, constructor + kweb_persist_register) conflicts with this branch's rewrite (64 KiB log, `partitions.csv`); keep this branch's. `STATUS-kodeos.md` says settings live in the `nvs` region: same name, so it carries over.
 * Adapter: this branch replaces `_persist` (Map) by a PersistManager in `dotbench-device.js`; resolve any main edits there by hand.
+
+## 12. Sparse microSD: cards from 4 MB to 128 GB (branch feat/big-sd)
+
+The page offers 4, 8, 16, 32, 64, 128, 256, 512 MB and 1, 2, 4, 8, 16, 32, 64, 128 GB (the driver accepts 2 MB .. 256 GB). The firmware sees the nominal card
+(`sd_info`: `capacity_mb=131072 sectors=268435456`, the SDK's own `kdrv_sd`, FatFs, VFS above the seam, unmodified); only blocks holding non-zero data occupy
+memory and browser storage.
+
+**Design** (`runtime/drivers/sd/sdcard.c`, tests `tests/node/sd/bigsd*.mjs`, `tests/browser/bigsd.test.mjs`).
+* Card <= 32 MB: DENSE, sector s at byte s*512 of region `sd-card` (32 MiB), exactly the layout cards saved by earlier builds have: **migration is "do nothing"**
+  (tested with a package of the dense build: 8 MB and 32 MB cards with files load, mount and stay writable). Zero chunks are not stored by the host as before.
+* Card > 32 MB: SPARSE. `sd-card` (32 MiB) + `sd-pool2` (24 MiB) are a pool of 4 KiB slots (14336). A two-level table maps card chunk (4 KiB = 8 sectors) to a slot:
+  directory in `sd-map` (32768 x u16, 64 KiB, covers 256 GiB), leaves are pool slots (2048 x u16 = 8 MiB of card each). A slot is taken at the first write of a
+  NON-ZERO sector into a hole (zeros into a hole do nothing: the SDK's own last-sector write-back check, and mkfs, store nothing), and given back, zeroed (so the host
+  deletes the chunk), when the chunk is all zero again; an empty leaf is freed. When no slot is left the sector write fails: FatFs `FR_DISK_ERR` -> `EIO`, `KODE_ERROR`
+  from `khal_sdmmc_write_sectors`. The free-slot bitmap is RAM only, rebuilt from the table at the first access (a pool scan, ~10 ms). All writes go through `dbp_write`: the
+  existing dirty bits, 800 ms / 5 s flush, one IndexedDB transaction, power-cut injection and device file apply unchanged; data is written before the table entries that reach it.
+* Threads: one mutex around a sector transfer (firmware threads), held only for the transfer; no wait inside. The page never takes it for long: a new card requested by the page
+  is a lock-free write of the slot state plus an epoch bump (`dbsd_card_changed`); the firmware side wipes and re-sizes the table at its next access (the glue also calls
+  `dbsd_page_apply` right after `swap`: a bounded spin, so the old card's chunks leave the store at once). A formatted new card is formatted at its first mount (`sd_initialised = 0`,
+  as the factory card always was). `sd.stats()` and the other page calls are atomic loads.
+* Format: an MBR with one partition at LBA 63 (`FM_ANY`, not super-floppy; the flash volume keeps FM_SFD), data aligned to 1 MiB from 256 MB up, 32 KiB clusters from 32 GB up.
+  4..32 MB FAT12/16 (type 01/04), 64 MB..2 GB FAT16 (06), 4 GB..128 GB **FAT32** (0c). 128 GB: usable 131055 MB, free 131054 MB.
+
+**FAT32, not exFAT.** Real 64..128 GB cards ship as exFAT, but the SDK says outright that a card "with no FAT volume (exFAT, or none)" is `KODE_IO_ERROR` (`khal_sdmmc.h` mount
+contract, `kdrv_sd.c` "the card has no FAT volume to read (exFAT, ...)"): the board's FatFs is built without exFAT, so kodeOS cannot mount one. A 128 GB card here is what people format for such
+devices: FAT32 with 32 KiB clusters (the vendored FatFs has the exFAT code, `FF_FS_EXFAT` is 0 in our ffconf as in the SDK; turning it on would make the bench accept cards the board rejects).
+
+**Limits, measured.**
+* Real data per card: **56 MiB** (14336 slots; 14329 accepted in the fill test, the rest is page table: one 4 KiB leaf per touched 8 MiB of card). Where it comes from: wasm memory is a fixed 96 MB (`INITIAL_MEMORY`,
+  no growth). Static regions end at 44.5 MiB; the firmware's malloc heap lives above: kodeOS 8.2 MiB used (sbrk at 52.7 MiB at the launcher), the apps 48..52 MiB; so about 43 MiB were unused. The
+  second pool takes 24 MiB of that and leaves >= 19 MiB for kodeOS (2.3x its use). To hold more, raise `DBSD_EXTRA_MB` in sdcard.c together with the build's memory (`-sINITIAL_MEMORY`, shared tool/`K.MEMORY_MB`);
+  the page shows it from `sd.stats()`: `{storedBytes, boundBytes, poolBytes, layout, known}` ("128 GB card, 37 MB used of about 56 MB this browser can hold").
+* IndexedDB: quota is not the limit. Headless Chrome reported a 10240 MB quota; the store holds the stored chunks only (a 128 GB card with a 3 MB file: 799 chunks = 3.1 MiB, tested in Chrome; the host's
+  sparse image keeps a second copy in the page's JS heap).
+* A card <= 32 MB holds its full capacity (dense), as before.
+* Format of a new 128 GB card: 6..11 ms (swap + mkfs + mount, Node), **20480 bytes stored** (5 chunks: boot sector/FSInfo/FAT head/root directory/leaf), the same for 4 GB..128 GB; 12..16 KiB for the smaller cards.
+* A 3 MB file on a 128 GB card stores 3 MB + ~100 KiB of FAT, directory and table.
+
+**What the firmware shows for a 128 GB card** (kodeOS, `tests/node/sd/bigsd.kodeos-test.mjs`): boot log `card mounted at /sdcard: 'DOTSD', 131072MB`; `sd_info`: `capacity_mb=131072 sectors=268435456`,
+`total_mb=131055 free_mb=131054`, console `total_kb=134200320 free_kb=134200288`; Settings > About: "microSD card 128.0 GB" (`docs/sd-shots/kodeos-about-128gb.png`). kodeOS shows the free space only in the console.
+
+**Tests** (all run, see the commands in the final report): `bigsd.test.mjs` 9 checks (16 sizes; raw sectors at 0, 1, 7, 8, a middle and the last sector of 128 GB; files at any place; fill to the bound and EIO, zeros into a hole still work at the bound,
+freeing makes room; reload from the persisted state; migration of dense cards; eject/insert/swap; a power cut at 10 random byte counts on a 64 GB card; 12 pulls mid-write on 64 GB),
+`bigsd.kodeos-test.mjs` 2, `tests/browser/bigsd.test.mjs` 2 (real IndexedDB; not in `run.sh`). `sd.test.mjs` (4) changed in one place: the capacity range check is now 2 MB..256 GB (it asserted 33 MB is refused).
+`persist.test.mjs` lists the regions of the app role: `sd-map` and `sd-pool2` were added to its expected list.
+
+**Not done / does not work.** exFAT (above). A write that does not fit returns EIO, not ENOSPC (the FAT still shows free space: it is a medium error, as a failing card is). More than 56 MiB of real data per card. A JS FAT reader (as before).
+A card swapped while the firmware has it mounted reads as pulled until it is mounted again (as before). The wipe of a swapped card scans the pools (about 10 ms on the page thread). Orphan chunks: a power cut between a data
+write and its table entry leaves one non-zero slot nobody references; it is overwritten when reused (never read), and counted as free. `sd.stats().known` is false until the card has been touched since the device started.
+
+**Page changes needed (not made: outside the allowed edit).** (1) The size line "used of total" uses `fmt.bytes` (MB with two decimals: "131,055.00 MB"): it needs a GB step in `i18n/core.ts`. (2) One stored-bytes line in the SD card
+(no slot exists): `sd.stats()` -> "37 MB used of about 56 MB this browser can hold" (3 languages), and a "card full" message mapping `EIO` on a big card. (3) A card size larger than the pool deserves a hint that data above about 56 MB will fail.
+
+**Shared files touched:** none of runtime/rtos, runtime/bridge; `runtime/persist` untouched; `runtime/web-adapter` untouched. Changed in the SD and storage areas: `runtime/drivers/sd/{sdcard.c (new), khal_sdmmc_web.c (unchanged), sd.js, area.json}`,
+`runtime/drivers/storage/{diskio.c, vfs.c, include/dotbench_vfs.h}`; web: `web/src/bench/sd.ts`, `components/bench/SdPanel.tsx`, `i18n/{en,es,pt-BR}.ts` (size list, labels); tests and `docs/sd-shots/`.

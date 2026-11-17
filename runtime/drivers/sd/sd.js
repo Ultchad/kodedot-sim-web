@@ -39,7 +39,7 @@ export default function (ctx) {
     },
     insert() { chk(ctx.call("dbsd_page_set_inserted", 1), "insert"); poll(); },
     eject() { chk(ctx.call("dbsd_page_set_inserted", 0), "eject"); poll(); },
-    swap(mb, { format = true } = {}) { chk(ctx.call("dbsd_page_new_card", mb, format ? 1 : 0), "swap"); poll(); },
+    swap(mb, { format = true } = {}) { chk(ctx.call("dbsd_page_new_card", mb, format ? 1 : 0), "swap"); ctx.call("dbsd_page_apply"); poll(); },
     setWriteProtect(wp) { chk(ctx.call("dbsd_page_set_wp", wp ? 1 : 0), "setWriteProtect"); poll(); },
     mount() { chk(ctx.call("dbfs_page_sd_mount"), "mount"); poll(); },
     unmount() { ctx.call("dbfs_page_sd_unmount"); poll(); },

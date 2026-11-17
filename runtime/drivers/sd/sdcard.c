@@ -304,3 +304,13 @@ void dbsd_stats(uint32_t *out)
     out[5] = (atomic_load(&s_valid) && !pending) ? 1u : 0u;
     out[6] = (uint32_t)pool;
 }
+
+/* From the page, right after a swap: make the firmware-side reset happen now instead of at the next card access, so the old card's
+ * chunks leave the browser's storage at once. Bounded spin on the table lock (never blocks the page); -1 when it was busy: the reset
+ * then happens at the next access, nothing is lost. */
+EMSCRIPTEN_KEEPALIVE int dbsd_page_apply(void)
+{
+    if (enter() != 0) return -1;
+    leave();
+    return 0;
+}

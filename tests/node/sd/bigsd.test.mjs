@@ -201,7 +201,7 @@ await check("migration: cards saved by the dense build (8 MB factory card, 32 MB
     let run = await bench.boot(old);
     await sleep(1500);
     let fs = run.glue(sm), sd = run.glue(sdm);
-    if (mb !== 8) sd.swap(mb);
+    if (mb !== 8) run.M._dbsd_page_new_card(mb, 1);       // the dense build's own export (this sd.js glue is newer than that package)
     sd.mount();
     const data = pattern(700000, mb);
     fs.write("/sdcard/legacy.bin", data); fs.mkdir("/sdcard/old"); fs.write("/sdcard/old/x.txt", "from the dense build");
