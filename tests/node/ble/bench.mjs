@@ -29,8 +29,12 @@ export async function bootBle(pkg, opts = {}) {
     emit: (type, data) => events.push({ type, ...data }),
     onTick: (cb) => ticks.push(cb),
   };
-  let radio = null;
+  let radio = null, wifi = null, net = null;
   if (fs.existsSync(a.dir + "/glue/radio/radio.js") && opts.radio !== false) {
+    // kodeOS also wants the net and Wi-Fi glue next to the radio's (the order does not matter)
+    const load = async (area, file) => fs.existsSync(`${a.dir}/glue/${area}/${file}.js`) ? import(pathToFileURL(`${a.dir}/glue/${area}/${file}.js`).href) : null;
+    const gn = await load("net", "net"), gw = await load("wifi", "wifi");
+    net = gn?.default(ctx); wifi = gw?.default(ctx);
     radio = (await import(pathToFileURL(a.dir + "/glue/radio/radio.js").href)).default(ctx);
     radio.fastTiming?.();
   }
@@ -39,6 +43,8 @@ export async function bootBle(pkg, opts = {}) {
   const timer = setInterval(() => ticks.forEach((cb) => cb()), 20);
   const shutdown = a.shutdown;
   a.shutdown = () => { clearInterval(timer); ble.dispose(); radio?.dispose?.(); shutdown(); };
+  a.restart = async (o = {}) => { const persist = a.snapshot(); a.shutdown(); return bootBle(pkg, { ...opts, ...o, persist }); };
+  a.wifi = wifi; a.net = net;
   a.ble = ble; a.radio = radio; a.events = events; a.glue = mod; a.ctx = ctx;
   a.stubLines = () => (a.logText() + "\n" + (a.logs ?? []).join("\n")).split("\n").filter((l) => /not implemented/.test(l));
   a.press = async (id, ms = 80) => { a.button(id, true); await sleep(ms); a.button(id, false); };
@@ -49,6 +55,17 @@ export async function bootBle(pkg, opts = {}) {
       if (hit) return hit;
       if (Date.now() - t0 > ms) throw new Error("timeout waiting for a BLE event; have " + JSON.stringify(events.slice(from, from + 10)).slice(0, 600));
       await sleep(20);
+    }
+  };
+  a.mark = () => a.logText().length;
+  a.waitLog = async (re, ms = 15000, from = 0) => {
+    const rx = re instanceof RegExp ? re : new RegExp(re.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const t0 = Date.now();
+    for (;;) {
+      const m = rx.exec(a.logText().slice(from));
+      if (m) return m;
+      if (Date.now() - t0 > ms) throw new Error(`no log line ${rx} in ${ms} ms\n--- log ---\n${a.logText().slice(-2500)}`);
+      await sleep(25);
     }
   };
   // ---- console (for the ble_api app) ----
