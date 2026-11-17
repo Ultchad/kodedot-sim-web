@@ -24,7 +24,8 @@ import { readPackageInfo, RESET } from "./dotbench-system.js";
 const ERASE = "\r\x1b[K";
 const ANSI = /\x1b\[[0-9;]*[A-Za-z]/g;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const crc32 = (b) => crc32le(0xffffffff, b);          // == zlib.crc32
+const crc32 = (b) => crc32le(0, b);                   // == zlib.crc32 (what the console protocol carries)
+const kfwCrc = (b) => crc32le(0xffffffff, b);          // kfw_crc32(): the container's own header and app-data CRCs (seed UINT32_MAX)
 export const quote = (s) => '"' + String(s).replace(/(["\\])/g, "\\$1") + '"';
 export class UsbError extends Error { constructor(msg, term) { super(msg); this.term = term; } }
 
@@ -195,7 +196,7 @@ export class UsbComputer {
   static container(image, project, { json, icon } = {}) {
     const ad = json ? (() => { const b = new Uint8Array(12 + json.length + (icon?.length ?? 0)), v = new DataView(b.buffer);
       v.setUint32(0, 0x3144414b, true); v.setUint16(4, json.length, true); v.setUint16(6, icon?.length ?? 0, true);
-      b.set(json, 12); if (icon) b.set(icon, 12 + json.length); v.setUint32(8, crc32(b.subarray(12)), true); return b; })() : new Uint8Array(0);
+      b.set(json, 12); if (icon) b.set(icon, 12 + json.length); v.setUint32(8, kfwCrc(b.subarray(12)), true); return b; })() : new Uint8Array(0);
     const h = new Uint8Array(72), v = new DataView(h.buffer);
     v.setUint32(0, K.KFW_MAGIC, true); v.setUint16(4, 1, true); v.setUint16(6, 72, true); h[8] = 1; h[9] = 0; v.setUint16(10, json ? 1 : 0, true);
     v.setUint32(12, image.length, true); v.setUint32(16, image.length, true);
@@ -204,7 +205,7 @@ export class UsbComputer {
   static async _containerBytes(c) {
     const sha = new Uint8Array(await crypto.subtle.digest("SHA-256", c.image));
     c.head.set(sha, 20); const v = new DataView(c.head.buffer);
-    v.setUint32(52, crc32(c.head.subarray(0, 52)), true);
+    v.setUint32(52, kfwCrc(c.head.subarray(0, 52)), true);
     c.head.fill(0, 56, 72); c.head.set(new TextEncoder().encode(c.project).subarray(0, 15), 56);
     const out = new Uint8Array(72 + c.ad.length + c.image.length); out.set(c.head); out.set(c.ad, 72); out.set(c.image, 72 + c.ad.length);
     return out;
@@ -219,9 +220,10 @@ export class UsbComputer {
     let payload = image;
     if (container) payload = await UsbComputer._containerBytes(UsbComputer.container(image, project, { json: json ?? undefined, icon: icon ?? undefined }));
     let res;
+    // `appdata put` first: with run=on the board reboots into the app right behind the install's >ok, and an app has no console
+    if (appdata && !container && json) await this.appdataPut(project, json, icon ?? undefined);
     if (via === "mailbox") { await this.park(payload); await this.adopt({ run }); }
     else res = await this.stream(payload, `install src="terminal" dst=app size=${payload.length} crc32=${crc32(payload)} run=${run ? "on" : "off"} name=${quote(project)}`, "install", opts);
-    if (appdata && !container && json) await this.appdataPut(project, json, icon ?? undefined);
     return { id, project, evicted: res?.evicted ?? [] };
   }
 
