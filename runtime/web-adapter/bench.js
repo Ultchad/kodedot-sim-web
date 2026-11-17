@@ -361,6 +361,14 @@ export class Bench {
     for (const h of out) if (!before.has(key(h))) this._emit("hazard", h);
   }
 
+  // ---------------------------------------------------------------- headless use (tests, `dotbench part test`): no firmware, the caller plays the device
+  /** Switch the device's rails without firmware. */
+  setRails(r) { Object.assign(this.rails, r); this._touch(); }
+  /** Set what "the device" does with one J3 position (index 0..13): {mode: "z"|"in"|"out"|"pwm", pull, level, hz, duty (q16)}. */
+  setDevicePin(i, st) { this.devicePins[i] = { mode: "z", pull: "none", level: 0, hz: 0, duty: 0, ...st }; this._touch(); }
+  /** Bytes a part sends to the device's UART arrive here when no firmware is attached. */
+  tap(cb) { this._tap = cb; }
+
   // ---------------------------------------------------------------- device endpoint (J3 over the exp link)
   /** Serve a DotbenchSystem or DotbenchDevice. Re-attaches at every boot of the firmware; the bench itself (parts, wires, fields) is untouched by restarts. */
   attach(target) {
@@ -511,7 +519,7 @@ export class Bench {
   uartSend(txTerm, bytes, baud, from) {
     const tx = this._netInfo(txTerm).id; let delivered = 0;
     const rxs = [];
-    if (from !== DEVICE && this.masters.uart) rxs.push({ who: DEVICE, rx: this.masters.uart.rx, baud: this.masters.uart.baud, push: (b) => this.link?.rxPush(b) });
+    if (from !== DEVICE && this.masters.uart) rxs.push({ who: DEVICE, rx: this.masters.uart.rx, baud: this.masters.uart.baud, push: (b) => (this.link ? this.link.rxPush(b) : this._tap?.(b)) });
     for (const p of this.parts.values()) { if (p.instance === from || !this._powered(p) || !p.impl?.uartPorts) continue; for (const u of p.impl.uartPorts()) rxs.push({ who: p.instance, rx: u.rx, baud: u.baud, push: (b) => u.push(b) }); }
     for (const r of rxs) {
       if (!r.rx || this._netInfo(r.rx).id !== tx) continue;
