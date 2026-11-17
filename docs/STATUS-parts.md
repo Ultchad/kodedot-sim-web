@@ -149,7 +149,7 @@ Everything is plain ES modules in `runtime/web-adapter/` (flat, copy the folder)
 - No SPI slave sample part and no SPI end-to-end test with firmware.
 - Official Kode modules (Robotics, Maker, Camera, Mesh, hacking): not started. The brief puts them after items 1 to 7 and only as far as they can be real; the budget ended at the code-part contract and the documentation.
 - The page itself (library browser, wire drawing, inspector, import dialog, Make your own tab, code editor) is not built: this branch ships the model and the contract only.
-- The extended browser check was not run in this session (`tests/browser/run.sh` needs Chrome); the Node suite covers the new bench calls.
+- The browser check gained one case (Uno R3 in a blob Worker, serial monitor, `getPartCode`, layout) and passes with the other four: `node tests/browser/parts.test.mjs`. Upload through `setPartCode` and EEPROM persistence are covered in Node only.
 - `.dotlayout` is checked in Node only; the browser has no test of import and export.
 
 ## Risks
