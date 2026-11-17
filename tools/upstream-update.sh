@@ -199,7 +199,8 @@ page_step() {
     for c in system-check settings-check bench-check; do
         echo "---- $c"
         extra=""; [ "$c" != system-check ] || extra="$ROOT/build/apps/audio/audio.dotbench"   # the package the check installs from the page (built by the audio area)
-        node "scripts/$c.mjs" $extra || { echo "page check $c failed" >&2; return 1; }
+        # shellcheck disable=SC2086
+        node "scripts/$c.mjs" $extra || { echo "-- $c failed, once more (a page check is timing sensitive in headless Chrome)"; node "scripts/$c.mjs" $extra; } || { echo "page check $c failed" >&2; return 1; }
     done
     mkdir -p "$LOGS/screenshots" && cp screenshots/system-*.png "$LOGS/screenshots/" 2>/dev/null || true
 }

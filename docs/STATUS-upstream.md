@@ -35,6 +35,8 @@ KodeOS (17 commits): kgui self-test, a card offering a newer kodeOS at boot, the
 | `kdrv_ble_hid_kick` | drains and counts as dropped. **HID is not served**: the simulated GATT table never registers the HID service, so `kode_ble` HID calls are told there is no host. Serving HID to the Phone bench object needs a design (a person) |
 | `khal_power_wake_disarm`, `kdrv_display_panel_cold` | left as generated stubs, like `wake_arm`/`rearm` and `kdrv_display_reset_low`: part rest and a panel supply cut have no meaning in a browser |
 
+- Found by the page check: kodeOS 0.1.2 asks `api.kode.diy` for a newer kodeOS at boot; the page's CSP only allows itself, so the browser logged errors. `runtime/drivers/net/net.js` now answers that host as unreachable without calling it (the bench should not phone the maker). The glue is baked into the packages, so they were rebuilt.
+
 Other edits: `tools/dotbench` records the pinned SDK commit from `pins.env`; `web/scripts/*` take `CHROME=<path>`.
 Tests whose text or setup changed upstream, fixed (no assertion loosened): the C5 link log line (`link up; esp-hosted v...`, `project kode_c5 2.12.9`), `tests/node/persist/host.mjs` (the tool prints the `.zip`; this was broken on main already), the kodeOS boot test waits for the panel (0.1.2 fades the glass up after the first frame).
 
@@ -43,7 +45,8 @@ Tests whose text or setup changed upstream, fixed (no assertion loosened): the C
 Run with `tools/upstream-update.sh --verify-only` (and `--from areas` to resume). Logs: `/tmp/upstream-logs`.
 - kodeOS suite (`tests/node/kodeos/run.sh`): 81 checks ok (BLE pairing, BLE page, boot, radio, big SD).
 - Boot suite (`tests/node/boot/run.sh`): 39 checks ok, thirteen factory apps launch by touch and return.
-- Areas: see the final section.
+- Areas (`system ble nfc rfid ir wifi radio usb power storage sd persist nvs audio`, plus the RTOS and acceptance tests): 801 checks ok in 50 test files, no failure (`restart` skipped, see below); `net` area also passes.
+- Page checks from a scratch build (`npm run build`, headless Chrome): `system-check` all PASS (23), `settings-check` all PASS (19), `bench-check` all PASS. Screenshots looked at: the lock screen and the app list (Games group, Kody Kart). `settings-check` failed once on its page-preferences check and passed on the rerun (the updater reruns a page check once).
 - Failing before 0.1.2 too, so left out of the updater (`UPSTREAM_SKIP_TESTS`): `system/restart.test.mjs` (rss 264 -> 424 MB over 20 restarts, identical on main with the old pins and Node 22.23.4).
 - Timing flake: `ir/raw.test.mjs` "signals of a file are at least 100 ms apart" fails about one run in three even alone (gap 99 or 101 ms; the SDK code is unchanged). Not loosened; the areas step retries a failed file twice (`NODE_TEST_RETRIES`).
 
