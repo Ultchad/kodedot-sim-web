@@ -273,8 +273,7 @@ try {
     check('3D: dragging on the glass does not orbit', Math.abs(poseAfter.roll - poseBefore.roll) < 0.5 && Math.abs(poseAfter.pitch - poseBefore.pitch) < 0.5);
 
     // Movimento object: add, shake
-    await page.click('[data-testid="area-motion"]');
-    await page.click('[data-testid="add-motion.pose"]');
+    await page.click('[data-testid=row-dot] [data-testid=row-select]'); // the Dot's own card holds tilt and shake
     await sleep(200);
     await page.click('[data-testid=action-shake]');
     await sleep(200);
@@ -457,8 +456,7 @@ try {
     });
     await page.goto(BASE, { waitUntil: 'networkidle0' });
     await waitRealFrame(page);
-    await page.click('[data-testid="area-motion"]');
-    await page.click('[data-testid="add-motion.pose"]');
+    await page.click('[data-testid=row-dot] [data-testid=row-select]'); // the Dot's own card holds tilt and shake
     await page.click('[data-testid=action-shake]');
     await page.keyboard.press('t');
     await sleep(600);

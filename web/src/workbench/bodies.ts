@@ -217,7 +217,6 @@ export class Bodies {
   pressed: [string, string] | null = null;
   private env: AnimEnv = { time: 0, dt: 0 };
   private time = 0;
-  private sdPoll = 0;
   private sdInserted: boolean | null = null;
   private dotStamp = '';
   // the charger's cable and plug
@@ -243,7 +242,24 @@ export class Bodies {
   /** The Dot was swapped (test device on or off): the card slot is the new one's. */
   setDevice(device: KodeDevice): void {
     this.deps.device = device;
-    this.sdPoll = 0;
+    this.pollCard();
+  }
+  /**
+   * Looks at the Dot's card slot (the card is also put in and taken out from the panel and by kodeOS). The scene only
+   * draws when something changes, so the host calls this on a slow timer; a change wakes the scene.
+   */
+  pollCard(): void {
+    const sd = (this.deps.device.areas as Record<string, { state?: () => { inserted: boolean } } | undefined>).sd;
+    let inserted: boolean | null = null;
+    try {
+      inserted = sd?.state ? !!sd.state().inserted : null;
+    } catch {
+      inserted = null;
+    }
+    if (inserted === this.sdInserted) return;
+    this.sdInserted = inserted;
+    this.onSdChange(inserted);
+    this.onWake();
   }
 
   constructor(private deps: BodiesDeps) {
@@ -557,22 +573,6 @@ export class Bodies {
     let busy = false;
     const k = reduced ? 1 : 1 - Math.exp(-dt * 13);
 
-    // the microSD card follows the slot's state (insert and eject also happen from the panel and from kodeOS)
-    this.sdPoll -= dt;
-    if (this.sdPoll <= 0) {
-      this.sdPoll = 0.3;
-      const sd = (this.deps.device.areas as Record<string, { state?: () => { inserted: boolean } } | undefined>).sd;
-      let inserted: boolean | null = null;
-      try {
-        inserted = sd?.state ? !!sd.state().inserted : null;
-      } catch {
-        inserted = null;
-      }
-      if (inserted !== this.sdInserted) {
-        this.sdInserted = inserted;
-        this.onSdChange(inserted);
-      }
-    }
     const card = this.items.get(SD_ID);
     if (card) card.dockGoal = this.sdInserted && !this.dragging.has(SD_ID) ? 1 : 0;
     const dotStamp = `${this.deps.dotPos.y.toFixed(3)},${this.deps.dotQuat.x.toFixed(4)},${this.deps.dotQuat.z.toFixed(4)},${this.deps.dotQuat.w.toFixed(4)}`;

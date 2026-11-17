@@ -27,7 +27,7 @@ var check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`);
 };
 
-const { page, problems, ctx } = await openPage(browser, { id: 'desk', w: 1440, h: 900 }, { view: '2d' });
+const { page, problems, ctx } = await openPage(browser, { id: 'desk', w: 1440, h: 900 }, { view: '2d' }); // Device mode: the bench works without the 3D table
 const D = (fn, ...a) => page.evaluate(fn, ...a);
 const program = () => D(() => window.__dotbench.device().program.get());
 const logText = () => D(() => window.__dotbench.device().log.get().map((l) => l.text).join('\n'));
@@ -109,7 +109,8 @@ const freshLock = async () => {
   await until(async () => D((n) => window.__dotbench.device().log.get().slice(n).some((l) => /kaos\.storage sd mounted/.test(l.text)), n0), 60000, 200);
   await sleep(3000);
 };
-const tab = (area) => page.click(`[data-testid=area-${area}]`).catch(() => {});
+// the bench is one list now: only the microSD card needs choosing (its panel is the inspector of the card's row)
+const tab = (area) => (area === 'sd' ? page.$eval('[data-testid=row-sd] [data-testid=row-select]', (e) => e.click()) : Promise.resolve());
 
 try {
   await waitRunning(page);
@@ -281,10 +282,9 @@ async function gallery(vp, tag) {
     await gp.click('[data-testid=sheet-handle]').catch(() => {}); // half -> full
     await sleep(700);
   }
-  const area = (a) => gp.click(`[data-testid=area-${a}]`);
-  const add = async (kind, area_) => {
-    await area(area_);
-    await gp.click(`[data-testid="add-${kind}"]`);
+  const area = (a) => (a === 'sd' ? gp.$eval('[data-testid=row-sd] [data-testid=row-select]', (e) => e.click()) : gp.$eval('[data-testid=wb-deselect]', (e) => e.click()).catch(() => {}));
+  const add = async (kind) => {
+    await gp.$eval(`[data-testid="add-${kind}"]`, (e) => e.click());
     await sleep(500);
   };
   const cards = [

@@ -105,6 +105,13 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     invalidate();
   }, [world, storePose, invalidate]);
   useEffect(() => world.bodies.setDevice(deps.device), [world, deps.device]);
+  // the card slot is asked a few times a second (nothing else tells the scene that a card went in or out)
+  useEffect(() => {
+    if (!active) return;
+    world.bodies.pollCard();
+    const id = setInterval(() => world.bodies.pollCard(), 350);
+    return () => clearInterval(id);
+  }, [world, active]);
 
   // ---- the bench and the selection drive what stands on the table
   useEffect(() => {

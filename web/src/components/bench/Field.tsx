@@ -5,7 +5,14 @@ import { useHost } from '../../state/host';
 /** One editable field of a bench object. */
 export function Field({ def, obj }: { def: FieldDef; obj: BenchObject }) {
   const { t, fmt } = useI18n();
-  const { bench } = useHost();
+  const { bench: store } = useHost();
+  // an edit of a field is a bench edit: it can be undone (typing and sliding count as one step)
+  const bench = {
+    setField(id: string, key: string, value: string | number | boolean) {
+      store.checkpoint(`field:${id}:${key}`);
+      store.setField(id, key, value);
+    },
+  };
   const id = `f-${obj.id}-${def.key}`;
   const v = obj.fields[def.key];
   if (def.when && !def.when(obj.fields)) return null;
