@@ -145,10 +145,10 @@ function FigRange({ near, away }: { near: string; away: string }) {
       {tag(600, 190, false)}
       <path d="M386 190h150" stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" strokeDasharray="2 12" />
       <path d="M398 178l-14 12 14 12M524 178l14 12-14 12" stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <text x="322" y="262" textAnchor="middle" fontSize="21" fontWeight="600" fill="var(--ink)" fontFamily="var(--font-body)">
+      <text x="322" y="278" textAnchor="middle" fontSize="21" fontWeight="600" fill="var(--ink)" fontFamily="var(--font-body)">
         {near}
       </text>
-      <text x="600" y="262" textAnchor="middle" fontSize="21" fontWeight="600" fill="var(--ink2)" fontFamily="var(--font-body)">
+      <text x="600" y="278" textAnchor="middle" fontSize="21" fontWeight="600" fill="var(--ink2)" fontFamily="var(--font-body)">
         {away}
       </text>
     </svg>

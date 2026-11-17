@@ -569,3 +569,104 @@ Not done
   not with the keyboard, in the page (the handlers are there).
 - `_gallery.png` of the model shots was not redrawn.
 
+
+## The guide (2026-11-17, branch feat/guide)
+
+Run: `cd web && npm test` (333 passed, 30 files; `src/guide/guide.test.ts` is the guide's), `npm run build`, and
+`UX_PORT=<port> node scripts/guide-check.mjs [--only=desk,tablet,phone,land,links,live] [--no-shots]` (headless Chrome on the built
+site; last full run: 61 checks, all passed once the How? check was made to click with the mouse; screenshots `web/screenshots/guide/`).
+
+What it is
+- A dialog over the running page, one section at a time, ten sections: start, using-the-dot, apps, bench, workbench, sketches,
+  your-own-app, your-own-parts, what-is-simulated, help. The URL's hash is the truth (`web/src/guide/route.ts`, `store.ts`):
+  `#guide/<section>` opens that section directly (a pasted link), `#guide` and an unknown section open the first one, old names go
+  through `ALIASES`. Opening pushes one history entry (Back closes), moving between sections replaces it, closing restores a clean
+  address. Section ids are part of links people paste: never rename one, add an alias.
+- Entry: a "Guide" pill in the top bar (`GuideButton`, `web/src/guide/entry.tsx`); on a phone in portrait the same pill rides on the
+  top edge of the panel, in the strip the device already keeps clear for the handle; in phone landscape a round "?" in the stage's
+  bottom-left corner (there is no room beside the Dot for a word; it has the name as its label and tooltip).
+- Quiet "How?" links (`GuideLink`) where the page had dead ends: beside the install hint and the empty list in Apps, in the first-run
+  hint (desk), beside the subtitles of Bench, Components and Make, on the crash card and the unsupported-browser card.
+- The page under it: `#root` is inert while the guide is open (it keeps running; checked: same program, the console still answers),
+  focus goes to the section's title, Tab stays in the dialog, Escape closes, focus returns to the control that opened it (or to the
+  Guide control when it was opened by a link). `data-own-keys` on the dialog makes `isEditableTarget` (lib/keys.ts) true inside it,
+  so B, T, the arrows, Delete, W and the rest do not reach the Dot or the table while reading (the table's handler is on window in
+  the capture phase, so stopping the event in the dialog would not have been enough).
+- Texts: `web/src/guide/content.en.ts` (the keys), `content.pt-BR.ts`, `content.es.ts`, written natively; nothing of the guide is in
+  the shared i18n files except `nav.guide` and `guide.how` (the entry's two labels, placed after `nav.settings`, not at the end).
+  A text names a control of the page as `{t:key}`, filled from the site's own texts, so the guide calls a button what the page calls
+  it in every language. `{ext}` is `APP_PACKAGE_EXT` (`web/src/lib/appPackage.ts`), the ONE constant for the app package's
+  extension: when the extension changes, change it there (or point it at the constant the app-manager code gets), and the guide's
+  texts and its picture follow. The test refuses a typed-out `.dotbench` or `.zip` in any guide text.
+- Structure once for all languages: `sections.ts` (blocks). Data that is rendered, not retyped: the bundled apps (`apps.ts`, checked
+  against `scripts/factory-apps.json` and `public/apps/SOURCES.md`), the compiler's support lists (`sketchData.ts` reads
+  `runtime/cc/boards.mjs`, copied to `src/generated/cc/` by `prepare-cc.mjs`; Portuguese and Spanish sentences carry the fingerprint
+  of the English sentence they were written for and fall back to the compiler's English when it changes; the test then names the new
+  fingerprint), the capability table (`capabilities.ts`, one row per area with the status files it was written from), the keys
+  (`KEY_HINT`), the names of the parts in the worked examples (checked against `parts/prebuilt/library.json` and the manifests).
+- `buildPackage.ts` holds "Build a package" alone: the one place to replace when a package can be built in the browser.
+- Styles: `guide.css` (with the guide's lazy chunk) and `entry.css` (main bundle). Both state the site's layer order first
+  (`@layer theme, base, components, utilities;`): without it a stylesheet bundled before index.css puts `components` under `base`
+  and every `.btn` of the page loses its look (seen, fixed).
+
+Verified by running, in this pass (headless Chrome on `vite preview`, 1440x900, fresh profile each time, by mouse on the 2D screen)
+- kodeOS: a sideways swipe on the lock screen shows the groups (All, Games, Tools, Wireless); a tap on All lists Kody Kart, Light, NFC,
+  RFID ...; a swipe down from the very top edge opens the control centre, on the lock screen and on the app list (a swipe that starts
+  lower scrolls the list instead).
+- Router: added, joined from kodeOS (control centre, gear, Wi-Fi, Wi-Fi on, Home WiFi): the card shows "Dot connected" and
+  192.168.2.101. In the console `http_get url="http://localhost:<port>/apps/SOURCES.md"` printed the file (status=200);
+  `http_get url="https://example.com/"` failed (`kdrv.net ... UNKNOWN ERROR`, the browser's console: blocked by `connect-src 'self'`);
+  `net_ping host="example.com"` got four timeouts.
+- Infrared: Remote and TV added, IR Remote opened from Apps, Learn, Power pressed on the remote's card: "NEC signal, Address 0xFB04,
+  Command 0x0008"; Test: the TV's power went on ("The Dot sent: power").
+- Bluetooth: a bench sensor is found by the Bluetooth app's Nearby ("Sensor 1").
+- App package: from a FRESH CLONE of this repository in an empty folder, on this Linux machine (Ubuntu 24.04, x86-64, Python 3.13 with
+  Pillow): `tools/setup.sh` (1 min 56 s, `.deps` 2.1 GB), `source .dotbench-env`, `tools/dotbench sdk` (9 min 35 s at load 18),
+  `tools/dotbench build <kode-app-template checkout>` (12 s) wrote `build/apps/my_app/my_app.dotbench` (365,826 bytes). That file,
+  given to the Apps menu's install control, opened as "My app" and was listed as the 14th app; holding B for 3.6 s returned to kodeOS
+  on its app list; the same file given to the bench Computer's "Install an app over USB" answered "Done" and ran.
+- Parts: `tools/dotbench part new <dir> --declarative`, `part check`, `part test` (4 steps passed), `part build` (wrote
+  `<dir>/com.example.my-part-1.0.0.dotpart`). Imported in Make, that file was REFUSED ("Cannot read properties of undefined (reading
+  'w_mm')"); after adding `body` and an `mm` to every pin of its manifest and building again it was imported, listed and put on the
+  table. The guide says so.
+- The guide itself: `guide-check.mjs`, as listed in its header.
+
+Taken from status files, not run again here
+- NFC read in the NFC app, files on the microSD card seen by Files, kept settings, factory reset, export and import of the device
+  (this file: bench-check, system-check, settings-check).
+- The LED worked example (breadboard, resistor at 220 ohm, wires EXP1 and GND, GPIO app Pins, Pin 1, Output, High) and the Arduino
+  example (Uno R3, Code, Blink, Compile and upload, serial monitor, an error listed with its line), modules mounted, bench file saved
+  and opened, reset and BOOT buttons (this file: workbench-proof sections a, b, e, f; controls-check). The first compile's 21 MB:
+  STATUS-cc.
+- The capability table: STATUS-nfc, -rfid, -ir, -sensors, -radio, -ble, -usb, -audio, -parts, -cc, -kodeos, as named per row in
+  `capabilities.ts`. Two rows rest on reading code rather than on a run: Sound (nothing under `web/` attaches the audio glue, whose
+  input defaults to silence) and MQTT (STATUS-radio's in-page broker; not tried in the page).
+- Browsers: "tested in Chrome only; Firefox and Safari untested" (STATUS-cc, and every page check here is headless Chrome). Phone:
+  "not tried on a real phone" (this file).
+
+Not done, or not looked at
+- Looked at, of the screenshots: 1440x900 light start, using-the-dot, bench, sketches, what-is-simulated, your-own-app in pt-BR;
+  1440x900 dark workbench; 820x1180 light your-own-app and dark start; 390x844 light closed, first visit, start, dark
+  what-is-simulated; 844x390 light closed and start. NOT looked at: the apps, help and your-own-parts sections at any size, the
+  Spanish pages, 820x1180 and 844x390 in the other theme. The desktop and tablet screenshots in the folder predate the last text
+  changes (your-own-parts steps, the note on the Wi-Fi example) and three small style changes (the controls picture 25rem wide, the
+  labels of the range picture 16 px lower, tighter `code` padding): run `guide-check.mjs` again to refresh them. These last changes
+  were built and unit-tested, not seen in a browser.
+- `layout-audit.mjs` was not run with the guide's control in place (phone: the pill on the panel's edge; top bar: one more pill at
+  820 px). The other check scripts were not run again; `system-check.mjs` reads the first-run hint's text, which now ends in "How?".
+- The guide was not tried with a screen reader, on a real phone, or in Firefox or Safari.
+
+Found in the product while writing (not fixed here; each is something the guide has to talk round)
+1. The site's CSP (`connect-src 'self' blob:`) blocks every address but the site's own, so the router's "Internet" switch promises
+   what the page cannot do: `http_get` and ping reach nothing outside, and MQTT can only reach the in-page broker.
+2. The router's card never listed the request ("What the Dot asked" stayed empty after a successful `http_get`).
+3. kodeOS's console wants string arguments in quotes; `http_get url=http://...` answers only `>err code=3 msg=url`.
+4. A part built from the starter folder (or `part new`) cannot be imported: the page needs `body` and pin `mm`
+   (`web/src/parts/service.ts` reads `m.body.w_mm`), the starter manifest and both no-code examples have neither, the schema marks
+   them optional, and the refusal is a raw JavaScript error. The starter's README also says to drop the file in "Check my part",
+   which the Make tab does not have (it is "Import a part").
+5. Portuguese: the Bench panel and the Workbench mode are both called "Bancada" (`nav.bench`, `mode.workbench`).
+6. Sound is silent: apps record and play inside the Dot, the page connects neither speakers nor microphone.
+7. `tools/dotbench build` needs Pillow for an app with a PNG icon (Kode's template has one) and does not say so; its other path
+   defaults point at the maker's machine when `.dotbench-env` was not sourced.
+8. The repository has no LICENSE file at its root (the README states GPL-3.0-or-later).
