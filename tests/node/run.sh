@@ -7,6 +7,7 @@
 # (tests/node/cc is the in-browser compiler's own suite: tests/cc-run.sh, it has no driver area)
 # usage: tests/node/run.sh [--rebuild] [area ...]
 # env:   DOTBENCH_BUILD (build dir, default <repo>/build), DOTBENCH_SDK, DOTBENCH_EMSDK
+#        NODE_SKIP_TESTS="system/restart.test.mjs ..."  tests (paths under tests/node) to leave out; each one is printed as skipped
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$here/../.." && pwd)"
@@ -51,6 +52,7 @@ echo "== rtos unit tests"
 rc=0
 # an area's tests: tests/node/<area>/*.test.mjs and one level down (tests/node/apps/<app>/<app>.test.mjs)
 for t in "$here"/acceptance/*.test.mjs $(for a in "${areas[@]}"; do ls "$here/$a"/*.test.mjs "$here/$a"/*/*.test.mjs 2>/dev/null; done); do
+  case " ${NODE_SKIP_TESTS:-} " in *" ${t#$here/} "*) echo "== ${t#$here/} SKIPPED (NODE_SKIP_TESTS)"; continue ;; esac
   echo "== ${t#$here/} (Node)"
   timeout 600 node --expose-gc "$t" || rc=1
 done

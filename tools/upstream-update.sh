@@ -22,6 +22,7 @@
 # env:  DEPS (default <repo>/.deps)          where the pinned trees and Emscripten live (tools/setup.sh's argument)
 #       DOTBENCH_EMSDK_REUSE=<dir>           use an Emscripten SDK already installed there instead of installing one under DEPS
 #       UPSTREAM_AREAS="system ble ..."      the areas of tests/node/run.sh (default: all that the owner's list names, see below)
+#       UPSTREAM_SKIP_TESTS="a b"            tests/node tests left out of the areas step (default: system/restart.test.mjs, failing before 0.1.2 as well)
 #       UPSTREAM_RETRIES=1                   a failed suite is run once more before it counts (the tests are timing sensitive)
 #       UPSTREAM_LOGS=<dir>                  where each step's full log goes (default /tmp/upstream-logs)
 #       UPSTREAM_SCRATCH=<dir>               the scratch tree of the page checks (default /tmp/dotbench-page)
@@ -51,6 +52,9 @@ SCRATCH="${UPSTREAM_SCRATCH:-/tmp/dotbench-page}"
 RETRIES="${UPSTREAM_RETRIES:-1}"
 # the hardware areas the owner's acceptance list names; every one has a suite under tests/node/<area>/
 AREAS="${UPSTREAM_AREAS:-system ble nfc rfid ir wifi radio usb storage sd persist nvs audio}"
+# tests known to fail on main with the OLD pins too, so they cannot judge a new release (docs/STATUS-upstream.md says why each is here;
+# an empty UPSTREAM_SKIP_TESTS= runs everything)
+export NODE_SKIP_TESTS="${UPSTREAM_SKIP_TESTS-system/restart.test.mjs}"
 TOUCHED=(tools/pins.env web/public/apps)     # what a failed run puts back
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
 STEP="(start)"

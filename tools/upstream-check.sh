@@ -12,6 +12,7 @@
 # env: PINS_FILE (default tools/pins.env), UPSTREAM_SDK_URL, UPSTREAM_KODEOS_URL (default: the kodediy repositories on github.com; a file path works too, for tests)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=/dev/null
 . "${PINS_FILE:-$ROOT/tools/pins.env}"
 SDK_URL="${UPSTREAM_SDK_URL:-https://github.com/kodediy/kode-sdk.git}"
 OS_URL="${UPSTREAM_KODEOS_URL:-https://github.com/kodediy/KodeOS.git}"

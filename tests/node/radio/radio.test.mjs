@@ -26,7 +26,7 @@ await a.cmd("radio_up");
 await a.waitLog(/link up; esp-hosted v2\.12\.9/, 8000, m);
 await a.waitLog(/KODE services v3, 0 networks, 0 BLE keys, identity 0x00/, 8000, m);
 check(a.radio.state().link === "up" && a.radio.state().usable, "the world reports the link up");
-check(/esp32c5, esp-hosted 2\.12\.9, project kode_c5, SDIO 4-bit @40000kHz/.test(a.logText()), "kdrv_c5 reads chip, version, project and the SDIO description");
+check(/esp32c5, esp-hosted 2\.12\.9, project kode_c5 2\.12\.9, SDIO 4-bit @40000kHz/.test(a.logText()), "kdrv_c5 reads chip, version, project and the SDIO description");
 check(/this board is KODE-.* \(from its C5 68:67:25:c5:00:01\)/.test(a.logText()), "the unit's name is derived from the C5's MAC");
 const info = await a.cmd("radio_info");
 check(/link=up fw=2\.12\.9/.test(info.lines.join()), "radio_info: link up, firmware 2.12.9", info.lines);
