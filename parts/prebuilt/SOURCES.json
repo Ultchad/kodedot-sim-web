@@ -1,0 +1,282 @@
+{
+ "format": 1,
+ "generator": "node tools/parts-prebuilt.mjs regen",
+ "emscripten": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 7.0.0 (777e6e5db7b4990bcaeb1b9998ed642cc84e6629)",
+ "sharedHash": "a37ee6a902ccafe2c2ed9142be9cabe2988bd3fd422a364c4c5d0309f8744fd0",
+ "codeHash": "af6b1577ca9a5602f3cacce4d13865f4692a665c5d307ac436e576f10398decc",
+ "parts": {
+  "antenna": {
+   "id": "dotbench.antenna",
+   "file": "dotbench.antenna.dotpart",
+   "kind": "declarative",
+   "hash": "274f37f8f48141e0b9d21dc4c2f229515ed1e93c3de41f350b9b41fdaf8579d1",
+   "sha256": "72b40d4e144f596ab514bfe96ea47322ab0f11cd99cbda25f395d50b431d0b1e"
+  },
+  "battery-9v": {
+   "id": "dotbench.battery-9v",
+   "file": "dotbench.battery-9v.dotpart",
+   "kind": "declarative",
+   "hash": "e437668785416bfe2c0ee94b8c99505848c1300a19b6e50354efcababc83ba2e",
+   "sha256": "eeb043d2b70e2f92eff33f326ebdd6455dd85e982e07a18b86466d1951648a77"
+  },
+  "breadboard-full": {
+   "id": "dotbench.breadboard-full",
+   "file": "dotbench.breadboard-full.dotpart",
+   "kind": "declarative",
+   "hash": "c1fff41c9d450f02365bc58de173a9d6aeef3f0df21220344e5851fff6122936",
+   "sha256": "a16ebacd1fd05e8aa844d882e4b501974c4414743a0518dddf5bead6f76b75f2"
+  },
+  "breadboard-half": {
+   "id": "dotbench.breadboard-half",
+   "file": "dotbench.breadboard-half.dotpart",
+   "kind": "declarative",
+   "hash": "06c4a2224125eb15961eca2542be93bbb1b40580e9132f636dee44ef1dbb6568",
+   "sha256": "2c79000d2593126f0e346c8fc62417586a82d6539dc8ebbdcaf8f22b73453768"
+  },
+  "buzzer": {
+   "id": "dotbench.buzzer",
+   "file": "dotbench.buzzer.dotpart",
+   "kind": "declarative",
+   "hash": "260674e7efe92f8c67a622af27694f4c915a1e13a29d8733735eb257386b8dd3",
+   "sha256": "689b919df2a1ae147781f658c217369f1ee4131ad23f17365569b2d96cf2359d"
+  },
+  "capacitor-ceramic": {
+   "id": "dotbench.capacitor-ceramic",
+   "file": "dotbench.capacitor-ceramic.dotpart",
+   "kind": "declarative",
+   "hash": "2123e4b8d4701934260b74f1e3bba349014a3b1a0256c915d1b61771696595c8",
+   "sha256": "0d4638bd43ff93512dd09b39f81ba56744148aa890f03137908a488c722e82fa"
+  },
+  "capacitor-electrolytic": {
+   "id": "dotbench.capacitor-electrolytic",
+   "file": "dotbench.capacitor-electrolytic.dotpart",
+   "kind": "declarative",
+   "hash": "a2a22cf489376cf08c1c3f0e9c6f08e8ca0f987965d5122b53566a27367a4db6",
+   "sha256": "f309c62bf6e800c84533763a8b94818a0b822eb7dba0d78c78b3217550cf4177"
+  },
+  "dc-motor": {
+   "id": "dotbench.dc-motor",
+   "file": "dotbench.dc-motor.dotpart",
+   "kind": "declarative",
+   "hash": "efdb6b9271d3aa0a95d9fdb6bfaa766ce1dd2b9383586e2858795bf270d46059",
+   "sha256": "e137bb45c85126cda7aa4517a106ebe4465238097fca34922132dc5d6cae687e"
+  },
+  "diode": {
+   "id": "dotbench.diode",
+   "file": "dotbench.diode.dotpart",
+   "kind": "declarative",
+   "hash": "1709d139be2efec92ceb3a7f703f4f09754b30a37bdf69ad266d6eee7b5d65e9",
+   "sha256": "507bbe1f905a27445a72dada3d653a018f5456334ab2c275b0c6fd4063f61fc5"
+  },
+  "esp32-blink-echo": {
+   "id": "dotbench.esp32-blink-echo",
+   "file": "dotbench.esp32-blink-echo.dotpart",
+   "kind": "wasm",
+   "hash": "fa134e9f8bd1f95cb9c8d169b7ba3a9686e664c0c48fe674305da30bc8a3e94f",
+   "sha256": "953df715fb7251c6b94d8f2285fb967cbc2d4227761178fd387f9ba81df44f69"
+  },
+  "esp32-button-led": {
+   "id": "dotbench.esp32-button-led",
+   "file": "dotbench.esp32-button-led.dotpart",
+   "kind": "wasm",
+   "hash": "159c1021595b875fe1da5f95c2a2589b668c0a5bc53a05aa9cc3d79bb4428ef3",
+   "sha256": "c0e79d4d8f9052b5aae905b53a5936cfc297de9affc0d68143742fb761d948f5"
+  },
+  "esp32-i2c-slave": {
+   "id": "dotbench.esp32-i2c-slave",
+   "file": "dotbench.esp32-i2c-slave.dotpart",
+   "kind": "wasm",
+   "hash": "6a47b41d4bcc4d427753b47a5af3559822fd3610c381ca401950d274931131bc",
+   "sha256": "7029dd3356f90b406f040038d12e2b487d5aaf423a8f12a9eeae11dc747c18a3"
+  },
+  "esp32-s3-devkitc": {
+   "id": "dotbench.esp32-s3-devkitc",
+   "file": "dotbench.esp32-s3-devkitc.dotpart",
+   "kind": "wasm",
+   "hash": "e070624d023dabd6e768c35d98a00530efd639f56930ef0adf486fe105a2cc5d",
+   "sha256": "139a05de53c04472938f91f124d8474479ade3c428315266af8eee78f46dd207"
+  },
+  "hdc1080": {
+   "id": "dotbench.hdc1080",
+   "file": "dotbench.hdc1080.dotpart",
+   "kind": "declarative",
+   "hash": "f968704af6688857b8e51e99db2df5731ea561f723291c895f66a408c6c22092",
+   "sha256": "fd975aad5c8f2ab8936e6341bed6801deb0701855c87b8638d6e4fff5b541f2b"
+  },
+  "kode-camera-shape": {
+   "id": "dotbench.kode-camera-shape",
+   "file": "dotbench.kode-camera-shape.dotpart",
+   "kind": "declarative",
+   "hash": "8e3f36f56e2588d5888fdf2c7e58d687ba34820a08b86f4ba38a4b4fed09569e",
+   "sha256": "d56dcac732a6a43caa023089b1d4fb4b87822082deb0d3917f62710e146d97ae"
+  },
+  "kode-hacking-shape": {
+   "id": "dotbench.kode-hacking-shape",
+   "file": "dotbench.kode-hacking-shape.dotpart",
+   "kind": "declarative",
+   "hash": "bb124d276521548c6901dc54bdf6ce1834e2fa099364fa0efbec879a54091a70",
+   "sha256": "a36010ba4dbf481da3cfb861e07970d3ad90be73b905cb588e674d0029828db0"
+  },
+  "kode-maker": {
+   "id": "dotbench.kode-maker",
+   "file": "dotbench.kode-maker.dotpart",
+   "kind": "declarative",
+   "hash": "f06e53a7e7922ba468816e413adf8f1ce1ab659daa87a9d3d0c6d79869379339",
+   "sha256": "5b36ed83d4ef74621045cbfc9ee3fd947a116d954e957305661e3c1fb038a2f8"
+  },
+  "kode-mesh-shape": {
+   "id": "dotbench.kode-mesh-shape",
+   "file": "dotbench.kode-mesh-shape.dotpart",
+   "kind": "declarative",
+   "hash": "c867e310d90a8fdf11c83b1224162326997047b151dfc86882c087a667c56005",
+   "sha256": "4520ab73f1845aeffaefea453be55166d359b2f42965e962f8360e11d2fbb841"
+  },
+  "kode-robotics": {
+   "id": "dotbench.kode-robotics",
+   "file": "dotbench.kode-robotics.dotpart",
+   "kind": "declarative",
+   "hash": "52b336360442d89dcdcca032168a756b0df2b63a8990de9093222d9a1907fa3e",
+   "sha256": "91d6aef4fe0ba273b4729dc3a4bf659f286401337a3468729826121e5d1e68c6"
+  },
+  "l298n": {
+   "id": "dotbench.l298n",
+   "file": "dotbench.l298n.dotpart",
+   "kind": "declarative",
+   "hash": "a0a8834f4c0702d5cb28b428da4b0247f2b7ddf1ed01ca421030bf6aa9c65149",
+   "sha256": "6de8341a42c1d4a2ef8de8dbf3d70bf166d221f1ef923b3b9706655ec7f1622f"
+  },
+  "led": {
+   "id": "dotbench.led",
+   "file": "dotbench.led.dotpart",
+   "kind": "declarative",
+   "hash": "31c4e7c9bbfda490903a39ad578586e034d511ad5f2f223acbe138fe60e9c0bb",
+   "sha256": "15a6c9d153e5668237c610ac06a963bb2c71530068ee262b2598c0f2294f3275"
+  },
+  "led-blue": {
+   "id": "dotbench.led-blue",
+   "file": "dotbench.led-blue.dotpart",
+   "kind": "declarative",
+   "hash": "a4ac22ff8a2e88ea2bf305abdb709ace7acfcace7f57bcaabb247602fb7bc5be",
+   "sha256": "1852d175cff17748b77c9519a0b999e77d2385135cd60cbeddb1cd31c0f9a565"
+  },
+  "led-green": {
+   "id": "dotbench.led-green",
+   "file": "dotbench.led-green.dotpart",
+   "kind": "declarative",
+   "hash": "4a55a3a07396548513ad4bfd6b7e5d12e60be4ad6cb51d3cdcf74c27955b155a",
+   "sha256": "c147fb361921af6b240e14a1ee4a1e844bda76361ffe43c3ae9f7a77279de5aa"
+  },
+  "led-red": {
+   "id": "dotbench.led-red",
+   "file": "dotbench.led-red.dotpart",
+   "kind": "declarative",
+   "hash": "d93093f030b01984d64174be290d97320e2ac6f3cc4ceeb5ec265879b98f6da4",
+   "sha256": "226417556eb1614cc570b2765796acffe6ec91ed377d2edfa3ab0ac1cf2c329a"
+  },
+  "led-white": {
+   "id": "dotbench.led-white",
+   "file": "dotbench.led-white.dotpart",
+   "kind": "declarative",
+   "hash": "cf7779197c05e4bbf20e35703224608bf6579a489d5fd380e977b55a707e6e15",
+   "sha256": "e9021c2d687854b81fd9d4de603e9d9ec5a4ccafedc2a1576a59c1a5c6f0c6ff"
+  },
+  "led-yellow": {
+   "id": "dotbench.led-yellow",
+   "file": "dotbench.led-yellow.dotpart",
+   "kind": "declarative",
+   "hash": "88e4c5abcd551579c07d5deb11d1e1a5fb09780fbf862b37991baf443890072c",
+   "sha256": "6ef33ca5e8a6685b5450734a4c65c2032adb5f7232a10ce7551a0c795c47bc92"
+  },
+  "potentiometer": {
+   "id": "dotbench.potentiometer",
+   "file": "dotbench.potentiometer.dotpart",
+   "kind": "declarative",
+   "hash": "73ceac94f53a1953179c387c7aa7cb8fd70b68d3c3134a7687d4a85744efab5a",
+   "sha256": "ec62ffbb177f575bd9732d6bcf00594b2706cae21a90de7d865d70f3cfa09ac0"
+  },
+  "push-button": {
+   "id": "dotbench.push-button",
+   "file": "dotbench.push-button.dotpart",
+   "kind": "declarative",
+   "hash": "fc69f31889ef6ed0e36cded4bc9a98eeb786e55c851be1be94308eba781addd4",
+   "sha256": "01d4ced039336ae034822c6ff4db1a00da4bf76f2d3764ed4e51a8d1eba85890"
+  },
+  "relay-module": {
+   "id": "dotbench.relay-module",
+   "file": "dotbench.relay-module.dotpart",
+   "kind": "declarative",
+   "hash": "c5830d1b604662d627711204a8a6a29abc969f9d0c5a6d6fc7893e72643e2eb3",
+   "sha256": "f9f908a6f876bb500ee9ad71f85b831dda8cf374ad25b566ea6134e86aa161f8"
+  },
+  "resistor": {
+   "id": "dotbench.resistor",
+   "file": "dotbench.resistor.dotpart",
+   "kind": "declarative",
+   "hash": "d9c472ec8a07678c919344f2fcf6edef6983254cdc927e00308c303fae8d539b",
+   "sha256": "4c7f317bdff6e661de1ddf55b0e43a9913e564234a8660262686c160426e2938"
+  },
+  "rgb-led": {
+   "id": "dotbench.rgb-led",
+   "file": "dotbench.rgb-led.dotpart",
+   "kind": "declarative",
+   "hash": "d9a3fc028d5d05cc44d47a2b7594567226546205b2e1fadc3874d7e0ec6bea74",
+   "sha256": "57c093fbb00220a6919318768cd9e580054cf32129b66290ec55acc282ed9dda"
+  },
+  "servo": {
+   "id": "dotbench.servo",
+   "file": "dotbench.servo.dotpart",
+   "kind": "declarative",
+   "hash": "f210cda2f345693d46d86f068eb222701275444cf2a3e0d303cfa75bfc69fff5",
+   "sha256": "f6b05f41db1d144290c64687e5cced68f7dbae281ae8c390cef3eb2162df89c0"
+  },
+  "slide-switch": {
+   "id": "dotbench.slide-switch",
+   "file": "dotbench.slide-switch.dotpart",
+   "kind": "declarative",
+   "hash": "5829f9c5d17adf58c775c68e74a33646bfa4bb651df8c54391e70cc4d4e41f7c",
+   "sha256": "2ddd8d8aa9affaedd2384e1dc38c60ccfa6ce5742957e60701b4afe22e7a9f8c"
+  },
+  "stepper-28byj48": {
+   "id": "dotbench.stepper-28byj48",
+   "file": "dotbench.stepper-28byj48.dotpart",
+   "kind": "declarative",
+   "hash": "9f71daaf8f6bab9d547020d88c325af9b3f3d58c97b382d5b689a05ad9105b1f",
+   "sha256": "8822ff1dfd4409b72517cb2654565d78a4a6b88902c9d8ef3724133f7b47a7ed"
+  },
+  "stepper-a4988": {
+   "id": "dotbench.stepper-a4988",
+   "file": "dotbench.stepper-a4988.dotpart",
+   "kind": "declarative",
+   "hash": "31794b00f4d2afcac5ce0a9fa71170ccda748155aeb1ae2d5ecf3c2835542da4",
+   "sha256": "aa5ea498f274678998b44287c8e2b744eb26b5b65c0d5a3f9289f5ef797b088a"
+  },
+  "supply": {
+   "id": "dotbench.supply",
+   "file": "dotbench.supply.dotpart",
+   "kind": "declarative",
+   "hash": "d6e254701d590ad3a7f36881d437457419939a3f2e791d06746f4cc841ac4ef1",
+   "sha256": "00240fd71d8e80c61b7606b8871983bcd1e54f6f9e20106fc03808c611658564"
+  },
+  "uno-r3": {
+   "id": "dotbench.uno-r3",
+   "file": "dotbench.uno-r3.dotpart",
+   "kind": "wasm",
+   "hash": "b4ec6f35c815bac6c54bf6fa005133e319a4c33c9e7a77bc08b82f0db34fd3d7",
+   "sha256": "c1b59e0a025065679a493a7f6592531a0a37f3a83e14c84255bb770d46f8296e"
+  },
+  "uno-r4-minima": {
+   "id": "dotbench.uno-r4-minima",
+   "file": "dotbench.uno-r4-minima.dotpart",
+   "kind": "wasm",
+   "hash": "d6a24ddb0b8a0a27ebc59bdd7fbdcea15231b87f6e563c9ce6f3087d6ad0e44e",
+   "sha256": "e16397c8485df001ec0af3f415ff27262a33cae77f99fe138e090f9fd7bcbb06"
+  },
+  "uno-r4-wifi": {
+   "id": "dotbench.uno-r4-wifi",
+   "file": "dotbench.uno-r4-wifi.dotpart",
+   "kind": "wasm",
+   "hash": "870a4c6e4b062781070f471058335c81cb0697c622d81f54fa4b47a810499cf9",
+   "sha256": "0176b75b927a80e98a0b2e782b611f183c0d72b425bc47bc87d288ad78bc6214"
+  }
+ }
+}

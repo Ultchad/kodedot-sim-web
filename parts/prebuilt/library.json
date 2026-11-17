@@ -1,0 +1,2291 @@
+{
+  "format": "dotbench-library",
+  "version": 2,
+  "categories": [
+    "actuator",
+    "input",
+    "kode-module",
+    "mcu",
+    "module",
+    "passive",
+    "power",
+    "prototyping",
+    "sensor",
+    "wireless"
+  ],
+  "parts": [
+    {
+      "id": "dotbench.antenna",
+      "version": "1.0.0",
+      "file": "dotbench.antenna.dotpart",
+      "bytes": 1841,
+      "sha256": "72b40d4e144f596ab514bfe96ea47322ab0f11cd99cbda25f395d50b431d0b1e",
+      "name": {
+        "en": "Antenna (SMA stub)",
+        "pt-BR": "Antena (SMA)",
+        "es": "Antena (SMA)"
+      },
+      "category": "wireless",
+      "kind": "declarative",
+      "tags": [
+        "antenna",
+        "rf",
+        "wireless",
+        "sma"
+      ],
+      "keywords": {
+        "en": [
+          "antenna",
+          "rf",
+          "wifi",
+          "lora",
+          "sma",
+          "wireless",
+          "2.4ghz"
+        ],
+        "pt-BR": [
+          "antena",
+          "rf",
+          "wifi",
+          "lora",
+          "sma",
+          "sem fio",
+          "2,4ghz"
+        ],
+        "es": [
+          "antena",
+          "rf",
+          "wifi",
+          "lora",
+          "sma",
+          "inalámbrico",
+          "2,4ghz"
+        ]
+      },
+      "description": {
+        "en": "A passive stub antenna on an SMA base: FEED goes to a module's antenna pin, GND to its ground. It is a wiring target and a model for the 3D scene: to the bench it is an open circuit at DC (a 1 Gohm resistor), so it never changes a voltage. The band and gain are fields the page can read. It does NOT model radiation, matching (VSWR), range or detuning: wireless range is decided by distance on the bench table, and a module works with or without an antenna in this build.",
+        "pt-BR": "Uma antena passiva tipo stub em base SMA: FEED vai ao pino de antena de um módulo, GND ao terra dele. É um alvo de ligação e um modelo para a cena 3D: para a bancada é um circuito aberto em DC (um resistor de 1 Gohm), então nunca muda uma tensão. A banda e o ganho são campos que a página pode ler. NÃO modela radiação, casamento (VSWR), alcance nem dessintonia: o alcance sem fio é decidido pela distância na mesa da bancada, e um módulo funciona com ou sem antena nesta versão.",
+        "es": "Una antena pasiva tipo stub en base SMA: FEED va al pin de antena de un módulo, GND a su tierra. Es un objetivo de cableado y un modelo para la escena 3D: para el banco es un circuito abierto en DC (una resistencia de 1 Gohm), así que nunca cambia una tensión. La banda y la ganancia son campos que la página puede leer. NO modela radiación, adaptación (VSWR), alcance ni desintonía: el alcance inalámbrico lo decide la distancia en la mesa del banco, y un módulo funciona con o sin antena en esta versión."
+      },
+      "body": {
+        "w_mm": 10,
+        "d_mm": 10,
+        "h_mm": 60
+      },
+      "pins": 2,
+      "folder": "antenna"
+    },
+    {
+      "id": "dotbench.battery-9v",
+      "version": "1.0.0",
+      "file": "dotbench.battery-9v.dotpart",
+      "bytes": 1825,
+      "sha256": "eeb043d2b70e2f92eff33f326ebdd6455dd85e982e07a18b86466d1951648a77",
+      "name": {
+        "en": "9 V battery",
+        "pt-BR": "Bateria de 9 V",
+        "es": "Batería de 9 V"
+      },
+      "category": "power",
+      "kind": "declarative",
+      "tags": [
+        "battery",
+        "9v",
+        "power",
+        "source"
+      ],
+      "keywords": {
+        "en": [
+          "battery",
+          "9v",
+          "pp3",
+          "power",
+          "supply",
+          "cell"
+        ],
+        "pt-BR": [
+          "bateria",
+          "pilha",
+          "9v",
+          "fonte",
+          "alimentação"
+        ],
+        "es": [
+          "batería",
+          "pila",
+          "9v",
+          "fuente",
+          "alimentación"
+        ]
+      },
+      "description": {
+        "en": "A 9 V (PP3) battery: a floating voltage source, the voltage is a field, 2 ohm internal resistance. Its minus pin is the 0 V of any circuit it makes on its own. Above 500 mA the bench shows an overload hazard; a wire from plus to minus is a short. The charge does not run down.",
+        "pt-BR": "Uma bateria de 9 V (PP3): uma fonte de tensão flutuante, a tensão é um campo, resistência interna de 2 ohm. O pino negativo é o 0 V de qualquer circuito que ela forme sozinha. Acima de 500 mA a bancada mostra aviso de sobrecarga; um fio do positivo ao negativo é um curto. A carga não acaba.",
+        "es": "Una batería de 9 V (PP3): una fuente de tensión flotante, la tensión es un campo, resistencia interna de 2 ohm. Su pin negativo es el 0 V de cualquier circuito que forme por sí sola. Por encima de 500 mA el banco muestra aviso de sobrecarga; un cable del positivo al negativo es un cortocircuito. La carga no se agota."
+      },
+      "body": {
+        "w_mm": 26.5,
+        "d_mm": 17.5,
+        "h_mm": 48.5
+      },
+      "pins": 2,
+      "folder": "battery-9v"
+    },
+    {
+      "id": "dotbench.breadboard-full",
+      "version": "1.0.0",
+      "file": "dotbench.breadboard-full.dotpart",
+      "bytes": 14696,
+      "sha256": "a16ebacd1fd05e8aa844d882e4b501974c4414743a0518dddf5bead6f76b75f2",
+      "name": {
+        "en": "Breadboard, full size",
+        "pt-BR": "Protoboard completa",
+        "es": "Protoboard completa"
+      },
+      "category": "prototyping",
+      "kind": "declarative",
+      "tags": [
+        "breadboard",
+        "protoboard",
+        "full"
+      ],
+      "keywords": {
+        "en": [
+          "breadboard",
+          "protoboard",
+          "prototype",
+          "rail",
+          "strip",
+          "solderless"
+        ],
+        "pt-BR": [
+          "protoboard",
+          "placa de ensaio",
+          "prototipagem",
+          "trilho",
+          "sem solda"
+        ],
+        "es": [
+          "protoboard",
+          "placa de pruebas",
+          "prototipo",
+          "riel",
+          "sin soldadura"
+        ]
+      },
+      "description": {
+        "en": "A solderless full-size breadboard with its real connections: 63 columns of two strips of five holes (a to e, f to j; the centre channel splits them) and four continuous power rails of 50 holes (830 tie points). Plug parts into it and add wires; every hole of a strip is one net. Terminals: a1..j63, rails T1_n and T2_n (top), B1_n and B2_n (bottom). The body is the moulding without its dovetail tabs (about 1.2 mm each side, not modelled); the rails are coloured red then blue from the top on both pairs.",
+        "pt-BR": "Uma protoboard completa sem solda com as ligações reais: 63 colunas de duas tiras de cinco furos (a a e, f a j; o canal central as separa) e quatro trilhos de alimentação contínuos de 50 furos (830 pontos). Encaixe as peças e ligue fios; todos os furos de uma tira formam uma rede. Terminais: a1..j63, trilhos T1_n e T2_n (em cima), B1_n e B2_n (embaixo). O corpo é o molde sem as abas de encaixe (cerca de 1,2 mm de cada lado, não modeladas); os trilhos são vermelho e depois azul, de cima para baixo, nos dois pares.",
+        "es": "Una protoboard completa sin soldadura con las conexiones reales: 63 columnas de dos tiras de cinco agujeros (a a e, f a j; el canal central las separa) y cuatro rieles de alimentación continuos de 50 agujeros (830 puntos). Encaja las piezas y conecta cables; todos los agujeros de una tira forman una red. Terminales: a1..j63, rieles T1_n y T2_n (arriba), B1_n y B2_n (abajo). El cuerpo es el moldeado sin las pestañas de encaje (unos 1,2 mm por lado, no modeladas); los rieles son rojo y luego azul, de arriba abajo, en los dos pares."
+      },
+      "body": {
+        "w_mm": 165,
+        "d_mm": 55,
+        "h_mm": 8.5,
+        "overhang_mm": {
+          "left": 1.2,
+          "right": 1.2,
+          "back": 1.2,
+          "front": 1.2
+        }
+      },
+      "pins": 830,
+      "folder": "breadboard-full"
+    },
+    {
+      "id": "dotbench.breadboard-half",
+      "version": "1.0.0",
+      "file": "dotbench.breadboard-half.dotpart",
+      "bytes": 8234,
+      "sha256": "2c79000d2593126f0e346c8fc62417586a82d6539dc8ebbdcaf8f22b73453768",
+      "name": {
+        "en": "Breadboard, half size",
+        "pt-BR": "Protoboard meia",
+        "es": "Protoboard media"
+      },
+      "category": "prototyping",
+      "kind": "declarative",
+      "tags": [
+        "breadboard",
+        "protoboard",
+        "half"
+      ],
+      "keywords": {
+        "en": [
+          "breadboard",
+          "protoboard",
+          "prototype",
+          "rail",
+          "strip",
+          "solderless"
+        ],
+        "pt-BR": [
+          "protoboard",
+          "placa de ensaio",
+          "prototipagem",
+          "trilho",
+          "sem solda"
+        ],
+        "es": [
+          "protoboard",
+          "placa de pruebas",
+          "prototipo",
+          "riel",
+          "sin soldadura"
+        ]
+      },
+      "description": {
+        "en": "A solderless half-size breadboard with its real connections: 30 columns of two strips of five holes (a to e, f to j; the centre channel splits them) and four continuous power rails of 25 holes (400 tie points). Plug parts into it and add wires; every hole of a strip is one net. Terminals: a1..j30, rails T1_n and T2_n (top), B1_n and B2_n (bottom). The body is the moulding without its dovetail tabs (about 1.2 mm each side, not modelled); the rails are coloured red then blue from the top on both pairs.",
+        "pt-BR": "Uma protoboard meia sem solda com as ligações reais: 30 colunas de duas tiras de cinco furos (a a e, f a j; o canal central as separa) e quatro trilhos de alimentação contínuos de 25 furos (400 pontos). Encaixe as peças e ligue fios; todos os furos de uma tira formam uma rede. Terminais: a1..j30, trilhos T1_n e T2_n (em cima), B1_n e B2_n (embaixo). O corpo é o molde sem as abas de encaixe (cerca de 1,2 mm de cada lado, não modeladas); os trilhos são vermelho e depois azul, de cima para baixo, nos dois pares.",
+        "es": "Una protoboard media sin soldadura con las conexiones reales: 30 columnas de dos tiras de cinco agujeros (a a e, f a j; el canal central las separa) y cuatro rieles de alimentación continuos de 25 agujeros (400 puntos). Encaja las piezas y conecta cables; todos los agujeros de una tira forman una red. Terminales: a1..j30, rieles T1_n y T2_n (arriba), B1_n y B2_n (abajo). El cuerpo es el moldeado sin las pestañas de encaje (unos 1,2 mm por lado, no modeladas); los rieles son rojo y luego azul, de arriba abajo, en los dos pares."
+      },
+      "body": {
+        "w_mm": 82.5,
+        "d_mm": 55,
+        "h_mm": 8.5,
+        "overhang_mm": {
+          "left": 1.2,
+          "right": 1.2,
+          "back": 1.2,
+          "front": 1.2
+        }
+      },
+      "pins": 400,
+      "folder": "breadboard-half"
+    },
+    {
+      "id": "dotbench.buzzer",
+      "version": "1.0.0",
+      "file": "dotbench.buzzer.dotpart",
+      "bytes": 1426,
+      "sha256": "689b919df2a1ae147781f658c217369f1ee4131ad23f17365569b2d96cf2359d",
+      "name": {
+        "en": "Passive buzzer",
+        "pt-BR": "Buzzer passivo",
+        "es": "Zumbador pasivo"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "buzzer",
+        "pwm",
+        "sound"
+      ],
+      "keywords": {
+        "en": [
+          "buzzer",
+          "beep",
+          "sound",
+          "piezo",
+          "speaker"
+        ],
+        "pt-BR": [
+          "buzzer",
+          "campainha",
+          "som",
+          "piezo",
+          "alto-falante"
+        ],
+        "es": [
+          "zumbador",
+          "buzzer",
+          "sonido",
+          "piezo",
+          "altavoz"
+        ]
+      },
+      "description": {
+        "en": "A passive piezo buzzer: drive P with PWM (the frequency is the pitch), N to GND. The bench shows the pitch in Hz; it does not play sound by itself.",
+        "pt-BR": "Um buzzer piezo passivo: acione P com PWM (a frequência é a nota), N no GND. A bancada mostra a nota em Hz; ela não toca som sozinha.",
+        "es": "Un zumbador piezo pasivo: activa P con PWM (la frecuencia es la nota), N a GND. La mesa muestra la nota en Hz; no reproduce sonido por sí sola."
+      },
+      "body": {
+        "w_mm": 12,
+        "d_mm": 12,
+        "h_mm": 9.5
+      },
+      "pins": 2,
+      "folder": "buzzer"
+    },
+    {
+      "id": "dotbench.capacitor-ceramic",
+      "version": "1.0.0",
+      "file": "dotbench.capacitor-ceramic.dotpart",
+      "bytes": 1663,
+      "sha256": "0d4638bd43ff93512dd09b39f81ba56744148aa890f03137908a488c722e82fa",
+      "name": {
+        "en": "Ceramic capacitor",
+        "pt-BR": "Capacitor cerâmico",
+        "es": "Condensador cerámico"
+      },
+      "category": "passive",
+      "kind": "declarative",
+      "tags": [
+        "capacitor",
+        "ceramic",
+        "passive"
+      ],
+      "keywords": {
+        "en": [
+          "capacitor",
+          "ceramic",
+          "filter",
+          "decoupling",
+          "rc",
+          "farad"
+        ],
+        "pt-BR": [
+          "capacitor",
+          "cerâmico",
+          "filtro",
+          "desacoplamento",
+          "rc",
+          "farad"
+        ],
+        "es": [
+          "condensador",
+          "capacitor",
+          "cerámico",
+          "filtro",
+          "desacoplo",
+          "rc",
+          "faradio"
+        ]
+      },
+      "description": {
+        "en": "A non-polarised ceramic capacitor, 1 pF to 100 uF, 50 V. The bench steps it in virtual time (backward Euler), so it charges and discharges through the resistance around it: an RC filter, a debounce, a smoothing cap. Ideal capacitor plus a small series resistance; no leakage, no inductance.",
+        "pt-BR": "Um capacitor cerâmico sem polaridade, de 1 pF a 100 uF, 50 V. A bancada o integra no tempo virtual (Euler implícito), então ele carrega e descarrega pela resistência ao redor: filtro RC, debounce, desacoplamento. Capacitor ideal com uma pequena resistência em série; sem fuga, sem indutância.",
+        "es": "Un condensador cerámico sin polaridad, de 1 pF a 100 uF, 50 V. El banco lo integra en tiempo virtual (Euler implícito), así que carga y descarga por la resistencia que lo rodea: filtro RC, antirrebote, desacoplo. Condensador ideal con una pequeña resistencia en serie; sin fuga, sin inductancia."
+      },
+      "body": {
+        "w_mm": 7.62,
+        "d_mm": 3,
+        "h_mm": 7
+      },
+      "pins": 2,
+      "folder": "capacitor-ceramic"
+    },
+    {
+      "id": "dotbench.capacitor-electrolytic",
+      "version": "1.0.0",
+      "file": "dotbench.capacitor-electrolytic.dotpart",
+      "bytes": 1911,
+      "sha256": "f309c62bf6e800c84533763a8b94818a0b822eb7dba0d78c78b3217550cf4177",
+      "name": {
+        "en": "Electrolytic capacitor",
+        "pt-BR": "Capacitor eletrolítico",
+        "es": "Condensador electrolítico"
+      },
+      "category": "passive",
+      "kind": "declarative",
+      "tags": [
+        "capacitor",
+        "electrolytic",
+        "polarised",
+        "passive"
+      ],
+      "keywords": {
+        "en": [
+          "capacitor",
+          "electrolytic",
+          "polarized",
+          "polarity",
+          "smoothing",
+          "farad"
+        ],
+        "pt-BR": [
+          "capacitor",
+          "eletrolítico",
+          "polarizado",
+          "polaridade",
+          "filtro",
+          "farad"
+        ],
+        "es": [
+          "condensador",
+          "capacitor",
+          "electrolítico",
+          "polarizado",
+          "polaridad",
+          "faradio"
+        ]
+      },
+      "description": {
+        "en": "A polarised electrolytic capacitor, 1 uF to 10000 uF, 25 V. Same virtual-time model as the ceramic one. Hazards like the real part: more than 1 V backwards for 40 ms and it bursts (open circuit, polarity hazard, until you replace it); over 25 V it fails too. The plus lead is the long one.",
+        "pt-BR": "Um capacitor eletrolítico polarizado, de 1 uF a 10000 uF, 25 V. Mesmo modelo no tempo virtual do cerâmico. Riscos como no real: mais de 1 V ao contrário por 40 ms e ele estoura (circuito aberto, aviso de polaridade, até você trocar a peça); acima de 25 V também falha. O terminal positivo é o mais longo.",
+        "es": "Un condensador electrolítico polarizado, de 1 uF a 10000 uF, 25 V. Mismo modelo en tiempo virtual que el cerámico. Riesgos como el real: más de 1 V al revés durante 40 ms y revienta (circuito abierto, aviso de polaridad, hasta cambiar la pieza); por encima de 25 V también falla. El terminal positivo es el largo."
+      },
+      "body": {
+        "w_mm": 6.5,
+        "d_mm": 6.5,
+        "h_mm": 11.4
+      },
+      "pins": 2,
+      "folder": "capacitor-electrolytic"
+    },
+    {
+      "id": "dotbench.dc-motor",
+      "version": "1.0.0",
+      "file": "dotbench.dc-motor.dotpart",
+      "bytes": 1945,
+      "sha256": "e137bb45c85126cda7aa4517a106ebe4465238097fca34922132dc5d6cae687e",
+      "name": {
+        "en": "DC motor",
+        "pt-BR": "Motor DC",
+        "es": "Motor DC"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "motor",
+        "dc",
+        "brushed"
+      ],
+      "keywords": {
+        "en": [
+          "motor",
+          "dc motor",
+          "brushed",
+          "wheel",
+          "fan",
+          "spin"
+        ],
+        "pt-BR": [
+          "motor",
+          "motor dc",
+          "roda",
+          "ventilador",
+          "girar"
+        ],
+        "es": [
+          "motor",
+          "motor dc",
+          "rueda",
+          "ventilador",
+          "girar"
+        ]
+      },
+      "description": {
+        "en": "A small brushed DC motor (3 to 6 V). A 4 ohm winding that loads whatever drives it, and a speed that follows the voltage across its two terminals: 6 V is 6000 rpm, it does not start below 0.5 V, swap the wires to reverse. The speed (-1..1, negative is reverse) and rpm are part state the page can spin. PWM works (the average voltage counts). Not modelled: back-EMF, inertia, load, inductive kick (add a diode anyway).",
+        "pt-BR": "Um pequeno motor DC com escovas (3 a 6 V). Enrolamento de 4 ohm que carrega quem o aciona e uma velocidade que segue a tensão entre os terminais: 6 V são 6000 rpm, não parte abaixo de 0,5 V, troque os fios para inverter. A velocidade (-1..1, negativa é reverso) e as rpm são estado da peça que a página pode girar. PWM funciona (conta a tensão média). Não modelado: força contraeletromotriz, inércia, carga, pico indutivo (ponha um diodo mesmo assim).",
+        "es": "Un pequeño motor DC con escobillas (3 a 6 V). Bobinado de 4 ohm que carga a quien lo maneja y una velocidad que sigue la tensión entre sus terminales: 6 V son 6000 rpm, no arranca por debajo de 0,5 V, invierte los cables para el giro contrario. La velocidad (-1..1, negativa es reversa) y las rpm son estado de la pieza que la página puede girar. PWM funciona (cuenta la tensión media). No modelado: fuerza contraelectromotriz, inercia, carga, pico inductivo (pon un diodo igualmente)."
+      },
+      "body": {
+        "w_mm": 33,
+        "d_mm": 20.4,
+        "h_mm": 15.4
+      },
+      "pins": 2,
+      "folder": "dc-motor"
+    },
+    {
+      "id": "dotbench.diode",
+      "version": "1.0.0",
+      "file": "dotbench.diode.dotpart",
+      "bytes": 1554,
+      "sha256": "507bbe1f905a27445a72dada3d653a018f5456334ab2c275b0c6fd4063f61fc5",
+      "name": {
+        "en": "Diode (1N4007)",
+        "pt-BR": "Diodo (1N4007)",
+        "es": "Diodo (1N4007)"
+      },
+      "category": "passive",
+      "kind": "declarative",
+      "tags": [
+        "diode",
+        "rectifier",
+        "1n4007",
+        "passive"
+      ],
+      "keywords": {
+        "en": [
+          "diode",
+          "rectifier",
+          "1n4007",
+          "1n4148",
+          "flyback",
+          "protection"
+        ],
+        "pt-BR": [
+          "diodo",
+          "retificador",
+          "1n4007",
+          "1n4148",
+          "proteção",
+          "flyback"
+        ],
+        "es": [
+          "diodo",
+          "rectificador",
+          "1n4007",
+          "1n4148",
+          "protección",
+          "flyback"
+        ]
+      },
+      "description": {
+        "en": "A silicon rectifier diode: conducts from anode (A) to cathode (K, the banded end) above 0.75 V and blocks the other way. Piecewise linear model (0.75 V knee, 0.3 ohm); rated 1 A, over it an overcurrent hazard. No reverse breakdown, no recovery time.",
+        "pt-BR": "Um diodo retificador de silício: conduz do anodo (A) ao catodo (K, a ponta com faixa) acima de 0,75 V e bloqueia no sentido contrário. Modelo linear por partes (joelho de 0,75 V, 0,3 ohm); 1 A nominal, acima disso aparece um aviso de sobrecorrente. Sem ruptura reversa, sem tempo de recuperação.",
+        "es": "Un diodo rectificador de silicio: conduce del ánodo (A) al cátodo (K, el extremo con banda) por encima de 0,75 V y bloquea al revés. Modelo lineal por tramos (rodilla de 0,75 V, 0,3 ohm); 1 A nominal, por encima aparece un aviso de sobrecorriente. Sin ruptura inversa, sin tiempo de recuperación."
+      },
+      "body": {
+        "w_mm": 12.7,
+        "d_mm": 3.2,
+        "h_mm": 3.2
+      },
+      "pins": 2,
+      "folder": "diode"
+    },
+    {
+      "id": "dotbench.esp32-blink-echo",
+      "version": "1.0.0",
+      "file": "dotbench.esp32-blink-echo.dotpart",
+      "bytes": 6861,
+      "sha256": "953df715fb7251c6b94d8f2285fb967cbc2d4227761178fd387f9ba81df44f69",
+      "name": {
+        "en": "ESP32: blink and UART echo",
+        "pt-BR": "ESP32: pisca e eco UART",
+        "es": "ESP32: parpadeo y eco UART"
+      },
+      "category": "mcu",
+      "kind": "wasm",
+      "tags": [
+        "esp32",
+        "uart",
+        "arduino",
+        "blink"
+      ],
+      "keywords": {
+        "en": [
+          "esp32",
+          "microcontroller",
+          "board",
+          "wifi",
+          "uart",
+          "3.3v"
+        ],
+        "pt-BR": [
+          "esp32",
+          "microcontrolador",
+          "placa",
+          "wifi",
+          "uart",
+          "3,3v"
+        ],
+        "es": [
+          "esp32",
+          "microcontrolador",
+          "placa",
+          "wifi",
+          "uart",
+          "3,3v"
+        ]
+      },
+      "description": {
+        "en": "An ESP32 running real Arduino code: it blinks the on-board LED and echoes every byte it receives on UART1 (RX is GPIO16, TX is GPIO17, 115200 baud, 8N1) back to the sender. Wire the Kode Dot's UART TX to RX and its RX to TX. The console shows what the sketch prints.",
+        "pt-BR": "Um ESP32 rodando código Arduino de verdade: pisca o LED da placa e devolve cada byte recebido na UART1 (RX é o GPIO16, TX é o GPIO17, 115200 baud, 8N1) a quem enviou. Ligue o TX da UART do Kode Dot no RX e o RX no TX. O console mostra o que o sketch imprime.",
+        "es": "Un ESP32 con código Arduino real: parpadea el LED de la placa y devuelve cada byte recibido en la UART1 (RX es el GPIO16, TX es el GPIO17, 115200 baudios, 8N1) a quien lo envió. Conecta el TX de la UART del Kode Dot al RX y su RX al TX. La consola muestra lo que imprime el sketch."
+      },
+      "body": {
+        "w_mm": 55.1,
+        "d_mm": 27.94,
+        "h_mm": 13
+      },
+      "pins": 38,
+      "core": "esp32",
+      "folder": "esp32-blink-echo"
+    },
+    {
+      "id": "dotbench.esp32-button-led",
+      "version": "1.0.0",
+      "file": "dotbench.esp32-button-led.dotpart",
+      "bytes": 11479,
+      "sha256": "c0e79d4d8f9052b5aae905b53a5936cfc297de9affc0d68143742fb761d948f5",
+      "name": {
+        "en": "ESP32: button toggles LED",
+        "pt-BR": "ESP32: botão alterna LED",
+        "es": "ESP32: botón alterna LED"
+      },
+      "category": "mcu",
+      "kind": "wasm",
+      "tags": [
+        "esp32",
+        "gpio",
+        "interrupt",
+        "arduino"
+      ],
+      "keywords": {
+        "en": [
+          "esp32",
+          "microcontroller",
+          "board",
+          "wifi",
+          "uart",
+          "3.3v"
+        ],
+        "pt-BR": [
+          "esp32",
+          "microcontrolador",
+          "placa",
+          "wifi",
+          "uart",
+          "3,3v"
+        ],
+        "es": [
+          "esp32",
+          "microcontrolador",
+          "placa",
+          "wifi",
+          "uart",
+          "3,3v"
+        ]
+      },
+      "description": {
+        "en": "An ESP32 running real Arduino code: a push button between IO4 and GND (the sketch enables the internal pull-up and uses a falling-edge interrupt) toggles the LED on IO5 and the on-board LED. Add a LED part (with its resistor) between IO5 and GND, a Push button part between IO4 and GND.",
+        "pt-BR": "Um ESP32 rodando código Arduino de verdade: um botão entre IO4 e GND (o sketch liga o pull-up interno e usa interrupção na borda de descida) alterna o LED em IO5 e o LED da placa. Adicione uma peça LED (com resistor) entre IO5 e GND e uma peça Botão entre IO4 e GND.",
+        "es": "Un ESP32 con código Arduino real: un pulsador entre IO4 y GND (el sketch activa el pull-up interno y usa una interrupción en flanco de bajada) alterna el LED de IO5 y el LED de la placa. Añade una pieza LED (con su resistencia) entre IO5 y GND y una pieza Pulsador entre IO4 y GND."
+      },
+      "body": {
+        "w_mm": 55.1,
+        "d_mm": 27.94,
+        "h_mm": 13
+      },
+      "pins": 38,
+      "core": "esp32",
+      "folder": "esp32-button-led"
+    },
+    {
+      "id": "dotbench.esp32-i2c-slave",
+      "version": "1.0.0",
+      "file": "dotbench.esp32-i2c-slave.dotpart",
+      "bytes": 11880,
+      "sha256": "7029dd3356f90b406f040038d12e2b487d5aaf423a8f12a9eeae11dc747c18a3",
+      "name": {
+        "en": "ESP32: I2C slave",
+        "pt-BR": "ESP32: escravo I2C",
+        "es": "ESP32: esclavo I2C"
+      },
+      "category": "mcu",
+      "kind": "wasm",
+      "tags": [
+        "esp32",
+        "i2c",
+        "slave",
+        "arduino"
+      ],
+      "keywords": {
+        "en": [
+          "esp32",
+          "microcontroller",
+          "board",
+          "wifi",
+          "uart",
+          "3.3v"
+        ],
+        "pt-BR": [
+          "esp32",
+          "microcontrolador",
+          "placa",
+          "wifi",
+          "uart",
+          "3,3v"
+        ],
+        "es": [
+          "esp32",
+          "microcontrolador",
+          "placa",
+          "wifi",
+          "uart",
+          "3,3v"
+        ]
+      },
+      "description": {
+        "en": "An ESP32 running real Arduino code as an I2C slave (default address 0x42) that the Kode Dot can read. Registers: 0 ID (0xA5), 1 uptime in seconds, 2 and 3 the Value field (16 bit, big endian), 4 LED (read/write: 1 lights the on-board LED). A read starting at a register continues into the next ones.",
+        "pt-BR": "Um ESP32 rodando código Arduino de verdade como escravo I2C (endereço padrão 0x42) que o Kode Dot pode ler. Registradores: 0 ID (0xA5), 1 tempo ligado em segundos, 2 e 3 o campo Valor (16 bits, big endian), 4 LED (leitura/escrita: 1 acende o LED da placa). Uma leitura a partir de um registrador continua nos seguintes.",
+        "es": "Un ESP32 con código Arduino real como esclavo I2C (dirección 0x42 por defecto) que el Kode Dot puede leer. Registros: 0 ID (0xA5), 1 tiempo encendido en segundos, 2 y 3 el campo Valor (16 bits, big endian), 4 LED (lectura/escritura: 1 enciende el LED de la placa). Una lectura desde un registro continúa en los siguientes."
+      },
+      "body": {
+        "w_mm": 55.1,
+        "d_mm": 27.94,
+        "h_mm": 13
+      },
+      "pins": 38,
+      "core": "esp32",
+      "folder": "esp32-i2c-slave"
+    },
+    {
+      "id": "dotbench.esp32-s3-devkitc",
+      "version": "1.0.0",
+      "file": "dotbench.esp32-s3-devkitc.dotpart",
+      "bytes": 8072,
+      "sha256": "139a05de53c04472938f91f124d8474479ade3c428315266af8eee78f46dd207",
+      "name": {
+        "en": "ESP32-S3 DevKitC-1",
+        "pt-BR": "ESP32-S3 DevKitC-1",
+        "es": "ESP32-S3 DevKitC-1"
+      },
+      "category": "mcu",
+      "kind": "wasm",
+      "tags": [
+        "esp32",
+        "esp32-s3",
+        "espressif",
+        "devkitc",
+        "3v3",
+        "wifi",
+        "ble"
+      ],
+      "keywords": {
+        "en": [
+          "esp32-s3",
+          "esp32s3",
+          "devkitc",
+          "espressif",
+          "xtensa",
+          "microcontroller",
+          "board",
+          "3.3v",
+          "wifi",
+          "ble"
+        ],
+        "pt-BR": [
+          "esp32-s3",
+          "esp32s3",
+          "devkitc",
+          "espressif",
+          "xtensa",
+          "microcontrolador",
+          "placa",
+          "3,3v",
+          "wifi",
+          "ble"
+        ],
+        "es": [
+          "esp32-s3",
+          "esp32s3",
+          "devkitc",
+          "espressif",
+          "xtensa",
+          "microcontrolador",
+          "placa",
+          "3,3v",
+          "wifi",
+          "ble"
+        ]
+      },
+      "description": {
+        "en": "ESP32-S3-DevKitC-1: 3.3 V logic, two 22 pin headers at 0.9 inch (breadboard friendly, pins down), PWM (LEDC) on any GPIO, 12 bit ADC on GPIO1 to 20 (analogReadResolution up to 14 bits), touch on GPIO1 to 14, I2C on GPIO8 and 9, SPI on GPIO10 to 13, UART0 on GPIO43 and 44, on-board RGB LED on GPIO48 (shown as one LED), BOOT on GPIO0. Power with the usb field or 5 V on the 5V pin; 3V3 is a 3.3 V output while powered. GPIO19 and 20 are the USB pins and not modelled as such; GPIO35 to 37 are left free (no PSRAM modelled). WiFi and Bluetooth are not simulated. This part does NOT emulate the chip: there is no AVR/ARM/Xtensa core, no bootloader and no peripheral registers. Its sketch is compiled to WebAssembly against ArduinoCore-API + dotcore (the bench's Arduino core), so the pins, voltages, Arduino API and timing in milliseconds are real, instruction timing is not. Code that pokes registers (PORTB, DDRB, TCCR1A, direct HW access) does not compile.",
+        "pt-BR": "ESP32-S3-DevKitC-1: lógica de 3,3 V, dois cabeçotes de 22 pinos a 0,9 polegada (cabe na protoboard, pinos para baixo), PWM (LEDC) em qualquer GPIO, ADC de 12 bits nos GPIO1 a 20 (analogReadResolution até 14 bits), toque nos GPIO1 a 14, I2C nos GPIO8 e 9, SPI nos GPIO10 a 13, UART0 nos GPIO43 e 44, LED RGB da placa no GPIO48 (mostrado como um LED), BOOT no GPIO0. Alimente com o campo usb ou 5 V no pino 5V; 3V3 é uma saída de 3,3 V com a placa ligada. GPIO19 e 20 são os pinos USB e não são modelados como tal; GPIO35 a 37 ficam livres (sem PSRAM). WiFi e Bluetooth não são simulados. Esta peça NÃO emula o chip: não há núcleo AVR/ARM/Xtensa, bootloader nem registradores de periféricos. O sketch é compilado para WebAssembly contra ArduinoCore-API + dotcore (o núcleo Arduino da bancada), então os pinos, tensões, API Arduino e tempo em milissegundos são reais, o tempo de instrução não é. Código que mexe em registradores (PORTB, DDRB, TCCR1A, acesso direto ao hardware) não compila.",
+        "es": "ESP32-S3-DevKitC-1: lógica de 3,3 V, dos cabezales de 22 pines a 0,9 pulgadas (apta para protoboard, pines hacia abajo), PWM (LEDC) en cualquier GPIO, ADC de 12 bits en GPIO1 a 20 (analogReadResolution hasta 14 bits), táctil en GPIO1 a 14, I2C en GPIO8 y 9, SPI en GPIO10 a 13, UART0 en GPIO43 y 44, LED RGB de la placa en GPIO48 (mostrado como un LED), BOOT en GPIO0. Aliméntala con el campo usb o 5 V en el pin 5V; 3V3 es una salida de 3,3 V con la placa encendida. GPIO19 y 20 son los pines USB y no se modelan como tal; GPIO35 a 37 quedan libres (sin PSRAM). WiFi y Bluetooth no se simulan. Esta pieza NO emula el chip: no hay núcleo AVR/ARM/Xtensa, bootloader ni registros de periféricos. El sketch se compila a WebAssembly contra ArduinoCore-API + dotcore (el núcleo Arduino del banco), así que los pines, tensiones, API Arduino y tiempo en milisegundos son reales, el tiempo de instrucción no. El código que toca registros (PORTB, DDRB, TCCR1A, acceso directo al hardware) no compila."
+      },
+      "body": {
+        "w_mm": 62.74,
+        "d_mm": 25.4,
+        "h_mm": 14,
+        "estimate": true
+      },
+      "pins": 44,
+      "core": "esp32-s3",
+      "folder": "esp32-s3-devkitc"
+    },
+    {
+      "id": "dotbench.hdc1080",
+      "version": "1.0.0",
+      "file": "dotbench.hdc1080.dotpart",
+      "bytes": 1982,
+      "sha256": "fd975aad5c8f2ab8936e6341bed6801deb0701855c87b8638d6e4fff5b541f2b",
+      "name": {
+        "en": "HDC1080 temperature and humidity",
+        "pt-BR": "HDC1080 temperatura e umidade",
+        "es": "HDC1080 temperatura y humedad"
+      },
+      "category": "sensor",
+      "kind": "declarative",
+      "tags": [
+        "i2c",
+        "temperature",
+        "humidity",
+        "sensor"
+      ],
+      "keywords": {
+        "en": [
+          "hdc1080",
+          "temperature",
+          "humidity",
+          "i2c",
+          "sensor"
+        ],
+        "pt-BR": [
+          "hdc1080",
+          "temperatura",
+          "umidade",
+          "i2c",
+          "sensor"
+        ],
+        "es": [
+          "hdc1080",
+          "temperatura",
+          "humedad",
+          "i2c",
+          "sensor"
+        ]
+      },
+      "description": {
+        "en": "A model of the TI HDC1080 at I2C address 0x40, register level: 0x00 temperature, 0x01 humidity (16 bit, big endian), 0x02 configuration, 0xFB to 0xFD serial number, 0xFE manufacturer 0x5449, 0xFF device 0x1050. Set the temperature and humidity in the panel. Conversion time is not modelled: a read always returns the current value.",
+        "pt-BR": "Um modelo do HDC1080 da TI no endereço I2C 0x40, em nível de registrador: 0x00 temperatura, 0x01 umidade (16 bits, big endian), 0x02 configuração, 0xFB a 0xFD número de série, 0xFE fabricante 0x5449, 0xFF dispositivo 0x1050. Ajuste temperatura e umidade no painel. O tempo de conversão não é modelado: a leitura sempre devolve o valor atual.",
+        "es": "Un modelo del HDC1080 de TI en la dirección I2C 0x40, a nivel de registro: 0x00 temperatura, 0x01 humedad (16 bits, big endian), 0x02 configuración, 0xFB a 0xFD número de serie, 0xFE fabricante 0x5449, 0xFF dispositivo 0x1050. Ajusta temperatura y humedad en el panel. El tiempo de conversión no se modela: una lectura siempre devuelve el valor actual."
+      },
+      "body": {
+        "w_mm": 20,
+        "d_mm": 12,
+        "h_mm": 6
+      },
+      "pins": 4,
+      "folder": "hdc1080"
+    },
+    {
+      "id": "dotbench.kode-camera-shape",
+      "version": "1.0.0",
+      "file": "dotbench.kode-camera-shape.dotpart",
+      "bytes": 2369,
+      "sha256": "d56dcac732a6a43caa023089b1d4fb4b87822082deb0d3917f62710e146d97ae",
+      "name": {
+        "en": "Kode Camera module (shape only)",
+        "pt-BR": "Kode Camera module (só a forma)",
+        "es": "Kode Camera module (solo la forma)"
+      },
+      "category": "kode-module",
+      "kind": "declarative",
+      "tags": [
+        "kode",
+        "module",
+        "shape-only",
+        "camera",
+        "ov5640"
+      ],
+      "keywords": {
+        "en": [
+          "camera",
+          "ov5640",
+          "kode",
+          "module",
+          "shape only"
+        ],
+        "pt-BR": [
+          "câmera",
+          "ov5640",
+          "kode",
+          "módulo",
+          "só a forma"
+        ],
+        "es": [
+          "cámara",
+          "ov5640",
+          "kode",
+          "módulo",
+          "solo la forma"
+        ]
+      },
+      "description": {
+        "en": "SHAPE ONLY: it mounts on the header and passes the rails and the 14 signal terminals through, and does nothing else. The OV5640 camera (SCCB, DVP frames) is not simulated: no behaviour, no chip, no bus device. The pin names follow the published pin map and the 20 pins sit in the real 2x10 connector.",
+        "pt-BR": "SÓ A FORMA: encaixa no cabeçalho e repassa os trilhos e os 14 terminais de sinal, e nada mais. The OV5640 camera (SCCB, DVP frames) não é simulado: sem comportamento, sem chip, sem dispositivo de barramento. Os nomes dos pinos seguem o mapa publicado e os 20 pinos ficam no conector 2x10 real.",
+        "es": "SOLO LA FORMA: encaja en el cabezal y pasa los rieles y los 14 terminales de señal, y nada más. The OV5640 camera (SCCB, DVP frames) no se simula: sin comportamiento, sin chip, sin dispositivo de bus. Los nombres de los pines siguen el mapa publicado y los 20 pines están en el conector 2x10 real."
+      },
+      "body": {
+        "w_mm": 46.6,
+        "d_mm": 53.5,
+        "h_mm": 12,
+        "estimate": true
+      },
+      "pins": 20,
+      "folder": "kode-camera-shape"
+    },
+    {
+      "id": "dotbench.kode-hacking-shape",
+      "version": "1.0.0",
+      "file": "dotbench.kode-hacking-shape.dotpart",
+      "bytes": 3182,
+      "sha256": "a36010ba4dbf481da3cfb861e07970d3ad90be73b905cb588e674d0029828db0",
+      "name": {
+        "en": "Kode hacking module (shape only)",
+        "pt-BR": "Kode hacking module (só a forma)",
+        "es": "Kode hacking module (solo la forma)"
+      },
+      "category": "kode-module",
+      "kind": "declarative",
+      "tags": [
+        "kode",
+        "module",
+        "shape-only",
+        "hacking",
+        "cc1101"
+      ],
+      "keywords": {
+        "en": [
+          "hacking",
+          "cc1101",
+          "sub-ghz",
+          "kode",
+          "module",
+          "shape only"
+        ],
+        "pt-BR": [
+          "hacking",
+          "cc1101",
+          "sub-ghz",
+          "kode",
+          "módulo",
+          "só a forma"
+        ],
+        "es": [
+          "hacking",
+          "cc1101",
+          "sub-ghz",
+          "kode",
+          "módulo",
+          "solo la forma"
+        ]
+      },
+      "description": {
+        "en": "SHAPE ONLY: it mounts on the header and passes the rails and the 14 signal terminals through, and does nothing else. The CC1101, nRF54L15, ESP32-C5 and GNSS radios is not simulated: no behaviour, no chip, no bus device. The pin names follow the published pin map and the 20 pins sit in the real 2x10 connector. Housing measured from the owner's photos with a solved camera (47 x 35 x 95 mm with the antennas; one L-shaped skin: block 18.2 mm high, 31 mm deep at the foot and 35 at the top, tongue 14 mm thick hanging 26 mm below it, flush with its back and ends; the side silhouette is profile): two whip antennas (about 30.5 and 50.5 mm) on SMA bases listed in refs (non-electrical). Size and terminal positions are estimates from pictures (header pitch 2.54 mm is exact).",
+        "pt-BR": "SÓ A FORMA: encaixa no cabeçalho e repassa os trilhos e os 14 terminais de sinal, e nada mais. The CC1101, nRF54L15, ESP32-C5 and GNSS radios não é simulado: sem comportamento, sem chip, sem dispositivo de barramento. Os nomes dos pinos seguem o mapa publicado e os 20 pinos ficam no conector 2x10 real. Estimativa da caixa (47 x 35 mm, 95 mm com as antenas, só fotos): bloco superior largo, aba atrás, duas antenas chicote (cerca de 30.5 e 50.5 mm) em bases SMA listadas em refs (não elétrico). Tamanho e posições dos terminais são estimativas a partir de fotos (o passo de 2,54 mm do cabeçalho é exato).",
+        "es": "SOLO LA FORMA: encaja en el cabezal y pasa los rieles y los 14 terminales de señal, y nada más. The CC1101, nRF54L15, ESP32-C5 and GNSS radios no se simula: sin comportamiento, sin chip, sin dispositivo de bus. Los nombres de los pines siguen el mapa publicado y los 20 pines están en el conector 2x10 real. Estimación de la carcasa (47 x 35 mm, 95 mm con las antenas, solo fotos): bloque superior ancho, lengüeta detrás, dos antenas látigo (unos 30.5 y 50.5 mm) en bases SMA listadas en refs (no eléctrico). El tamaño y las posiciones de los terminales son estimaciones a partir de fotos (el paso de 2,54 mm del cabezal es exacto)."
+      },
+      "body": {
+        "w_mm": 47,
+        "d_mm": 35,
+        "h_mm": 95,
+        "estimate": true
+      },
+      "pins": 20,
+      "folder": "kode-hacking-shape"
+    },
+    {
+      "id": "dotbench.kode-maker",
+      "version": "1.0.0",
+      "file": "dotbench.kode-maker.dotpart",
+      "bytes": 6631,
+      "sha256": "5b36ed83d4ef74621045cbfc9ee3fd947a116d954e957305661e3c1fb038a2f8",
+      "name": {
+        "en": "Kode Maker module",
+        "pt-BR": "Módulo Kode Maker",
+        "es": "Módulo Kode Maker"
+      },
+      "category": "kode-module",
+      "kind": "declarative",
+      "tags": [
+        "kode",
+        "module",
+        "maker",
+        "breadboard",
+        "prototype"
+      ],
+      "keywords": {
+        "en": [
+          "maker",
+          "kode",
+          "module",
+          "breadboard",
+          "prototype",
+          "sockets",
+          "jumper"
+        ],
+        "pt-BR": [
+          "maker",
+          "kode",
+          "módulo",
+          "protoboard",
+          "prototipagem",
+          "soquetes",
+          "jumper"
+        ],
+        "es": [
+          "maker",
+          "kode",
+          "módulo",
+          "protoboard",
+          "prototipado",
+          "zócalos",
+          "puente"
+        ]
+      },
+      "description": {
+        "en": "The official Maker module (KDMKR001): a passive breadboard carrier that plugs onto the Dot's J3 (bench.mountPart, upright or turned). Fourteen sockets S1..S14 carry the 14 header GPIOs (sockets 9 to 14 are GPIO20, 19, 18, 17, 16, 15), four 5 V sockets, four 3.3 V sockets, two groups of four GND sockets and a 170 point mini breadboard (a1..j17, strips of five). Nothing is active: no regulator, no pull-ups (I2C needs 4.7 kohm outside), a 3.3 V protection diode per GPIO (a 5 V strip wired to a socket raises an overvoltage hazard). Turned, socket n meets the Dot's position 15 - n and no longer the same GPIO. Size and terminal positions are estimates from pictures (header pitch 2.54 mm is exact).",
+        "pt-BR": "O módulo Maker oficial (KDMKR001): uma base passiva de protoboard que encaixa no J3 do Dot (bench.mountPart, normal ou virado). Quatorze soquetes S1..S14 levam os 14 GPIOs do cabeçalho (os soquetes 9 a 14 são GPIO20, 19, 18, 17, 16, 15), quatro soquetes de 5 V, quatro de 3,3 V, dois grupos de quatro GND e uma mini protoboard de 170 pontos (a1..j17, trilhas de cinco). Nada é ativo: sem regulador, sem pull-ups (I2C precisa de 4,7 kohm por fora), um diodo de proteção de 3,3 V por GPIO (uma trilha de 5 V ligada a um soquete gera perigo de sobretensão). Virado, o soquete n encontra a posição 15 - n do Dot e não mais o mesmo GPIO. Tamanho e posições dos terminais são estimativas a partir de fotos (o passo de 2,54 mm do cabeçalho é exato).",
+        "es": "El módulo Maker oficial (KDMKR001): una base pasiva de protoboard que encaja en el J3 del Dot (bench.mountPart, normal o girado). Catorce zócalos S1..S14 llevan los 14 GPIO del cabezal (los zócalos 9 a 14 son GPIO20, 19, 18, 17, 16, 15), cuatro zócalos de 5 V, cuatro de 3,3 V, dos grupos de cuatro GND y una mini protoboard de 170 puntos (a1..j17, tiras de cinco). Nada es activo: sin regulador, sin pull-ups (I2C necesita 4,7 kohm por fuera), un diodo de protección de 3,3 V por GPIO (una tira de 5 V conectada a un zócalo genera peligro de sobretensión). Girado, el zócalo n encuentra la posición 15 - n del Dot y ya no el mismo GPIO. El tamaño y las posiciones de los terminales son estimaciones a partir de fotos (el paso de 2,54 mm del cabezal es exacto)."
+      },
+      "body": {
+        "w_mm": 58,
+        "d_mm": 62,
+        "h_mm": 14,
+        "estimate": true
+      },
+      "pins": 220,
+      "folder": "kode-maker"
+    },
+    {
+      "id": "dotbench.kode-mesh-shape",
+      "version": "1.0.0",
+      "file": "dotbench.kode-mesh-shape.dotpart",
+      "bytes": 3168,
+      "sha256": "4520ab73f1845aeffaefea453be55166d359b2f42965e962f8360e11d2fbb841",
+      "name": {
+        "en": "Kode Mesh module (shape only)",
+        "pt-BR": "Kode Mesh module (só a forma)",
+        "es": "Kode Mesh module (solo la forma)"
+      },
+      "category": "kode-module",
+      "kind": "declarative",
+      "tags": [
+        "kode",
+        "module",
+        "shape-only",
+        "mesh",
+        "lora"
+      ],
+      "keywords": {
+        "en": [
+          "mesh",
+          "lora",
+          "gnss",
+          "kode",
+          "module",
+          "shape only"
+        ],
+        "pt-BR": [
+          "mesh",
+          "lora",
+          "gnss",
+          "kode",
+          "módulo",
+          "só a forma"
+        ],
+        "es": [
+          "mesh",
+          "lora",
+          "gnss",
+          "kode",
+          "módulo",
+          "solo la forma"
+        ]
+      },
+      "description": {
+        "en": "SHAPE ONLY: it mounts on the header and passes the rails and the 14 signal terminals through, and does nothing else. The LoRa radio (LR2021) and the GNSS receiver is not simulated: no behaviour, no chip, no bus device. The pin names follow the published pin map and the 20 pins sit in the real 2x10 connector. Housing measured from the owner's photos with a solved camera (47 x 35 x 95 mm with the antennas; one L-shaped skin: block 18.2 mm high, 31 mm deep at the foot and 35 at the top, tongue 14 mm thick hanging 26 mm below it, flush with its back and ends; the side silhouette is profile): two whip antennas (about 30.5 and 50.5 mm) on SMA bases listed in refs (non-electrical). Size and terminal positions are estimates from pictures (header pitch 2.54 mm is exact).",
+        "pt-BR": "SÓ A FORMA: encaixa no cabeçalho e repassa os trilhos e os 14 terminais de sinal, e nada mais. The LoRa radio (LR2021) and the GNSS receiver não é simulado: sem comportamento, sem chip, sem dispositivo de barramento. Os nomes dos pinos seguem o mapa publicado e os 20 pinos ficam no conector 2x10 real. Estimativa da caixa (47 x 35 mm, 95 mm com as antenas, só fotos): bloco superior largo, aba atrás, duas antenas chicote (cerca de 30.5 e 50.5 mm) em bases SMA listadas em refs (não elétrico). Tamanho e posições dos terminais são estimativas a partir de fotos (o passo de 2,54 mm do cabeçalho é exato).",
+        "es": "SOLO LA FORMA: encaja en el cabezal y pasa los rieles y los 14 terminales de señal, y nada más. The LoRa radio (LR2021) and the GNSS receiver no se simula: sin comportamiento, sin chip, sin dispositivo de bus. Los nombres de los pines siguen el mapa publicado y los 20 pines están en el conector 2x10 real. Estimación de la carcasa (47 x 35 mm, 95 mm con las antenas, solo fotos): bloque superior ancho, lengüeta detrás, dos antenas látigo (unos 30.5 y 50.5 mm) en bases SMA listadas en refs (no eléctrico). El tamaño y las posiciones de los terminales son estimaciones a partir de fotos (el paso de 2,54 mm del cabezal es exacto)."
+      },
+      "body": {
+        "w_mm": 47,
+        "d_mm": 35,
+        "h_mm": 95,
+        "estimate": true
+      },
+      "pins": 20,
+      "folder": "kode-mesh-shape"
+    },
+    {
+      "id": "dotbench.kode-robotics",
+      "version": "1.0.0",
+      "file": "dotbench.kode-robotics.dotpart",
+      "bytes": 4558,
+      "sha256": "91d6aef4fe0ba273b4729dc3a4bf659f286401337a3468729826121e5d1e68c6",
+      "name": {
+        "en": "Kode Robotics module",
+        "pt-BR": "Módulo Kode Robotics",
+        "es": "Módulo Kode Robotics"
+      },
+      "category": "kode-module",
+      "kind": "declarative",
+      "tags": [
+        "kode",
+        "module",
+        "robotics",
+        "motor",
+        "servo",
+        "stepper",
+        "h-bridge",
+        "at8833"
+      ],
+      "keywords": {
+        "en": [
+          "robotics",
+          "kode",
+          "module",
+          "motor driver",
+          "h-bridge",
+          "servo",
+          "stepper",
+          "at8833",
+          "i2c"
+        ],
+        "pt-BR": [
+          "robótica",
+          "kode",
+          "módulo",
+          "driver de motor",
+          "ponte h",
+          "servo",
+          "passo",
+          "at8833",
+          "i2c"
+        ],
+        "es": [
+          "robótica",
+          "kode",
+          "módulo",
+          "driver de motor",
+          "puente h",
+          "servo",
+          "paso a paso",
+          "at8833",
+          "i2c"
+        ]
+      },
+      "description": {
+        "en": "The official Robotics module (KDROB001): AT8833CQ dual H-bridge for two brushed motors (MOTA_1/2, MOTB_1/2, also the stepper header STP_1..4), a servo output (J402: GND, 5V, SIG on GPIO11), an I2C port (J403, GPIO8 SCL and GPIO9 SDA with 2.2 kohm pull-ups to 3.3 V) and a sensor header (J404, GPIO15 to 18). It mounts on J3, upright or turned. Upright map: AIN1 GPIO20, AIN2 GPIO21, BIN1 GPIO13, BIN2 GPIO14, nSLEEP GPIO19 (the driver is asleep, outputs high impedance, until it is high), nFAULT GPIO12. The motors and servo run from the Dot's 5 V rail, so it must be on. Drive IN1 or IN2 with PWM and hold the other level, like the real module. ASSUMED (not published, marked in the mount table): the AT8833CQ is treated as a DRV8833 (AIN1 drives AOUT1 and so on, a 0.3 V drop and 0.4 ohm per leg), the order of the four pins of the stepper header, the rail of nFAULT's 10 kohm pull-up (3.3 V). NOT modelled: the 0.4 A current chop and the 2.2 to 3 A trip (nFAULT never asserts), servo timing limits, the module's own identification lines. Size and terminal positions are estimates from pictures (header pitch 2.54 mm is exact).",
+        "pt-BR": "O módulo Robotics oficial (KDROB001): ponte H dupla AT8833CQ para dois motores DC (MOTA_1/2, MOTB_1/2, também o conector de passo STP_1..4), uma saída de servo (J402: GND, 5V, SIG no GPIO11), uma porta I2C (J403, GPIO8 SCL e GPIO9 SDA com pull-ups de 2,2 kohm a 3,3 V) e um conector de sensores (J404, GPIO15 a 18). Encaixa no J3, normal ou virado. Mapa normal: AIN1 GPIO20, AIN2 GPIO21, BIN1 GPIO13, BIN2 GPIO14, nSLEEP GPIO19 (o driver dorme, saídas em alta impedância, até ficar alto), nFAULT GPIO12. Os motores e o servo usam o trilho de 5 V do Dot, que precisa estar ligado. Acione IN1 ou IN2 com PWM e mantenha o outro nível, como o módulo real. ASSUMIDO (não publicado, marcado na tabela de montagem): o AT8833CQ é tratado como um DRV8833 (AIN1 aciona AOUT1 e assim por diante, queda de 0,3 V e 0,4 ohm por perna), a ordem dos quatro pinos do conector de passo, o trilho do pull-up de 10 kohm do nFAULT (3,3 V). NÃO modelado: o limite de 0,4 A e o desarme de 2,2 a 3 A (nFAULT nunca é acionado), limites de tempo do servo, as linhas de identificação do módulo. Tamanho e posições dos terminais são estimativas a partir de fotos (o passo de 2,54 mm do cabeçalho é exato).",
+        "es": "El módulo Robotics oficial (KDROB001): puente H doble AT8833CQ para dos motores DC (MOTA_1/2, MOTB_1/2, también el conector paso a paso STP_1..4), una salida de servo (J402: GND, 5V, SIG en GPIO11), un puerto I2C (J403, GPIO8 SCL y GPIO9 SDA con pull-ups de 2,2 kohm a 3,3 V) y un conector de sensores (J404, GPIO15 a 18). Encaja en el J3, normal o girado. Mapa normal: AIN1 GPIO20, AIN2 GPIO21, BIN1 GPIO13, BIN2 GPIO14, nSLEEP GPIO19 (el driver duerme, salidas en alta impedancia, hasta que esté alto), nFAULT GPIO12. Los motores y el servo usan el riel de 5 V del Dot, que debe estar encendido. Maneja IN1 o IN2 con PWM y mantén el otro nivel, como el módulo real. ASUMIDO (no publicado, marcado en la tabla de montaje): el AT8833CQ se trata como un DRV8833 (AIN1 maneja AOUT1 y así sucesivamente, caída de 0,3 V y 0,4 ohm por pierna), el orden de los cuatro pines del conector paso a paso, el riel del pull-up de 10 kohm de nFAULT (3,3 V). NO modelado: el límite de 0,4 A y el disparo de 2,2 a 3 A (nFAULT nunca se activa), límites de tiempo del servo, las líneas de identificación del módulo. El tamaño y las posiciones de los terminales son estimaciones a partir de fotos (el paso de 2,54 mm del cabezal es exacto)."
+      },
+      "body": {
+        "w_mm": 45,
+        "d_mm": 48.5,
+        "h_mm": 14,
+        "estimate": true
+      },
+      "pins": 42,
+      "folder": "kode-robotics"
+    },
+    {
+      "id": "dotbench.l298n",
+      "version": "1.0.0",
+      "file": "dotbench.l298n.dotpart",
+      "bytes": 2557,
+      "sha256": "6de8341a42c1d4a2ef8de8dbf3d70bf166d221f1ef923b3b9706655ec7f1622f",
+      "name": {
+        "en": "L298N motor driver",
+        "pt-BR": "Driver de motor L298N",
+        "es": "Driver de motor L298N"
+      },
+      "category": "module",
+      "kind": "declarative",
+      "tags": [
+        "l298n",
+        "h-bridge",
+        "motor-driver",
+        "driver"
+      ],
+      "keywords": {
+        "en": [
+          "l298n",
+          "h-bridge",
+          "motor driver",
+          "dc motor",
+          "driver",
+          "pwm"
+        ],
+        "pt-BR": [
+          "l298n",
+          "ponte h",
+          "driver de motor",
+          "motor dc",
+          "pwm"
+        ],
+        "es": [
+          "l298n",
+          "puente h",
+          "driver de motor",
+          "motor dc",
+          "pwm"
+        ]
+      },
+      "description": {
+        "en": "The common red L298N module: two H-bridges (OUT1/OUT2 and OUT3/OUT4) from the motor supply VS (5 to 35 V) with a 1.4 V drop high side, 2 ohm outputs; inputs IN1..IN4 read 2.3 V and up as high, so 3.3 V logic works; ENA/ENB have the jumper's 10k pull-up to the module's 5 V pin, drive them with PWM for speed (the output is chopped by duty, off-time reads as freewheel to 0 V). The 5 V pin always supplies 5 V (the on-board regulator is not modelled). Not modelled: current sensing, thermal limits, inductive kick.",
+        "pt-BR": "O módulo vermelho L298N comum: duas pontes H (OUT1/OUT2 e OUT3/OUT4) a partir da alimentação VS (5 a 35 V) com queda de 1,4 V no lado alto, saídas de 2 ohm; as entradas IN1..IN4 leem 2,3 V ou mais como alto, então lógica de 3,3 V funciona; ENA/ENB têm o pull-up de 10k do jumper para o pino de 5 V do módulo, acione-os com PWM para velocidade (a saída é picotada pelo duty, o tempo desligado vale como roda livre a 0 V). O pino de 5 V sempre fornece 5 V (o regulador da placa não é modelado). Não modelado: sensor de corrente, limites térmicos, pico indutivo.",
+        "es": "El módulo rojo L298N común: dos puentes H (OUT1/OUT2 y OUT3/OUT4) desde la alimentación VS (5 a 35 V) con caída de 1,4 V en el lado alto, salidas de 2 ohm; las entradas IN1..IN4 leen 2,3 V o más como alto, así que la lógica de 3,3 V funciona; ENA/ENB tienen el pull-up de 10k del puente hacia el pin de 5 V del módulo, mánejalos con PWM para la velocidad (la salida se trocea por ciclo de trabajo, el tiempo apagado cuenta como rueda libre a 0 V). El pin de 5 V siempre da 5 V (el regulador de la placa no se modela). No modelado: sensor de corriente, límites térmicos, pico inductivo."
+      },
+      "body": {
+        "w_mm": 43,
+        "d_mm": 43,
+        "h_mm": 27
+      },
+      "pins": 13,
+      "folder": "l298n"
+    },
+    {
+      "id": "dotbench.led",
+      "version": "1.0.0",
+      "file": "dotbench.led.dotpart",
+      "bytes": 1533,
+      "sha256": "15a6c9d153e5668237c610ac06a963bb2c71530068ee262b2598c0f2294f3275",
+      "name": {
+        "en": "LED with resistor",
+        "pt-BR": "LED com resistor",
+        "es": "LED con resistencia"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "led",
+        "output"
+      ],
+      "keywords": {
+        "en": [
+          "led",
+          "light",
+          "indicator",
+          "diode"
+        ],
+        "pt-BR": [
+          "led",
+          "luz",
+          "indicador",
+          "diodo"
+        ],
+        "es": [
+          "led",
+          "luz",
+          "indicador",
+          "diodo"
+        ]
+      },
+      "description": {
+        "en": "A red LED with a series resistor you can change. Anode to a GPIO (or a rail), cathode to GND. It glows by the current the net gives it: about 10 mA is full brightness.",
+        "pt-BR": "Um LED vermelho com resistor em série ajustável. Anodo em um GPIO (ou trilho), catodo no GND. Brilha conforme a corrente que a rede entrega: cerca de 10 mA é brilho total.",
+        "es": "Un LED rojo con resistencia en serie ajustable. Ánodo a un GPIO (o riel), cátodo a GND. Brilla según la corriente de la red: unos 10 mA es brillo máximo."
+      },
+      "body": {
+        "w_mm": 5.8,
+        "d_mm": 5.8,
+        "h_mm": 9
+      },
+      "pins": 2,
+      "folder": "led"
+    },
+    {
+      "id": "dotbench.led-blue",
+      "version": "1.0.0",
+      "file": "dotbench.led-blue.dotpart",
+      "bytes": 1786,
+      "sha256": "1852d175cff17748b77c9519a0b999e77d2385135cd60cbeddb1cd31c0f9a565",
+      "name": {
+        "en": "LED blue 5 mm",
+        "pt-BR": "LED azul 5 mm",
+        "es": "LED azul 5 mm"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "led",
+        "blue",
+        "output"
+      ],
+      "keywords": {
+        "en": [
+          "led",
+          "light",
+          "lamp",
+          "blue",
+          "diode"
+        ],
+        "pt-BR": [
+          "led",
+          "luz",
+          "lâmpada",
+          "azul",
+          "diodo"
+        ],
+        "es": [
+          "led",
+          "luz",
+          "lámpara",
+          "azul",
+          "diodo"
+        ]
+      },
+      "description": {
+        "en": "A blue 5 mm LED (forward voltage 3.00 V) with no resistor inside: put one in series. It loads the net, glows by its current (10 mA is full brightness) and reports overcurrent: above 26 mA for 60 ms it burns out (open circuit and a \"burnt\" flag) until you replace it. The long lead is the anode (A).",
+        "pt-BR": "Um LED azul de 5 mm (tensão direta 3.00 V) sem resistor dentro: ligue um em série. Ele carrega a rede, brilha pela corrente (10 mA é brilho total) e avisa de sobrecorrente: acima de 26 mA por 60 ms ele queima (circuito aberto e a marca \"queimado\") até você trocar a peça. O terminal longo é o anodo (A).",
+        "es": "Un LED azul de 5 mm (tensión directa 3.00 V) sin resistencia dentro: pon una en serie. Carga la red, brilla según su corriente (10 mA es brillo máximo) y avisa de sobrecorriente: por encima de 26 mA durante 60 ms se quema (circuito abierto y marca \"quemado\") hasta cambiar la pieza. El terminal largo es el ánodo (A)."
+      },
+      "body": {
+        "w_mm": 5.8,
+        "d_mm": 5.8,
+        "h_mm": 8.6
+      },
+      "pins": 2,
+      "folder": "led-blue"
+    },
+    {
+      "id": "dotbench.led-green",
+      "version": "1.0.0",
+      "file": "dotbench.led-green.dotpart",
+      "bytes": 1788,
+      "sha256": "c147fb361921af6b240e14a1ee4a1e844bda76361ffe43c3ae9f7a77279de5aa",
+      "name": {
+        "en": "LED green 5 mm",
+        "pt-BR": "LED verde 5 mm",
+        "es": "LED verde 5 mm"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "led",
+        "green",
+        "output"
+      ],
+      "keywords": {
+        "en": [
+          "led",
+          "light",
+          "lamp",
+          "green",
+          "diode"
+        ],
+        "pt-BR": [
+          "led",
+          "luz",
+          "lâmpada",
+          "verde",
+          "diodo"
+        ],
+        "es": [
+          "led",
+          "luz",
+          "lámpara",
+          "verde",
+          "diodo"
+        ]
+      },
+      "description": {
+        "en": "A green 5 mm LED (forward voltage 2.10 V) with no resistor inside: put one in series. It loads the net, glows by its current (10 mA is full brightness) and reports overcurrent: above 26 mA for 60 ms it burns out (open circuit and a \"burnt\" flag) until you replace it. The long lead is the anode (A).",
+        "pt-BR": "Um LED verde de 5 mm (tensão direta 2.10 V) sem resistor dentro: ligue um em série. Ele carrega a rede, brilha pela corrente (10 mA é brilho total) e avisa de sobrecorrente: acima de 26 mA por 60 ms ele queima (circuito aberto e a marca \"queimado\") até você trocar a peça. O terminal longo é o anodo (A).",
+        "es": "Un LED verde de 5 mm (tensión directa 2.10 V) sin resistencia dentro: pon una en serie. Carga la red, brilla según su corriente (10 mA es brillo máximo) y avisa de sobrecorriente: por encima de 26 mA durante 60 ms se quema (circuito abierto y marca \"quemado\") hasta cambiar la pieza. El terminal largo es el ánodo (A)."
+      },
+      "body": {
+        "w_mm": 5.8,
+        "d_mm": 5.8,
+        "h_mm": 8.6
+      },
+      "pins": 2,
+      "folder": "led-green"
+    },
+    {
+      "id": "dotbench.led-red",
+      "version": "1.0.0",
+      "file": "dotbench.led-red.dotpart",
+      "bytes": 1797,
+      "sha256": "226417556eb1614cc570b2765796acffe6ec91ed377d2edfa3ab0ac1cf2c329a",
+      "name": {
+        "en": "LED red 5 mm",
+        "pt-BR": "LED vermelho 5 mm",
+        "es": "LED rojo 5 mm"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "led",
+        "red",
+        "output"
+      ],
+      "keywords": {
+        "en": [
+          "led",
+          "light",
+          "lamp",
+          "red",
+          "diode"
+        ],
+        "pt-BR": [
+          "led",
+          "luz",
+          "lâmpada",
+          "vermelho",
+          "diodo"
+        ],
+        "es": [
+          "led",
+          "luz",
+          "lámpara",
+          "rojo",
+          "diodo"
+        ]
+      },
+      "description": {
+        "en": "A red 5 mm LED (forward voltage 1.90 V) with no resistor inside: put one in series. It loads the net, glows by its current (10 mA is full brightness) and reports overcurrent: above 26 mA for 60 ms it burns out (open circuit and a \"burnt\" flag) until you replace it. The long lead is the anode (A).",
+        "pt-BR": "Um LED vermelho de 5 mm (tensão direta 1.90 V) sem resistor dentro: ligue um em série. Ele carrega a rede, brilha pela corrente (10 mA é brilho total) e avisa de sobrecorrente: acima de 26 mA por 60 ms ele queima (circuito aberto e a marca \"queimado\") até você trocar a peça. O terminal longo é o anodo (A).",
+        "es": "Un LED rojo de 5 mm (tensión directa 1.90 V) sin resistencia dentro: pon una en serie. Carga la red, brilla según su corriente (10 mA es brillo máximo) y avisa de sobrecorriente: por encima de 26 mA durante 60 ms se quema (circuito abierto y marca \"quemado\") hasta cambiar la pieza. El terminal largo es el ánodo (A)."
+      },
+      "body": {
+        "w_mm": 5.8,
+        "d_mm": 5.8,
+        "h_mm": 8.6
+      },
+      "pins": 2,
+      "folder": "led-red"
+    },
+    {
+      "id": "dotbench.led-white",
+      "version": "1.0.0",
+      "file": "dotbench.led-white.dotpart",
+      "bytes": 1794,
+      "sha256": "e9021c2d687854b81fd9d4de603e9d9ec5a4ccafedc2a1576a59c1a5c6f0c6ff",
+      "name": {
+        "en": "LED white 5 mm",
+        "pt-BR": "LED branco 5 mm",
+        "es": "LED blanco 5 mm"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "led",
+        "white",
+        "output"
+      ],
+      "keywords": {
+        "en": [
+          "led",
+          "light",
+          "lamp",
+          "white",
+          "diode"
+        ],
+        "pt-BR": [
+          "led",
+          "luz",
+          "lâmpada",
+          "branco",
+          "diodo"
+        ],
+        "es": [
+          "led",
+          "luz",
+          "lámpara",
+          "blanco",
+          "diodo"
+        ]
+      },
+      "description": {
+        "en": "A white 5 mm LED (forward voltage 3.00 V) with no resistor inside: put one in series. It loads the net, glows by its current (10 mA is full brightness) and reports overcurrent: above 26 mA for 60 ms it burns out (open circuit and a \"burnt\" flag) until you replace it. The long lead is the anode (A).",
+        "pt-BR": "Um LED branco de 5 mm (tensão direta 3.00 V) sem resistor dentro: ligue um em série. Ele carrega a rede, brilha pela corrente (10 mA é brilho total) e avisa de sobrecorrente: acima de 26 mA por 60 ms ele queima (circuito aberto e a marca \"queimado\") até você trocar a peça. O terminal longo é o anodo (A).",
+        "es": "Un LED blanco de 5 mm (tensión directa 3.00 V) sin resistencia dentro: pon una en serie. Carga la red, brilla según su corriente (10 mA es brillo máximo) y avisa de sobrecorriente: por encima de 26 mA durante 60 ms se quema (circuito abierto y marca \"quemado\") hasta cambiar la pieza. El terminal largo es el ánodo (A)."
+      },
+      "body": {
+        "w_mm": 5.8,
+        "d_mm": 5.8,
+        "h_mm": 8.6
+      },
+      "pins": 2,
+      "folder": "led-white"
+    },
+    {
+      "id": "dotbench.led-yellow",
+      "version": "1.0.0",
+      "file": "dotbench.led-yellow.dotpart",
+      "bytes": 1797,
+      "sha256": "6ef33ca5e8a6685b5450734a4c65c2032adb5f7232a10ce7551a0c795c47bc92",
+      "name": {
+        "en": "LED yellow 5 mm",
+        "pt-BR": "LED amarelo 5 mm",
+        "es": "LED amarillo 5 mm"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "led",
+        "yellow",
+        "output"
+      ],
+      "keywords": {
+        "en": [
+          "led",
+          "light",
+          "lamp",
+          "yellow",
+          "diode"
+        ],
+        "pt-BR": [
+          "led",
+          "luz",
+          "lâmpada",
+          "amarelo",
+          "diodo"
+        ],
+        "es": [
+          "led",
+          "luz",
+          "lámpara",
+          "amarillo",
+          "diodo"
+        ]
+      },
+      "description": {
+        "en": "A yellow 5 mm LED (forward voltage 2.05 V) with no resistor inside: put one in series. It loads the net, glows by its current (10 mA is full brightness) and reports overcurrent: above 26 mA for 60 ms it burns out (open circuit and a \"burnt\" flag) until you replace it. The long lead is the anode (A).",
+        "pt-BR": "Um LED amarelo de 5 mm (tensão direta 2.05 V) sem resistor dentro: ligue um em série. Ele carrega a rede, brilha pela corrente (10 mA é brilho total) e avisa de sobrecorrente: acima de 26 mA por 60 ms ele queima (circuito aberto e a marca \"queimado\") até você trocar a peça. O terminal longo é o anodo (A).",
+        "es": "Un LED amarillo de 5 mm (tensión directa 2.05 V) sin resistencia dentro: pon una en serie. Carga la red, brilla según su corriente (10 mA es brillo máximo) y avisa de sobrecorriente: por encima de 26 mA durante 60 ms se quema (circuito abierto y marca \"quemado\") hasta cambiar la pieza. El terminal largo es el ánodo (A)."
+      },
+      "body": {
+        "w_mm": 5.8,
+        "d_mm": 5.8,
+        "h_mm": 8.6
+      },
+      "pins": 2,
+      "folder": "led-yellow"
+    },
+    {
+      "id": "dotbench.potentiometer",
+      "version": "1.0.0",
+      "file": "dotbench.potentiometer.dotpart",
+      "bytes": 1482,
+      "sha256": "ec62ffbb177f575bd9732d6bcf00594b2706cae21a90de7d865d70f3cfa09ac0",
+      "name": {
+        "en": "Potentiometer 10 kΩ",
+        "pt-BR": "Potenciômetro 10 kΩ",
+        "es": "Potenciómetro 10 kΩ"
+      },
+      "category": "input",
+      "kind": "declarative",
+      "tags": [
+        "potentiometer",
+        "analog",
+        "input"
+      ],
+      "keywords": {
+        "en": [
+          "potentiometer",
+          "knob",
+          "analog",
+          "resistor",
+          "dial"
+        ],
+        "pt-BR": [
+          "potenciômetro",
+          "botão giratório",
+          "analógico",
+          "resistor"
+        ],
+        "es": [
+          "potenciómetro",
+          "perilla",
+          "analógico",
+          "resistencia"
+        ]
+      },
+      "description": {
+        "en": "A 10 kΩ rotary potentiometer. Wire T to 3V3, B to GND and read the wiper W on an analog pin (EXP8 to EXP12, EXP14).",
+        "pt-BR": "Um potenciômetro rotativo de 10 kΩ. Ligue T em 3V3, B no GND e leia o cursor W em um pino analógico (EXP8 a EXP12, EXP14).",
+        "es": "Un potenciómetro rotativo de 10 kΩ. Conecta T a 3V3, B a GND y lee el cursor W en un pin analógico (EXP8 a EXP12, EXP14)."
+      },
+      "body": {
+        "w_mm": 14.5,
+        "d_mm": 11,
+        "h_mm": 16
+      },
+      "pins": 3,
+      "folder": "potentiometer"
+    },
+    {
+      "id": "dotbench.push-button",
+      "version": "1.0.0",
+      "file": "dotbench.push-button.dotpart",
+      "bytes": 1366,
+      "sha256": "01d4ced039336ae034822c6ff4db1a00da4bf76f2d3764ed4e51a8d1eba85890",
+      "name": {
+        "en": "Push button",
+        "pt-BR": "Botão",
+        "es": "Pulsador"
+      },
+      "category": "input",
+      "kind": "declarative",
+      "tags": [
+        "button",
+        "switch",
+        "input"
+      ],
+      "keywords": {
+        "en": [
+          "button",
+          "switch",
+          "push",
+          "input"
+        ],
+        "pt-BR": [
+          "botão",
+          "chave",
+          "pressionar",
+          "entrada"
+        ],
+        "es": [
+          "botón",
+          "pulsador",
+          "interruptor",
+          "entrada"
+        ]
+      },
+      "description": {
+        "en": "A momentary switch between A and B with 5 ms of contact bounce. Press it on the picture; set the Pressed field to keep it down.",
+        "pt-BR": "Uma chave momentânea entre A e B com 5 ms de repique. Pressione na imagem; use o campo Pressionado para mantê-la apertada.",
+        "es": "Un pulsador entre A y B con 5 ms de rebote. Púlsalo en la imagen; usa el campo Pulsado para mantenerlo."
+      },
+      "body": {
+        "w_mm": 6,
+        "d_mm": 6,
+        "h_mm": 5
+      },
+      "pins": 2,
+      "folder": "push-button"
+    },
+    {
+      "id": "dotbench.relay-module",
+      "version": "1.0.0",
+      "file": "dotbench.relay-module.dotpart",
+      "bytes": 2219,
+      "sha256": "f9f908a6f876bb500ee9ad71f85b831dda8cf374ad25b566ea6134e86aa161f8",
+      "name": {
+        "en": "Relay module 5 V",
+        "pt-BR": "Módulo relé 5 V",
+        "es": "Módulo relé 5 V"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "relay",
+        "switch",
+        "5v"
+      ],
+      "keywords": {
+        "en": [
+          "relay",
+          "switch",
+          "contact",
+          "5v",
+          "load",
+          "mains"
+        ],
+        "pt-BR": [
+          "relé",
+          "rele",
+          "chave",
+          "contato",
+          "carga"
+        ],
+        "es": [
+          "relé",
+          "relevador",
+          "interruptor",
+          "contacto",
+          "carga"
+        ]
+      },
+      "description": {
+        "en": "A single-channel 5 V relay module: VCC and GND power the coil, IN switches it (active low by default, the field picks the jumper), 8 ms contact time in virtual time. COM joins NC at rest and NO when the coil is energised; with the module unpowered COM-NC still conducts. Contacts are ideal wires: no rating, no arc, no coil kick, no mains safety. The page can show the click and a state LED.",
+        "pt-BR": "Um módulo relé de 5 V de um canal: VCC e GND alimentam a bobina, IN a aciona (ativo em baixo por padrão, o campo escolhe o jumper), 8 ms de tempo de contato no tempo virtual. COM liga ao NC em repouso e ao NO com a bobina energizada; com o módulo sem energia COM-NC continua conduzindo. Os contatos são fios ideais: sem limite, sem arco, sem pico da bobina, sem segurança de rede elétrica. A página pode mostrar o clique e um LED de estado.",
+        "es": "Un módulo relé de 5 V de un canal: VCC y GND alimentan la bobina, IN la activa (activo en bajo por defecto, el campo elige el puente), 8 ms de tiempo de contacto en tiempo virtual. COM une con NC en reposo y con NO con la bobina energizada; con el módulo sin alimentar COM-NC sigue conduciendo. Los contactos son cables ideales: sin límite, sin arco, sin pico de bobina, sin seguridad de red eléctrica. La página puede mostrar el clic y un LED de estado."
+      },
+      "body": {
+        "w_mm": 50,
+        "d_mm": 26,
+        "h_mm": 18.5
+      },
+      "pins": 6,
+      "folder": "relay-module"
+    },
+    {
+      "id": "dotbench.resistor",
+      "version": "1.0.0",
+      "file": "dotbench.resistor.dotpart",
+      "bytes": 1652,
+      "sha256": "4c7f317bdff6e661de1ddf55b0e43a9913e564234a8660262686c160426e2938",
+      "name": {
+        "en": "Resistor",
+        "pt-BR": "Resistor",
+        "es": "Resistencia"
+      },
+      "category": "passive",
+      "kind": "declarative",
+      "tags": [
+        "resistor",
+        "passive"
+      ],
+      "keywords": {
+        "en": [
+          "resistor",
+          "resistance",
+          "ohm",
+          "pull-up",
+          "pull-down",
+          "current limit"
+        ],
+        "pt-BR": [
+          "resistor",
+          "resistência",
+          "ohm",
+          "limitador de corrente",
+          "pull-up"
+        ],
+        "es": [
+          "resistencia",
+          "resistor",
+          "ohmio",
+          "limitador de corriente",
+          "pull-up"
+        ]
+      },
+      "description": {
+        "en": "A resistor of any value between its two leads (0.1 ohm to 10 Mohm), 0.25 W. It loads the nets it joins, so a resistor between a GPIO and an LED really sets the LED current. Above 0.25 W the bench shows an overpower hazard (it does not burn).",
+        "pt-BR": "Um resistor de qualquer valor entre seus dois terminais (0,1 ohm a 10 Mohm), 0,25 W. Ele carrega as redes que liga: um resistor entre um GPIO e um LED define de verdade a corrente do LED. Acima de 0,25 W a bancada mostra um aviso de potência (ele não queima).",
+        "es": "Una resistencia de cualquier valor entre sus dos terminales (0,1 ohm a 10 Mohm), 0,25 W. Carga las redes que une: una resistencia entre un GPIO y un LED fija de verdad la corriente del LED. Por encima de 0,25 W el banco muestra un aviso de potencia (no se quema)."
+      },
+      "body": {
+        "w_mm": 12.7,
+        "d_mm": 3.2,
+        "h_mm": 3.2
+      },
+      "pins": 2,
+      "folder": "resistor"
+    },
+    {
+      "id": "dotbench.rgb-led",
+      "version": "1.0.0",
+      "file": "dotbench.rgb-led.dotpart",
+      "bytes": 1646,
+      "sha256": "57c093fbb00220a6919318768cd9e580054cf32129b66290ec55acc282ed9dda",
+      "name": {
+        "en": "RGB LED (common cathode)",
+        "pt-BR": "LED RGB (catodo comum)",
+        "es": "LED RGB (cátodo común)"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "led",
+        "rgb",
+        "pwm"
+      ],
+      "keywords": {
+        "en": [
+          "rgb",
+          "led",
+          "color",
+          "light"
+        ],
+        "pt-BR": [
+          "rgb",
+          "led",
+          "cor",
+          "luz"
+        ],
+        "es": [
+          "rgb",
+          "led",
+          "color",
+          "luz"
+        ]
+      },
+      "description": {
+        "en": "Three LEDs in one package with a shared cathode (COM to GND). R, G and B each have their own series resistor; drive them with digital pins or PWM.",
+        "pt-BR": "Três LEDs em um encapsulamento com catodo comum (COM no GND). R, G e B têm cada um seu resistor em série; acione com pinos digitais ou PWM.",
+        "es": "Tres LEDs en un encapsulado con cátodo común (COM a GND). R, G y B tienen cada uno su resistencia en serie; actívalos con pines digitales o PWM."
+      },
+      "body": {
+        "w_mm": 8.6,
+        "d_mm": 5.8,
+        "h_mm": 13
+      },
+      "pins": 4,
+      "folder": "rgb-led"
+    },
+    {
+      "id": "dotbench.servo",
+      "version": "1.0.0",
+      "file": "dotbench.servo.dotpart",
+      "bytes": 1732,
+      "sha256": "f6b05f41db1d144290c64687e5cced68f7dbae281ae8c390cef3eb2162df89c0",
+      "name": {
+        "en": "Hobby servo (SG90 class)",
+        "pt-BR": "Servo hobby (classe SG90)",
+        "es": "Servo de hobby (clase SG90)"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "servo",
+        "pwm",
+        "motor"
+      ],
+      "keywords": {
+        "en": [
+          "servo",
+          "sg90",
+          "motor",
+          "angle",
+          "pwm",
+          "arduino servo"
+        ],
+        "pt-BR": [
+          "servo",
+          "sg90",
+          "motor",
+          "ângulo",
+          "pwm"
+        ],
+        "es": [
+          "servo",
+          "sg90",
+          "motor",
+          "ángulo",
+          "pwm"
+        ]
+      },
+      "description": {
+        "en": "A 180 degree hobby servo: 5 V on V5, GND, and a 50 Hz PWM signal on SIG. The horn follows the pulse width the way the Arduino Servo library drives it: 544 us is 0 degrees, 2400 us is 180 (so Servo.write(90) lands at 90). Needs the 5 V rail switched on.",
+        "pt-BR": "Um servo hobby de 180 graus: 5 V em V5, GND e um sinal PWM de 50 Hz em SIG. O eixo segue a largura de pulso como a biblioteca Servo do Arduino a gera: 544 us é 0 grau, 2400 us é 180 (então Servo.write(90) chega a 90). Precisa do trilho de 5 V ligado.",
+        "es": "Un servo de hobby de 180 grados: 5 V en V5, GND y una señal PWM de 50 Hz en SIG. El eje sigue el ancho de pulso como lo genera la biblioteca Servo de Arduino: 544 us es 0 grados, 2400 us es 180 (así Servo.write(90) llega a 90). Necesita el riel de 5 V encendido."
+      },
+      "body": {
+        "w_mm": 52.3,
+        "d_mm": 40,
+        "h_mm": 31.8
+      },
+      "pins": 3,
+      "folder": "servo"
+    },
+    {
+      "id": "dotbench.slide-switch",
+      "version": "1.0.0",
+      "file": "dotbench.slide-switch.dotpart",
+      "bytes": 1459,
+      "sha256": "2ddd8d8aa9affaedd2384e1dc38c60ccfa6ce5742957e60701b4afe22e7a9f8c",
+      "name": {
+        "en": "Slide switch (SPDT)",
+        "pt-BR": "Chave deslizante (SPDT)",
+        "es": "Interruptor deslizante (SPDT)"
+      },
+      "category": "input",
+      "kind": "declarative",
+      "tags": [
+        "switch",
+        "input"
+      ],
+      "keywords": {
+        "en": [
+          "switch",
+          "slide",
+          "toggle",
+          "input"
+        ],
+        "pt-BR": [
+          "chave",
+          "deslizante",
+          "interruptor",
+          "entrada"
+        ],
+        "es": [
+          "interruptor",
+          "deslizante",
+          "entrada"
+        ]
+      },
+      "description": {
+        "en": "A two-position switch: COM connects to A or to B. Click it to slide.",
+        "pt-BR": "Uma chave de duas posições: COM liga em A ou em B. Clique para deslizar.",
+        "es": "Un interruptor de dos posiciones: COM conecta con A o con B. Haz clic para deslizar."
+      },
+      "body": {
+        "w_mm": 8.6,
+        "d_mm": 3.6,
+        "h_mm": 8.5
+      },
+      "pins": 3,
+      "folder": "slide-switch"
+    },
+    {
+      "id": "dotbench.stepper-28byj48",
+      "version": "1.0.0",
+      "file": "dotbench.stepper-28byj48.dotpart",
+      "bytes": 2093,
+      "sha256": "8822ff1dfd4409b72517cb2654565d78a4a6b88902c9d8ef3724133f7b47a7ed",
+      "name": {
+        "en": "Stepper 28BYJ-48 + ULN2003",
+        "pt-BR": "Motor de passo 28BYJ-48 + ULN2003",
+        "es": "Motor paso a paso 28BYJ-48 + ULN2003"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "stepper",
+        "28byj-48",
+        "uln2003",
+        "motor"
+      ],
+      "keywords": {
+        "en": [
+          "stepper",
+          "28byj-48",
+          "uln2003",
+          "motor",
+          "step",
+          "rotation"
+        ],
+        "pt-BR": [
+          "motor de passo",
+          "28byj-48",
+          "uln2003",
+          "passo",
+          "rotação"
+        ],
+        "es": [
+          "motor paso a paso",
+          "28byj-48",
+          "uln2003",
+          "paso",
+          "rotación"
+        ]
+      },
+      "description": {
+        "en": "The 5 V 28BYJ-48 geared stepper on its ULN2003 driver board: IN1..IN4 energise the coils (high = coil on), V5 and GND power it. The coil pattern is decoded into a position in half steps (4096 per shaft turn): a full-step sequence moves 2 per phase, the half-step sequence 1. The page reads position, angle (degrees) and a stalled flag (above 1000 half steps/s the rotor skips). Not modelled: torque, load, current draw by pattern.",
+        "pt-BR": "O motor de passo 28BYJ-48 de 5 V com redução na placa driver ULN2003: IN1..IN4 energizam as bobinas (alto = bobina ligada), V5 e GND alimentam. O padrão das bobinas vira posição em meios passos (4096 por volta do eixo): a sequência de passo completo anda 2 por fase, a de meio passo 1. A página lê posição, ângulo (graus) e um sinal de travado (acima de 1000 meios passos/s o rotor perde passos). Não modelado: torque, carga, consumo por padrão.",
+        "es": "El motor paso a paso 28BYJ-48 de 5 V con reductora en su placa driver ULN2003: IN1..IN4 energizan las bobinas (alto = bobina activa), V5 y GND lo alimentan. El patrón de bobinas se decodifica en posición en medios pasos (4096 por vuelta del eje): la secuencia de paso completo avanza 2 por fase, la de medio paso 1. La página lee posición, ángulo (grados) y una marca de atascado (por encima de 1000 medios pasos/s el rotor pierde pasos). No modelado: par, carga, consumo por patrón."
+      },
+      "body": {
+        "w_mm": 62,
+        "d_mm": 42,
+        "h_mm": 29,
+        "estimate": true
+      },
+      "pins": 6,
+      "folder": "stepper-28byj48"
+    },
+    {
+      "id": "dotbench.stepper-a4988",
+      "version": "1.0.0",
+      "file": "dotbench.stepper-a4988.dotpart",
+      "bytes": 2523,
+      "sha256": "aa5ea498f274678998b44287c8e2b744eb26b5b65c0d5a3f9289f5ef797b088a",
+      "name": {
+        "en": "NEMA 17 stepper + A4988",
+        "pt-BR": "Motor de passo NEMA 17 + A4988",
+        "es": "Motor paso a paso NEMA 17 + A4988"
+      },
+      "category": "actuator",
+      "kind": "declarative",
+      "tags": [
+        "stepper",
+        "nema17",
+        "a4988",
+        "step-dir",
+        "motor"
+      ],
+      "keywords": {
+        "en": [
+          "stepper",
+          "nema17",
+          "a4988",
+          "step",
+          "dir",
+          "cnc",
+          "3d printer"
+        ],
+        "pt-BR": [
+          "motor de passo",
+          "nema17",
+          "a4988",
+          "passo",
+          "direção",
+          "cnc",
+          "impressora 3d"
+        ],
+        "es": [
+          "motor paso a paso",
+          "nema17",
+          "a4988",
+          "paso",
+          "dirección",
+          "cnc",
+          "impresora 3d"
+        ]
+      },
+      "description": {
+        "en": "A bipolar NEMA 17 stepper (200 steps per turn) behind an A4988 driver module with step/dir input. Power VMOT (8 to 35 V) and VDD (logic, 3 to 5.5 V) plus GND. Each rising edge on STEP moves the shaft one step, 1/2, 1/4, 1/8 or 1/16 by MS1 MS2 MS3, in the direction of DIR, while EN is low and RST and SLP are high (RST and SLP have pull-ups, EN and MS pins pull-downs). The page reads the position (1/16 steps), angle and a skipping flag (above 2000 full steps/s). Not modelled: coil currents and current limit, torque, resonance.",
+        "pt-BR": "Um motor de passo bipolar NEMA 17 (200 passos por volta) atrás de um módulo driver A4988 com entrada passo/direção. Alimente VMOT (8 a 35 V) e VDD (lógica, 3 a 5,5 V) mais GND. Cada borda de subida em STEP move o eixo um passo, 1/2, 1/4, 1/8 ou 1/16 conforme MS1 MS2 MS3, no sentido de DIR, enquanto EN está baixo e RST e SLP estão altos (RST e SLP têm pull-up, EN e MS têm pull-down). A página lê a posição (1/16 de passo), o ângulo e um sinal de perda de passos (acima de 2000 passos completos/s). Não modelado: correntes das bobinas e limite de corrente, torque, ressonância.",
+        "es": "Un motor paso a paso bipolar NEMA 17 (200 pasos por vuelta) tras un módulo driver A4988 con entrada paso/dirección. Alimenta VMOT (8 a 35 V) y VDD (lógica, 3 a 5,5 V) más GND. Cada flanco de subida en STEP mueve el eje un paso, 1/2, 1/4, 1/8 o 1/16 según MS1 MS2 MS3, en el sentido de DIR, mientras EN está bajo y RST y SLP están altos (RST y SLP tienen pull-up, EN y MS pull-down). La página lee la posición (1/16 de paso), el ángulo y una marca de pérdida de pasos (por encima de 2000 pasos completos/s). No modelado: corrientes de bobina y límite de corriente, par, resonancia."
+      },
+      "body": {
+        "w_mm": 64,
+        "d_mm": 42.3,
+        "h_mm": 64
+      },
+      "pins": 11,
+      "folder": "stepper-a4988"
+    },
+    {
+      "id": "dotbench.supply",
+      "version": "1.0.0",
+      "file": "dotbench.supply.dotpart",
+      "bytes": 1768,
+      "sha256": "00240fd71d8e80c61b7606b8871983bcd1e54f6f9e20106fc03808c611658564",
+      "name": {
+        "en": "Supply 3.3 V / 5 V",
+        "pt-BR": "Fonte 3,3 V / 5 V",
+        "es": "Fuente 3,3 V / 5 V"
+      },
+      "category": "power",
+      "kind": "declarative",
+      "tags": [
+        "supply",
+        "power",
+        "5v",
+        "3v3",
+        "regulator"
+      ],
+      "keywords": {
+        "en": [
+          "supply",
+          "power",
+          "regulator",
+          "5v",
+          "3.3v",
+          "psu"
+        ],
+        "pt-BR": [
+          "fonte",
+          "alimentação",
+          "regulador",
+          "5v",
+          "3,3v"
+        ],
+        "es": [
+          "fuente",
+          "alimentación",
+          "regulador",
+          "5v",
+          "3,3v"
+        ]
+      },
+      "description": {
+        "en": "A small regulated supply module: choose off, 3.3 V or 5 V. A floating source with 0.2 ohm output resistance; the minus pin is the 0 V of the circuit it feeds. Above 1 A the bench shows an overload hazard. Use it to power a board, a servo or a motor driver without the Kode Dot.",
+        "pt-BR": "Um módulo de fonte regulada pequeno: escolha desligada, 3,3 V ou 5 V. Fonte flutuante com 0,2 ohm de resistência de saída; o pino negativo é o 0 V do circuito que ela alimenta. Acima de 1 A a bancada mostra aviso de sobrecarga. Use para alimentar uma placa, um servo ou um driver de motor sem o Kode Dot.",
+        "es": "Un pequeño módulo de fuente regulada: elige apagada, 3,3 V o 5 V. Fuente flotante con 0,2 ohm de resistencia de salida; el pin negativo es el 0 V del circuito que alimenta. Por encima de 1 A el banco muestra aviso de sobrecarga. Úsala para alimentar una placa, un servo o un driver de motor sin el Kode Dot."
+      },
+      "body": {
+        "w_mm": 22.86,
+        "d_mm": 15.24,
+        "h_mm": 12
+      },
+      "pins": 2,
+      "folder": "supply"
+    },
+    {
+      "id": "dotbench.uno-r3",
+      "version": "1.0.0",
+      "file": "dotbench.uno-r3.dotpart",
+      "bytes": 7759,
+      "sha256": "c1b59e0a025065679a493a7f6592531a0a37f3a83e14c84255bb770d46f8296e",
+      "name": {
+        "en": "Arduino Uno R3",
+        "pt-BR": "Arduino Uno R3",
+        "es": "Arduino Uno R3"
+      },
+      "category": "mcu",
+      "kind": "wasm",
+      "tags": [
+        "arduino",
+        "uno",
+        "atmega328p",
+        "5v",
+        "avr"
+      ],
+      "keywords": {
+        "en": [
+          "arduino",
+          "uno",
+          "r3",
+          "atmega328p",
+          "avr",
+          "microcontroller",
+          "board",
+          "5v"
+        ],
+        "pt-BR": [
+          "arduino",
+          "uno",
+          "r3",
+          "atmega328p",
+          "microcontrolador",
+          "placa",
+          "5v"
+        ],
+        "es": [
+          "arduino",
+          "uno",
+          "r3",
+          "atmega328p",
+          "microcontrolador",
+          "placa",
+          "5v"
+        ]
+      },
+      "description": {
+        "en": "Arduino Uno R3 (ATmega328P form factor): 5 V logic, D0-D13 with PWM on 3 5 6 9 10 11 (490 Hz, 980 Hz on 5 and 6), A0-A5 on a 10 bit ADC with a 5 V reference, I2C on A4 and A5 (also the SDA and SCL header pins), SPI on D10-D13, Serial on USB and on D0 and D1, interrupts on D2 and D3, EEPROM 1 KB. Power it with the usb field, 5 V on the 5V pin or 6.5 to 20 V on VIN (the regulator does not feed 5V and 3V3 from VIN in this model; 3V3 is a 50 mA output while the board is powered). This part does NOT emulate the chip: there is no AVR/ARM/Xtensa core, no bootloader and no peripheral registers. Its sketch is compiled to WebAssembly against ArduinoCore-API + dotcore (the bench's Arduino core), so the pins, voltages, Arduino API and timing in milliseconds are real, instruction timing is not. Code that pokes registers (PORTB, DDRB, TCCR1A, direct HW access) does not compile.",
+        "pt-BR": "Arduino Uno R3 (formato do ATmega328P): lógica de 5 V, D0-D13 com PWM em 3 5 6 9 10 11 (490 Hz, 980 Hz em 5 e 6), A0-A5 num ADC de 10 bits com referência de 5 V, I2C em A4 e A5 (também os pinos SDA e SCL do cabeçote), SPI em D10-D13, Serial no USB e em D0 e D1, interrupções em D2 e D3, EEPROM de 1 KB. Alimente com o campo usb, 5 V no pino 5V ou 6,5 a 20 V no VIN (o regulador não alimenta 5V e 3V3 a partir do VIN neste modelo; 3V3 é uma saída de 50 mA com a placa ligada). Esta peça NÃO emula o chip: não há núcleo AVR/ARM/Xtensa, bootloader nem registradores de periféricos. O sketch é compilado para WebAssembly contra ArduinoCore-API + dotcore (o núcleo Arduino da bancada), então os pinos, tensões, API Arduino e tempo em milissegundos são reais, o tempo de instrução não é. Código que mexe em registradores (PORTB, DDRB, TCCR1A, acesso direto ao hardware) não compila.",
+        "es": "Arduino Uno R3 (formato del ATmega328P): lógica de 5 V, D0-D13 con PWM en 3 5 6 9 10 11 (490 Hz, 980 Hz en 5 y 6), A0-A5 en un ADC de 10 bits con referencia de 5 V, I2C en A4 y A5 (también los pines SDA y SCL del cabezal), SPI en D10-D13, Serial por USB y en D0 y D1, interrupciones en D2 y D3, EEPROM de 1 KB. Aliméntala con el campo usb, 5 V en el pin 5V o 6,5 a 20 V en VIN (el regulador no alimenta 5V y 3V3 desde VIN en este modelo; 3V3 es una salida de 50 mA con la placa encendida). Esta pieza NO emula el chip: no hay núcleo AVR/ARM/Xtensa, bootloader ni registros de periféricos. El sketch se compila a WebAssembly contra ArduinoCore-API + dotcore (el núcleo Arduino del banco), así que los pines, tensiones, API Arduino y tiempo en milisegundos son reales, el tiempo de instrucción no. El código que toca registros (PORTB, DDRB, TCCR1A, acceso directo al hardware) no compila."
+      },
+      "body": {
+        "w_mm": 74.98,
+        "d_mm": 53.34,
+        "h_mm": 15
+      },
+      "pins": 32,
+      "core": "uno-r3",
+      "folder": "uno-r3"
+    },
+    {
+      "id": "dotbench.uno-r4-minima",
+      "version": "1.0.0",
+      "file": "dotbench.uno-r4-minima.dotpart",
+      "bytes": 7684,
+      "sha256": "e16397c8485df001ec0af3f415ff27262a33cae77f99fe138e090f9fd7bcbb06",
+      "name": {
+        "en": "Arduino Uno R4 Minima",
+        "pt-BR": "Arduino Uno R4 Minima",
+        "es": "Arduino Uno R4 Minima"
+      },
+      "category": "mcu",
+      "kind": "wasm",
+      "tags": [
+        "arduino",
+        "uno",
+        "r4",
+        "minima",
+        "renesas",
+        "ra4m1",
+        "5v"
+      ],
+      "keywords": {
+        "en": [
+          "arduino",
+          "uno",
+          "r4",
+          "minima",
+          "ra4m1",
+          "renesas",
+          "microcontroller",
+          "board",
+          "5v",
+          "dac"
+        ],
+        "pt-BR": [
+          "arduino",
+          "uno",
+          "r4",
+          "minima",
+          "ra4m1",
+          "renesas",
+          "microcontrolador",
+          "placa",
+          "5v",
+          "dac"
+        ],
+        "es": [
+          "arduino",
+          "uno",
+          "r4",
+          "minima",
+          "ra4m1",
+          "renesas",
+          "microcontrolador",
+          "placa",
+          "5v",
+          "dac"
+        ]
+      },
+      "description": {
+        "en": "Arduino Uno R4 Minima (Renesas RA4M1 form factor): 5 V logic, Uno R3 header with PWM on 3 5 6 9 10 11, A0-A5 on a 10 bit ADC that analogReadResolution() raises to 12 or 14 bits, a 12 bit DAC on A0, I2C on A4 and A5, SPI on D10-D13, Serial on USB (CDC) and Serial1 on D0 and D1, interrupts on all digital pins, EEPROM 8 KB. Power with the usb field, 5 V on 5V or 6 to 24 V on VIN. This part does NOT emulate the chip: there is no AVR/ARM/Xtensa core, no bootloader and no peripheral registers. Its sketch is compiled to WebAssembly against ArduinoCore-API + dotcore (the bench's Arduino core), so the pins, voltages, Arduino API and timing in milliseconds are real, instruction timing is not. Code that pokes registers (PORTB, DDRB, TCCR1A, direct HW access) does not compile.",
+        "pt-BR": "Arduino Uno R4 Minima (formato do Renesas RA4M1): lógica de 5 V, cabeçote do Uno R3 com PWM em 3 5 6 9 10 11, A0-A5 num ADC de 10 bits que analogReadResolution() eleva a 12 ou 14 bits, um DAC de 12 bits em A0, I2C em A4 e A5, SPI em D10-D13, Serial no USB (CDC) e Serial1 em D0 e D1, interrupções em todos os pinos digitais, EEPROM de 8 KB. Alimente com o campo usb, 5 V em 5V ou 6 a 24 V no VIN. Esta peça NÃO emula o chip: não há núcleo AVR/ARM/Xtensa, bootloader nem registradores de periféricos. O sketch é compilado para WebAssembly contra ArduinoCore-API + dotcore (o núcleo Arduino da bancada), então os pinos, tensões, API Arduino e tempo em milissegundos são reais, o tempo de instrução não é. Código que mexe em registradores (PORTB, DDRB, TCCR1A, acesso direto ao hardware) não compila.",
+        "es": "Arduino Uno R4 Minima (formato del Renesas RA4M1): lógica de 5 V, cabezal del Uno R3 con PWM en 3 5 6 9 10 11, A0-A5 en un ADC de 10 bits que analogReadResolution() sube a 12 o 14 bits, un DAC de 12 bits en A0, I2C en A4 y A5, SPI en D10-D13, Serial por USB (CDC) y Serial1 en D0 y D1, interrupciones en todos los pines digitales, EEPROM de 8 KB. Aliméntala con el campo usb, 5 V en 5V o 6 a 24 V en VIN. Esta pieza NO emula el chip: no hay núcleo AVR/ARM/Xtensa, bootloader ni registros de periféricos. El sketch se compila a WebAssembly contra ArduinoCore-API + dotcore (el núcleo Arduino del banco), así que los pines, tensiones, API Arduino y tiempo en milisegundos son reales, el tiempo de instrucción no. El código que toca registros (PORTB, DDRB, TCCR1A, acceso directo al hardware) no compila."
+      },
+      "body": {
+        "w_mm": 70.48,
+        "d_mm": 53.34,
+        "h_mm": 15
+      },
+      "pins": 32,
+      "core": "uno-r4-minima",
+      "folder": "uno-r4-minima"
+    },
+    {
+      "id": "dotbench.uno-r4-wifi",
+      "version": "1.0.0",
+      "file": "dotbench.uno-r4-wifi.dotpart",
+      "bytes": 8096,
+      "sha256": "0176b75b927a80e98a0b2e782b611f183c0d72b425bc47bc87d288ad78bc6214",
+      "name": {
+        "en": "Arduino Uno R4 WiFi",
+        "pt-BR": "Arduino Uno R4 WiFi",
+        "es": "Arduino Uno R4 WiFi"
+      },
+      "category": "mcu",
+      "kind": "wasm",
+      "tags": [
+        "arduino",
+        "uno",
+        "r4",
+        "wifi",
+        "renesas",
+        "esp32-s3",
+        "led-matrix",
+        "5v"
+      ],
+      "keywords": {
+        "en": [
+          "arduino",
+          "uno",
+          "r4",
+          "wifi",
+          "led matrix",
+          "ra4m1",
+          "esp32-s3",
+          "microcontroller",
+          "board",
+          "5v"
+        ],
+        "pt-BR": [
+          "arduino",
+          "uno",
+          "r4",
+          "wifi",
+          "matriz de led",
+          "ra4m1",
+          "esp32-s3",
+          "microcontrolador",
+          "placa",
+          "5v"
+        ],
+        "es": [
+          "arduino",
+          "uno",
+          "r4",
+          "wifi",
+          "matriz de led",
+          "ra4m1",
+          "esp32-s3",
+          "microcontrolador",
+          "placa",
+          "5v"
+        ]
+      },
+      "description": {
+        "en": "Arduino Uno R4 WiFi: everything the R4 Minima has plus a 12 x 8 LED matrix (ArduinoLEDMatrix, loadFrame and renderBitmap; the 96 pixels are the three 32 bit part outputs matrix0, matrix1, matrix2, bit 31 of matrix0 is the top left LED, row by row, for the page to draw) and a WiFi radio that is NOT connected: WiFi.begin() leaves the board disconnected and says so in the part's console. Sequences and ArduinoGraphics text on the matrix are not implemented. This part does NOT emulate the chip: there is no AVR/ARM/Xtensa core, no bootloader and no peripheral registers. Its sketch is compiled to WebAssembly against ArduinoCore-API + dotcore (the bench's Arduino core), so the pins, voltages, Arduino API and timing in milliseconds are real, instruction timing is not. Code that pokes registers (PORTB, DDRB, TCCR1A, direct HW access) does not compile.",
+        "pt-BR": "Arduino Uno R4 WiFi: tudo do R4 Minima mais uma matriz de LED 12 x 8 (ArduinoLEDMatrix, loadFrame e renderBitmap; os 96 pixels são as três saídas de 32 bits matrix0, matrix1, matrix2, o bit 31 de matrix0 é o LED do canto superior esquerdo, linha a linha, para a página desenhar) e um rádio WiFi que NÃO conecta: WiFi.begin() deixa a placa desconectada e avisa no console da peça. Sequências e texto ArduinoGraphics na matriz não estão implementados. Esta peça NÃO emula o chip: não há núcleo AVR/ARM/Xtensa, bootloader nem registradores de periféricos. O sketch é compilado para WebAssembly contra ArduinoCore-API + dotcore (o núcleo Arduino da bancada), então os pinos, tensões, API Arduino e tempo em milissegundos são reais, o tempo de instrução não é. Código que mexe em registradores (PORTB, DDRB, TCCR1A, acesso direto ao hardware) não compila.",
+        "es": "Arduino Uno R4 WiFi: todo lo del R4 Minima más una matriz de LED de 12 x 8 (ArduinoLEDMatrix, loadFrame y renderBitmap; los 96 píxeles son las tres salidas de 32 bits matrix0, matrix1, matrix2, el bit 31 de matrix0 es el LED superior izquierdo, fila a fila, para que la página lo dibuje) y una radio WiFi que NO conecta: WiFi.begin() deja la placa desconectada y lo avisa en la consola de la pieza. Las secuencias y el texto de ArduinoGraphics en la matriz no están implementados. Esta pieza NO emula el chip: no hay núcleo AVR/ARM/Xtensa, bootloader ni registros de periféricos. El sketch se compila a WebAssembly contra ArduinoCore-API + dotcore (el núcleo Arduino del banco), así que los pines, tensiones, API Arduino y tiempo en milisegundos son reales, el tiempo de instrucción no. El código que toca registros (PORTB, DDRB, TCCR1A, acceso directo al hardware) no compila."
+      },
+      "body": {
+        "w_mm": 70.48,
+        "d_mm": 53.34,
+        "h_mm": 15
+      },
+      "pins": 32,
+      "core": "uno-r4-wifi",
+      "folder": "uno-r4-wifi"
+    }
+  ]
+}
