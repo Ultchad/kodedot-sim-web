@@ -25,7 +25,7 @@ kode_status_t ble_run(void *arg, uint32_t *value)
     {
         (void)snprintf(j->err, sizeof(j->err), "%s", kode_error());
         j->fail = BLE_FAIL_NOPE;
-        if ( (NULL != strstr(j->err, "busy")) || (NULL != strstr(j->err, "Busy")) )
+        if ( (NULL != strstr(j->err, "busy")) || (NULL != strstr(j->err, "Busy")) || (NULL != strstr(j->err, "newer Bluetooth request")) )
         {
             j->fail = BLE_FAIL_BUSY;
         }
