@@ -88,8 +88,10 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         return made.get(id)!;
       },
       stateOf: (instance: string) => deps.parts.stateOf(instance),
+      liftOf: (instance: string) => deps.parts.liftOf(instance),
+      mountOf: (instance: string) => deps.parts.mountOf(instance),
     };
-    return new BenchWorld(dark, { bench: deps.bench, live: deps.live, device: deps.device, parts });
+    return new BenchWorld(dark, { bench: deps.bench, live: deps.live, device: deps.device, parts, wireParts: deps.parts });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const mats = useMemo(
     () => ({
@@ -136,13 +138,25 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     world.bodies.onWake = invalidate;
     const sync = () => {
       world.bodies.sync();
-      deps.select.keep((id) => id === DOT_ID || world.bodies.items.has(id));
+      deps.select.keep((id) => id === DOT_ID || world.bodies.items.has(id) || deps.bench.getState().wires.some((w) => w.id === id));
     };
     const pick = () => {
       world.bodies.selected = deps.select.get();
+      world.wires.selected = deps.select.get();
       invalidate();
     };
     const range = () => world.bodies.showRange(deps.bus.dragKind);
+    const tool = () => {
+      const t = deps.bus.getTool();
+      world.wires.tool = t.tool;
+      world.wires.color = t.wireColor;
+      if (t.tool !== 'wire') {
+        world.wires.startTerm = world.wires.hoverTerm = null;
+        world.wires.loose = null;
+      }
+      invalidate();
+    };
+    tool();
     sync();
     pick();
     // the parts engine: a part's package arriving gives it a body; its state changing shows on its model
@@ -155,7 +169,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       world.bodies.partsChanged();
     };
     onPictureReady.add(invalidate);
-    const offs = [deps.bench.subscribe(sync), deps.select.subscribe(pick), deps.bus.onDragKind(range), onPrintsRedrawn(invalidate), deps.parts.subscribe(partsNews), () => onPictureReady.delete(invalidate)];
+    const offs = [deps.bench.subscribe(sync), deps.select.subscribe(pick), deps.bus.onDragKind(range), deps.bus.onTool(tool), onPrintsRedrawn(invalidate), deps.parts.subscribe(partsNews), () => onPictureReady.delete(invalidate)];
     return () => offs.forEach((o) => o());
   }, [world, deps.bench, deps.select, deps.bus, invalidate]);
 
@@ -257,7 +271,8 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     e.stopPropagation();
     const ne = e.nativeEvent;
     if (ne.pointerType === 'mouse' && ne.button !== 0) return cameraDrag(e, () => undefined);
-    const { bench, select, runtime } = live.current.deps;
+    const { bench, select, runtime, parts } = live.current.deps;
+    if (live.current.deps.bus.tool === 'wire') return cameraDrag(e, dropWire);
     const id = hit.id;
 
     // a control of a wired part: a button held, a switch flipped, a knob turned (bench3d/controls.ts)
@@ -313,6 +328,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     const wasSelected = select.has(id);
     if (!wasSelected) select.only(id);
     const ids = (wasSelected ? [...select.get()] : [id]).filter((x) => x !== DOT_ID);
+    for (const h of [...ids]) for (const r of parts.ridersOf(h)) if (!ids.includes(r)) ids.push(r);
     const starts = ids.map(placedOf).filter((p): p is Placed => !!p).map((p) => ({ ...p, pos: { ...p.pos } }));
     const grab = new Vector3();
     if (!starts.length || !tablePoint(ne.clientX, ne.clientY, grab)) return;
@@ -330,6 +346,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
           if (travelled < CLICK_SLOP_PX) return;
           moved = true;
           bench.checkpoint();
+          for (const s of starts) if (bench.getState().mounts[s.id]) bench.setMount(s.id, null);
           world.bodies.dragging = moving;
           world.bodies.showRange(starts.find((s) => s.id === id)?.kind ?? starts[0].kind);
           gl.domElement.style.cursor = 'grabbing';
@@ -338,7 +355,9 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         const dx = cur.x - grab.x, dz = cur.z - grab.z;
         if (starts.length === 1) {
           const s = starts[0];
-          const pos = settle(s.kind, { x: s.pos.x + dx, z: s.pos.z + dz }, s.rot, obs, !ev.altKey);
+          const want = { x: s.pos.x + dx, z: s.pos.z + dz };
+          // legs over a board's holes go into them; otherwise the part stands on the table, clear of everything
+          const pos = parts.plugAt(s.id, want, s.rot)?.pos ?? settle(s.kind, want, s.rot, obs, !ev.altKey);
           if (pos) bench.moveMany([{ id: s.id, pos }]);
         } else {
           // several things keep their arrangement: the step is taken only when all of them have room
@@ -363,6 +382,13 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       },
     );
   };
+  /** A click on nothing while wiring: the wire being drawn is let go. */
+  const dropWire = () => {
+    world.wires.startTerm = null;
+    world.wires.loose = null;
+    invalidate();
+  };
+
   const onBodyMove = (e: ThreeEvent<PointerEvent>) => {
     const hit = bodyOf(e);
     const id = hit?.id ?? null;
@@ -539,7 +565,13 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       if (kind.startsWith('part:') && tablePoint(e.clientX, e.clientY, p)) {
         // a part out of the library: its package is fetched if need be, then it stands where it was dropped
         const [id, name] = kind.slice(5).split('|');
-        void live.current.deps.parts.place(id, name || id, { x: p.x, z: p.z }).then((o) => o && select.only(o.id));
+        const svc = live.current.deps.parts;
+        void svc.place(id, name || id, { x: p.x, z: p.z }).then((o) => {
+          if (!o) return;
+          const plug = svc.plugAt(o.id, { x: p.x, z: p.z }, o.rot);
+          if (plug) bench.move(o.id, plug.pos);
+          select.only(o.id);
+        });
         return;
       }
       if (!getKind(kind) || !tablePoint(e.clientX, e.clientY, p)) return;
@@ -547,6 +579,99 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       const obj = bench.add(kind, nameFor(kind), { x: p.x, z: p.z });
       if (obj) select.only(obj.id);
     };
+    // ---- terminals and wires: found on the screen, before the bodies get the pointer
+    const tip = document.createElement('div');
+    tip.className = 'pointer-events-none absolute z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-full border border-line bg-card px-2.5 py-1 text-[12px] font-medium text-ink shadow-sm';
+    tip.dataset.testid = 'wb-term-tip';
+    const wrap = el.parentElement ?? el;
+    wrap.appendChild(tip);
+    const W = world.wires;
+    const at = (e: { clientX: number; clientY: number }) => {
+      const r = el.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top, w: r.width, h: r.height };
+    };
+    const showTip = (text: string | null, x = 0, y = 0) => {
+      tip.classList.toggle('hidden', !text);
+      if (!text) return;
+      tip.textContent = text;
+      tip.style.left = `${x}px`;
+      tip.style.top = `${Math.max(4, y - 34)}px`;
+    };
+    const connect = (a: string, b: string) => {
+      const { bench, bus, select } = live.current.deps;
+      bench.checkpoint();
+      const wire = bench.addWire(a, b, bus.wireColor);
+      if (wire) select.only(wire.id);
+    };
+    const hoverWires = (e: PointerEvent) => {
+      if (e.target !== el || world.bodies.dragging.size) return;
+      const p = at(e);
+      const wiring = live.current.deps.bus.tool === 'wire';
+      const spot = wiring ? W.pickTerm(p.x, p.y, live.current.camera, p.w, p.h) : null;
+      const wire = !spot ? W.pickWire(p.x, p.y, live.current.camera, p.w, p.h) : null;
+      const loose = new Vector3();
+      const hadLoose = !!W.loose;
+      W.loose = wiring && W.startTerm && !spot && tablePoint(e.clientX, e.clientY, loose) ? loose.setY(2) : null;
+      if (W.hoverTerm !== (spot?.term ?? null) || W.hoverWire !== wire || W.loose || hadLoose) {
+        W.hoverTerm = spot?.term ?? null;
+        W.hoverWire = wire;
+        invalidate();
+      }
+      showTip(spot ? (spot.owner ? `${spot.name} · ${spot.owner}` : spot.name) : null, p.x, p.y);
+      if (spot || wire) el.style.cursor = 'pointer';
+      else if (wiring) el.style.cursor = 'crosshair';
+    };
+    const downWires = (e: PointerEvent) => {
+      if (e.target !== el || e.button !== 0) return;
+      const p = at(e);
+      const { bus, select } = live.current.deps;
+      if (bus.tool === 'wire') {
+        const spot = W.pickTerm(p.x, p.y, live.current.camera, p.w, p.h);
+        if (!spot) return;
+        e.stopPropagation();
+        if (W.startTerm && W.startTerm !== spot.term) {
+          connect(W.startTerm, spot.term);
+          W.startTerm = null;
+          W.loose = null;
+        } else {
+          // press here and let go on another terminal, or click this one and then the other
+          W.startTerm = spot.term;
+          const from = spot.term;
+          const x0 = e.clientX, y0 = e.clientY;
+          const upOnce = (u: PointerEvent) => {
+            window.removeEventListener('pointerup', upOnce);
+            if (Math.abs(u.clientX - x0) + Math.abs(u.clientY - y0) < CLICK_SLOP_PX * 2 || W.startTerm !== from) return;
+            const q = at(u);
+            const end = W.pickTerm(q.x, q.y, live.current.camera, q.w, q.h);
+            if (end && end.term !== from) {
+              connect(from, end.term);
+              W.startTerm = null;
+              W.loose = null;
+              invalidate();
+            }
+          };
+          window.addEventListener('pointerup', upOnce);
+        }
+        invalidate();
+        return;
+      }
+      const wire = W.pickWire(p.x, p.y, live.current.camera, p.w, p.h);
+      if (!wire) return;
+      e.stopPropagation();
+      if (e.shiftKey || e.ctrlKey || e.metaKey) select.toggle(wire);
+      else select.only(wire);
+      invalidate();
+    };
+    const leaveWires = () => {
+      showTip(null);
+      if (W.hoverTerm || W.hoverWire) {
+        W.hoverTerm = W.hoverWire = null;
+        invalidate();
+      }
+    };
+    wrap.addEventListener('pointerdown', downWires, true);
+    wrap.addEventListener('pointermove', hoverWires, true);
+    el.addEventListener('pointerleave', leaveWires);
     el.addEventListener('pointerdown', down);
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -556,6 +681,10 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     el.addEventListener('dragover', over);
     el.addEventListener('drop', drop);
     return () => {
+      wrap.removeEventListener('pointerdown', downWires, true);
+      wrap.removeEventListener('pointermove', hoverWires, true);
+      el.removeEventListener('pointerleave', leaveWires);
+      tip.remove();
       el.removeEventListener('pointerdown', down);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
@@ -573,7 +702,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
   useEffect(() => {
     if (!active) return;
     const key = (e: KeyboardEvent) => {
-      if (isEditableTarget(e.target)) return;
+      if (isEditableTarget(e.target) || live.current.deps.bus.code) return; // the code editor has the keyboard while it is open
       const { bench, select, applyPose } = live.current.deps;
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -632,6 +761,22 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         bench.moveMany(moves);
         if (moving.has(SD_ID)) applyCard();
         return done();
+      }
+      const { bus } = live.current.deps;
+      if (k === 'w') {
+        bus.setTool(bus.tool === 'wire' ? 'move' : 'wire');
+        return done();
+      }
+      if (k === 'Escape' && bus.tool === 'wire') {
+        if (world.wires.startTerm) dropWire();
+        else bus.setTool('move');
+        return done();
+      }
+      const wires = [...select.get()].filter((id) => bench.getState().wires.some((w) => w.id === id));
+      if ((k === 'Delete' || k === 'Backspace') && wires.length) {
+        bench.checkpoint();
+        bench.removeWires(wires);
+        if (!objects.length) return done();
       }
       if (k === 'Escape' && select.get().size) {
         select.clear();
@@ -712,6 +857,23 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         invalidate();
       },
       showRange: (kind: string | null) => world.bodies.showRange(kind),
+      /** The point of the table (mm) under a client position. */
+      tableAt: (x: number, y: number) => {
+        const p = new Vector3();
+        return tablePoint(x, y, p) ? { x: p.x, z: p.z } : null;
+      },
+      /** Client position of a terminal ("p1.A", "device.EXP4"), or null. */
+      term: (t: string) => {
+        world.wires.refresh();
+        const sp = world.wires.spot(t);
+        return sp ? toClient(sp.pos.clone()) : null;
+      },
+      /** Client position of the middle of a wire. */
+      wire: (id: string) => {
+        const m = world.wires.mid(id);
+        return m ? toClient(m) : null;
+      },
+      wireStats: () => world.wires.stats(),
       cardInserted: () => world.bodies.cardInserted,
       settled: () => [...world.bodies.items.values()].every((it) => Math.abs(it.x - it.tx) < 0.05 && Math.abs(it.z - it.tz) < 0.05 && Math.abs(it.dock - it.dockGoal) < 0.01),
     };
@@ -745,7 +907,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
           {/* everything on the table answers through one pick */}
           <mesh ref={proxy} geometry={mats.none} material={mats.hit} raycast={raycastBodies} onPointerDown={onBodyDown} onPointerMove={onBodyMove} onPointerOut={onBodyOut} onDoubleClick={onBodyDouble} />
           {/* whatever is not the Dot or a thing on the table: the view */}
-          <mesh material={mats.hit} onPointerDown={(e) => cameraDrag(e, () => deps.select.clear())}>
+          <mesh material={mats.hit} onPointerDown={(e) => cameraDrag(e, () => (deps.bus.tool === 'wire' ? dropWire() : deps.select.clear()))}>
             <sphereGeometry args={[5000, 16, 10]} />
           </mesh>
         </>

@@ -7,6 +7,7 @@ import type { MotionPose } from '../device/motion';
 import { bodyDims } from '../lib/bodyModel';
 import { asDecal } from '../device3d/decal';
 import { makeShadowTexture } from '../device3d/textures';
+import { Wires, type WireParts } from './wires';
 import { Bodies, type BodiesDeps } from './bodies';
 import { OrbitRig } from './camera';
 import { DOT, type Rect } from './layout';
@@ -40,7 +41,9 @@ export class BenchWorld {
   /** Where the tilt handle floats: off the Dot's top edge, level with its face (it moves with the Dot). */
   readonly handlePos = new Vector3();
 
-  constructor(dark: boolean, deps: Omit<BodiesDeps, 'dotQuat' | 'dotPos'>) {
+  readonly wires: Wires;
+
+  constructor(dark: boolean, deps: Omit<BodiesDeps, 'dotQuat' | 'dotPos'> & { wireParts?: WireParts }) {
     this.group.name = 'workbench';
     this.table = buildTable(dark ? TABLE_DARK : TABLE_LIGHT);
     this.group.add(this.table.group);
@@ -54,6 +57,8 @@ export class BenchWorld {
     this.group.add(this.dotShadow);
     this.bodies = new Bodies({ ...deps, dotQuat: this.dotQuat, dotPos: this.dotPos });
     this.group.add(this.bodies.group);
+    this.wires = new Wires(deps.bench, deps.wireParts, this.dotQuat, this.dotPos);
+    this.group.add(this.wires.group);
     this.placeDot();
   }
 
@@ -135,11 +140,14 @@ export class BenchWorld {
       busy = busy || this.shake > 0;
     }
     this.placeDot();
-    return this.bodies.step(dt, reduced) || busy;
+    busy = this.bodies.step(dt, reduced) || busy;
+    this.wires.draw();
+    return busy;
   }
 
   dispose(): void {
     this.bodies.dispose();
+    this.wires.dispose();
     this.table.dispose();
     this.shadowTex.dispose();
     this.shadowMat.dispose();

@@ -72,6 +72,7 @@ export interface Body {
   /** Quarter turns as an angle (radians), gliding. */
   ry: number;
   lift: number;
+  mounted?: number[] | null;
   /** 0 on the table, 1 in the Dot (the microSD card in its slot). */
   dock: number;
   dockGoal: number;
@@ -107,6 +108,10 @@ export interface PartsSource {
   /** A model for a part that has none in the registry (made from its manifest), or null while it is not loaded. */
   modelFor(id: string): PartModel | null;
   stateOf(instance: string): object | undefined;
+  /** How high a part stands (its legs in a board's holes), mm. */
+  liftOf?(instance: string): number;
+  /** A module on the Dot's header: its model frame to the Dot's own frame (column-major 4x4), or null. */
+  mountOf?(instance: string): number[] | null;
 }
 
 export interface BodiesDeps {
@@ -638,7 +643,8 @@ export class Bodies {
       let dry = goalRy - it.ry;
       while (dry > Math.PI) dry -= Math.PI * 2;
       while (dry < -Math.PI) dry += Math.PI * 2;
-      const liftGoal = drag ? 3.2 : 0;
+      const mount = it.isPart ? (this.deps.parts?.mountOf?.(it.id) ?? null) : null;
+      const liftGoal = (drag ? 3.2 : 0) + (it.isPart && !mount ? (this.deps.parts?.liftOf?.(it.id) ?? 0) : 0);
       const kk = drag || it.fresh ? 1 : k;
       let moving = Math.abs(it.tx - it.x) > 0.01 || Math.abs(it.tz - it.z) > 0.01 || Math.abs(dry) > 0.001 || Math.abs(liftGoal - it.lift) > 0.01 || Math.abs(it.dockGoal - it.dock) > 0.002;
       if (moving) {
@@ -655,10 +661,16 @@ export class Bodies {
         it.dock = it.dockGoal;
         moving = true; // one last write with the exact values
       }
-      if (moving || it.fresh || it.batch.dirty || (it.dock > 0 && dotMoved)) {
+      if (moving || it.fresh || it.batch.dirty || (it.dock > 0 && dotMoved) || (mount && (dotMoved || it.mounted !== mount)) || (!mount && it.mounted)) {
+        it.mounted = mount;
         this.q.setFromAxisAngle(UP, it.ry);
         this.v.set(it.x, it.lift, it.z);
         it.matrix.compose(this.v, this.q, this.one);
+        if (mount) {
+          // on the Dot's header: it goes where the Dot goes
+          this.m.compose(this.deps.dotPos, this.deps.dotQuat, this.one);
+          it.matrix.fromArray(mount).premultiply(this.m);
+        }
         if (it.dock > 0) {
           // on its way into (or out of) the slot: between the table and the slot, on a small arc
           this.dockMatrix(this.m);

@@ -10,13 +10,37 @@ export interface StorageLike {
 /** Things on the table that are not bench objects (the microSD card belongs to the Dot): only their place is kept here. */
 export type Fixtures = Readonly<Record<string, { pos: Pos; rot: Rot }>>;
 
-export interface BenchState {
+/** A jumper wire between two terminals ("<part instance>.<pin>" or "device.<name>"). */
+export interface Wire {
+  id: string;
+  from: string;
+  to: string;
+  color: string;
+}
+/** A board's own sketch as the visitor edited it. */
+export interface Sketch {
+  files: { name: string; text: string }[];
+}
+export type MountSide = 'upright' | 'turned';
+
+interface Snap {
   objects: readonly BenchObject[];
   fixtures: Fixtures;
+  wires: readonly Wire[];
+  /** Kode modules sitting on the Dot's header, by part instance. */
+  mounts: Readonly<Record<string, MountSide>>;
+  /** Sketches by board instance. */
+  code: Readonly<Record<string, Sketch>>;
+}
+
+export interface BenchState extends Snap {
   /** How many edits can be undone / redone. */
   undo: number;
   redo: number;
 }
+
+/** Jumper colours offered (red, black, yellow, green, blue, orange, white, purple). */
+export const WIRE_COLORS = ['#d9412b', '#26282c', '#e9b824', '#2f9e5b', '#2f6fdb', '#e8792a', '#eceae4', '#8a52c7'] as const;
 
 const HISTORY_MAX = 100;
 const COALESCE_MS = 900;
@@ -49,6 +73,39 @@ const asPos = (v: unknown): Pos | undefined => {
   return p && typeof p === 'object' && typeof p.x === 'number' && typeof p.z === 'number' && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : undefined;
 };
 const asRot = (v: unknown): Rot => (v === 1 || v === 2 || v === 3 ? v : 0);
+
+const isTerm = (v: unknown): v is string => typeof v === 'string' && /^[a-z][a-z0-9_]{0,15}\.[A-Za-z0-9_+\-]{1,24}$/.test(v);
+export const termOwner = (term: string): string => term.slice(0, term.indexOf('.'));
+
+function validateRest(raw: unknown, objects: readonly BenchObject[]): Pick<Snap, 'wires' | 'mounts' | 'code'> {
+  const r = (raw ?? {}) as { wires?: unknown; mounts?: unknown; code?: unknown };
+  const ids = new Set(objects.filter((o) => o.area === 'part').map((o) => o.id));
+  const owned = (t: string) => termOwner(t) === 'device' || ids.has(termOwner(t));
+  const wires: Wire[] = [];
+  const seen = new Set<string>();
+  if (Array.isArray(r.wires)) {
+    for (const w of r.wires as Record<string, unknown>[]) {
+      if (!w || typeof w.id !== 'string' || seen.has(w.id) || !isTerm(w.from) || !isTerm(w.to) || w.from === w.to || !owned(w.from) || !owned(w.to)) continue;
+      seen.add(w.id);
+      wires.push({ id: w.id, from: w.from, to: w.to, color: typeof w.color === 'string' && /^#[0-9a-f]{6}$/i.test(w.color) ? w.color : WIRE_COLORS[0] });
+    }
+  }
+  const mounts: Record<string, MountSide> = {};
+  if (r.mounts && typeof r.mounts === 'object') {
+    for (const [k, v] of Object.entries(r.mounts as Record<string, unknown>)) {
+      if (ids.has(k) && (v === 'upright' || v === 'turned') && !Object.keys(mounts).length) mounts[k] = v;
+    }
+  }
+  const code: Record<string, Sketch> = {};
+  if (r.code && typeof r.code === 'object') {
+    for (const [k, v] of Object.entries(r.code as Record<string, { files?: unknown }>)) {
+      if (!ids.has(k) || !v || !Array.isArray(v.files)) continue;
+      const files = (v.files as { name?: unknown; text?: unknown }[]).filter((f) => f && typeof f.name === 'string' && typeof f.text === 'string').map((f) => ({ name: f.name as string, text: f.text as string }));
+      if (files.length) code[k] = { files };
+    }
+  }
+  return { wires, mounts, code };
+}
 
 function validateFixtures(raw: unknown, objects: readonly BenchObject[]): Fixtures {
   const f = (raw as { fixtures?: Record<string, { pos?: unknown; rot?: unknown }> } | null)?.fixtures;
@@ -85,8 +142,8 @@ function validate(raw: unknown): BenchObject[] {
 export class BenchStore {
   private state: BenchState;
   private listeners = new Set<() => void>();
-  private past: { objects: readonly BenchObject[]; fixtures: Fixtures }[] = [];
-  private future: { objects: readonly BenchObject[]; fixtures: Fixtures }[] = [];
+  private past: Snap[] = [];
+  private future: Snap[] = [];
   private lastMark: { tag: string; at: number } | null = null;
 
   constructor(
@@ -101,7 +158,62 @@ export class BenchStore {
     } catch {
       objects = [];
     }
-    this.state = { objects, fixtures: validateFixtures(parsed, objects), undo: 0, redo: 0 };
+    this.state = { objects, fixtures: validateFixtures(parsed, objects), ...validateRest(parsed, objects), undo: 0, redo: 0 };
+  }
+  private snap(): Snap {
+    const { objects, fixtures, wires, mounts, code } = this.state;
+    return { objects, fixtures, wires, mounts, code };
+  }
+  private same(s: Snap | undefined): boolean {
+    const t = this.state;
+    return !!s && s.objects === t.objects && s.fixtures === t.fixtures && s.wires === t.wires && s.mounts === t.mounts && s.code === t.code;
+  }
+
+  // ---- the whole bench as one file -----------------------------------------------------------------------------
+  /** Everything the page itself keeps (the parts engine's own blob travels beside it, see parts/service.ts). */
+  exportData(): Snap & { v: number } {
+    return { v: 3, ...this.snap() };
+  }
+  /** Replaces the bench by a saved one; undoable. Returns false when the data is not a bench. */
+  importData(raw: unknown): boolean {
+    if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { objects?: unknown }).objects)) return false;
+    const objects = validate(raw);
+    this.checkpoint();
+    this.commit({ objects, fixtures: validateFixtures(raw, objects), ...validateRest(raw, objects) }, true);
+    return true;
+  }
+
+  // ---- wires, modules on the header, sketches ------------------------------------------------------------------
+  addWire(from: string, to: string, color: string = WIRE_COLORS[0]): Wire | null {
+    if (!isTerm(from) || !isTerm(to) || from === to) return null;
+    if (this.state.wires.some((w) => (w.from === from && w.to === to) || (w.from === to && w.to === from))) return null;
+    let n = this.state.wires.length + 1;
+    const used = new Set(this.state.wires.map((w) => w.id));
+    while (used.has(`w${n}`)) n++;
+    const wire: Wire = { id: `w${n}`, from, to, color };
+    this.commit({ wires: [...this.state.wires, wire] }, true);
+    return wire;
+  }
+  removeWires(ids: readonly string[]): void {
+    const gone = new Set(ids);
+    if (!this.state.wires.some((w) => gone.has(w.id))) return;
+    this.commit({ wires: this.state.wires.filter((w) => !gone.has(w.id)) }, true);
+  }
+  setWireColor(id: string, color: string): void {
+    if (!this.state.wires.some((w) => w.id === id && w.color !== color)) return;
+    this.commit({ wires: this.state.wires.map((w) => (w.id === id ? { ...w, color } : w)) }, true);
+  }
+  /** One module at a time sits on the Dot. */
+  setMount(id: string, side: MountSide | null): void {
+    const cur = this.state.mounts[id];
+    if ((cur ?? null) === side) return;
+    this.commit({ mounts: side ? { [id]: side } : {} }, true);
+  }
+  setCode(id: string, sketch: Sketch | null): void {
+    const code = { ...this.state.code };
+    if (sketch) code[id] = sketch;
+    else delete code[id];
+    this.commit({ code }, true);
   }
 
   // ---- undo / redo of bench edits ------------------------------------------------------------------------------
@@ -116,22 +228,21 @@ export class BenchStore {
       return;
     }
     this.lastMark = { tag, at: now };
-    const top = this.past[this.past.length - 1];
-    if (top && top.objects === this.state.objects && top.fixtures === this.state.fixtures) return;
-    this.past.push({ objects: this.state.objects, fixtures: this.state.fixtures });
+    if (this.same(this.past[this.past.length - 1])) return;
+    this.past.push(this.snap());
     if (this.past.length > HISTORY_MAX) this.past.shift();
     this.future = [];
     this.commit({}, false);
   }
   undo(): boolean {
     // a checkpoint taken for an edit that then changed nothing is not a step
-    while (this.past.length && this.past[this.past.length - 1].objects === this.state.objects && this.past[this.past.length - 1].fixtures === this.state.fixtures) this.past.pop();
+    while (this.past.length && this.same(this.past[this.past.length - 1])) this.past.pop();
     const prev = this.past.pop();
     if (!prev) {
       this.commit({}, false);
       return false;
     }
-    this.future.push({ objects: this.state.objects, fixtures: this.state.fixtures });
+    this.future.push(this.snap());
     this.lastMark = null;
     this.commit(prev, true);
     return true;
@@ -139,7 +250,7 @@ export class BenchStore {
   redo(): boolean {
     const next = this.future.pop();
     if (!next) return false;
-    this.past.push({ objects: this.state.objects, fixtures: this.state.fixtures });
+    this.past.push(this.snap());
     this.lastMark = null;
     this.commit(next, true);
     return true;
@@ -313,7 +424,17 @@ export class BenchStore {
   removeMany(ids: readonly string[]): void {
     const gone = new Set(ids);
     if (!this.state.objects.some((o) => gone.has(o.id))) return;
-    this.commit({ objects: this.state.objects.filter((o) => !gone.has(o.id)) }, true);
+    const mounts = Object.fromEntries(Object.entries(this.state.mounts).filter(([k]) => !gone.has(k)));
+    const code = Object.fromEntries(Object.entries(this.state.code).filter(([k]) => !gone.has(k)));
+    this.commit(
+      {
+        objects: this.state.objects.filter((o) => !gone.has(o.id)),
+        wires: this.state.wires.filter((w) => !gone.has(termOwner(w.from)) && !gone.has(termOwner(w.to))),
+        mounts: Object.keys(mounts).length === Object.keys(this.state.mounts).length ? this.state.mounts : mounts,
+        code: Object.keys(code).length === Object.keys(this.state.code).length ? this.state.code : code,
+      },
+      true,
+    );
   }
   /** Near / in range / pointing at the Dot / plugged in. In an exclusive area (motion) the others leave. */
   setNear(id: string, near: boolean): void {
@@ -345,15 +466,15 @@ export class BenchStore {
     this.commit({ objects: this.state.objects.map((o) => (o.id === id ? fn(o) : o)) }, true);
   }
 
-  private commit(next: Partial<Pick<BenchState, 'objects' | 'fixtures'>>, persist: boolean): void {
-    this.state = { objects: next.objects ?? this.state.objects, fixtures: next.fixtures ?? this.state.fixtures, undo: this.past.length, redo: this.future.length };
+  private commit(next: Partial<Snap>, persist: boolean): void {
+    this.state = { ...this.snap(), ...next, undo: this.past.length, redo: this.future.length };
     if (persist) this.save();
     for (const l of [...this.listeners]) l();
   }
 
   private save(): void {
     try {
-      this.storage?.setItem(BENCH_STORAGE_KEY, JSON.stringify({ v: 3, objects: this.state.objects, fixtures: this.state.fixtures }));
+      this.storage?.setItem(BENCH_STORAGE_KEY, JSON.stringify(this.exportData()));
     } catch {
       /* quota or disabled storage: keep working in memory */
     }

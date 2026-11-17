@@ -396,6 +396,7 @@ function Palette({ objects }: { objects: BenchObject[] }) {
           );
         })}
       </ul>
+      <BenchFile />
       {planned.length > 0 && (
         <p className="m-0 text-[13px] leading-snug text-ink2" data-testid="soon-list">
           {t('wb.soon', { list: planned.map((a) => t(a.labelKey)).join(', ') })}
@@ -445,5 +446,56 @@ function SensorControls() {
       <h3 className="text-[17px]">{t('sensors.title')}</h3>
       <SensorSwitch />
     </div>
+  );
+}
+
+/** The whole bench (places, wires, parts, code, imported parts) as one file: saved and opened here. */
+function BenchFile() {
+  const { t } = useI18n();
+  const { bench, parts, select } = useHost();
+  const input = useRef<HTMLInputElement>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const save = async () => {
+    const data = { format: 'kodedot-bench', version: 1, bench: bench.exportData(), extras: await parts.exportExtras() };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bench.kodedot.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+  const open = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text()) as { format?: string; bench?: unknown; extras?: Parameters<typeof parts.importExtras>[0] };
+      if (data.format !== 'kodedot-bench' || !data.bench) throw new Error('format');
+      await parts.importExtras(data.extras);
+      select.clear();
+      if (!bench.importData(data.bench)) throw new Error('bench');
+      setMsg({ ok: true, text: t('benchfile.opened', { count: bench.getState().objects.length }) });
+    } catch {
+      setMsg({ ok: false, text: t('benchfile.bad') });
+    }
+  };
+  return (
+    <section className="flex flex-col gap-2" aria-label={t('benchfile.title')} data-testid="bench-file">
+      <h3 className="tag m-0">{t('benchfile.title')}</h3>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn btn-sm" onClick={() => void save()} data-testid="bench-save">
+          <Icon name="download" size={16} />
+          {t('benchfile.save')}
+        </button>
+        <button type="button" className="btn btn-sm" onClick={() => input.current?.click()} data-testid="bench-open">
+          <Icon name="folder" size={16} />
+          {t('benchfile.open')}
+        </button>
+        <input ref={input} type="file" accept=".json,application/json" className="sr-only" tabIndex={-1} onChange={(e) => (void open(e.target.files?.[0]), (e.target.value = ''))} data-testid="bench-file-input" />
+      </div>
+      {msg && (
+        <p className={`m-0 text-[13.5px] ${msg.ok ? 'text-ink2' : 'text-[var(--red-text)]'}`} role="status" data-testid="bench-file-message">
+          {msg.text}
+        </p>
+      )}
+    </section>
   );
 }

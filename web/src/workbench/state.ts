@@ -57,6 +57,38 @@ export class WorkbenchBus {
   /** The kind being dragged out of the palette (its range shows on the table), or null. */
   dragKind: string | null = null;
   private dragListeners = new Set<() => void>();
+  /** The board whose code editor is open (its instance id), or null. */
+  code: string | null = null;
+  private codeListeners = new Set<() => void>();
+  openCode(id: string | null): void {
+    if (this.code === id) return;
+    this.code = id;
+    for (const l of [...this.codeListeners]) l();
+  }
+  onCode = (l: () => void): (() => void) => {
+    this.codeListeners.add(l);
+    return () => this.codeListeners.delete(l);
+  };
+  getCode = (): string | null => this.code;
+  /** The pointer moves things, or draws wires between terminals. */
+  tool: 'move' | 'wire' = 'move';
+  /** The colour the next wire gets. */
+  wireColor = '#d9412b';
+  private toolListeners = new Set<() => void>();
+  private toolSnap = { tool: this.tool, wireColor: this.wireColor };
+
+  setTool(tool: 'move' | 'wire', color?: string): void {
+    if (this.tool === tool && (color === undefined || color === this.wireColor)) return;
+    this.tool = tool;
+    if (color) this.wireColor = color;
+    this.toolSnap = { tool: this.tool, wireColor: this.wireColor };
+    for (const l of [...this.toolListeners]) l();
+  }
+  onTool = (l: () => void): (() => void) => {
+    this.toolListeners.add(l);
+    return () => this.toolListeners.delete(l);
+  };
+  getTool = (): { tool: 'move' | 'wire'; wireColor: string } => this.toolSnap;
 
   send(c: WorkbenchCommand): void {
     for (const l of [...this.listeners]) l(c);

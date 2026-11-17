@@ -1,4 +1,5 @@
-import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { WIRE_COLORS } from '../bench/store';
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from 'react';
 import { getKind } from '../bench/kinds';
 import { poseOf, MOTION_KIND } from '../bench/drivers/motion';
 import { customModel } from '../device3d/customModel';
@@ -17,6 +18,7 @@ import { ModelOffer } from './ModelControls';
 import { NoticeBanner } from './Notice';
 
 const Device3D = lazy(() => import('./Device3D'));
+const CodeEditor = lazy(() => import('./CodeEditor'));
 
 let glProbe: boolean | null = null;
 export function webglAvailable(): boolean {
@@ -153,6 +155,9 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
     [host.bench, host.live, host.runtime, device, host.select, host.bus, host.parts, host.applyPose],
   );
   const benchUndo = benchState.undo;
+  const tool = useSyncExternalStore(host.bus.onTool, host.bus.getTool);
+  const codeOpen = useSyncExternalStore(host.bus.onCode, host.bus.getCode);
+  const codeFor = codeOpen && benchState.objects.some((o) => o.id === codeOpen) ? codeOpen : null;
   const benchRedo = benchState.redo;
   // the bundled model is fetched while the 3D code itself is still loading, so the two arrive together
   useEffect(() => {
@@ -195,6 +200,10 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
                 <button type="button" className="chip" onClick={() => host.bus.send({ type: 'frame-all' })} data-testid="wb-frame-all" aria-label={t('wb.wholeTable')} title={t('wb.wholeTable')}>
                   <Icon name="recenter" />
                   <span className="hidden @[1080px]:inline">{t('wb.wholeTable')}</span>
+                </button>
+                <button type="button" className="chip" aria-pressed={tool.tool === 'wire'} onClick={() => host.bus.setTool(tool.tool === 'wire' ? 'move' : 'wire')} data-testid="wb-wire" aria-label={t('wb.wire.tool')} title={t('wb.wire.hint')}>
+                  <span className="inline-block size-3 rounded-full border border-line" style={{ background: tool.wireColor }} />
+                  <span className="hidden @[1080px]:inline">{t('wb.wire.tool')}</span>
                 </button>
                 <div className="seg" role="group">
                   <button type="button" className="chip" disabled={!benchUndo} onClick={() => host.bench.undo()} data-testid="wb-undo" aria-label={t('wb.undo')} title={`${t('wb.undo')} (Ctrl+Z)`}>
@@ -255,6 +264,27 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
       )}
 
       <div className="relative flex min-h-0 min-w-0 flex-1" data-testid="stage" style={phone ? { padding: `${showToolbar ? '0px' : 'env(safe-area-inset-top)'} env(safe-area-inset-right) 0 env(safe-area-inset-left)` } : undefined}>
+        {codeFor && (
+          <Suspense fallback={null}>
+            <CodeEditor instance={codeFor} onClose={() => host.bus.openCode(null)} />
+          </Suspense>
+        )}
+        {workbench && tool.tool === 'wire' && !codeFor && (
+          <div className="card absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-1.5 !rounded-full px-3 py-2" role="group" aria-label={t('wb.wire.color')} data-testid="wb-wire-colors">
+            {WIRE_COLORS.map((c, i) => (
+              <button
+                key={c}
+                type="button"
+                className={`size-6 rounded-full border border-line ${tool.wireColor === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`}
+                style={{ background: c }}
+                aria-label={`${t('wb.wire.color')} ${i + 1}`}
+                aria-pressed={tool.wireColor === c}
+                onClick={() => host.bus.setTool('wire', c)}
+                data-testid={`wire-pick-${i}`}
+              />
+            ))}
+          </div>
+        )}
         {mount3d && (
           <div className={show3d ? 'anim-fade flex min-h-0 min-w-0 flex-1' : 'hidden'} data-testid="stage-3d" data-shown={show3d} data-mode={workbench ? 'workbench' : 'device'}>
             <Boundary onError={() => host.reportGlFailure('unavailable')}>

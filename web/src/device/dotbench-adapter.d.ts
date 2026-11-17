@@ -18,3 +18,8 @@ declare module '*/generated/web-adapter/bench.js' {
 declare module '*/generated/web-adapter/bench-wasm.js' {
   export function configureWorker(o: { source?: string; url?: string }): void;
 }
+
+// the in-browser sketch compiler (runtime/cc/index.js): typed where it is used (code/compiler.ts)
+declare module '*/generated/cc/index.js' {
+  export function createCompiler(o: { assetsBaseUrl: string; onProgress?: (e: unknown) => void }): unknown;
+}

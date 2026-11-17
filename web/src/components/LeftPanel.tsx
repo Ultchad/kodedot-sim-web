@@ -4,16 +4,20 @@ import { loadPref, savePref } from '../lib/prefs';
 import { BenchPanel } from './BenchPanel';
 import { ComponentsPanel } from './ComponentsPanel';
 import { Icon } from './Glyphs';
+import { MakePanel } from './MakePanel';
 import { useTabs } from './ui';
 
-type LeftTab = 'bench' | 'components';
-const LEFT_TABS: readonly LeftTab[] = ['bench', 'components'];
+type LeftTab = 'bench' | 'components' | 'make';
+const LEFT_TABS: readonly LeftTab[] = ['bench', 'components', 'make'];
 
 /** The left card: Bench and Components behind one tab row, with the collapse button of the card. */
 export function LeftPanel({ onClose, closeLabel, bare = false }: { onClose?: () => void; closeLabel?: string; bare?: boolean }) {
   const { t } = useI18n();
   // remembered between visits, like the other choices of the page
-  const [tab, setTabState] = useState<LeftTab>(() => (loadPref<string>('dotbench.left', 'bench') === 'components' ? 'components' : 'bench'));
+  const [tab, setTabState] = useState<LeftTab>(() => {
+    const v = loadPref<string>('dotbench.left', 'bench');
+    return v === 'components' || v === 'make' ? v : 'bench';
+  });
   const setTab = (id: LeftTab) => {
     setTabState(id);
     savePref('dotbench.left', id);
@@ -24,8 +28,8 @@ export function LeftPanel({ onClose, closeLabel, bare = false }: { onClose?: () 
       <div className="flex items-center gap-2">
         <div {...tabs.list} aria-label={t('nav.bench')} className="seg">
           {LEFT_TABS.map((id) => (
-            <button key={id} {...tabs.tab(id)} className="chip" data-testid={`left-tab-${id}`}>
-              {t(id === 'bench' ? 'nav.bench.short' : 'nav.components')}
+            <button key={id} {...tabs.tab(id)} className="chip !px-3" title={id === 'make' ? t('make.title') : undefined} data-testid={`left-tab-${id}`}>
+              {t(id === 'bench' ? 'nav.bench.short' : id === 'make' ? 'nav.make' : 'nav.components')}
             </button>
           ))}
         </div>
@@ -37,7 +41,7 @@ export function LeftPanel({ onClose, closeLabel, bare = false }: { onClose?: () 
         )}
       </div>
       <div {...tabs.panel(tab)} key={tab} className="anim-fade flex min-h-0 flex-1 flex-col">
-        {tab === 'bench' ? <BenchPanel compact={bare} /> : <ComponentsPanel compact={bare} />}
+        {tab === 'bench' ? <BenchPanel compact={bare} /> : tab === 'make' ? <MakePanel compact={bare} /> : <ComponentsPanel compact={bare} />}
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { BenchObject, FieldValue } from '../bench/model';
+import { WIRE_COLORS, termOwner, type Wire } from '../bench/store';
 import { useI18n, type TKey } from '../i18n';
 import { text3, type LibraryEntry, type PartField, type PartsService } from '../parts/service';
 import { useBenchState } from '../state/bench';
@@ -28,6 +29,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
   const lib = parts.entries();
   const onTable = state.objects.filter((o) => o.area === 'part');
   const picked = onTable.find((o) => sel.size === 1 && sel.has(o.id));
+  const pickedWire = sel.size === 1 ? state.wires.find((w) => sel.has(w.id)) : undefined;
   const cats = useMemo(() => [...new Set(lib.map((p) => p.category))].sort(), [lib]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -50,6 +52,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
       <ScrollArea className="-mx-2 min-h-0 flex-1 px-2 py-1" label={t('nav.components')}>
         <div className="flex flex-col gap-4">
           {picked && <PartCard obj={picked} />}
+          {pickedWire && <WireCard wire={pickedWire} />}
           {onTable.length > 0 && (
             <section className="flex flex-col gap-2" aria-label={t('parts.onTable')}>
               <h3 className="tag m-0">{t('parts.onTable')}</h3>
@@ -68,6 +71,30 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
                         <span className="block truncate text-[14.5px] font-semibold leading-snug">{o.name}</span>
                         <span className="block truncate text-[12.5px] leading-snug text-ink2">{nameOf(o.kind)}</span>
                       </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {state.wires.length > 0 && (
+            <section className="flex flex-col gap-2" aria-label={t('parts.wires')}>
+              <h3 className="tag m-0">
+                {t('parts.wires')} · {state.wires.length}
+              </h3>
+              <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0" data-testid="wires-list">
+                {state.wires.map((w) => (
+                  <li key={w.id}>
+                    <button
+                      type="button"
+                      className={`chip !gap-1.5 !px-2.5 font-mono text-[12px] ${sel.has(w.id) ? 'shadow-[inset_0_0_0_2px_var(--ink)]' : ''}`}
+                      aria-pressed={sel.has(w.id)}
+                      onClick={() => select.only(w.id)}
+                      data-testid="row-wire"
+                      data-id={w.id}
+                    >
+                      <span className="inline-block size-2.5 shrink-0 rounded-full border border-line" style={{ background: w.color }} />
+                      {pinOf(w.from)} · {pinOf(w.to)}
                     </button>
                   </li>
                 ))}
@@ -126,12 +153,58 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
 }
 
 /** One wired part: its fields, what its pins carry right now, its problems and the repair. */
+const pinOf = (term: string) => term.slice(term.indexOf('.') + 1);
+
+/** One wire: where it goes, its colour, away with it. */
+function WireCard({ wire }: { wire: Wire }) {
+  const { t } = useI18n();
+  const { parts, bench } = useHost();
+  const end = (term: string) => {
+    const owner = termOwner(term);
+    return `${pinOf(term)} · ${owner === 'device' ? t('parts.wire.header') : (bench.get(owner)?.name ?? owner)}`;
+  };
+  const short = parts.state().wires.find((w) => w.id === wire.id)?.short;
+  return (
+    <section className="inner anim-fade flex flex-col gap-3 p-4" data-testid="wire-card" data-id={wire.id}>
+      <div className="flex items-center gap-3">
+        <span className="inline-block size-4 shrink-0 rounded-full border border-line" style={{ background: wire.color }} />
+        <h3 className="min-w-0 flex-1 text-[17px] leading-snug">{t('parts.wire')}</h3>
+        <button type="button" className="btn btn-sm btn-ghost btn-icon" onClick={() => (bench.checkpoint(), bench.removeWires([wire.id]))} aria-label={t('bench.delete')} title={t('bench.delete')} data-testid="wire-delete">
+          <Icon name="trash" />
+        </button>
+      </div>
+      <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
+        <li data-testid="wire-from">{end(wire.from)}</li>
+        <li data-testid="wire-to">{end(wire.to)}</li>
+      </ul>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('wb.wire.color')}>
+        {WIRE_COLORS.map((c, i) => (
+          <button
+            key={c}
+            type="button"
+            className={`size-7 rounded-full border border-line ${wire.color === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`}
+            style={{ background: c }}
+            aria-label={`${t('wb.wire.color')} ${i + 1}`}
+            aria-pressed={wire.color === c}
+            onClick={() => (bench.checkpoint(), bench.setWireColor(wire.id, c))}
+            data-testid={`wire-color-${i}`}
+          />
+        ))}
+      </div>
+      {parts.refused.has(wire.id) && <p className="m-0 text-[13.5px] text-[var(--red-text)]">{t('parts.wire.refused')}</p>}
+      {short && <p className="m-0 text-[13.5px] text-[var(--red-text)]">{t('parts.wire.short')}</p>}
+    </section>
+  );
+}
+
 function PartCard({ obj }: { obj: BenchObject }) {
   const { t, locale, fmt } = useI18n();
   const { parts, bench, select, bus, mode } = useHost();
   const m = parts.manifest(obj.kind);
   const st = parts.stateOf(obj.id);
   const hazards = parts.hazardsOf(obj.id);
+  const mounted = useBenchState(bench).mounts[obj.id];
+  const plug = parts.plugs().get(obj.id);
   const out = st?.outputs ?? {};
   const broken = out.burnt === true || out.burst === true || hazards.some((h) => h.class === 'burnt');
   const set = (f: PartField, v: FieldValue) => {
@@ -163,6 +236,30 @@ function PartCard({ obj }: { obj: BenchObject }) {
           <Icon name="trash" />
         </button>
       </div>
+      {parts.coreOf(obj.kind) && (
+        <button type="button" className="btn btn-sm btn-primary self-start" onClick={() => bus.openCode(obj.id)} data-testid="part-code">
+          {t('code.open')}
+        </button>
+      )}
+      {m?.mount && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="part-mount">
+          {mounted ? (
+            <>
+              <span className="tag flex-1">{t('parts.mount.is')}</span>
+              <button type="button" className="btn btn-sm" onClick={() => parts.mount(obj.id, null)} data-testid="part-unmount">
+                {t('parts.mount.off')}
+              </button>
+            </>
+          ) : (
+            (m.mount.orientations ?? ['upright']).map((side) => (
+              <button key={side} type="button" className="btn btn-sm" onClick={() => parts.mount(obj.id, side)} data-testid={`part-mount-${side}`}>
+                {t(side === 'turned' ? 'parts.mount.turned' : 'parts.mount.upright')}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+      {plug && <p className="tag m-0" data-testid="part-plugged">{t('parts.plugged', { host: bench.get(plug.host)?.name ?? plug.host })}</p>}
       {(m?.fields ?? []).length > 0 && (
         <div className="flex flex-col gap-1.5">
           {m!.fields!.map((f) => {
