@@ -57,14 +57,14 @@
   },
   "body": {
     "w_mm": 58,
-    "d_mm": 60,
+    "d_mm": 62,
     "h_mm": 14,
     "estimate": true
   },
   "picture": {
     "file": "picture.svg",
     "width": 464,
-    "height": 480
+    "height": 496
   },
   "mount": {
     "via": "direct",
@@ -159,7 +159,7 @@
     "connector": {
       "seat_mm": {
         "x": 29,
-        "y": 52,
+        "y": 54,
         "z": 4.14
       },
       "pin_dir": "+y",
@@ -186,6 +186,48 @@
       "source": "assumed"
     }
   },
+  "refs": [
+    {
+      "name": "hole1",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 4.6,
+        "y": 4.55,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole2",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 53.4,
+        "y": 4.55,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole3",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 4.6,
+        "y": 49.45,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole4",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 53.4,
+        "y": 49.45,
+        "z": 0
+      }
+    }
+  ],
   "pins": [
     {"name":"S1","kind":"io","pos":{"x":88,"y":32},"mm":{"x":11,"y":4,"z":10.1},"face":"top","label":{"en":"1"},"abs_max_mv":3600},
     {"name":"S2","kind":"io","pos":{"x":108.3,"y":32},"mm":{"x":13.54,"y":4,"z":10.1},"face":"top","label":{"en":"2"},"abs_max_mv":3600},
@@ -201,22 +243,22 @@
     {"name":"S12","kind":"io","pos":{"x":311.5,"y":32},"mm":{"x":38.94,"y":4,"z":10.1},"face":"top","label":{"en":"12"},"abs_max_mv":3600},
     {"name":"S13","kind":"io","pos":{"x":331.8,"y":32},"mm":{"x":41.48,"y":4,"z":10.1},"face":"top","label":{"en":"13"},"abs_max_mv":3600},
     {"name":"S14","kind":"io","pos":{"x":352.2,"y":32},"mm":{"x":44.02,"y":4,"z":10.1},"face":"top","label":{"en":"14"},"abs_max_mv":3600},
-    {"name":"V5_1","kind":"io","pos":{"x":12,"y":96},"mm":{"x":1.5,"y":12,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"V5_2","kind":"io","pos":{"x":12,"y":116.3},"mm":{"x":1.5,"y":14.54,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"V5_3","kind":"io","pos":{"x":12,"y":136.6},"mm":{"x":1.5,"y":17.08,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"V5_4","kind":"io","pos":{"x":12,"y":157},"mm":{"x":1.5,"y":19.62,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"GL_1","kind":"io","pos":{"x":32.3,"y":96},"mm":{"x":4.04,"y":12,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GL_2","kind":"io","pos":{"x":32.3,"y":116.3},"mm":{"x":4.04,"y":14.54,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GL_3","kind":"io","pos":{"x":32.3,"y":136.6},"mm":{"x":4.04,"y":17.08,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GL_4","kind":"io","pos":{"x":32.3,"y":157},"mm":{"x":4.04,"y":19.62,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"V33_1","kind":"io","pos":{"x":431.7,"y":96},"mm":{"x":53.96,"y":12,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"V33_2","kind":"io","pos":{"x":431.7,"y":116.3},"mm":{"x":53.96,"y":14.54,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"V33_3","kind":"io","pos":{"x":431.7,"y":136.6},"mm":{"x":53.96,"y":17.08,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"V33_4","kind":"io","pos":{"x":431.7,"y":157},"mm":{"x":53.96,"y":19.62,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"GR_1","kind":"io","pos":{"x":452,"y":96},"mm":{"x":56.5,"y":12,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GR_2","kind":"io","pos":{"x":452,"y":116.3},"mm":{"x":56.5,"y":14.54,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GR_3","kind":"io","pos":{"x":452,"y":136.6},"mm":{"x":56.5,"y":17.08,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GR_4","kind":"io","pos":{"x":452,"y":157},"mm":{"x":56.5,"y":19.62,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"V5_1","kind":"io","pos":{"x":14.4,"y":80},"mm":{"x":1.8,"y":10,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"V5_2","kind":"io","pos":{"x":14.4,"y":100.3},"mm":{"x":1.8,"y":12.54,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"V5_3","kind":"io","pos":{"x":14.4,"y":120.6},"mm":{"x":1.8,"y":15.08,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"V5_4","kind":"io","pos":{"x":14.4,"y":141},"mm":{"x":1.8,"y":17.62,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"GL_1","kind":"io","pos":{"x":14.4,"y":192},"mm":{"x":1.8,"y":24,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GL_2","kind":"io","pos":{"x":14.4,"y":212.3},"mm":{"x":1.8,"y":26.54,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GL_3","kind":"io","pos":{"x":14.4,"y":232.6},"mm":{"x":1.8,"y":29.08,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GL_4","kind":"io","pos":{"x":14.4,"y":253},"mm":{"x":1.8,"y":31.62,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"V33_1","kind":"io","pos":{"x":449.6,"y":80},"mm":{"x":56.2,"y":10,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"V33_2","kind":"io","pos":{"x":449.6,"y":100.3},"mm":{"x":56.2,"y":12.54,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"V33_3","kind":"io","pos":{"x":449.6,"y":120.6},"mm":{"x":56.2,"y":15.08,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"V33_4","kind":"io","pos":{"x":449.6,"y":141},"mm":{"x":56.2,"y":17.62,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"GR_1","kind":"io","pos":{"x":449.6,"y":192},"mm":{"x":56.2,"y":24,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GR_2","kind":"io","pos":{"x":449.6,"y":212.3},"mm":{"x":56.2,"y":26.54,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GR_3","kind":"io","pos":{"x":449.6,"y":232.6},"mm":{"x":56.2,"y":29.08,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GR_4","kind":"io","pos":{"x":449.6,"y":253},"mm":{"x":56.2,"y":31.62,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
     {"name":"a1","kind":"io","pos":{"x":69.4,"y":112},"mm":{"x":8.68,"y":14,"z":10.1},"face":"top","abs_max_mv":60000},
     {"name":"b1","kind":"io","pos":{"x":69.4,"y":132.3},"mm":{"x":8.68,"y":16.54,"z":10.1},"face":"top","abs_max_mv":60000},
     {"name":"c1","kind":"io","pos":{"x":69.4,"y":152.6},"mm":{"x":8.68,"y":19.08,"z":10.1},"face":"top","abs_max_mv":60000},
@@ -387,26 +429,26 @@
     {"name":"h17","kind":"io","pos":{"x":394.6,"y":274.6},"mm":{"x":49.32,"y":34.32,"z":10.1},"face":"top","abs_max_mv":60000},
     {"name":"i17","kind":"io","pos":{"x":394.6,"y":294.9},"mm":{"x":49.32,"y":36.86,"z":10.1},"face":"top","abs_max_mv":60000},
     {"name":"j17","kind":"io","pos":{"x":394.6,"y":315.2},"mm":{"x":49.32,"y":39.4,"z":10.1},"face":"top","abs_max_mv":60000},
-    {"name":"J401_19","kind":"io","pos":{"x":323.4,"y":448},"mm":{"x":40.43,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-19"},"abs_max_mv":60000,"ref":"J401.19"},
-    {"name":"J401_20","kind":"io","pos":{"x":323.4,"y":448},"mm":{"x":40.43,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-20"},"abs_max_mv":60000,"ref":"J401.20"},
-    {"name":"J401_17","kind":"io","pos":{"x":303.1,"y":448},"mm":{"x":37.89,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-17"},"abs_max_mv":3600,"ref":"J401.17"},
-    {"name":"J401_18","kind":"io","pos":{"x":303.1,"y":448},"mm":{"x":37.89,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-18"},"abs_max_mv":3600,"ref":"J401.18"},
-    {"name":"J401_15","kind":"io","pos":{"x":282.8,"y":448},"mm":{"x":35.35,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-15"},"abs_max_mv":3600,"ref":"J401.15"},
-    {"name":"J401_16","kind":"io","pos":{"x":282.8,"y":448},"mm":{"x":35.35,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-16"},"abs_max_mv":3600,"ref":"J401.16"},
-    {"name":"J401_13","kind":"io","pos":{"x":262.5,"y":448},"mm":{"x":32.81,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-13"},"abs_max_mv":3600,"ref":"J401.13"},
-    {"name":"J401_14","kind":"io","pos":{"x":262.5,"y":448},"mm":{"x":32.81,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-14"},"abs_max_mv":3600,"ref":"J401.14"},
-    {"name":"J401_11","kind":"io","pos":{"x":242.2,"y":448},"mm":{"x":30.27,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-11"},"abs_max_mv":3600,"ref":"J401.11"},
-    {"name":"J401_12","kind":"io","pos":{"x":242.2,"y":448},"mm":{"x":30.27,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-12"},"abs_max_mv":60000,"ref":"J401.12"},
-    {"name":"J401_9","kind":"io","pos":{"x":221.8,"y":448},"mm":{"x":27.73,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-9"},"abs_max_mv":60000,"ref":"J401.9"},
-    {"name":"J401_10","kind":"io","pos":{"x":221.8,"y":448},"mm":{"x":27.73,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-10"},"abs_max_mv":3600,"ref":"J401.10"},
-    {"name":"J401_7","kind":"io","pos":{"x":201.5,"y":448},"mm":{"x":25.19,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-7"},"abs_max_mv":3600,"ref":"J401.7"},
-    {"name":"J401_8","kind":"io","pos":{"x":201.5,"y":448},"mm":{"x":25.19,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-8"},"abs_max_mv":3600,"ref":"J401.8"},
-    {"name":"J401_5","kind":"io","pos":{"x":181.2,"y":448},"mm":{"x":22.65,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-5"},"abs_max_mv":3600,"ref":"J401.5"},
-    {"name":"J401_6","kind":"io","pos":{"x":181.2,"y":448},"mm":{"x":22.65,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-6"},"abs_max_mv":3600,"ref":"J401.6"},
-    {"name":"J401_3","kind":"io","pos":{"x":160.9,"y":448},"mm":{"x":20.11,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-3"},"abs_max_mv":3600,"ref":"J401.3"},
-    {"name":"J401_4","kind":"io","pos":{"x":160.9,"y":448},"mm":{"x":20.11,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-4"},"abs_max_mv":3600,"ref":"J401.4"},
-    {"name":"J401_1","kind":"io","pos":{"x":140.6,"y":448},"mm":{"x":17.57,"y":56,"z":2.87},"face":"bottom","label":{"en":"J401-1"},"abs_max_mv":60000,"ref":"J401.1"},
-    {"name":"J401_2","kind":"io","pos":{"x":140.6,"y":448},"mm":{"x":17.57,"y":56,"z":5.41},"face":"bottom","label":{"en":"J401-2"},"abs_max_mv":60000,"ref":"J401.2"}
+    {"name":"J401_19","kind":"io","pos":{"x":323.4,"y":464},"mm":{"x":40.43,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-19"},"abs_max_mv":60000,"ref":"J401.19"},
+    {"name":"J401_20","kind":"io","pos":{"x":323.4,"y":464},"mm":{"x":40.43,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-20"},"abs_max_mv":60000,"ref":"J401.20"},
+    {"name":"J401_17","kind":"io","pos":{"x":303.1,"y":464},"mm":{"x":37.89,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-17"},"abs_max_mv":3600,"ref":"J401.17"},
+    {"name":"J401_18","kind":"io","pos":{"x":303.1,"y":464},"mm":{"x":37.89,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-18"},"abs_max_mv":3600,"ref":"J401.18"},
+    {"name":"J401_15","kind":"io","pos":{"x":282.8,"y":464},"mm":{"x":35.35,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-15"},"abs_max_mv":3600,"ref":"J401.15"},
+    {"name":"J401_16","kind":"io","pos":{"x":282.8,"y":464},"mm":{"x":35.35,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-16"},"abs_max_mv":3600,"ref":"J401.16"},
+    {"name":"J401_13","kind":"io","pos":{"x":262.5,"y":464},"mm":{"x":32.81,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-13"},"abs_max_mv":3600,"ref":"J401.13"},
+    {"name":"J401_14","kind":"io","pos":{"x":262.5,"y":464},"mm":{"x":32.81,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-14"},"abs_max_mv":3600,"ref":"J401.14"},
+    {"name":"J401_11","kind":"io","pos":{"x":242.2,"y":464},"mm":{"x":30.27,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-11"},"abs_max_mv":3600,"ref":"J401.11"},
+    {"name":"J401_12","kind":"io","pos":{"x":242.2,"y":464},"mm":{"x":30.27,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-12"},"abs_max_mv":60000,"ref":"J401.12"},
+    {"name":"J401_9","kind":"io","pos":{"x":221.8,"y":464},"mm":{"x":27.73,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-9"},"abs_max_mv":60000,"ref":"J401.9"},
+    {"name":"J401_10","kind":"io","pos":{"x":221.8,"y":464},"mm":{"x":27.73,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-10"},"abs_max_mv":3600,"ref":"J401.10"},
+    {"name":"J401_7","kind":"io","pos":{"x":201.5,"y":464},"mm":{"x":25.19,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-7"},"abs_max_mv":3600,"ref":"J401.7"},
+    {"name":"J401_8","kind":"io","pos":{"x":201.5,"y":464},"mm":{"x":25.19,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-8"},"abs_max_mv":3600,"ref":"J401.8"},
+    {"name":"J401_5","kind":"io","pos":{"x":181.2,"y":464},"mm":{"x":22.65,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-5"},"abs_max_mv":3600,"ref":"J401.5"},
+    {"name":"J401_6","kind":"io","pos":{"x":181.2,"y":464},"mm":{"x":22.65,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-6"},"abs_max_mv":3600,"ref":"J401.6"},
+    {"name":"J401_3","kind":"io","pos":{"x":160.9,"y":464},"mm":{"x":20.11,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-3"},"abs_max_mv":3600,"ref":"J401.3"},
+    {"name":"J401_4","kind":"io","pos":{"x":160.9,"y":464},"mm":{"x":20.11,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-4"},"abs_max_mv":3600,"ref":"J401.4"},
+    {"name":"J401_1","kind":"io","pos":{"x":140.6,"y":464},"mm":{"x":17.57,"y":58,"z":2.87},"face":"bottom","label":{"en":"J401-1"},"abs_max_mv":60000,"ref":"J401.1"},
+    {"name":"J401_2","kind":"io","pos":{"x":140.6,"y":464},"mm":{"x":17.57,"y":58,"z":5.41},"face":"bottom","label":{"en":"J401-2"},"abs_max_mv":60000,"ref":"J401.2"}
   ],
   "groups": [
     {"pins":["V5_1","V5_2","V5_3","V5_4","J401_19","J401_2"]},
