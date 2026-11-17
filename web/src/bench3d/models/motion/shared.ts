@@ -2,7 +2,7 @@
  * Shared builders of the motion family (motors, drivers, things that move). Everything here is built in code at real
  * dimensions (millimetres) and adds to a Shape, like the kit's own parts.ts; the ones marked KIT are candidates for it.
  */
-import { Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, roundCorners, roundedRectLoop, type Finish, type ManifestBody, type ManifestPin, type Pt, type V3 } from '../../index';
+import { Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, glowing, roundCorners, roundedRectLoop, type Finish, type ManifestBody, type ManifestPin, type Object3D, type Pt, type V3 } from '../../index';
 
 export const TAU = Math.PI * 2;
 export const DEG = Math.PI / 180;
@@ -69,7 +69,7 @@ export function crimpHousing(s: Shape, o: { x: number; z: number; y: number; n: 
       const px = (i - (o.n - 1) / 2) * PITCH;
       s.box(...(o.finish ?? PAL.plasticBlack), px, 0, PITCH - 0.06, PITCH - 0.06, 0, h, 0.3, 0.3, { cap: true, ao: 0.92 });
       // the latch window of each contact
-      s.box('matte', '#0c0c0d', px, PITCH / 2 - 0.02, 1.3, 0.06, h * 0.55, h * 0.55 + 2.2, 0.02, 0, { ao: 1 });
+      brick(s, DARK, px, PITCH / 2 - 0.02, 1.3, 0.06, h * 0.55, h * 0.55 + 2.2);
     }
   });
   const e = m.elements;
@@ -84,40 +84,57 @@ export function crimpHousing(s: Shape, o: { x: number; z: number; y: number; n: 
 export function jumperCap(s: Shape, o: { x: number; z: number; y: number; turn?: number; finish?: Finish }): void {
   s.with(new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(turnY(o.turn ?? 0)), () => {
     s.box(...(o.finish ?? PAL.plasticBlue), 0, 0, 2 * PITCH - 0.2, PITCH - 0.1, 0, 6, 0.35, 0.4, { ao: 0.9 });
-    s.box('matte', '#0c0c0d', 0, 0, 2 * PITCH - 1.4, 0.7, 6, 6.02, 0.2, 0, { ao: 1 });
+    brick(s, DARK, 0, 0, 2 * PITCH - 1.4, 0.7, 6, 6.02);
   });
 }
 
 // ---------------------------------------------------------------------------------------------- small SMD parts
+/**
+ * KIT: a plain four-cornered block standing on y0: 10 triangles (18 with a bevel), where `Shape.box` spends 38 to 58
+ * on its rounded corners. For parts too small to show a corner radius: chip resistors, leads, pads, stripes.
+ */
+export function brick(s: Shape, finish: Finish, cx: number, cz: number, w: number, d: number, y0: number, y1: number, bevel = 0, cap = false): void {
+  s.prism(...finish, [[cx + w / 2, cz - d / 2], [cx + w / 2, cz + d / 2], [cx - w / 2, cz + d / 2], [cx - w / 2, cz - d / 2]], y0, y1, bevel, { ao: 1, cap });
+}
+const DARK: Finish = ['matte', '#0c0c0d'];
 /** KIT: a chip resistor or capacitor (0805 by default) lying along X before `turn`. */
 export function chip(s: Shape, o: { x: number; z: number; y: number; turn?: number; l?: number; w?: number; h?: number; body?: Finish }): void {
   const l = o.l ?? 2.0, w = o.w ?? 1.25, h = o.h ?? 0.55;
   s.with(new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(turnY(o.turn ?? 0)), () => {
-    s.box(...(o.body ?? PAL.epoxyBlack), 0, 0, l - 0.7, w, 0, h, 0.05, 0.06, { ao: 1 });
-    for (const sx of [-1, 1]) s.box(...PAL.tin, sx * (l / 2 - 0.2), 0, 0.42, w + 0.04, 0, h + 0.02, 0.05, 0.08, { ao: 1 });
+    brick(s, o.body ?? PAL.epoxyBlack, 0, 0, l - 0.7, w, 0, h, 0.06);
+    for (const sx of [-1, 1]) brick(s, PAL.tin, sx * (l / 2 - 0.2), 0, 0.42, w + 0.04, 0, h + 0.02);
   });
 }
 /** KIT: the white body of an SMD LED (0805) lying along X; put a `lamp` of radii about [0.75, 0.3, 0.5] at y + 0.55 over it. */
 export function smdLedBody(s: Shape, o: { x: number; z: number; y: number; turn?: number }): void {
   s.with(new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(turnY(o.turn ?? 0)), () => {
-    s.box('matte', '#e9e4d6', 0, 0, 1.5, 1.2, 0, 0.45, 0.08, 0.05, { ao: 1 });
-    for (const sx of [-1, 1]) s.box(...PAL.tin, sx * 0.9, 0, 0.4, 1.25, 0, 0.5, 0.05, 0.06, { ao: 1 });
+    brick(s, ['matte', '#e9e4d6'], 0, 0, 1.5, 1.2, 0, 0.45, 0.05);
+    brick(s, PAL.tin, 0, 0, 2.2, 1.25, 0, 0.3); // its two pads in one piece
   });
+}
+/**
+ * KIT: the lens of an SMD LED as a part that lights up (`setLamp(obj, name, colour, level)`): 18 triangles, where a
+ * `lamp()` costs 320. Put it on `smdLedBody` at the same place.
+ */
+export function smdLedLens(name: string, o: { x: number; z: number; y: number; turn?: number }): Object3D {
+  const s = new Shape();
+  s.with(new Matrix4().makeTranslation(o.x, o.y + 0.45, o.z).multiply(turnY(o.turn ?? 0)), () => brick(s, ['matte', '#d9d3bf'], 0, 0, 1.25, 1.0, 0, 0.42, 0.14));
+  return glowing(name, s);
 }
 /** KIT: an SMA / SOD rectifier diode lying along X, cathode bar towards -X. */
 export function smdDiode(s: Shape, o: { x: number; z: number; y: number; turn?: number; l?: number; w?: number; h?: number }): void {
   const l = o.l ?? 4.3, w = o.w ?? 2.6, h = o.h ?? 2.1;
   s.with(new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(turnY(o.turn ?? 0)), () => {
-    s.box(...PAL.epoxyBlack, 0, 0, l, w, 0.1, h, 0.15, 0.22, { ao: 0.95 });
-    s.box('matte', '#c9c9c4', -l / 2 + 0.75, 0, 0.55, w - 0.3, h, h + 0.02, 0.02, 0, { ao: 1 });
-    for (const sx of [-1, 1]) s.box(...PAL.tin, sx * (l / 2 + 0.25), 0, 0.7, 1.5, 0, 1.0, 0.05, 0.1, { ao: 0.95 });
+    s.box(...PAL.epoxyBlack, 0, 0, l, w, 0.1, h, 0.1, 0.22, { ao: 0.95 });
+    brick(s, ['matte', '#c9c9c4'], -l / 2 + 0.75, 0, 0.55, w - 0.3, h, h + 0.02);
+    brick(s, PAL.tin, 0, 0, l + 1.2, 1.5, 0, 1.0); // both leads in one piece: the body hides the middle
   });
 }
 /** KIT: a SOT-23 transistor. */
 export function sot23(s: Shape, o: { x: number; z: number; y: number; turn?: number }): void {
   s.with(new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(turnY(o.turn ?? 0)), () => {
     s.box(...PAL.epoxyBlack, 0, 0, 2.9, 1.3, 0.1, 1.05, 0.1, 0.15, { ao: 0.95 });
-    for (const [px, pz] of [[-0.95, 1], [0.95, 1], [0, -1]] as Pt[]) s.box(...PAL.tin, px, pz * 0.95, 0.42, 0.7, 0, 0.5, 0.03, 0.08, { ao: 1 });
+    for (const [px, pz] of [[-0.95, 1], [0.95, 1], [0, -1]] as Pt[]) brick(s, PAL.tin, px, pz * 0.95, 0.42, 0.7, 0, 0.5);
   });
 }
 /** KIT: a DIP package (2.54 mm pitch, rows 7.62 apart), pins along X; `socket` puts it in a socket. Returns the height of its top. */
@@ -136,8 +153,8 @@ export function dip(s: Shape, o: { x: number; z: number; y: number; pins: number
     s.disc('matte', '#3a3a3f', -len / 2 + 1.6, 2.1, 0.4, base + 3.3, base + 3.32, 0, 10, { ao: 1 });
     for (const sz of [-1, 1]) for (let i = 0; i < n; i++) {
       const px = (i - (n - 1) / 2) * PITCH;
-      s.box(...PAL.tin, px, sz * 3.5, 1.3, 0.7, base + 1.3, base + 1.75, 0.03, 0.05, { cap: true, ao: 1 });
-      s.box(...PAL.tin, px, sz * 3.81, o.socket ? 0.5 : 1.2, 0.28, o.socket ? base - 0.6 : 0, base + 1.75, 0.03, 0.05, { ao: 0.95 });
+      brick(s, PAL.tin, px, sz * 3.5, 1.3, 0.7, base + 1.3, base + 1.75, 0, true);
+      brick(s, PAL.tin, px, sz * 3.81, o.socket ? 0.5 : 1.2, 0.28, o.socket ? base - 0.6 : 0, base + 1.75);
     }
   });
   return o.y + base + 3.3;
@@ -148,10 +165,10 @@ export function dpak(s: Shape, o: { x: number; z: number; y: number; turn?: numb
     s.box(...PAL.tin, 0, -3.4, 5.4, 1.6, 0, 0.55, 0.3, 0.08, { ao: 1 });
     s.box(...PAL.epoxyBlack, 0, 0, 6.6, 6.1, 0.05, 2.3, 0.3, 0.3, { ao: 0.95 });
     for (const sx of [-1, 1]) {
-      s.box(...PAL.tin, sx * 2.28, 3.7, 0.8, 1.4, 0.55, 0.9, 0.04, 0.05, { cap: true, ao: 1 });
-      s.box(...PAL.tin, sx * 2.28, 4.7, 0.8, 1.2, 0, 0.9, 0.04, 0.12, { ao: 0.95 });
+      brick(s, PAL.tin, sx * 2.28, 3.7, 0.8, 1.4, 0.55, 0.9, 0, true);
+      brick(s, PAL.tin, sx * 2.28, 4.7, 0.8, 1.2, 0, 0.9, 0.1);
     }
-    s.box(...PAL.tin, 0, 3.35, 0.8, 0.7, 0.55, 0.9, 0.04, 0.05, { cap: true, ao: 1 });
+    brick(s, PAL.tin, 0, 3.35, 0.8, 0.7, 0.55, 0.9, 0, true);
   });
   return o.y + 2.3;
 }
@@ -183,9 +200,9 @@ export function shroudedHeader(s: Shape, o: { x: number; z: number; y: number; n
 export function finnedHeatsink(s: Shape, o: { x: number; z: number; y: number; w: number; d: number; h: number; fins: number; plate?: number; turn?: number; finish?: Finish }): void {
   const fin = o.finish ?? PAL.blackOxide, plate = o.plate ?? 2.6;
   s.with(new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(turnY(o.turn ?? 0)), () => {
-    s.box(...fin, 0, o.d / 2 - plate / 2, o.w, plate, 0, o.h, 0.25, 0.25, { ao: 0.82 });
+    s.box(...fin, 0, o.d / 2 - plate / 2, o.w, plate, 0, o.h, 0.1, 0.25, { ao: 0.82 });
     const t = Math.min(1.5, (o.w / o.fins) * 0.5);
-    for (let i = 0; i < o.fins; i++) s.box(...fin, -o.w / 2 + t / 2 + (i * (o.w - t)) / (o.fins - 1), -plate / 2, t, o.d - plate, 0, o.h, 0.2, 0.25, { ao: 0.72 });
+    for (let i = 0; i < o.fins; i++) s.box(...fin, -o.w / 2 + t / 2 + (i * (o.w - t)) / (o.fins - 1), -plate / 2, t, o.d - plate, 0, o.h, 0.1, 0.25, { ao: 0.72 });
   });
 }
 /** KIT: a cross-recessed screw head (pan head) standing on y, or lying along +X / +Z with a frame from `alongX` / `towardsZ`. */
