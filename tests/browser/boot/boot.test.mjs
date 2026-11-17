@@ -20,7 +20,7 @@ const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 const until = async (fn, ms, what) => { try { await page.waitForFunction(fn, { timeout: ms, polling: 100 }); } catch { throw new Error("timeout waiting for " + what + "\n" + (await page.evaluate(() => B.text().slice(-1500)).catch(() => ""))); } };
-const open = async () => { await page.goto(url + "/"); await page.waitForFunction("window.PREADY === true", { timeout: 15000 }); await page.evaluate(() => B.open()); await until(() => /kgui first frame/.test(B.text()), 120000, "kodeOS first frame"); };
+const open = async (apps) => { await page.goto(url + "/"); await page.waitForFunction("window.PREADY === true", { timeout: 15000 }); await page.evaluate((a) => B.open(a), apps); await until(() => /kgui first frame/.test(B.text()), 120000, "kodeOS first frame"); };
 const names = () => page.evaluate(() => S.list().map((a) => a.project));
 const snap = async (file) => { const png = await page.evaluate(() => { const f = S.frame(); const c = document.createElement("canvas"); c.width = f.width; c.height = f.height; const x = c.getContext("2d"); const id = x.createImageData(f.width, f.height); id.data.set(f.data); x.putImageData(id, 0, 0); return c.toDataURL("image/png").split(",")[1]; }); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, Buffer.from(png, "base64")); };
 
@@ -56,6 +56,21 @@ await check("run-time install and delete, then a full page reload: the new app i
   await until(() => S.program?.kind === "os" && /crash_app: aborting/.test(B.text()), 60000, "the crash returns to kodeOS");
   assert.ok(errors.slice(before).every((e) => /ErrorEvent/.test(e)), "only the app worker's abort surfaces as an error event: " + errors);
   errors.length = before;
+});
+await check("a visitor with the old three-app store gets the site's newer list through IndexedDB: new apps in, removed stays removed, user app kept", async () => {
+  await page.evaluate(() => { S.stop(); return S.flushPersist(); });
+  // the site now ships five: the three it had (display_lvgl was removed by the visitor), plus light and level
+  await open(["kody_kart.dotbench", "display_lvgl.dotbench", "buttons_led.dotbench", "light.dotbench", "level.dotbench"]);
+  assert.deepEqual((await names()).sort(), ["buttons_led", "crash_app", "kody_kart", "level", "light"]);
+  const up = await page.evaluate(() => window.LASTUPDATE);
+  assert.deepEqual(up.installed.sort(), ["level", "light"]);
+  assert.equal(await page.evaluate(() => S._bundles().factoryRecords()["display_lvgl.dotbench"].removed), true, "recorded as removed by the visitor");
+  assert.ok(await page.evaluate(() => S.list().every((a) => a.hasBundle)));
+  // a plain reload with the same list changes nothing
+  await page.evaluate(() => { S.stop(); return S.flushPersist(); });
+  await open(["kody_kart.dotbench", "display_lvgl.dotbench", "buttons_led.dotbench", "light.dotbench", "level.dotbench"]);
+  assert.equal(await page.evaluate(() => window.LASTUPDATE), undefined, "an unchanged list reports no update");
+  assert.equal((await names()).length, 5);
 });
 assert.deepEqual(errors, [], "page errors");
 await browser.close(); srv.close();

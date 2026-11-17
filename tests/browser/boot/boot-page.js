@@ -7,10 +7,11 @@ const events = [];
 let sys;
 window.B = {
   events,
-  async open() {
+  async open(apps = ["kody_kart.dotbench", "display_lvgl.dotbench", "buttons_led.dotbench"]) {
     sys = new DotbenchSystem({ os: await get("kodeos"), persist: new IdbBackend({ name: DB }),
-      factory: { apps: ["kody_kart.dotbench", "display_lvgl.dotbench", "buttons_led.dotbench"], fetch: get } });
+      factory: { apps, fetch: get } });
     sys.on("program", (p) => events.push(p));
+    sys.on("update", (r) => { window.LASTUPDATE = r; });
     window.S = sys;
     await sys.start();
   },

@@ -3,7 +3,11 @@
 // same IndexedDB transaction as the apps region, so a directory entry and its bundle never disagree on disk).
 //
 // Layout (sparse, 64 MiB virtual; only the chunks in use are stored):
-//   0x0000  u32 length n, then n bytes of JSON index {v:1, seeded:bool, bundles:{id:{off,len,project,name,version}}}   (16 KiB reserved)
+//   0x0000  u32 length n, then n bytes of JSON index (16 KiB reserved):
+//             {v:1, seeded:bool, bundles:{id:{off,len,project,name,version}},
+//              factory?: {<package name>: {project, hash, removed?}},   what the site's factory list has installed (dotbench-system.js "Updates")
+//              os?: <sha-256 hex of the kodeOS bundle the site shipped at the last start>}
+//           `factory` is absent in a store made before updates existed (it only has `seeded`): that is the migration signal.
 //   0x4000  bundle data, 4 KiB aligned, first fit
 export const BUNDLES_REGION = "dbsys";
 export const BUNDLES_SIZE = 64 * 1024 * 1024;
@@ -31,6 +35,13 @@ export class BundleStore {
 
   get seeded() { return !!this._read().seeded; }
   markSeeded(v = true) { const i = this._read(); i.seeded = v; this._write(i); }
+  /** The factory records {<package>: {project, hash, removed?}}, or null for a store that predates them (the migration case). */
+  factoryRecords() { const f = this._read().factory; return f && typeof f === "object" ? f : null; }
+  /** Replace the factory records (null forgets them: the next sync sees a first boot) and the seeded flag in one write. */
+  setFactory(records, seeded = true) { const i = this._read(); if (records) i.factory = records; else delete i.factory; i.seeded = seeded && !!records; this._write(i); }
+  /** Hash of the kodeOS bundle the site shipped when the store was last started ("" if never). */
+  get osHash() { return this._read().os ?? ""; }
+  set osHash(h) { const i = this._read(); i.os = h; this._write(i); }
   ids() { return Object.keys(this._read().bundles); }
   info(id) { const b = this._read().bundles[id]; return b ? { id, ...b } : null; }
   has(id) { return !!this._read().bundles[id]; }

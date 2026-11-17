@@ -30,6 +30,35 @@ const cstr = (u8, p, n) => { let e = p; while (e < p + n && u8[e]) e++; return n
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
 const LEVELS = { E: "error", W: "warn", N: "info", I: "info", D: "debug", V: "debug" };
 
+/** The Emscripten ExitStatus: what `exit()` throws (a plain object with name "ExitStatus", not an Error). */
+export const isExitStatus = (e) => !!e && typeof e === "object" && e.name === "ExitStatus" && typeof e.status === "number";
+
+/**
+ * Why this exists: when the last firmware thread leaves (a task deleted, a thread parked by the restart that the page is tearing down), libc calls
+ * exit(); a worker cannot run it, so Emscripten proxies it to the main thread (exitOnMainThread) and the main thread throws ExitStatus. If the
+ * main thread is at that moment INSIDE wasm (a mutex or futex wait in one of the page's calls: poll, button, console, an area call, a persist
+ * harvest), the queued call is run from that wait and the exception unwinds into the page's own timer or promise callback: an uncaught
+ * "ExitStatus" in the page (seen 1 run in 5 by web/scripts/system-check.mjs). The program is ending anyway (noExitRuntime keeps the module
+ * itself alive; the host decides what runs next), so the host's calls into the module swallow exactly this object and rethrow everything else.
+ * Worker threads never throw it: their exit() is the proxied call above, and their own failures reach the page as ErrorEvents (a crash, reported).
+ * Only the module's exported functions that the host calls (M._name) are wrapped; Emscripten's own internals do not go through them.
+ */
+export function guardExports(M, onExit = null) {
+  for (const k of Object.keys(M)) {
+    const fn = M[k];
+    if (k[0] !== "_" || k[1] === "_" || typeof fn !== "function" || fn.__guarded) continue;
+    const g = function (...a) {
+      try { return fn.apply(this, a); } catch (e) {
+        if (!isExitStatus(e)) throw e;
+        onExit?.(e.status);
+        return 0;
+      }
+    };
+    g.__guarded = true;
+    M[k] = g;
+  }
+}
+
 export class DotbenchDevice {
   /**
    * @param {object} [opts]
@@ -82,6 +111,8 @@ export class DotbenchDevice {
   get statusDetail() { return this._status; }
   /** Name of the loaded program or null. */
   get appName() { return this._pkg?.appJson.display_name ?? this._pkg?.appJson.name ?? null; }
+  /** Status of the last exit() the firmware's last thread asked for (swallowed, see guardExports), or undefined. */
+  exitStatus;
   get appInfo() { return this._pkg ? { ...this._pkg.appJson } : null; }
   /** Worker threads of the running program (pool + running); 0 when stopped. */
   get workerCount() {
@@ -218,6 +249,7 @@ export class DotbenchDevice {
       throw e;
     }
     if (gen !== this._gen) { M.PThread.terminateAllThreads(); return; }
+    guardExports(M, (status) => { this.exitStatus = status; });         // before anything (persist, glue, polling) holds on to M._xxx
     const statePtr = M._kweb_state();
     const inst = { M, statePtr, gen, pending: new Map(), glue: {}, restartSeen: 0, lastLed: -1, lastOut: "" };
     this._inst = inst;
@@ -340,7 +372,7 @@ export class DotbenchDevice {
     const arm = () => {
       if (inst.dead) return;
       const r = Atomics.waitAsync(inst.words, idx, inst.restartSeen, 1000);
-      Promise.resolve(r.async ? r.value : "not-equal").then(() => { if (!inst.dead) { this.poll(); arm(); } });
+      Promise.resolve(r.async ? r.value : "not-equal").then(() => { if (!inst.dead) { this.poll(); arm(); } }).catch((e) => { if (!isExitStatus(e)) throw e; });
     };
     arm();
   }

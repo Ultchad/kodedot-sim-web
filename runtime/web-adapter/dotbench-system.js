@@ -12,13 +12,22 @@
 //   await sys.start();                       // power-on: first boot seeds the factory apps, kodeOS shows them
 //   sys.on("program", ({id, name, kind}) => ...);   // kind "os" | "app"
 //   await sys.install(bytes); sys.list(); await sys.remove(id); await sys.launch(id); await sys.home(); await sys.factoryReset();
+//   sys.on("update", (r) => ...);            // at start: what the site's newer factory set changed ({installed, updated, removed, kept, failed, os})
+//   sys.on("factory-reset", ({by}) => ...);  // by "os": kodeOS's own Settings -> About -> Factory reset finished and the factory apps are back
+//
+// UPDATES (docs/STATUS-boot.md "Updates and factory resets"): the store records which factory packages it installed ({package: {project, hash,
+// removed?}}, bundles.js). Every start compares the site's list with it: a package new in the list is installed, one whose bytes changed
+// replaces the installed one in place (its data folders stay), one the user removed stays removed until a factory reset, and an app the user
+// installed under their own build is never touched. kodeOS itself is never stored: it always runs the bytes the page handed in.
 import { DotbenchDevice, RESET, BUTTONS } from "./dotbench-device.js";
 import { readZip } from "./zip.js";
 import { AppsFlash, AppsRegion, PENDING_REGION, PENDING_SIZE, K, ROM, hex, synthImage, tryBootRequestedApp } from "./kapps.js";
 import { BundleStore } from "./bundles.js";
 
 const OS_ID = "os";
-const OWN_EVENTS = new Set(["status", "program", "apps"]);
+const OWN_EVENTS = new Set(["status", "program", "apps", "update", "factory-reset"]);
+/** The line AO_Boot logs when kodeOS's own factory reset has erased everything and is about to restart (boot_ao.c reset_finish). */
+const OS_RESET_DONE = /factory reset: restarting into/;
 const APPDATA_ROOT = "/storage/.kode/appsdata/";
 const dec = new TextDecoder();
 
@@ -63,6 +72,9 @@ export class DotbenchSystem {
     this._stale = new Set();
     this._started = false;
     this.device.on("status", (s) => this._onDeviceStatus(s));
+    // kodeOS's own factory reset ends in a plain software restart; this line (logged before the restart request is read) tells the
+    // bootloader we play that the board was wiped, so the factory image's apps must be put back (the real board's come from the factory image)
+    this.device.on("log", (l) => { if (this._program?.kind === "os" && OS_RESET_DONE.test(l.text)) this._osReset = true; });
   }
 
   // ------------------------------------------------------------------ events
@@ -91,7 +103,7 @@ export class DotbenchSystem {
     await this.device.ensureOpen();
     this._started = true;
     if (this.device.status !== "idle" || this.device._inst) this.device.stop();
-    await this._seedIfEmpty();
+    await this._syncFactory();
     await this._boot(RESET.POWERON, true);
   }
   /** Stop everything (the device is left as it is on disk). */
@@ -125,7 +137,8 @@ export class DotbenchSystem {
       this.device.stop(); this._program = null;
       await this.device.eraseDevice();
       this._infoCache.clear(); this._stale.clear();
-      if (this._started) { await this._seedIfEmpty(); await this._boot(RESET.POWERON, true); } else this._setStatus("idle");
+      this._osReset = false;
+      if (this._started) { await this._syncFactory(); await this._boot(RESET.POWERON, true); } else this._setStatus("idle");
       this._emit("apps", this.list());
     });
   }
@@ -147,6 +160,7 @@ export class DotbenchSystem {
     this._switching = true;
     this._setStatus("booting");
     try {
+      if (this._osReset) await this._afterOsReset();
       const region = this._region();
       this._gc();                                   // bundles whose app the OS deleted
       const hit = tryBootRequestedApp(region, CAUSE[code] ?? ROM.WDT, this._mailboxFull());
@@ -156,7 +170,7 @@ export class DotbenchSystem {
         const bytes = this._bundles().get(hit.buildId);
         if (bytes) target = { id: hit.buildId, name: hit.name || hit.project, kind: "app", bytes };
       }
-      await this.device.load(target.bytes, { key: target.id });
+      await this.device.load(target.bytes, { key: target.kind === "os" ? "os:" + (this._osHash ?? "") : target.id });
       if (power) await this.device.start({ reason: code }); else await this.device.restart({ reason: code });
       this._program = { id: target.id, name: target.name, kind: target.kind };
       this._emit("program", this._program);
@@ -198,9 +212,9 @@ export class DotbenchSystem {
   /** Install a user's .dotbench: its bundle is stored, an image is placed in the apps region through the same directory update the AppMgr
    *  does, its data folder goes to /storage/.kode/appsdata/<project>. When kodeOS runs it restarts to re-read the directory. */
   install(bytes) { return this._run(() => this._install(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes))); }
-  async _install(bytes, { seeding = false } = {}) {
+  async _install(bytes, { seeding = false, hash = null } = {}) {
     const info = await readPackageInfo(bytes);
-    const id = hex(await sha256(bytes));
+    const id = hash ?? hex(await sha256(bytes));
     const wasOs = !seeding && this._program?.kind === "os";
     if (wasOs) { this._quiesce(); }
     const store = this._bundles();
@@ -248,20 +262,88 @@ export class DotbenchSystem {
     for (const id of store.ids()) if (!live.has(id)) { store.delete(id); this.device.forget(id); this._infoCache.delete(id); }
   }
 
-  /** First boot: install the factory set (factory.json) into an empty device, once. */
-  async _seedIfEmpty() {
+  // ---------------------------------------------------------------- the factory set: first boot, updates, OS-initiated reset
+  _factoryEntries() {
+    return (this.factory?.apps ?? []).map((x) => (typeof x === "string" ? { pkg: x } : { pkg: x.package, hash: x.sha256 ?? x.hash ?? null }));
+  }
+
+  /**
+   * Bring the installed factory apps in line with the site's list (every start, and after a factory reset). Runs while no program runs.
+   * Per listed package P (record = what the store remembers about P):
+   *   no record, not installed             new: installed (first boot, a package the site added later, or a store from before records)
+   *   no record, installed, store has none (first boot of an imported device / a store from before records): adopted; replaced if its bytes differ
+   *   no record, installed, store has records: a user's own app of that name: left alone
+   *   record, not installed                the user removed it: marked removed, stays removed until a factory reset
+   *   record, installed with another build the user's own build of that app: left alone
+   *   record, installed, hash differs      the bundled package changed: replaced in place, data folders kept
+   * Returns {installed, updated, removed, kept, failed, os}; also emitted as "update" when anything changed.
+   */
+  async _syncFactory() {
     const store = this._bundles();
-    if (store.seeded) return;
-    const region = this._region();
-    const names = (this.factory?.apps ?? []).map((x) => (typeof x === "string" ? x : x.package));
-    for (const n of names) {
-      const bytes = await this.factory.fetch(n);
-      await this._install(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), { seeding: true });
+    const entries = this._factoryEntries();
+    const report = { installed: [], updated: [], removed: [], kept: [], failed: [], os: null };
+    const wasSeeded = store.seeded, had = store.factoryRecords();
+    const recs = had ?? {};
+    const adopt = !had;                       // first boot or a store made before records: an installed namesake is the old factory build
+    const osHash = hex(await sha256(this.osBytes));
+    this._osHash = osHash.slice(0, 16);
+    for (const e of entries) {
+      try {
+        let rec = recs[e.pkg];
+        let bytes = null, hash = e.hash ?? null, info = null;
+        const installedBy = (project) => this._region().findProject(project);
+        if (rec && hash && rec.hash === hash) {                   // nothing changed in the list entry: no need to download it
+          const inst = installedBy(rec.project);
+          if (!inst) { if (!rec.removed) { rec.removed = true; report.removed.push(rec.project); } }
+          else if (rec.removed) delete rec.removed;
+          continue;
+        }
+        bytes = await this.factory.fetch(e.pkg);
+        bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+        hash = hex(await sha256(bytes));
+        info = await readPackageInfo(bytes);
+        const project = info.appJson.name;
+        if (rec && rec.project !== project) rec = undefined;      // the package became another app: treated as new
+        const inst = installedBy(project);
+        if (rec) {
+          if (!inst) { if (!rec.removed) { rec.removed = true; report.removed.push(project); } continue; }
+          delete rec.removed;
+          if (inst.buildId !== rec.hash) { report.kept.push(project); continue; }   // the user installed their own build over it
+          if (hash === rec.hash) continue;
+          await this._install(bytes, { seeding: true, hash });
+          rec.hash = hash; report.updated.push(project);
+        } else if (!inst) {
+          await this._install(bytes, { seeding: true, hash });
+          recs[e.pkg] = { project, hash }; report.installed.push(project);
+        } else if (adopt) {
+          if (inst.buildId !== hash) { await this._install(bytes, { seeding: true, hash }); report.updated.push(project); }
+          recs[e.pkg] = { project, hash };
+        } else report.kept.push(project);
+      } catch (err) {
+        report.failed.push({ package: e.pkg, error: String(err?.message ?? err) });
+        console.warn("dotbench: factory package " + e.pkg + ": " + (err?.message ?? err));
+      }
     }
-    store.markSeeded();
+    store.setFactory(recs, true);
+    const prevOs = store.osHash;
+    if (prevOs !== osHash) { store.osHash = osHash; if (prevOs) report.os = { from: prevOs.slice(0, 16), to: this._osHash }; }
+    void wasSeeded;
     await this.pm.flush();
+    this.lastUpdate = report;
     this._emit("apps", this.list());
-    void region;
+    if (report.installed.length || report.updated.length || report.removed.length || report.failed.length || report.os) this._emit("update", report);
+    return report;
+  }
+
+  /** kodeOS's own factory reset has erased settings, apps and their files and restarted: the factory image (the site's list) is put back,
+   *  exactly what factoryReset() ends with. What the OS keeps on purpose (its identity cache, the SD card's other files) stays. */
+  async _afterOsReset() {
+    this._osReset = false;
+    this._bundles().setFactory(null, false);           // a first boot again: nothing remembered, nothing removed on purpose
+    this._infoCache.clear(); this._stale.clear();
+    this._gc();                                        // the user's bundles went with the OS's wipe of the directory
+    await this._syncFactory();
+    this._emit("factory-reset", { by: "os" });
   }
 
   // ------------------------------------------------- the data folders on /storage
@@ -285,14 +367,17 @@ export class DotbenchSystem {
   /** Make /storage/.kode/appsdata/<project>/{app.json,icon.k64} match the installed apps (what the board's AppMgr/kgui read for name and icon). */
   async _syncAppdata(fsApi) {
     const enc = new TextEncoder();
+    const same = (path, want) => { const st = fsApi.stat(path); if (!st.exists || st.size !== want.length) return false; const got = fsApi.read(path); return got.every((b, i) => b === want[i]); };
     for (const a of this.list()) {
       const dir = APPDATA_ROOT + a.project;
-      const st = fsApi.stat(dir + "/app.json");
-      if (st.exists) continue;
       const info = await this._info(a.id);
       if (!info) continue;
+      // the board's own files for the app (name, icon): written when missing, and rewritten when an update of the package changed them.
+      // Nothing else in the folder is touched: that is the app's saved data.
+      const json = info.board.json ?? enc.encode(JSON.stringify({ kode: "1" }));
+      if (same(dir + "/app.json", json) && (!info.board.icon || same(dir + "/icon.k64", info.board.icon))) continue;
       fsApi.mkdir(dir, { parents: true });
-      fsApi.write(dir + "/app.json", info.board.json ?? enc.encode(JSON.stringify({ kode: "1" })));
+      fsApi.write(dir + "/app.json", json);
       if (info.board.icon) fsApi.write(dir + "/icon.k64", info.board.icon);
     }
     for (const p of [...this._stale]) {
