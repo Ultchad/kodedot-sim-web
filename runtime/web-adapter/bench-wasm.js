@@ -193,6 +193,7 @@ export class WasmPart {
         if (st === 2) {
           const res = mb[L.RES], n = mb[L.RDONE];
           Atomics.store(mb, L.REQ, 0);
+          this.drain();        // everything the callback published (outputs, pin writes) was pushed before it returned: take it now
           q.resolve(res === 0 ? { ack: true, r: this.mb8.slice(L.RDATA, L.RDATA + n) } : { ack: false });
         } else if (Atomics.compareExchange(mb, L.REQ, 1, 0) === 1) q.resolve({ ack: false, timeout: true });   // never claimed: take it back
         else q.resolve({ ack: false, timeout: true });                                                         // being served too slowly: the bench moves on

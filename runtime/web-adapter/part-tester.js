@@ -41,8 +41,8 @@ export class PartTester {
   async advance(ms) { await this.bench.advance(ms * 1000); }
   setField(name, v) { return this.bench.setField(this.instance, name, v); }
   press(field, ms) { return this.bench.press(this.instance, field, ms); }
-  output(name) { return this.part.outputs[name]; }
-  console() { const p = this.part; return p.console.join("\n") + (p.consoleTail ? (p.console.length ? "\n" : "") + p.consoleTail : ""); }
+  output(name) { this.part.impl?.drain?.(); return this.part.outputs[name]; }
+  console() { const p = this.part; p.impl?.drain?.(); return p.console.join("\n") + (p.consoleTail ? (p.console.length ? "\n" : "") + p.consoleTail : ""); }
   serialIn(text) { this.bench.serialIn(this.instance, text); }
   /** The tester drives a header pin: level 0/1, or null to release it. */
   drive(name, level) { const i = this.exp.get(name); this.bench.setDevicePin(i, level === null ? { mode: "z" } : { mode: "out", level: level ? 1 : 0 }); }
