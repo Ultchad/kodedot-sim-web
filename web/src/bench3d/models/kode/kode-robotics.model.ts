@@ -24,7 +24,7 @@
  * pulled low while its pull-up rail is fed) makes the driver chip glow red hot, with its heat on the board round it.
  */
 import manifest from '../../../../../parts/kode-robotics/manifest.json';
-import { PAL, PITCH, Shape, defineModel, footprintOf, glowing, halo, partState, print, setLamp, terminalsFromManifest, topQuad, type PartState, type Pt } from '../../index';
+import { PAL, PITCH, Shape, defineModel, footprintOf, glowing, halo, overhangOf, partState, print, setLamp, terminalsFromManifest, topQuad, type PartState, type Pt } from '../../index';
 import { RING, SILK, asManifest, chipPassive, connectorOf, moduleBoard, outlineBoard, pinPoints, pinStrip, rightAngleHeader, screwBlock, socketStrip, silkText, stripBetween, tailRows } from './shared';
 
 const M = asManifest(manifest);
@@ -47,6 +47,14 @@ const OUTS = [
 /** The terminal blocks: pitch and height (the screw heads are the terminals) from the manifest. */
 const MOT_PITCH = Math.abs(at.MOTA_2[0] - at.MOTA_1[0]);
 const BLOCK = { h: at.MOTA_1[1] - TOP, d: MOT_PITCH * 1.5, r: MOT_PITCH * 0.33 };
+/**
+ * What the manifest lets the part draw outside its body. The picture shows the two blocks hanging over the far edge;
+ * the manifest (batch 5) puts their screws 2 mm from that edge, which a block of this pitch (5.7 mm deep, its screws
+ * in the middle) passes by 0.86 mm, and gives the body no `overhang_mm.back`. So the blocks end at the edge of the
+ * footprint, thinner behind their screws than they are, and take their whole depth the day the manifest allows it.
+ */
+const OVERHANG = overhangOf(M.body);
+const BLOCK_BACK = (screws: number): number => Math.min(BLOCK.d / 2, screws - (-D / 2 - (OVERHANG.back ?? 0)));
 /** A straight pin's length above its 2.5 mm plastic, and a socket's height: up to their terminals. */
 const PIN_LEN = at.STP_1[1] - TOP - 2.5;
 const SOCKET_H = at.J403_GND[1] - TOP;
@@ -86,12 +94,13 @@ export default defineModel<PartState>({
   id: M.id,
   title: 'Kode Robotics module',
   footprintMm: footprintOf(M.body),
+  overhangMm: OVERHANG,
   build(ctx) {
     const s = new Shape();
     outlineBoard(s, { loop: B.loop, y: B.under, thick: TOP - B.under, holes: B.holes });
 
     // the far edge: motor B block, stepper pins, motor A block
-    for (const [a, b] of [['MOTB_1', 'MOTB_2'], ['MOTA_1', 'MOTA_2']] as const) screwBlock(s, { x: (at[a][0] + at[b][0]) / 2, z: at[a][2], y: TOP, n: 2, pitch: MOT_PITCH, h: BLOCK.h, d: BLOCK.d, seg: ctx.seg(16) });
+    for (const [a, b] of [['MOTB_1', 'MOTB_2'], ['MOTA_1', 'MOTA_2']] as const) screwBlock(s, { x: (at[a][0] + at[b][0]) / 2, z: at[a][2], y: TOP, n: 2, pitch: MOT_PITCH, h: BLOCK.h, d: BLOCK.d, back: BLOCK_BACK(at[a][2]), seg: ctx.seg(16) });
     for (const o of OUTS) s.box('matte', '#3c3d42', at[o.pin][0], at[o.pin][2], BLOCK.r * 1.7, 0.45, TOP + BLOCK.h + 0.14, TOP + BLOCK.h + 0.17, 0, 0, { ao: 1 });
     pinStrip(s, { ...stripBetween(at.STP_1, at.STP_4), y: TOP, n: 4, length: PIN_LEN });
     // the left edge: servo pins, then the I2C sockets; the right edge: the sensor sockets
