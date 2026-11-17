@@ -43,7 +43,7 @@ cd web && npm install && npm run dev
 - Keep real SDK code running above the seam; never re-implement in a fake what the SDK already does.
 - One hardware area = one folder under `runtime/drivers/` plus its tests. Areas do not edit each other or shared files.
 - Verify by running before claiming anything works; paste the passing output into the area's status file.
-- Licence is GPL-3.0-or-later (inherited from kode-sdk and QP/C). The Kode and Kode Dot names, logo, mascot and product pictures are the maker's trademarks: do not reproduce the logo or mascot, and do not copy assets from the maker's web sites. The front render and geometry under `web/public/device/` come from kode-sdk under GPL.
+- Licence is GPL-3.0-or-later (inherited from kode-sdk and QP/C). The Kode and Kode Dot names, logo and mascot are the maker's trademarks. The owner reports that Kode said on its Discord that community projects may use material from its sites, so the 3D device model (`web/public/device/model.glb`, optimised from the model on kode.diy; credit in `NOTICE-model.md`) is bundled on that basis; kodeOS and Kode's open-source apps are built from their public repositories (`web/public/apps/SOURCES.md`). The front render and geometry under `web/public/device/` come from kode-sdk under GPL. The owner wants no notices or disclaimers in the site's UI.
 - The approved look is in the design doc under "Linguagem visual": warm, light, cream cards, amber/blue/red accents, Outfit + DM Sans, pills. Do not drift back to a dark dense panel.
 
 ## State of the work
