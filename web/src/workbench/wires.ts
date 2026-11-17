@@ -1,20 +1,29 @@
 /**
  * Terminals and jumper wires on the table. Terminal places come from the parts' manifests (parts/geometry.ts) through
- * where each part stands, and from the Dot's own header through the Dot's pose; wires are tubes drawn as one mesh.
- * Picking is done on the screen (the nearest terminal or wire to the pointer), so a 2.54 mm header can be hit.
+ * where each part stands, and from the Dot's own header through the Dot's pose. Picking is done on the screen (the
+ * nearest terminal or wire to the pointer), so a 2.54 mm header can be hit.
+ *
+ * A wire is a round tube of opaque plastic in its colour with a metal pin at each end. It never passes through a body:
+ * it leaves its terminal the way the terminal faces (straight up out of a hole or a socket, outward from a side pin
+ * or from the Dot's header in its top wall), bends into its run, lies on the table, climbs over what is low and in its
+ * way, goes round what is tall (the Dot with its module, a servo, a router), and comes into the other terminal along
+ * that terminal's own direction. The line is `wirePath` (pure, unit-tested); each wire's tube is kept and made again
+ * only when its ends or a body near its line change.
  */
 import { BufferAttribute, BufferGeometry, Color, DynamicDrawUsage, Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, SphereGeometry, Vector3, type Camera, type Quaternion } from 'three';
 import type { BenchStore, Wire } from '../bench/store';
-import { writeTube } from '../bench3d/shape';
 import { deviceTerms, termWorld, turn, type DeviceTerm, type LocalTerm } from '../parts/geometry';
-import { DOT, rectOf, sizeOf, type Rot } from './layout';
+import { DESK, DOT, hasBody, rectOf, sizeOf, type Rot } from './layout';
 
 /** What the wires need from the parts service (absent in tests: then only the Dot has terminals). */
 export interface WireParts {
   terms(kind: string): LocalTerm[];
+  /** How high a part stands: in a board's holes, or on its own legs. */
   liftOf(instance: string): number;
   mountOf(instance: string): number[] | null;
   getVersion(): number;
+  /** The pins of a module's connector to the Dot: in the header when the module is mounted, so nothing can be wired to them there. */
+  connector?(kind: string): ReadonlySet<string> | null;
 }
 export interface TermSpot {
   term: string;
@@ -26,12 +35,54 @@ export interface TermSpot {
   out: Vector3;
   /** Holes of a board (not drawn as dots: the board shows them). */
   hole: boolean;
+  /** Out of reach (a mounted module's connector pins): kept for wires already on it, not offered. */
+  hidden?: boolean;
 }
 
-const SEG = 32;
-const END = 8; // pieces of each end's curve (terminal to table)
-const RAD = 6;
-const R_WIRE = 0.75;
+/** A solid thing on the table, as the box a wire keeps out of (mm; it stands on the table and is `h` high). */
+export interface WireBox {
+  id: string;
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  h: number;
+  /** Gone round, not climbed over: the Dot (its screen stays clear) and tall things. */
+  round: boolean;
+}
+/** One end of a wire: the terminal's place, the way a wire leaves it, and the thing it is on (a box's id, or ''). */
+export interface WireEnd {
+  pos: Vector3;
+  out: Vector3;
+  owner: string;
+}
+
+/** Radius of the insulation and of the metal pin (a jumper wire: 1.6 mm over the insulation, a 0.64 mm pin). */
+export const R_WIRE = 0.8;
+const R_TIP = 0.32;
+const SIDES = 7;
+const TIP_SIDES = 5;
+/** A pin is three rings: closed to a point inside the terminal, then its two ends. */
+const TIP_RINGS = 3;
+/** Straight out of the terminal (the pin and the start of the insulation), then the bend into the run. */
+export const STUB = 4.5;
+export const BEND = 5.5;
+/** Where the insulation starts on the pin, and how far the pin goes into the terminal. */
+const TIP_OUT = 2.4;
+const TIP_IN = 1.4;
+/** Height of the middle of a wire that lies on the table, and above a body it crosses. */
+export const REST = R_WIRE + 0.25;
+const CLEAR = R_WIRE + 1;
+/** A body counts from this far outside its box (the wire's own radius and a little air). */
+const GROW = R_WIRE + 0.9;
+const STEP = 2.5;
+/** Taller than this, a thing is gone round. */
+export const ROUND_H = 24;
+/** Going round: the line keeps BLOCK from the box, and turns its corners NODE away. */
+const BLOCK = 5;
+const NODE = 11;
+/** How far a wire turns aside at an end that faces away from where it is going. */
+const LOOP = 9;
 const DEVICE = deviceTerms();
 
 /**
@@ -44,95 +95,356 @@ export function deviceTermWorld(d: DeviceTerm, dotPos: Vector3, dotQuat: Quatern
   return { pos, out };
 }
 
-const bez = (a: number, b: number, c: number, d: number, t: number) => {
-  const u = 1 - t;
-  return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
-};
-/**
- * The line a wire follows, as SEG + 1 points: out of each terminal the way the terminal faces, down to the table in
- * a curve that cannot dip under it (a Bezier stays inside its control points), then lying on the table, or on whatever
- * `floorAt` says is under it, bowed sideways by `seed` so that wires side by side stay apart. Short wires arch.
- */
-export function wirePath(a: Vector3, aOut: Vector3, b: Vector3, bOut: Vector3, seed: number, floorAt: (x: number, z: number) => number, blocked: (x: number, z: number) => boolean = () => false): Vector3[] {
-  const pts: Vector3[] = [];
-  const dx = b.x - a.x, dz = b.z - a.z;
-  const d = Math.hypot(dx, dz);
-  if (d < 30) {
-    const h = 7 + d * 0.3;
-    for (let i = 0; i <= SEG; i++) {
-      const t = i / SEG;
-      pts.push(new Vector3(bez(a.x, a.x + aOut.x * h, b.x + bOut.x * h, b.x, t), bez(a.y, a.y + aOut.y * h + 2, b.y + bOut.y * h + 2, b.y, t), bez(a.z, a.z + aOut.z * h, b.z + bOut.z * h, b.z, t)));
+// ---- the line ------------------------------------------------------------------------------------------------------
+type P2 = [number, number];
+type P3 = [number, number, number];
+const inRect = (b: WireBox, x: number, z: number, m: number) => x > b.x0 - m && x < b.x1 + m && z > b.z0 - m && z < b.z1 + m;
+/** Does the segment pass through the box grown by `m` (its inside, not its edge)? */
+function segHits(b: WireBox, ax: number, az: number, bx: number, bz: number, m: number): boolean {
+  let t0 = 0, t1 = 1;
+  const dx = bx - ax, dz = bz - az;
+  const clip = (p: number, q: number) => {
+    if (Math.abs(p) < 1e-12) return q > 1e-9;
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
     }
-    return pts;
+    return true;
+  };
+  return clip(-dx, ax - (b.x0 - m)) && clip(dx, b.x1 + m - ax) && clip(-dz, az - (b.z0 - m)) && clip(dz, b.z1 + m - az) && t1 - t0 > 1e-6;
+}
+
+/** The corners to turn at on the way from s to g round the boxes (the shortest way), or [] when the straight line is free or there is no way. */
+function wayRound(sx: number, sz: number, gx: number, gz: number, round: readonly WireBox[]): P2[] {
+  const free = (ax: number, az: number, bx: number, bz: number) => {
+    for (const b of round) if (segHits(b, ax, az, bx, bz, BLOCK)) return false;
+    return true;
+  };
+  if (!round.length || free(sx, sz, gx, gz)) return [];
+  const nodes: P2[] = [[sx, sz], [gx, gz]];
+  for (const b of round) {
+    for (const c of [[b.x0 - NODE, b.z0 - NODE], [b.x1 + NODE, b.z0 - NODE], [b.x1 + NODE, b.z1 + NODE], [b.x0 - NODE, b.z1 + NODE]] as P2[]) {
+      if (c[0] < DESK.x0 || c[0] > DESK.x1 || c[1] < DESK.z0 || c[1] > DESK.z1) continue;
+      if (round.some((o) => inRect(o, c[0], c[1], BLOCK))) continue;
+      nodes.push(c);
+    }
   }
-  const ux = dx / d, uz = dz / d, nx = -uz, nz = ux;
-  const bow = ((seed % 5) - 2) * 3 + (seed & 1 ? 1 : -1) * Math.min(16, d * 0.06);
-  const reach = Math.min(24, d * 0.3);
-  const lift = R_WIRE + 0.25;
-  // where each end comes down onto the table: toward the other end, but a pin that faces sideways is first left the
-  // way it faces, and when the other end lies behind it the wire comes down beside the body, not through it
-  const down = (p: Vector3, out: Vector3, sx: number, sz: number) => {
-    const oh = Math.hypot(out.x, out.z);
-    if (oh < 0.5) return new Vector3(p.x + sx * reach + nx * bow * 0.3, 0, p.z + sz * reach + nz * bow * 0.3);
-    const ox = out.x / oh, oz = out.z / oh;
-    let rx = sx, rz = sz;
-    if (sx * ox + sz * oz < 0.2) {
-      // sideways only (the part of the run that is square to the pin's facing)
-      const side = sx * -oz + sz * ox >= 0 ? 1 : -1;
-      rx = -oz * side;
-      rz = ox * side;
-    }
-    return new Vector3(p.x + ox * 16 + rx * reach, 0, p.z + oz * 16 + rz * reach);
-  };
-  const t1 = down(a, aOut, ux, uz);
-  const t2 = down(b, bOut, -ux, -uz);
-  t1.y = floorAt(t1.x, t1.z) + lift;
-  t2.y = floorAt(t2.x, t2.z) + lift;
-  const end = (p: Vector3, out: Vector3, t: Vector3, sx: number, sz: number, k: number) => {
-    // control points: out of the terminal, and flat along the wire's run at the touch-down height
-    const h = 9;
-    const c1 = new Vector3(p.x + out.x * h, Math.max(p.y + out.y * h + 1.5, t.y), p.z + out.z * h);
-    const c2 = new Vector3(t.x - sx * h, t.y, t.z - sz * h);
-    const u = k / END;
-    return new Vector3(bez(p.x, c1.x, c2.x, t.x, u), Math.max(bez(p.y, c1.y, c2.y, t.y, u), Math.min(p.y, t.y)), bez(p.z, c1.z, c2.z, t.z, u));
-  };
-  const mid = SEG - 2 * END;
-  // the run between: bowed a little; when it would cross something tall (the Dot, a battery), bowed further until it
-  // goes round, to the side that needs the least
-  const mx = (t1.x + t2.x) / 2, mz = (t1.z + t2.z) / 2;
-  const rl = Math.hypot(t2.x - t1.x, t2.z - t1.z) || 1;
-  const px = -(t2.z - t1.z) / rl, pz = (t2.x - t1.x) / rl;
-  const crosses = (qx: number, qz: number) => {
-    for (let i = 1; i < 12; i++) {
-      const t = i / 12, u = 1 - t;
-      if (blocked(u * u * t1.x + 2 * u * t * qx + t * t * t2.x, u * u * t1.z + 2 * u * t * qz + t * t * t2.z)) return true;
-    }
-    return false;
-  };
-  let cx = mx + px * bow * 1.4, cz = mz + pz * bow * 1.4;
-  if (crosses(cx, cz)) {
-    search: for (let k = 1; k <= 6; k++) {
-      for (const sgn of bow >= 0 ? [1, -1] : [-1, 1]) {
-        const qx = mx + px * sgn * k * 28, qz = mz + pz * sgn * k * 28;
-        if (!crosses(qx, qz)) {
-          cx = qx;
-          cz = qz;
-          break search;
-        }
+  const n = nodes.length;
+  const dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n);
+  dist[0] = 0;
+  for (;;) {
+    let u = -1;
+    for (let i = 0; i < n; i++) if (!done[i] && (u < 0 || dist[i] < dist[u])) u = i;
+    if (u < 0 || dist[u] === Infinity || u === 1) break;
+    done[u] = 1;
+    for (let w = 0; w < n; w++) {
+      if (done[w]) continue;
+      const d = dist[u] + Math.hypot(nodes[w][0] - nodes[u][0], nodes[w][1] - nodes[u][1]);
+      if (d < dist[w] && free(nodes[u][0], nodes[u][1], nodes[w][0], nodes[w][1])) {
+        dist[w] = d;
+        prev[w] = u;
       }
     }
   }
-  // each end arrives at its touch-down point along the run's own direction there (toward the control point)
-  const d1 = Math.hypot(cx - t1.x, cz - t1.z) || 1, d2 = Math.hypot(cx - t2.x, cz - t2.z) || 1;
-  for (let k = 0; k < END; k++) pts.push(end(a, aOut, t1, (cx - t1.x) / d1, (cz - t1.z) / d1, k));
-  for (let i = 0; i <= mid; i++) {
-    const t = i / mid, u = 1 - t;
-    const x = u * u * t1.x + 2 * u * t * cx + t * t * t2.x, z = u * u * t1.z + 2 * u * t * cz + t * t * t2.z;
-    pts.push(new Vector3(x, i === 0 ? t1.y : i === mid ? t2.y : floorAt(x, z) + lift, z));
-  }
-  for (let k = END - 1; k >= 0; k--) pts.push(end(b, bOut, t2, (cx - t2.x) / d2, (cz - t2.z) / d2, k));
-  return pts;
+  if (dist[1] === Infinity) return [];
+  const via: P2[] = [];
+  for (let i = prev[1]; i > 0; i = prev[i]) via.unshift(nodes[i]);
+  return via;
 }
+
+/** A polyline with its corners rounded (each by a quadratic curve that takes at most `r` of the two sides). */
+function rounded(p: P2[], r: number): P2[] {
+  if (p.length < 3) return p;
+  const out: P2[] = [p[0]];
+  for (let i = 1; i < p.length - 1; i++) {
+    const a = p[i - 1], c = p[i], b = p[i + 1];
+    const la = Math.hypot(c[0] - a[0], c[1] - a[1]), lb = Math.hypot(b[0] - c[0], b[1] - c[1]);
+    const cut = Math.min(r, la / 2, lb / 2);
+    if (cut < 0.01) {
+      out.push(c);
+      continue;
+    }
+    const A: P2 = [c[0] + ((a[0] - c[0]) / la) * cut, c[1] + ((a[1] - c[1]) / la) * cut];
+    const B: P2 = [c[0] + ((b[0] - c[0]) / lb) * cut, c[1] + ((b[1] - c[1]) / lb) * cut];
+    for (let k = 0; k <= 6; k++) {
+      const t = k / 6, u = 1 - t;
+      out.push([u * u * A[0] + 2 * u * t * c[0] + t * t * B[0], u * u * A[1] + 2 * u * t * c[1] + t * t * B[1]]);
+    }
+  }
+  out.push(p[p.length - 1]);
+  return out;
+}
+
+const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+
+/** Drops the points a line does not need (Ramer-Douglas-Peucker, `tol` mm): straight runs keep their two ends. */
+function simplify(p: P3[], tol: number): P3[] {
+  const keep = new Uint8Array(p.length);
+  keep[0] = keep[p.length - 1] = 1;
+  const stack: [number, number][] = [[0, p.length - 1]];
+  while (stack.length) {
+    const [i0, i1] = stack.pop()!;
+    const a = p[i0], b = p[i1];
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    const l2 = dx * dx + dy * dy + dz * dz || 1;
+    let far = -1, fd = tol * tol;
+    for (let i = i0 + 1; i < i1; i++) {
+      const t = Math.max(0, Math.min(1, ((p[i][0] - a[0]) * dx + (p[i][1] - a[1]) * dy + (p[i][2] - a[2]) * dz) / l2));
+      const ex = p[i][0] - a[0] - dx * t, ey = p[i][1] - a[1] - dy * t, ez = p[i][2] - a[2] - dz * t;
+      const d = ex * ex + ey * ey + ez * ez;
+      if (d > fd) {
+        fd = d;
+        far = i;
+      }
+    }
+    if (far > 0) {
+      keep[far] = 1;
+      stack.push([i0, far], [far, i1]);
+    }
+  }
+  return p.filter((_, i) => keep[i]);
+}
+
+export interface WirePathOptions {
+  /** Sideways shift of the middle of the run (mm): wires between the same two things fan out instead of fusing. */
+  fan?: number;
+  /** Which way a long free run bows (its slack): even to one side, odd to the other. */
+  seed?: number;
+}
+/**
+ * The line a wire follows from terminal `a` to terminal `b`, as x, y, z triples (the middle of the tube).
+ *
+ * Out of each terminal straight along its `out` for STUB, a bend, then the run: in plan the straight line, or the
+ * shortest way round the `round` boxes (corners rounded); in height on the table (REST), rising to each end and over
+ * every box under the line (its top + CLEAR, reached before the box begins), so that no point of the run is inside a
+ * box. Only the two stubs may be inside a box: the one their own terminal is on.
+ */
+export function wirePath(a: WireEnd, b: WireEnd, boxes: readonly WireBox[], o: WirePathOptions = {}): Float32Array {
+  const end = (e: WireEnd) => {
+    const p0: P3 = [e.pos.x, e.pos.y, e.pos.z];
+    const p1: P3 = [p0[0] + e.out.x * STUB, Math.max(REST, p0[1] + e.out.y * STUB), p0[2] + e.out.z * STUB];
+    const p2: P3 = [p0[0] + e.out.x * (STUB + BEND), Math.max(REST, p0[1] + e.out.y * (STUB + BEND)), p0[2] + e.out.z * (STUB + BEND)];
+    return { p0, p1, p2 };
+  };
+  const A = end(a), B = end(b);
+  const sx = A.p2[0], sz = A.p2[2], gx = B.p2[0], gz = B.p2[2];
+  // what is gone round: tall things, unless an end is on or right against one (then the wire climbs it there)
+  const reach = 140;
+  const round = boxes.filter(
+    (bx) => bx.round && !inRect(bx, sx, sz, BLOCK) && !inRect(bx, gx, gz, BLOCK) && bx.x1 > Math.min(sx, gx) - reach && bx.x0 < Math.max(sx, gx) + reach && bx.z1 > Math.min(sz, gz) - reach && bx.z0 < Math.max(sz, gz) + reach,
+  );
+  // an end that faces away from where the wire is going: the wire does not fold back on itself there, it first turns
+  // aside (a loop of the bend's own size) and goes on from that point
+  const aside = (e: WireEnd, x: number, z: number, tx: number, tz: number): P2 | null => {
+    const oh = Math.hypot(e.out.x, e.out.z);
+    const dl = Math.hypot(tx - x, tz - z);
+    if (oh < 0.3 || dl < 1e-6) return null;
+    const ox = e.out.x / oh, oz = e.out.z / oh, dx = (tx - x) / dl, dz = (tz - z) / dl;
+    const along = dx * ox + dz * oz;
+    if (along > -0.25) return null;
+    let px = dx - along * ox, pz = dz - along * oz;
+    const pl = Math.hypot(px, pz);
+    if (pl < 0.2) {
+      // straight behind: either side will do; the seed chooses, so that neighbours do not all take the same one
+      const side = (o.seed ?? 0) & 1 ? -1 : 1;
+      px = -oz * side;
+      pz = ox * side;
+    } else {
+      px /= pl;
+      pz /= pl;
+    }
+    const p: P2 = [x + px * LOOP, z + pz * LOOP];
+    return round.some((r) => inRect(r, p[0], p[1], BLOCK)) ? null : p;
+  };
+  const la = aside(a, sx, sz, gx, gz), lb = aside(b, gx, gz, la ? la[0] : sx, la ? la[1] : sz);
+  const from = la ?? [sx, sz], to = lb ?? [gx, gz];
+  const via = wayRound(from[0], from[1], to[0], to[1], round);
+  const plan = rounded([[sx, sz], ...(la ? [la] : []), ...via, ...(lb ? [lb] : []), [gx, gz]], 10);
+  // the run by length
+  const cum = [0];
+  for (let i = 1; i < plan.length; i++) cum.push(cum[i - 1] + Math.hypot(plan[i][0] - plan[i - 1][0], plan[i][1] - plan[i - 1][1]));
+  const S = cum[cum.length - 1];
+  const n = Math.max(8, Math.min(140, Math.ceil(S / STEP)));
+  const bx0 = new Float64Array(n + 1), bz0 = new Float64Array(n + 1);
+  for (let k = 0, i = 1; k <= n; k++) {
+    const s = (S * k) / n;
+    while (i < plan.length - 1 && cum[i] < s) i++;
+    const l = cum[i] - cum[i - 1];
+    const t = l > 1e-9 ? (s - cum[i - 1]) / l : 0;
+    bx0[k] = plan[i - 1][0] + (plan[i][0] - plan[i - 1][0]) * t;
+    bz0[k] = plan[i - 1][1] + (plan[i][1] - plan[i - 1][1]) * t;
+  }
+  // slack and fan: the middle of the run shifted sideways, as far as that keeps it out of what it goes round
+  const xs = new Float64Array(n + 1), zs = new Float64Array(n + 1);
+  const bow = via.length || la || lb ? 0 : (o.seed ?? 0) & 1 ? -Math.min(7, S * 0.03) : Math.min(7, S * 0.03);
+  const shift = (side: number): boolean => {
+    let ok = true;
+    for (let k = 0; k <= n; k++) {
+      const k0 = Math.max(0, k - 1), k1 = Math.min(n, k + 1);
+      const dx = bx0[k1] - bx0[k0], dz = bz0[k1] - bz0[k0];
+      const l = Math.hypot(dx, dz) || 1;
+      const w = side * Math.sin((Math.PI * k) / n);
+      xs[k] = bx0[k] - (dz / l) * w;
+      zs[k] = bz0[k] + (dx / l) * w;
+      if (ok && w !== 0) for (const r of round) if (inRect(r, xs[k], zs[k], GROW)) ok = false;
+    }
+    return ok;
+  };
+  const fan = o.fan ?? 0;
+  if (!shift(fan + bow) && !shift(fan)) shift(0);
+
+  // how high: what is under each point, widened along the run so that the wire is up before a body begins
+  const floor = new Float64Array(n + 1);
+  for (let k = 0; k <= n; k++) {
+    let f = 0;
+    for (const bx of boxes) if (bx.h > f && inRect(bx, xs[k], zs[k], GROW)) f = bx.h;
+    floor[k] = f;
+  }
+  const WIDE = 4;
+  const ys = new Float64Array(n + 1);
+  const hA = A.p2[1], hB = B.p2[1];
+  const drop = (h: number, s: number) => REST + (h - REST) * (1 - smooth((s - 2) / Math.max(10, Math.min(60, 8 + (h - REST) * 1.8))));
+  for (let k = 0; k <= n; k++) {
+    let f = 0;
+    for (let j = Math.max(0, k - WIDE); j <= Math.min(n, k + WIDE); j++) if (floor[j] > f) f = floor[j];
+    const s = (S * k) / n;
+    ys[k] = Math.max(drop(hA, s), drop(hB, S - s), f > 0 ? f + CLEAR : REST);
+  }
+  for (let pass = 0; pass < 2; pass++) {
+    let before = ys[0];
+    for (let k = 1; k < n; k++) {
+      const cur = ys[k];
+      ys[k] = Math.max((before + 2 * cur + ys[k + 1]) / 4, floor[k] > 0 ? floor[k] + CLEAR : REST);
+      before = cur;
+    }
+  }
+
+  // the whole line: stub, bend, run, bend, stub
+  const j = Math.max(1, Math.min(Math.round(BEND / (S / n || 1)), Math.floor((n - 1) / 2)));
+  const M = (k: number): P3 => [xs[k], ys[k], zs[k]];
+  const line: P3[] = [A.p0, A.p1];
+  const bend = (p: P3, c: P3, q: P3, back: boolean) => {
+    for (let i = 1; i <= 5; i++) {
+      const t = (back ? 6 - i : i) / 6, u = 1 - t;
+      line.push([u * u * p[0] + 2 * u * t * c[0] + t * t * q[0], Math.max(REST, u * u * p[1] + 2 * u * t * c[1] + t * t * q[1]), u * u * p[2] + 2 * u * t * c[2] + t * t * q[2]]);
+    }
+  };
+  bend(A.p1, M(0), M(j), false);
+  for (let k = j; k <= n - j; k++) line.push(M(k));
+  bend(B.p1, M(n), M(n - j), true);
+  line.push(B.p1, B.p0);
+  const kept = simplify(line, 0.1);
+  const out = new Float32Array(kept.length * 3);
+  kept.forEach((p, i) => out.set(p, i * 3));
+  return out;
+}
+
+// ---- the tube ------------------------------------------------------------------------------------------------------
+/**
+ * Rings of `sides` vertices round a line (x, y, z triples), with the radius of each ring, written at `at` (in vertices)
+ * of `pos` and `nor`; the frame is carried along the line so the tube does not twist. Returns the number of vertices.
+ */
+export function writeRings(pos: Float32Array, nor: Float32Array, at: number, line: ArrayLike<number>, radius: (i: number, n: number) => number, sides: number): number {
+  const n = line.length / 3;
+  let ux = 0, uy = 0, uz = 0;
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(0, i - 1) * 3, b = Math.min(n - 1, i + 1) * 3;
+    let tx = line[b] - line[a], ty = line[b + 1] - line[a + 1], tz = line[b + 2] - line[a + 2];
+    const tl = Math.hypot(tx, ty, tz) || 1;
+    tx /= tl;
+    ty /= tl;
+    tz /= tl;
+    if (i === 0) {
+      // any direction square to the line: start from the axis the line follows least
+      const ax = Math.abs(tx), ay = Math.abs(ty), az = Math.abs(tz);
+      ux = ay <= ax && ay <= az ? 0 : ax <= az ? 1 : 0;
+      uy = ay <= ax && ay <= az ? 1 : 0;
+      uz = ay <= ax && ay <= az ? 0 : ax <= az ? 0 : 1;
+    }
+    const d = ux * tx + uy * ty + uz * tz;
+    ux -= d * tx;
+    uy -= d * ty;
+    uz -= d * tz;
+    let ul = Math.hypot(ux, uy, uz);
+    if (ul < 1e-6) {
+      // the line turned straight into the frame's own direction: take any direction square to it
+      ux = Math.abs(ty) < 0.9 ? -tz : 0;
+      uy = Math.abs(ty) < 0.9 ? 0 : tz;
+      uz = Math.abs(ty) < 0.9 ? tx : -ty;
+      ul = Math.hypot(ux, uy, uz) || 1;
+    }
+    ux /= ul;
+    uy /= ul;
+    uz /= ul;
+    const wx = ty * uz - tz * uy, wy = tz * ux - tx * uz, wz = tx * uy - ty * ux;
+    const r = radius(i, n);
+    for (let s = 0; s < sides; s++) {
+      const ang = (s / sides) * Math.PI * 2;
+      const c = Math.cos(ang), sn = Math.sin(ang);
+      const nx = ux * c + wx * sn, ny = uy * c + wy * sn, nz = uz * c + wz * sn;
+      const k = (at + i * sides + s) * 3;
+      pos[k] = line[i * 3] + nx * r;
+      pos[k + 1] = line[i * 3 + 1] + ny * r;
+      pos[k + 2] = line[i * 3 + 2] + nz * r;
+      nor[k] = nx;
+      nor[k + 1] = ny;
+      nor[k + 2] = nz;
+    }
+  }
+  return n * sides;
+}
+/** Triangles between the rings written by `writeRings`, wound so that their faces look outward. Returns the number of indices. */
+export function writeRingIndices(idx: Uint32Array, at: number, first: number, rings: number, sides: number): number {
+  let k = at;
+  for (let i = 0; i + 1 < rings; i++) {
+    const a = first + i * sides, b = a + sides;
+    for (let s = 0; s < sides; s++) {
+      const t = (s + 1) % sides;
+      idx[k++] = a + s;
+      idx[k++] = a + t;
+      idx[k++] = b + s;
+      idx[k++] = a + t;
+      idx[k++] = b + t;
+      idx[k++] = b + s;
+    }
+  }
+  return k - at;
+}
+
+/** One wire as it was last made: its line and the tube round it, and what they were made from. */
+interface Built {
+  /** Ends, fan and thickness. */
+  key: string;
+  /** The bodies near the line when it was made. */
+  sig: string;
+  /** The line's place on the table (with room round it): a body that comes or goes there makes the wire again. */
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  line: Float32Array;
+  length: number;
+  pos: Float32Array;
+  nor: Float32Array;
+  rings: number;
+  tipPos: Float32Array;
+  tipNor: Float32Array;
+}
+interface Want {
+  id: string;
+  a: WireEnd;
+  b: WireEnd;
+  color: string;
+  wide: boolean;
+  fan: number;
+  seed: number;
+}
+
+const HILITE = new Color('#ffac00');
 
 export class Wires {
   readonly group = new Group();
@@ -150,10 +462,19 @@ export class Wires {
   private byTerm = new Map<string, TermSpot>();
   private key = '';
   private drawKey = '';
-  private paths = new Map<string, Float32Array>();
+  private built = new Map<string, Built>();
+  private boxes: WireBox[] = [];
+  private boxKeys: string[] = [];
+  /** How many wires were made again by the last `draw` (the rest were kept), for the tests and the cost measure. */
+  remade = 0;
   private geo = new BufferGeometry();
+  private tipGeo = new BufferGeometry();
   private cap = 0;
+  private idxCap = 0;
+  private tipCap = 0;
+  private triangles = 0;
   private mesh: Mesh;
+  private tips: Mesh;
   private dots: InstancedMesh;
   private dotCap = 0;
   private marks: Mesh[] = [];
@@ -165,6 +486,7 @@ export class Wires {
   private v = new Vector3();
   private c = new Color();
   private dummy = new Object3D();
+  private looseEnd = new Vector3();
 
   constructor(
     private bench: BenchStore,
@@ -172,9 +494,14 @@ export class Wires {
     private dotQuat: Quaternion,
     private dotPos: Vector3,
   ) {
-    this.mesh = new Mesh(this.geo, new MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.02 }));
+    // insulation: plain opaque plastic in the wire's colour, satin, written to the depth buffer like any solid body
+    this.mesh = new Mesh(this.geo, new MeshStandardMaterial({ vertexColors: true, roughness: 0.58, metalness: 0, envMapIntensity: 0.55, transparent: false, depthWrite: true, depthTest: true }));
     this.mesh.frustumCulled = false;
     this.mesh.name = 'wires';
+    // the pins at the ends: tinned metal
+    this.tips = new Mesh(this.tipGeo, new MeshStandardMaterial({ color: '#c9cbd0', roughness: 0.32, metalness: 0.85, transparent: false }));
+    this.tips.frustumCulled = false;
+    this.tips.name = 'wire-tips';
     const ball = new SphereGeometry(1, 10, 8);
     this.dots = new InstancedMesh(ball, new MeshBasicMaterial({ color: '#ffac00', transparent: true, opacity: 0.85, depthTest: false }), 1);
     this.dots.frustumCulled = false;
@@ -186,7 +513,7 @@ export class Wires {
       mk.renderOrder = 6;
       this.marks.push(mk);
     }
-    this.group.add(this.mesh, this.dots, ...this.marks);
+    this.group.add(this.mesh, this.tips, this.dots, ...this.marks);
   }
 
   // ---- terminals -----------------------------------------------------------------------------------------------
@@ -216,12 +543,19 @@ export class Wires {
         if (!terms.length) continue;
         const mount = this.parts.mountOf(o.id);
         const lift = mount ? 0 : this.parts.liftOf(o.id);
+        const plugged = mount ? (this.parts.connector?.(o.kind) ?? null) : null;
         if (mount) this.m.fromArray(mount).premultiply(this.dotM);
         const hole = terms.length > 60;
+        const size = sizeOf(o.kind, 0);
         for (const t of terms) {
           let pos: Vector3;
-          // a side pin is left sideways, any other upward (in the part's own frame)
+          // the way a wire leaves, in the part's own frame: a side pin sideways, a hole or a socket upward, a leg under the
+          // body outward past the nearest side and a little up (never up through the body it carries)
           const out = t.face === 'left' ? new Vector3(-1, 0, 0) : t.face === 'right' ? new Vector3(1, 0, 0) : t.face === 'front' ? new Vector3(0, 0, 1) : t.face === 'back' ? new Vector3(0, 0, -1) : new Vector3(0, 1, 0);
+          if (t.face === 'bottom') {
+            if (Math.abs(t.x) / size.w >= Math.abs(t.z) / size.d && Math.abs(t.x) > 0.01) out.set(Math.sign(t.x) * 0.8, 0.6, 0);
+            else out.set(0, 0.6, (t.z < 0 ? -1 : 1) * 0.8);
+          }
           if (mount) {
             pos = new Vector3(t.x, t.y, t.z).applyMatrix4(this.m);
             out.transformDirection(this.m);
@@ -231,7 +565,7 @@ export class Wires {
             const [ox, oz] = turn(out.x, out.z, o.rot as Rot);
             out.set(ox, out.y, oz);
           }
-          this.spots.push({ term: `${o.id}.${t.name}`, name: t.name, owner: o.name, pos, out, hole: hole && t.face === 'top' });
+          this.spots.push({ term: `${o.id}.${t.name}`, name: t.name, owner: o.name, pos, out, hole: hole && t.face === 'top', hidden: !!plugged?.has(t.name) });
         }
       }
     }
@@ -255,6 +589,7 @@ export class Wires {
     let best: TermSpot | null = null;
     let bd = px * px;
     for (const s of this.spots) {
+      if (s.hidden) continue;
       this.v.copy(s.pos).project(camera);
       if (this.v.z > 1) continue;
       const dx = (this.v.x * 0.5 + 0.5) * w - x, dy = (-this.v.y * 0.5 + 0.5) * h - y;
@@ -269,7 +604,9 @@ export class Wires {
   pickWire(x: number, y: number, camera: Camera, w: number, h: number, px = 7): string | null {
     let best: string | null = null;
     let bd = px * px;
-    for (const [id, pts] of this.paths) {
+    for (const [id, b] of this.built) {
+      if (!id) continue;
+      const pts = b.line;
       let lx = 0, ly = 0;
       for (let i = 0; i < pts.length; i += 3) {
         this.v.set(pts[i], pts[i + 1], pts[i + 2]).project(camera);
@@ -293,8 +630,102 @@ export class Wires {
     return best;
   }
 
+  // ---- the bodies wires keep out of ----------------------------------------------------------------------------
+  /** The box of everything solid on the table: the Dot where and how it lies, the module on it, every thing with a body. */
+  private readBoxes(): void {
+    const st = this.bench.getState();
+    const boxes: WireBox[] = [];
+    // a box given in some frame (x0..x1, y0..y1, z0..z1) through `m`: what it covers of the table, and how high it reaches
+    const around = (id: string, lx0: number, lx1: number, ly0: number, ly1: number, lz0: number, lz1: number, m: Matrix4, round: boolean) => {
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, h = 0;
+      for (let i = 0; i < 8; i++) {
+        this.v.set(i & 1 ? lx1 : lx0, i & 2 ? ly1 : ly0, i & 4 ? lz1 : lz0).applyMatrix4(m);
+        x0 = Math.min(x0, this.v.x);
+        x1 = Math.max(x1, this.v.x);
+        z0 = Math.min(z0, this.v.z);
+        z1 = Math.max(z1, this.v.z);
+        h = Math.max(h, this.v.y);
+      }
+      boxes.push({ id, x0, x1, z0, z1, h, round });
+    };
+    this.dotM.compose(this.dotPos, this.dotQuat, this.one);
+    // the Dot's box in its own frame: X across, Y along, Z through
+    around('device', -DOT.hw, DOT.hw, -DOT.hd, DOT.hd, -DOT.h / 2, DOT.h / 2, this.dotM, true);
+    for (const o of st.objects) {
+      if (!hasBody(o.kind)) continue;
+      const s = sizeOf(o.kind, 0);
+      const mount = o.area === 'part' ? (this.parts?.mountOf(o.id) ?? null) : null;
+      if (mount) {
+        // a module on the header: its body's box (model frame: on y = 0, h high) where the mount puts it
+        around(o.id, -s.w / 2, s.w / 2, 0, s.h, -s.d / 2, s.d / 2, this.m.fromArray(mount).premultiply(this.dotM), true);
+        continue;
+      }
+      const r = rectOf(o.kind, o.pos, o.rot as Rot);
+      const h = (o.area === 'part' ? (this.parts?.liftOf(o.id) ?? 0) : 0) + s.h;
+      boxes.push({ id: o.id, x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1, h, round: h > ROUND_H });
+    }
+    this.boxes = boxes;
+    this.boxKeys = boxes.map((b) => `${b.id}:${b.x0.toFixed(1)},${b.x1.toFixed(1)},${b.z0.toFixed(1)},${b.z1.toFixed(1)},${b.h.toFixed(1)}`);
+  }
+  /** The bodies that have to do with a wire's line: those in or against the rectangle it was made in. */
+  private near(x0: number, x1: number, z0: number, z1: number): string {
+    let s = '';
+    for (let i = 0; i < this.boxes.length; i++) {
+      const b = this.boxes[i];
+      if (b.x1 > x0 && b.x0 < x1 && b.z1 > z0 && b.z0 < z1) s += this.boxKeys[i] + ';';
+    }
+    return s;
+  }
+
+  private make(w: Want, key: string): Built {
+    const line = wirePath(w.a, w.b, this.boxes, { fan: w.fan, seed: w.seed });
+    const n = line.length / 3;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, length = 0;
+    for (let i = 0; i < n; i++) {
+      x0 = Math.min(x0, line[i * 3]);
+      x1 = Math.max(x1, line[i * 3]);
+      z0 = Math.min(z0, line[i * 3 + 2]);
+      z1 = Math.max(z1, line[i * 3 + 2]);
+      if (i) length += Math.hypot(line[i * 3] - line[i * 3 - 3], line[i * 3 + 1] - line[i * 3 - 2], line[i * 3 + 2] - line[i * 3 - 1]);
+    }
+    const room = NODE + 6;
+    // the insulation: the line without the bare ends of the two pins, closed down onto the pin at each end
+    const R = w.wide ? R_WIRE * 1.6 : R_WIRE;
+    const ins = new Float32Array((n + 2) * 3);
+    const cut = (from: number, to: number, d: number, at: number) => {
+      const dx = line[to] - line[from], dy = line[to + 1] - line[from + 1], dz = line[to + 2] - line[from + 2];
+      const l = Math.hypot(dx, dy, dz) || 1;
+      const t = Math.min(0.9, d / l);
+      ins[at] = line[from] + dx * t;
+      ins[at + 1] = line[from + 1] + dy * t;
+      ins[at + 2] = line[from + 2] + dz * t;
+    };
+    cut(0, 3, TIP_OUT, 0);
+    cut(0, 3, TIP_OUT + 0.5, 3);
+    ins.set(line.subarray(3, (n - 1) * 3), 6);
+    cut((n - 1) * 3, (n - 2) * 3, TIP_OUT + 0.5, n * 3);
+    cut((n - 1) * 3, (n - 2) * 3, TIP_OUT, (n + 1) * 3);
+    const rings = n + 2;
+    const pos = new Float32Array(rings * SIDES * 3), nor = new Float32Array(rings * SIDES * 3);
+    writeRings(pos, nor, 0, ins, (i, m) => (i === 0 || i === m - 1 ? R_TIP : R), SIDES);
+    // the pins: from inside the terminal to inside the insulation
+    const tipPos = new Float32Array(2 * TIP_RINGS * TIP_SIDES * 3), tipNor = new Float32Array(2 * TIP_RINGS * TIP_SIDES * 3);
+    const pin = new Float32Array(TIP_RINGS * 3);
+    [w.a, w.b].forEach((e, k) => {
+      [-TIP_IN, -TIP_IN + 0.35, TIP_OUT + 0.6].forEach((d, i) => {
+        pin[i * 3] = e.pos.x + e.out.x * d;
+        pin[i * 3 + 1] = e.pos.y + e.out.y * d;
+        pin[i * 3 + 2] = e.pos.z + e.out.z * d;
+      });
+      writeRings(tipPos, tipNor, k * TIP_RINGS * TIP_SIDES, pin, (i) => (i === 0 ? 0.04 : R_TIP), TIP_SIDES);
+    });
+    const made: Built = { key, sig: '', x0: x0 - room, x1: x1 + room, z0: z0 - room, z1: z1 + room, line, length, pos, nor, rings, tipPos, tipNor };
+    made.sig = this.near(made.x0, made.x1, made.z0, made.z1);
+    return made;
+  }
+
   // ---- drawing -------------------------------------------------------------------------------------------------
-  /** Rewrites the wire mesh and the marks when anything they show changed. Returns true when it drew. */
+  /** Rewrites the wire meshes and the marks when anything they show changed. Returns true when it drew. */
   draw(): boolean {
     const changed = this.refresh();
     const st = this.bench.getState();
@@ -303,37 +734,61 @@ export class Wires {
     if (!changed && key === this.drawKey && this.wiresRef === st.wires) return false;
     this.drawKey = key;
     this.wiresRef = st.wires;
+    if (changed || !this.boxes.length) this.readBoxes();
 
-    const rects = st.objects.filter((o) => o.area === 'part' && !st.mounts[o.id]).map((o) => {
-      const r = rectOf(o.kind, o.pos, o.rot as Rot);
-      return { id: o.id, x0: r.x0 + 1, x1: r.x1 - 1, z0: r.z0 + 1, z1: r.z1 - 1, h: (this.parts?.liftOf(o.id) ?? 0) + sizeOf(o.kind, 0).h };
-    });
-    const list: { id: string; a: Vector3; ao: Vector3; b: Vector3; bo: Vector3; color: string; wide: boolean; ia: string; ib: string }[] = [];
-    const UP = new Vector3(0, 1, 0);
-    // what a wire goes round rather than over: the Dot where it lies, and tall parts
-    // (a part is not in the way of its own wires: they start on it; the Dot's leave its top wall, clear of it)
-    const tall = [{ id: '', x0: -DOT.hw - 3, x1: DOT.hw + 3, z0: -DOT.hd - 3, z1: DOT.hd + 3 }, ...rects.filter((r) => r.h > 20).map((r) => ({ id: r.id, x0: r.x0 - 3, x1: r.x1 + 3, z0: r.z0 - 3, z1: r.z1 + 3 }))];
-    const blockedFor = (ia: string, ib: string) => (x: number, z: number) => tall.some((r) => r.id !== ia && r.id !== ib && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
-    const floorAt = (x: number, z: number) => {
-      let y = 0;
-      for (const r of rects) if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 && r.h > y) y = r.h;
-      return y;
-    };
+    const list: Want[] = [];
+    // wires between the same two things fan out: each gets its place across the bundle
+    const groups = new Map<string, number[]>();
+    const ownerOf = (term: string) => term.slice(0, term.indexOf('.'));
     for (const w of st.wires as readonly Wire[]) {
       const a = this.byTerm.get(w.from), b = this.byTerm.get(w.to);
       if (!a || !b) continue;
-      list.push({ id: w.id, a: a.pos, ao: a.out, b: b.pos, bo: b.out, color: w.color, wide: this.selected.has(w.id) || this.hoverWire === w.id, ia: w.from.split('.')[0], ib: w.to.split('.')[0] });
+      const ia = ownerOf(w.from), ib = ownerOf(w.to);
+      let seed = 0;
+      for (let i = 0; i < w.id.length; i++) seed = (seed * 31 + w.id.charCodeAt(i)) >>> 0;
+      const g = ia < ib ? `${ia}|${ib}` : `${ib}|${ia}`;
+      const at = list.length;
+      list.push({ id: w.id, a: { pos: a.pos, out: a.out, owner: ia }, b: { pos: b.pos, out: b.out, owner: ib }, color: w.color, wide: this.selected.has(w.id) || this.hoverWire === w.id, fan: ia < ib ? 1 : -1, seed });
+      const have = groups.get(g);
+      if (have) have.push(at);
+      else groups.set(g, [at]);
+    }
+    for (const g of groups.values()) {
+      const gap = g.length > 1 ? Math.min(2.4, 12 / (g.length - 1)) : 0;
+      // a wire drawn the other way round has its left where the others have their right
+      g.forEach((at, k) => (list[at].fan *= (k - (g.length - 1) / 2) * gap));
+      if (g.length === 1) list[g[0]].fan = 0;
     }
     const start = this.startTerm ? this.byTerm.get(this.startTerm) : undefined;
     const over = this.hoverTerm && this.hoverTerm !== this.startTerm ? this.byTerm.get(this.hoverTerm) : undefined;
-    const end = over?.pos ?? this.loose;
-    if (start && end) list.push({ id: '', a: start.pos, ao: start.out, b: end, bo: over?.out ?? UP, color: this.color, wide: false, ia: this.startTerm!.split('.')[0], ib: over ? this.hoverTerm!.split('.')[0] : '-' });
+    if (start && !over && this.loose) this.looseEnd.set(this.loose.x, Math.max(this.loose.y, REST), this.loose.z);
+    const end = over?.pos ?? (this.loose ? this.looseEnd : null);
+    if (start && end) list.push({ id: '', a: { pos: start.pos, out: start.out, owner: ownerOf(this.startTerm!) }, b: { pos: end, out: over?.out ?? UP, owner: over ? ownerOf(this.hoverTerm!) : '-' }, color: this.color, wide: false, fan: 0, seed: 0 });
 
-    const ring = RAD;
-    const vPer = (SEG + 1) * ring;
-    const need = list.length * vPer;
-    if (need > this.cap || !this.cap) {
-      this.cap = Math.max(need, this.cap * 2, vPer * 8);
+    // each wire's tube: kept when its ends and the bodies near its line are what they were
+    this.remade = 0;
+    const live = new Set<string>();
+    let verts = 0, tris = 0;
+    for (const w of list) {
+      live.add(w.id);
+      const e = (p: WireEnd) => `${p.pos.x.toFixed(2)},${p.pos.y.toFixed(2)},${p.pos.z.toFixed(2)},${p.out.x.toFixed(3)},${p.out.y.toFixed(3)},${p.out.z.toFixed(3)},${p.owner}`;
+      const k = `${e(w.a)}|${e(w.b)}|${w.fan.toFixed(2)}|${w.wide ? 1 : 0}`;
+      let b = this.built.get(w.id);
+      if (!b || b.key !== k || b.sig !== this.near(b.x0, b.x1, b.z0, b.z1)) {
+        b = this.make(w, k);
+        this.built.set(w.id, b);
+        this.remade++;
+      }
+      verts += b.rings * SIDES;
+      tris += (b.rings - 1) * SIDES * 2;
+    }
+    for (const id of this.built.keys()) if (!live.has(id)) this.built.delete(id);
+
+    // one mesh for the insulation, one for the pins: the kept tubes are copied in, nothing is computed again
+    const idxNeed = tris * 3;
+    if (verts > this.cap || idxNeed > this.idxCap || !this.cap) {
+      this.cap = Math.max(verts, this.cap * 2, 2048);
+      this.idxCap = Math.max(idxNeed, this.idxCap * 2, 2048 * 6);
       this.geo.dispose();
       this.geo = new BufferGeometry();
       for (const n of ['position', 'normal', 'color']) {
@@ -341,52 +796,57 @@ export class Wires {
         at.setUsage(DynamicDrawUsage);
         this.geo.setAttribute(n, at);
       }
-      const idx = new Uint32Array((this.cap / vPer) * SEG * RAD * 6);
-      let k = 0;
-      for (let w = 0; w < this.cap / vPer; w++) {
-        for (let i = 0; i < SEG; i++) {
-          for (let j = 0; j < RAD; j++) {
-            const a = w * vPer + i * ring, c = a + ring, j1 = (j + 1) % ring;
-            idx[k++] = a + j;
-            idx[k++] = c + j;
-            idx[k++] = a + j1;
-            idx[k++] = a + j1;
-            idx[k++] = c + j;
-            idx[k++] = c + j1;
-          }
-        }
-      }
-      this.geo.setIndex(new BufferAttribute(idx, 1));
+      const ix = new BufferAttribute(new Uint32Array(this.idxCap), 1);
+      ix.setUsage(DynamicDrawUsage);
+      this.geo.setIndex(ix);
       this.mesh.geometry = this.geo;
     }
+    const tipVerts = list.length * 2 * TIP_RINGS * TIP_SIDES;
+    if (tipVerts > this.tipCap || !this.tipCap) {
+      this.tipCap = Math.max(tipVerts, this.tipCap * 2, 16 * 2 * TIP_RINGS * TIP_SIDES);
+      this.tipGeo.dispose();
+      this.tipGeo = new BufferGeometry();
+      for (const n of ['position', 'normal']) {
+        const at = new BufferAttribute(new Float32Array(this.tipCap * 3), 3);
+        at.setUsage(DynamicDrawUsage);
+        this.tipGeo.setAttribute(n, at);
+      }
+      // every pin is the same three rings: its triangles never change
+      const per = TIP_RINGS * TIP_SIDES;
+      const ix = new Uint32Array((this.tipCap / per) * (TIP_RINGS - 1) * TIP_SIDES * 6);
+      for (let i = 0, k = 0; i < this.tipCap / per; i++) k += writeRingIndices(ix, k, i * per, TIP_RINGS, TIP_SIDES);
+      this.tipGeo.setIndex(new BufferAttribute(ix, 1));
+      this.tips.geometry = this.tipGeo;
+    }
     const pos = this.geo.getAttribute('position') as BufferAttribute, nor = this.geo.getAttribute('normal') as BufferAttribute, col = this.geo.getAttribute('color') as BufferAttribute;
-    this.paths.clear();
+    const ix = this.geo.getIndex() as BufferAttribute;
+    const tp = this.tipGeo.getAttribute('position') as BufferAttribute, tn = this.tipGeo.getAttribute('normal') as BufferAttribute;
+    const ca = col.array as Float32Array;
+    let v0 = 0, i0 = 0;
     list.forEach((w, n) => {
-      let seed = 0;
-      for (let i = 0; i < w.id.length; i++) seed = (seed * 31 + w.id.charCodeAt(i)) >>> 0;
-      const pts = wirePath(w.a, w.ao, w.b, w.bo, seed, floorAt, blockedFor(w.ia, w.ib));
-      const flat = pts.map((p) => [p.x, p.y, p.z]);
-      const o = n * vPer * 3;
-      writeTube((pos.array as Float32Array).subarray(o, o + vPer * 3), (nor.array as Float32Array).subarray(o, o + vPer * 3), flat, w.wide ? R_WIRE * 1.7 : R_WIRE, RAD);
+      const b = this.built.get(w.id)!;
+      (pos.array as Float32Array).set(b.pos, v0 * 3);
+      (nor.array as Float32Array).set(b.nor, v0 * 3);
       this.c.set(w.color);
-      if (w.wide) this.c.lerp(new Color('#ffac00'), 0.3);
-      const ca = col.array as Float32Array;
-      for (let i = 0; i < vPer; i++) {
-        ca[o + i * 3] = this.c.r;
-        ca[o + i * 3 + 1] = this.c.g;
-        ca[o + i * 3 + 2] = this.c.b;
+      if (w.wide) this.c.lerp(HILITE, 0.3);
+      const count = b.rings * SIDES;
+      for (let i = v0; i < v0 + count; i++) {
+        ca[i * 3] = this.c.r;
+        ca[i * 3 + 1] = this.c.g;
+        ca[i * 3 + 2] = this.c.b;
       }
-      if (w.id) {
-        const keep = new Float32Array(pts.length * 3);
-        pts.forEach((p, i) => keep.set([p.x, p.y, p.z], i * 3));
-        this.paths.set(w.id, keep);
-      }
+      i0 += writeRingIndices(ix.array as Uint32Array, i0, v0, b.rings, SIDES);
+      v0 += count;
+      (tp.array as Float32Array).set(b.tipPos, n * 2 * TIP_RINGS * TIP_SIDES * 3);
+      (tn.array as Float32Array).set(b.tipNor, n * 2 * TIP_RINGS * TIP_SIDES * 3);
     });
-    pos.needsUpdate = nor.needsUpdate = col.needsUpdate = true;
-    this.geo.setDrawRange(0, list.length * SEG * RAD * 6);
+    pos.needsUpdate = nor.needsUpdate = col.needsUpdate = ix.needsUpdate = tp.needsUpdate = tn.needsUpdate = true;
+    this.geo.setDrawRange(0, i0);
+    this.tipGeo.setDrawRange(0, list.length * 2 * (TIP_RINGS - 1) * TIP_SIDES * 6);
+    this.triangles = tris + list.length * 2 * (TIP_RINGS - 1) * TIP_SIDES * 2;
 
     // terminals as dots while wiring; the one under the pointer and the one a wire starts from as marks
-    const show = this.tool === 'wire' ? this.spots.filter((s) => !s.hole) : [];
+    const show = this.tool === 'wire' ? this.spots.filter((s) => !s.hole && !s.hidden) : [];
     if (show.length > this.dotCap) {
       this.dotCap = Math.max(show.length, this.dotCap * 2, 64);
       const next = new InstancedMesh(this.dots.geometry, this.dots.material, this.dotCap);
@@ -416,20 +876,43 @@ export class Wires {
     return true;
   }
   private wiresRef: unknown = null;
-  /** The middle of a wire as drawn, or null. */
+  /** The middle of a wire as drawn (half way along it), or null. */
   mid(id: string): Vector3 | null {
-    const p = this.paths.get(id);
-    if (!p) return null;
-    const i = Math.floor(p.length / 6) * 3;
-    return new Vector3(p[i], p[i + 1], p[i + 2]);
+    const b = this.built.get(id);
+    if (!b) return null;
+    const p = b.line;
+    let run = 0;
+    for (let i = 3; i < p.length; i += 3) {
+      const l = Math.hypot(p[i] - p[i - 3], p[i + 1] - p[i - 2], p[i + 2] - p[i - 1]);
+      if (run + l >= b.length / 2) {
+        const t = l > 0 ? (b.length / 2 - run) / l : 0;
+        return new Vector3(p[i - 3] + (p[i] - p[i - 3]) * t, p[i - 2] + (p[i + 1] - p[i - 2]) * t, p[i - 1] + (p[i + 2] - p[i - 1]) * t);
+      }
+      run += l;
+    }
+    return new Vector3(p[0], p[1], p[2]);
+  }
+  /** The line of a wire as drawn (x, y, z triples), for the checks. */
+  lineOf(id: string): Float32Array | null {
+    return this.built.get(id)?.line ?? null;
+  }
+  /** The boxes wires keep out of, as last read (for the checks). */
+  bodies(): readonly WireBox[] {
+    return this.boxes;
   }
   /** How many wires are drawn, and of how many triangles (for the frame time measure). */
-  stats(): { wires: number; triangles: number } {
-    return { wires: this.paths.size, triangles: this.paths.size * SEG * RAD * 2 };
+  stats(): { wires: number; triangles: number; remade: number } {
+    let wires = 0;
+    for (const id of this.built.keys()) if (id) wires++;
+    return { wires, triangles: this.triangles, remade: this.remade };
   }
   dispose(): void {
     this.geo.dispose();
+    this.tipGeo.dispose();
     this.dots.dispose();
     (this.mesh.material as MeshStandardMaterial).dispose();
+    (this.tips.material as MeshStandardMaterial).dispose();
   }
 }
+
+const UP = new Vector3(0, 1, 0);
