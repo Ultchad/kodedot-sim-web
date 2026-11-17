@@ -129,7 +129,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
                   <li key={p.id} className="min-w-0">
                     <button
                       type="button"
-                      className="inner relative flex h-full min-h-[var(--control-h)] w-full items-center gap-1.5 border-0 p-1 text-left"
+                      className="inner flex h-full min-h-[var(--control-h)] w-full items-center gap-1.5 border-0 p-1 pr-2 text-left"
                       draggable={mode === 'workbench'}
                       onDragStart={(e) => {
                         e.dataTransfer.setData(KIND_MIME, `part:${p.id}|${text3(p.name, locale)} ${bench.countOf(p.id) + 1}`);
@@ -142,7 +142,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
                     >
                       <PartThumb id={p.id} name={text3(p.name, locale)} user={p.user} size={36} />
                       <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight [overflow-wrap:anywhere]">{text3(p.name, locale)}</span>
-                      <Icon name="plus" size={12} className="absolute bottom-1 right-1 opacity-50" />
+                      <Icon name="plus" size={14} className="shrink-0 opacity-60" />
                     </button>
                   </li>
                 ))}
