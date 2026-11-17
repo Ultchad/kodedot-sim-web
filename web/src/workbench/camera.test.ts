@@ -89,3 +89,37 @@ describe('Workbench selection', () => {
     expect(drags).toBe(2);
   });
 });
+
+describe('the view catches on the straight directions', () => {
+  it('turning past the front: held on it, exactly on it when let go there, free again beyond', () => {
+    const rig = new OrbitRig();
+    rig.goal.az = 0.5; // about 29 degrees
+    rig.orbitBegin();
+    const px = (deg: number) => (deg * Math.PI) / 180 / 0.0052;
+    rig.orbit(px(20), 0); // 20 degrees toward the front: 9 away, free
+    expect(rig.goal.az).toBeCloseTo(0.5 - (20 * Math.PI) / 180, 6);
+    rig.orbit(px(7), 0); // within 2 degrees of the front: on it
+    expect(rig.goal.az).toBe(0);
+    rig.orbitEnd();
+    expect(rig.goal.az).toBe(0);
+    // a drag that begins on the front leaves it at once; Alt never catches
+    rig.orbitBegin();
+    rig.orbit(-px(2), 0);
+    expect(rig.goal.az).toBeCloseTo((2 * Math.PI) / 180, 6);
+    rig.orbitEnd();
+    rig.goal.az = 0.5;
+    rig.orbitBegin();
+    rig.orbit(px(27.5), 0, { off: true });
+    rig.orbitEnd({ off: true });
+    expect(rig.goal.az).toBeCloseTo(0.5 - (27.5 * Math.PI) / 180, 6);
+  });
+  it('looking down: catches straight down', () => {
+    const rig = new OrbitRig();
+    rig.goal.pol = 0.3;
+    rig.orbitBegin();
+    rig.orbit(0, (0.3 - 0.07) / 0.0045); // to 4 degrees from the vertical
+    expect(rig.goal.pol).toBeCloseTo(POLAR_MIN, 9);
+    rig.orbitEnd();
+    expect(rig.goal.pol).toBeCloseTo(POLAR_MIN, 9);
+  });
+});

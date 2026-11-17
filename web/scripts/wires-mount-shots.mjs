@@ -14,7 +14,7 @@ const arg = (n) => {
   return i < 0 ? null : process.argv[i + 1];
 };
 const out = arg('--out') ?? shots;
-const only = arg('--only')?.split(',') ?? ['wires', 'legs', 'cross', 'modules', 'poses', 'crossing', 'device'];
+const only = arg('--only')?.split(',') ?? ['wires', 'legs', 'cross', 'modules', 'poses', 'crossing', 'device', 'magnet'];
 mkdirSync(out, { recursive: true });
 
 const MODULES = [
@@ -243,6 +243,70 @@ async function run() {
         }
         await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 17, heading: 0 }));
       }
+      await page.click('[data-testid=mode-workbench]');
+      await sleep(800);
+    }
+
+    if (only.includes('magnet')) {
+      // the magnet on angles, by pointer: a drag that ends near a straight angle ends exactly on it; Alt does not catch
+      await clear();
+      const drag = async (x0, y0, dx, dy, { alt = false, shift = false, touch = false } = {}) => {
+        if (touch) {
+          await page.touchscreen.touchStart(x0, y0);
+          for (let i = 1; i <= 12; i++) {
+            await page.touchscreen.touchMove(x0 + (dx * i) / 12, y0 + (dy * i) / 12);
+            await sleep(25);
+          }
+          await page.touchscreen.touchEnd();
+        } else {
+          if (alt) await page.keyboard.down('Alt');
+          if (shift) await page.keyboard.down('Shift');
+          await page.mouse.move(x0, y0);
+          await page.mouse.down();
+          for (let i = 1; i <= 12; i++) {
+            await page.mouse.move(x0 + (dx * i) / 12, y0 + (dy * i) / 12);
+            await sleep(25);
+          }
+          await page.mouse.up();
+          if (alt) await page.keyboard.up('Alt');
+          if (shift) await page.keyboard.up('Shift');
+        }
+        await sleep(500);
+      };
+      // Workbench camera: from 29 degrees toward the front, stopping 2 degrees short
+      const deg = (r) => Math.round((r * 180) / Math.PI * 100) / 100;
+      const turnPx = (d) => Math.round(((d * Math.PI) / 180) / 0.0052);
+      const empty = { x: box.x + 90, y: box.y + box.height - 60 };
+      for (const how of [{}, { alt: true }, { touch: true }]) {
+        await D(() => window.__dotbenchWb.setView({ x: 0, z: 0, az: 0.5, pol: 0.6, dist: 500 }));
+        await sleep(300);
+        await drag(empty.x, empty.y, turnPx(26.6), 0, how);
+        const v = await D(() => window.__dotbenchWb.view());
+        console.log(`magnet  camera turned to within 2 degrees of the front, ${how.alt ? 'Alt held' : how.touch ? 'by touch' : 'by mouse'}: azimuth ${deg(v.az)} degrees`);
+      }
+      // the Dot's turn on the table: Shift-drag of the amber ball, from 60 degrees to within 3 of 90
+      await D(() => window.__dotbench.select.only('dot'));
+      for (const how of [{ shift: true }, { shift: true, alt: true }]) {
+        await D(() => window.__dotbenchWb.setView({ x: 0, z: 0, az: 0, pol: 0.6, dist: 420 }));
+        await D(() => window.__dotbench.applyPose({ pitch: 0, roll: 0, heading: 60 }));
+        await sleep(600);
+        const h = await D(() => window.__dotbenchWb.handle());
+        await drag(h.x, h.y, Math.round(27 / 0.45), 0, how);
+        const p = await D(() => window.__dotbenchWb.world.shownPose());
+        console.log(`magnet  Dot turned on the table from 60 to within 3 degrees of 90, ${how.alt ? 'Alt held' : 'by mouse'}: heading ${Math.round(p.heading * 100) / 100}, tilt ${p.pitch}/${p.roll}`);
+      }
+      await D(() => window.__dotbench.applyPose({ pitch: 0, roll: 0, heading: 0 }));
+      // Device view: from the opening three-quarter view (roll 17) to within 3 degrees of the side view
+      await page.click('[data-testid=mode-device]');
+      await sleep(1200);
+      for (const how of [{}, { alt: true }, { touch: true }]) {
+        await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 17, heading: 0 }));
+        await sleep(700);
+        await drag(box.x + 80, box.y + 80, Math.round((90 - 17 - 3) / 0.45), 0, how);
+        const p = await D(() => window.__dotbench3d.pose());
+        console.log(`magnet  Device view turned from 17 to within 3 degrees of the side, ${how.alt ? 'Alt held' : how.touch ? 'by touch' : 'by mouse'}: roll ${Math.round(p.roll * 1000) / 1000}, pitch ${Math.round(p.pitch * 1000) / 1000}`);
+      }
+      await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 17, heading: 0 }));
       await page.click('[data-testid=mode-workbench]');
       await sleep(800);
     }

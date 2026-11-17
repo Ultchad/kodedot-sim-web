@@ -11,6 +11,7 @@
  *   Ctrl+Z / Ctrl+Shift+Z  undo / redo
  *   drag nothing           turn the view (Shift, middle or right button: slide it); wheel and pinch zoom; F the Dot, 0 the table
  *   the amber ball         tilt the Dot (Shift: turn it); Alt+arrows do the same from the keyboard
+ *   turning by hand        the view, the Dot's tilt and its turn catch on the straight angles (Alt: no magnet)
  */
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
@@ -35,6 +36,7 @@ import type { Pick } from './bodies';
 import { DOT_ID, GRID, SD_ID, SIZES, clampToMat, hasBody, isFree, isNear, obstacles, settle, snap, zoneOf, type Placed, type Pos } from './layout';
 import { KIND_MIME, type Selection, type WorkbenchBus } from './state';
 import { getModel } from '../bench3d/registry';
+import { magnet, magnetRelease, magnetStart, quarterMarks, stepAngle, type MagnetState, type Mark } from '../lib/magnet';
 import { standLift } from './rest';
 import { BenchWorld, TILT_LIMIT } from './world';
 
@@ -78,6 +80,10 @@ const LONG_PRESS_MS = 550;
 const NONE: ReadonlySet<string> = new Set();
 const D = bodyDims();
 const DEG_PER_PX = 0.45;
+/** Where the Dot's tilt and its turn on the table catch (lib/magnet.ts). */
+const TILT_MARKS: Mark[] = quarterMarks(-TILT_LIMIT.pitch, TILT_LIMIT.pitch);
+const TURN_MARKS: Mark[] = quarterMarks();
+const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function World({ deps, active, dark, storePose, onApi }: WorldProps) {
   const { gl, size, camera, invalidate } = useThree();
@@ -259,7 +265,9 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     const ne = e.nativeEvent;
     const pan = ne.pointerType === 'mouse' && (ne.button === 1 || ne.button === 2 || ne.shiftKey);
     if (ne.pointerType === 'mouse' && ne.button !== 0 && !pan) return;
-    let x = ne.clientX, y = ne.clientY, travelled = 0;
+    let x = ne.clientX, y = ne.clientY, travelled = 0, off = false;
+    const reduced = reducedMotion();
+    if (!pan) world.rig.orbitBegin();
     watch(
       ne.pointerId,
       (ev) => {
@@ -268,11 +276,16 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         y = ev.clientY;
         travelled += Math.abs(dx) + Math.abs(dy);
         if (travelled < CLICK_SLOP_PX) return;
+        off = ev.altKey;
         if (pan) world.rig.pan(dx, dy, live.current.size.height);
-        else world.rig.orbit(dx, dy);
+        else world.rig.orbit(dx, dy, { off, reduced });
         invalidate();
       },
       (ev) => {
+        if (!pan) {
+          world.rig.orbitEnd({ off });
+          invalidate();
+        }
         if (ev && travelled < CLICK_SLOP_PX && !pan) onClick();
       },
     );
@@ -450,19 +463,36 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     live.current.deps.select.only(DOT_ID);
     live.current.deps.bench.checkpoint('tilt');
     gl.domElement.style.cursor = 'grabbing';
+    // the tilt catches on level and, more weakly, on 45 degrees; the turn on the table on the quarter turns and, more
+    // weakly, the diagonals; Alt turns the magnet off (lib/magnet.ts)
+    const mag: Record<'pitch' | 'roll' | 'heading', MagnetState> = { pitch: magnetStart(start.pitch, TILT_MARKS), roll: magnetStart(start.roll, TILT_MARKS), heading: magnetStart(start.heading, TURN_MARKS, 360) };
+    const reduced = reducedMotion();
+    const clampTo = (v: number, m: number) => Math.min(m, Math.max(-m, v));
+    const wrap = (v: number) => ((v % 360) + 360) % 360;
+    let raw = { ...start }, spin = false, off = false;
     watch(
       ne.pointerId,
       (ev) => {
         const dx = (ev.clientX - x0) * DEG_PER_PX, dy = (ev.clientY - y0) * DEG_PER_PX;
-        const clampTo = (v: number, m: number) => Math.min(m, Math.max(-m, v));
+        spin = ev.shiftKey;
+        off = ev.altKey;
+        raw = spin ? { ...start, heading: start.heading + dx } : { pitch: clampTo(start.pitch - dy, TILT_LIMIT.pitch), roll: clampTo(start.roll + dx, TILT_LIMIT.roll), heading: start.heading };
+        const o = { off, reduced };
         live.current.deps.applyPose(
-          ev.shiftKey
-            ? { ...start, heading: (((start.heading + dx) % 360) + 360) % 360 }
-            : { pitch: clampTo(Math.round(start.pitch - dy), TILT_LIMIT.pitch), roll: clampTo(Math.round(start.roll + dx), TILT_LIMIT.roll), heading: start.heading },
+          spin
+            ? { ...start, heading: wrap(Math.round(magnet(raw.heading, TURN_MARKS, mag.heading, { ...o, period: 360 }))) }
+            : { pitch: Math.round(magnet(raw.pitch, TILT_MARKS, mag.pitch, o)), roll: Math.round(magnet(raw.roll, TILT_MARKS, mag.roll, o)), heading: start.heading },
         );
       },
       () => {
         gl.domElement.style.cursor = '';
+        // let go inside a mark's window: the Dot is exactly on the mark
+        const o = { off };
+        live.current.deps.applyPose(
+          spin
+            ? { ...start, heading: wrap(Math.round(magnetRelease(raw.heading, mag.heading, { ...o, period: 360 }))) }
+            : { pitch: Math.round(magnetRelease(raw.pitch, mag.pitch, o)), roll: Math.round(magnetRelease(raw.roll, mag.roll, o)), heading: start.heading },
+        );
       },
     );
   };
@@ -812,7 +842,8 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
           const p = live.current.storePose;
           bench.checkpoint('tilt');
           const c = (v: number, m: number) => Math.min(m, Math.max(-m, v));
-          applyPose({ pitch: c(p.pitch - dz * 5, TILT_LIMIT.pitch), roll: c(p.roll + dx * 5, TILT_LIMIT.roll), heading: p.heading });
+          // steps of five degrees that land on the marks (level, 45), wherever the tilt was
+          applyPose({ pitch: dz ? c(stepAngle(p.pitch, dz < 0 ? 1 : -1, 5), TILT_LIMIT.pitch) : p.pitch, roll: dx ? c(stepAngle(p.roll, dx > 0 ? 1 : -1, 5), TILT_LIMIT.roll) : p.roll, heading: p.heading });
           return done();
         }
         if (!ids.length) return; // the arrows are the Dot's D-pad

@@ -15,7 +15,8 @@
  * Interaction (all drags use window listeners, so leaving the canvas is safe):
  *   glass pointerdown  -> touch input (point on the glass -> 410x502), no orbit
  *   button / d-pad     -> setButton, released on pointerup/cancel
- *   body / background  -> rotate the model (orbit); two pointers -> pinch zoom
+ *   body / background  -> rotate the model (orbit; Shift: spin it in the plane of the screen; the turn catches on the
+ *                         straight views, Alt turns that off); two pointers -> pinch zoom
  * The model's orientation IS the pose (pitch/roll/heading). When "tilt link"
  * is on it is mirrored to the bench's Movimento object, and the sliders move it.
  */
@@ -63,6 +64,7 @@ import {
   screenToGlassMm,
 } from '../lib/bodyModel';
 import { SPEC, metrics } from '../lib/geometry';
+import { WEAK, magnet, magnetRelease, magnetStart, quarterMarks, type MagnetState, type Mark } from '../lib/magnet';
 import { ORBIT_LIMITS, ZERO_POSE, clampPose, poseToEuler, samePose } from '../lib/pose';
 import type { ScreenPainter } from '../lib/screen';
 import { buildBodyMesh } from '../device3d/bodyMesh';
@@ -124,6 +126,10 @@ const GROUND_GAP_MM = 9;
  * once. "Recentre" (and the tilt link) still mean exactly face-on.
  */
 const OPENING_VIEW: MotionPose = { pitch: 0, roll: 17, heading: 0 };
+/** Where the turning catches: the straight views and the diagonals between, and the opening three-quarter view. */
+const ROLL_MARKS: Mark[] = [...quarterMarks(-180, 180), { at: OPENING_VIEW.roll, pull: WEAK }, { at: -OPENING_VIEW.roll, pull: WEAK }];
+const PITCH_MARKS: Mark[] = quarterMarks(-90, 90);
+const TURN_MARKS: Mark[] = quarterMarks();
 
 export interface Device3DProps {
   device: KodeDevice;
@@ -596,21 +602,44 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
     if (ne.pointerType === 'mouse' && ne.button !== 0) return;
     const start = { x: ne.clientX, y: ne.clientY, pose: { ...(live.current.tiltLink ? storePose : target.current) } };
     dragging.current = true;
+    // the turn catches on the straight views (front, back, the sides, top, bottom), more weakly on the diagonals and
+    // on the three-quarter view the page opens with; Alt turns the magnet off (lib/magnet.ts)
+    const mag: Record<'pitch' | 'roll' | 'heading', MagnetState> = { pitch: magnetStart(start.pose.pitch, PITCH_MARKS), roll: magnetStart(start.pose.roll, ROLL_MARKS), heading: magnetStart(start.pose.heading, TURN_MARKS, 360) };
+    let raw: MotionPose = { ...start.pose }, spin = false, off = false;
+    const shown = (): MotionPose => {
+      const o = { off, reduced: live.current.reducedMotion };
+      return clampPose(
+        spin ? { ...start.pose, heading: magnet(raw.heading, TURN_MARKS, mag.heading, { ...o, period: 360 }) } : { ...start.pose, roll: magnet(raw.roll, ROLL_MARKS, mag.roll, o), pitch: magnet(raw.pitch, PITCH_MARKS, mag.pitch, o) },
+        ORBIT_LIMITS,
+      );
+    };
     watch(
       ne.pointerId,
       (ev) => {
         const dx = ev.clientX - start.x;
         const dy = ev.clientY - start.y;
-        const next: MotionPose = ev.shiftKey || ev.altKey
-          ? { ...start.pose, heading: start.pose.heading + dx * DRAG_DEG_PER_PX }
-          : { ...start.pose, roll: start.pose.roll + dx * DRAG_DEG_PER_PX, pitch: start.pose.pitch - dy * DRAG_DEG_PER_PX };
-        const c = clampPose(next, ORBIT_LIMITS);
+        spin = ev.shiftKey;
+        off = ev.altKey;
+        const lim = (v: number, m: number) => Math.min(m, Math.max(-m, v));
+        raw = spin ? { ...start.pose, heading: start.pose.heading + dx * DRAG_DEG_PER_PX } : { ...start.pose, roll: lim(start.pose.roll + dx * DRAG_DEG_PER_PX, ORBIT_LIMITS.roll), pitch: lim(start.pose.pitch - dy * DRAG_DEG_PER_PX, ORBIT_LIMITS.pitch) };
+        const c = shown();
         target.current = c;
         if (live.current.tiltLink) live.current.onPose(c);
         invalidate();
       },
       () => {
         dragging.current = false;
+        // let go inside a mark's window: what is kept is the mark itself
+        const o = { off };
+        const c = clampPose(
+          spin ? { ...start.pose, heading: magnetRelease(raw.heading, mag.heading, { ...o, period: 360 }) } : { ...start.pose, roll: magnetRelease(raw.roll, mag.roll, o), pitch: magnetRelease(raw.pitch, mag.pitch, o) },
+          ORBIT_LIMITS,
+        );
+        if (!samePose(c, target.current, 1e-9)) {
+          target.current = c;
+          if (live.current.tiltLink) live.current.onPose(c);
+          invalidate();
+        }
       },
     );
   };
