@@ -5,19 +5,17 @@
  * 5 V regulator (SOT-223) and the two 47 uF cans, the reset button in the corner, the ICSP header on the right, and
  * the four LEDs: ON, L (pin 13), TX and RX.
  *
- * Dimensions: the Uno R3 mechanical drawing (see uno.ts) and the package drawings. Two things follow the manifest
- * instead of the drawing, because its body is the bare board (68.58 x 53.34 mm): the USB-B socket and the jack are
- * flush with the left edge (on the real board they overhang it by 6.4 mm and 1.8 mm), and the jack sits 1.2 mm
- * further from the corner hole. No maker's logo or wordmark: the designation only.
+ * Dimensions: the Uno R3 mechanical drawing (see uno.ts: the USB-B socket overhangs the left edge by 6.35 mm, the
+ * jack by 1.9 mm) and the package drawings. Print: the board's legends and the plain designations only.
  */
 import manifestJson from '../../../../../parts/uno-r3/manifest.json';
 import {
-  FONT_HEAD, FONT_MONO, INK, PAL, Shape, defineModel, footprintOf, partState, pinHeader, print, qfn, silkBox, tactButton, text, topQuad, usbB,
+  FONT_HEAD, FONT_MONO, INK, PAL, Shape, defineModel, footprintOf, partState, pinHeader, print, qfn, silkBox, tactButton, terminalsFromManifest, text, usbB,
   type PartState,
 } from '../../index';
 import {
   RES, TEAL_R3, TOP, animateUno, chip, crystalHC49, dcJack, dipSocketed, drawCaption, drawPinLabels, joints, ledBodies, ledLamps, pads, resistorArray, rowsOf, smdCan, so, sot223, sot23,
-  track, unoBoard, unoGeo, unoTerminals, usbBShellMarks, vias, type UnoLeds, type UnoManifest,
+  track, trafficOutputs, unoBoard, unoGeo, usbBShellMarks, vias, type UnoLeds, type UnoManifest,
 } from './uno';
 
 const manifest = manifestJson as unknown as UnoManifest;
@@ -25,9 +23,9 @@ const geo = unoGeo(manifest);
 const { W, D } = geo;
 
 // board millimetres (the manifest's frame)
-const USB = { y: 15.24 }, JACK = { y: 44.4 };
+const USB = { x: -6.35, y: 15.24 }, JACK = { x: -1.9, y: 45.72 };
 const DIP = { x: 45.5, y: 37.2 };
-const ICSP = { x: 64.9, y: 25.4 }, ICSP2 = { x: 20.84, y: 9.94 };
+const ICSP = { x: 64.9, y: 25.4 }, ICSP2 = { x: 20.84, y: 10.6 };
 const U2 = { x: 21, y: 17.6 }, XTAL = { x: 20.6, y: 26.2 };
 const LEDS: UnoLeds = { l: geo.led, tx: [geo.led[0], geo.led[1] + 5.2], rx: [geo.led[0], geo.led[1] + 7.6], on: [59.5, 13.6] };
 
@@ -35,15 +33,15 @@ export default defineModel<PartState>({
   id: manifest.id,
   title: manifest.name.en,
   footprintMm: footprintOf(manifest.body),
-  terminals: unoTerminals(manifest),
+  terminals: terminalsFromManifest(manifest),
   build(ctx) {
     const s = new Shape();
     let chipTop = 0;
     s.with(geo.frame, () => {
       unoBoard(s, geo, TEAL_R3, ctx.seg);
-      usbB(s, { x: 0.1, z: USB.y, y: TOP, turn: 1 });
-      usbBShellMarks(s, 0.1, USB.y, 1);
-      dcJack(s, 0.1, JACK.y, 1, ctx.seg);
+      usbB(s, { x: USB.x, z: USB.y, y: TOP, turn: 1 });
+      usbBShellMarks(s, USB.x, USB.y, 1);
+      dcJack(s, JACK.x, JACK.y, 1, ctx.seg);
       tactButton(s, { x: 6.2, z: 4.0, y: TOP, size: 4.8, plunger: 1.0, cap: ['matte', '#a63a2c'] });
       chipTop = dipSocketed(s, { x: DIP.x, z: DIP.y, pins: 28 });
       pinHeader(s, { x: ICSP.x, z: ICSP.y, y: TOP, n: 3, rows: 2, turn: 1 });
@@ -59,9 +57,9 @@ export default defineModel<PartState>({
       so(s, 30.2, 27.4, 0, { pins: 8 }); // the comparator
       sot23(s, 30.0, 22.2, 0, true); // 3.3 V regulator
       chip(s, 36.6, 30.3, 0, { l: 3.2, w: 1.3, h: 0.9, body: ['matte', '#d8d1bf'] }); // the 328P's resonator
-      resistorArray(s, 31.3, 14.4, 1);
+      resistorArray(s, 34.4, 14.4, 1);
       resistorArray(s, 26.4, 17.6, 1);
-      for (const [x, y, t] of [[26.2, 12.3, 1], [27.6, 23.6, 0], [17.4, 21.6, 0], [13.2, 30.6, 1], [11.4, 37.3, 0], [40.2, 29.0, 0], [45.0, 30.2, 0], [29.4, 31.2, 0]] as const) chip(s, x, y, t);
+      for (const [x, y, t] of [[26.6, 14.0, 1], [27.6, 23.6, 0], [17.4, 21.6, 0], [13.2, 30.6, 1], [11.4, 37.3, 0], [40.2, 29.0, 0], [45.0, 30.2, 0], [29.4, 31.2, 0]] as const) chip(s, x, y, t);
       for (const [x, y, t] of [[12.2, 28.6, 0], [21.0, 38.8, 0], [25.6, 38.6, 0], [56.4, 13.6, 0], [56.6, 30.2, 0], [60.2, 30.4, 0], [33.4, 22.6, 1]] as const) chip(s, x, y, t, { body: RES });
       ledBodies(s, LEDS);
     });
@@ -69,7 +67,7 @@ export default defineModel<PartState>({
     root.add(
       print({
         name: 'silk',
-        quad: topQuad(0, 0, TOP + 0.02, W / 2, D / 2),
+        quad: geo.quad(W / 2, D / 2, TOP + 0.02, W / 2, D / 2),
         ppm: 12,
         draw(c) {
           c.translate(-W / 2, -D / 2);
@@ -82,7 +80,7 @@ export default defineModel<PartState>({
           track(c, [[44.2, 32], [44.2, 27], [41.7, 24.5], [41.7, 9]]);
           track(c, [[62, 32.2], [62, 30.6], [63.6, 29]]);
           track(c, [[23.6, 17.6], [25, 17.6]]);
-          track(c, [[27.8, 17.6], [29.4, 17.6], [31.3, 15.7]]);
+          track(c, [[27.8, 17.6], [29.4, 17.6], [30.2, 16.4]]);
           track(c, [[21, 20.2], [21, 23.6]]);
           track(c, [[18.4, 17.6], [16.6, 17.6]], 0.4);
           track(c, [[9.6, 25.6], [12.6, 25.6], [13.4, 26.4]], 0.6);
@@ -93,7 +91,7 @@ export default defineModel<PartState>({
           track(c, [[36.6, 14.4], [38.4, 16.2], [38.4, 24]]);
           vias(c, [[53.3, 26], [36.6, 17.5], [58.4, 16], [41.7, 24.5], [28.2, 20], [14.6, 22.4], [33.6, 26], [47, 12.2], [50.6, 13.4], [24.6, 30.6], [28.4, 37.6], [61.6, 18.6], [15.8, 38.6]]);
           pads(c, [[25.6, 44.6, 1.3, 1.5], [27.6, 44.6, 1.3, 1.5], [62.3, 10.6, 1.1, 1.3], [64, 10.6, 1.1, 1.3]]);
-          joints(c, [[4.1, 9.2], [4.1, 21.3], [2.6, 44.4], [9, 40.8], [13.2, 44.4]], 1.5); // the shell and jack lugs
+          joints(c, [[3.4, 9.0], [3.4, 21.5], [6.4, 50.75]], 1.4); // the lugs of the USB shell and of the jack
           drawPinLabels(c, geo);
           const digital = rowsOf(geo, true), front = rowsOf(geo, false);
           const d = digital[digital.length - 1];
@@ -101,16 +99,14 @@ export default defineModel<PartState>({
           if (front[0]) drawCaption(c, 'POWER', front[0].x0 - 1, front[0].x1 + 1, 44.35, -1);
           if (front[1]) drawCaption(c, 'ANALOG IN', front[1].x0 - 1, front[1].x1 + 1, 44.35, -1);
           c.fillStyle = INK.silk;
-          text(c, 'UNO R3', 49, 20.3, 6.4, { weight: 700, font: FONT_HEAD, spacing: 0.25 });
-          text(c, 'ATmega328P  ·  16 MHz  ·  5 V', 49, 25.3, 1.45, { weight: 600 });
-          text(c, 'L', LEDS.l[0] + 2.0, LEDS.l[1], 1.3, { weight: 700 });
-          text(c, 'TX', LEDS.tx[0] + 2.4, LEDS.tx[1], 1.3, { weight: 700 });
-          text(c, 'RX', LEDS.rx[0] + 2.4, LEDS.rx[1], 1.3, { weight: 700 });
+          text(c, 'UNO R3', 49, 22.2, 6.6, { weight: 700, font: FONT_HEAD, spacing: 0.25 });
+          text(c, 'L', LEDS.l[0] - 2.0, LEDS.l[1], 1.3, { weight: 700 });
+          text(c, 'TX', LEDS.tx[0] - 2.5, LEDS.tx[1], 1.3, { weight: 700 });
+          text(c, 'RX', LEDS.rx[0] - 2.5, LEDS.rx[1], 1.3, { weight: 700 });
           text(c, 'ON', LEDS.on[0] + 2.6, LEDS.on[1], 1.3, { weight: 700 });
           text(c, 'RESET', 6.2, 7.6, 1.15, { weight: 700 });
           text(c, 'ICSP', ICSP.x - 0.2, ICSP.y + 5.4, 1.15, { weight: 700 });
-          text(c, 'ICSP2', ICSP2.x + 6.6, ICSP2.y, 1.15, { weight: 700 });
-          text(c, '16.000', XTAL.x, XTAL.y + 3.5, 1.1, { weight: 600, font: FONT_MONO });
+          text(c, 'ICSP2', ICSP2.x + 6.7, ICSP2.y - 1.2, 1.15, { weight: 700 });
           text(c, '1', ICSP.x - 3.5, ICSP.y - 2.6, 1.1, { weight: 700 });
           silkBox(c, ICSP.x - 2.9, ICSP.y - 4.2, 5.8, 8.4, 0.3);
           silkBox(c, ICSP2.x - 4.2, ICSP2.y - 2.9, 8.4, 5.8, 0.3);
@@ -136,8 +132,7 @@ export default defineModel<PartState>({
           c.arc(15.4, -2.2, 0.5, 0, Math.PI * 2);
           c.fill();
           c.fillStyle = '#b4b2ab';
-          text(c, 'ATMEGA328P-PU', -1.5, -0.75, 2.05, { weight: 600, font: FONT_MONO, angle: Math.PI, spacing: 0.12 });
-          text(c, '2431', -10.6, 1.75, 1.45, { weight: 600, font: FONT_MONO, angle: Math.PI });
+          text(c, 'ATMEGA328P-PU', -1.5, 0, 2.05, { weight: 600, font: FONT_MONO, angle: Math.PI, spacing: 0.12 });
         },
       }),
       ...ledLamps(geo, LEDS),
@@ -146,10 +141,10 @@ export default defineModel<PartState>({
   },
   animate: animateUno,
   states: {
-    blink: partState({ visuals: { led: 1 } }),
-    idle: partState({ visuals: { led: 0 } }),
-    serial: partState({ visuals: { led: 1 }, outputs: { tx: 1, rx: 1 } }),
-    off: partState({ power: { on: false, reason: 'no supply' } }),
-    crashed: partState({ crashed: true }),
+    blink: partState({ outputs: { led: 1, tx: 0, rx: 0, crashed: false } }),
+    idle: partState({ outputs: { led: 0, tx: 0, rx: 0, crashed: false } }),
+    serial: partState({ outputs: trafficOutputs() }),
+    off: partState({ power: { on: false, reason: 'no supply' }, outputs: { led: 0, tx: 0, rx: 0, crashed: false } }),
+    crashed: partState({ crashed: true, outputs: { led: 0, tx: 0, rx: 0, crashed: true } }),
   },
 });

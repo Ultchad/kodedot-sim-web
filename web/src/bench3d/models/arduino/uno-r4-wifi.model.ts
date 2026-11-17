@@ -9,17 +9,17 @@
  * LED bodies are part of the static body, their light is a `screen` laid over them.
  *
  * Dimensions: the Uno mechanical drawing (see uno.ts) and the package drawings; the matrix pitch (2.1 mm) is read off
- * photographs. As the manifest's body is the bare board, the USB-C socket and the jack are flush with the left edge
- * (they overhang it by 1.3 mm and 1.8 mm on the real board). No maker's logo or wordmark: the designation only.
+ * photographs; the USB-C socket overhangs the left edge by 1.3 mm, the jack by 1.9 mm. Print: the board's legends and
+ * the plain designations only.
  */
 import manifestJson from '../../../../../parts/uno-r4-wifi/manifest.json';
 import {
-  FONT_HEAD, FONT_MONO, INK, PAL, Shape, defineModel, drawScreen, footprintOf, moduleCan, partState, pinHeader, print, qfn, screen, silkBox, tactButton, text, topQuad, usbC,
+  FONT_HEAD, FONT_MONO, INK, PAL, Shape, defineModel, drawScreen, footprintOf, moduleCan, partState, pinHeader, print, qfn, screen, silkBox, tactButton, terminalsFromManifest, text, usbC,
   type PartState,
 } from '../../index';
 import {
   RES, TEAL_R4, TOP, animateUno, chip, dcJack, drawCaption, drawPinLabels, inductor, joints, jstSh4, ledBodies, ledLamps, makeGlow, pads, qfpLean, rowsOf, slab, sot23, track,
-  unoBoard, unoGeo, unoTerminals, vias, type UnoLeds, type UnoManifest,
+  trafficOutputs, unoBoard, unoGeo, vias, type UnoLeds, type UnoManifest,
 } from './uno';
 
 const manifest = manifestJson as unknown as UnoManifest;
@@ -27,15 +27,17 @@ const geo = unoGeo(manifest);
 const { W, D } = geo;
 
 // board millimetres (the manifest's frame)
-const USB = { y: 15.24 }, JACK = { y: 44.4 };
-const RADIO = { x: 23.05, y: 16.3, w: 15.4, d: 20.5, can: 15.2 }; // lying: its length along x, the antenna at the left end
-const MCU = { x: 27, y: 33.4, size: 10 };
+const USB = { x: -1.3, y: 15.24 }, JACK = { x: -1.9, y: 45.72 };
+const RADIO = { x: 23.05, y: 17.3, w: 15.4, d: 20.5, can: 15.2 }; // lying: its length along x, the antenna at the left end
+const MCU = { x: 27, y: 33.8, size: 10 };
 const ICSP = { x: 64.9, y: 25.4 }, QWIIC = { y: 10.8 }, ESP = { x: 5.2, y: 27.6 }, VRTC = { x: 18.9, y: 46.6 };
-const LEDS: UnoLeds = { l: geo.led, tx: [geo.led[0], geo.led[1] + 5.2], rx: [geo.led[0], geo.led[1] + 7.6], on: [59.5, 13.6] };
+const LEDS: UnoLeds = { l: geo.led, tx: [35.4, 10.8], rx: [35.4, 13.2], on: [59.5, 13.6] };
 /** The LED matrix: 12 x 8 at 2.1 mm, and the margin the light may spill into. */
 const MX = { x0: 36.0, y0: 18.4, pitch: 2.1, cols: 12, rows: 8, margin: 1.0 };
 const mxX = (c: number) => MX.x0 + (c + 0.5) * MX.pitch, mxY = (r: number) => MX.y0 + (r + 0.5) * MX.pitch;
 const RED = 0xff2412;
+/** The heart of the board's default sketch (the frame of the Arduino LED matrix examples). */
+const HEART = { matrix0: 0x3184a444, matrix1: 0x44042081, matrix2: 0x100a0040 };
 
 // the frame being drawn (no closure in `animate`: the words are handed over here)
 let w0 = 0, w1 = 0, w2 = 0;
@@ -67,15 +69,15 @@ export default defineModel<PartState>({
   id: manifest.id,
   title: manifest.name.en,
   footprintMm: footprintOf(manifest.body),
-  terminals: unoTerminals(manifest),
+  terminals: terminalsFromManifest(manifest),
   build(ctx) {
     const s = new Shape();
     let chipTop = 0, canTop = 0;
     const qx = geo.edgeX(QWIIC.y) - 0.06;
     s.with(geo.frame, () => {
       unoBoard(s, geo, TEAL_R4, ctx.seg);
-      usbC(s, { x: 0.1, z: USB.y, y: TOP, turn: 1 });
-      dcJack(s, 0.1, JACK.y, 1, ctx.seg);
+      usbC(s, { x: USB.x, z: USB.y, y: TOP, turn: 1 });
+      dcJack(s, JACK.x, JACK.y, 1, ctx.seg);
       tactButton(s, { x: 5.6, z: 4.4, y: TOP, size: 4.4, plunger: 0.9, cap: PAL.plasticWhite });
       canTop = moduleCan(s, { x: RADIO.x, z: RADIO.y, y: TOP, w: RADIO.w, d: RADIO.d, canD: RADIO.can, turn: 3 });
       chipTop = qfpLean(s, { x: MCU.x, z: MCU.y, size: MCU.size, perSide: 16, h: 1.45 });
@@ -93,8 +95,8 @@ export default defineModel<PartState>({
       sot23(s, 11.4, 26.4, 1, true); // level shifter
       sot23(s, 11.0, 15.2, 1, true); // USB protection
       sot23(s, 36.2, 40.6, 0, true); // 3.3 V regulator
-      for (const [x, y, t] of [[15.0, 25.8, 0], [18.4, 25.8, 0], [21.8, 25.8, 0], [30.6, 25.8, 0], [34.6, 30.0, 1], [34.6, 33.4, 1], [24.0, 41.2, 0], [28.6, 41.2, 0], [12.2, 30.8, 1], [40.4, 40.8, 0]] as const) chip(s, x, y, t);
-      for (const [x, y, t] of [[10.4, 10.2, 0], [10.4, 20.2, 0], [56.4, 13.6, 0], [38.6, 8.0, 0], [38.6, 13.2, 0], [38.6, 15.6, 0], [60.6, 31.8, 0], [34.6, 36.6, 1], [63.0, 15.4, 0]] as const) chip(s, x, y, t, { body: RES });
+      for (const [x, y, t] of [[15.0, 26.4, 0], [18.4, 26.4, 0], [21.8, 26.4, 0], [30.6, 26.4, 0], [34.6, 30.0, 1], [34.6, 33.4, 1], [24.0, 41.7, 0], [28.6, 41.7, 0], [12.2, 30.8, 1], [40.4, 40.8, 0]] as const) chip(s, x, y, t);
+      for (const [x, y, t] of [[10.4, 10.2, 0], [10.4, 20.2, 0], [56.4, 13.6, 0], [34.4, 8.0, 0], [40.2, 10.8, 0], [40.2, 13.2, 0], [60.6, 31.8, 0], [34.6, 36.6, 1]] as const) chip(s, x, y, t, { body: RES });
       ledBodies(s, LEDS);
     });
     const root = s.toObject();
@@ -103,40 +105,41 @@ export default defineModel<PartState>({
     root.add(
       print({
         name: 'silk',
-        quad: topQuad(0, 0, TOP + 0.02, W / 2, D / 2),
+        quad: geo.quad(W / 2, D / 2, TOP + 0.02, W / 2, D / 2),
         ppm: 12,
         draw(c) {
           c.translate(-W / 2, -D / 2);
           // copper under the mask
+          const rst = geo.pinX('RESET');
           for (let i = 0; i < 6; i++) track(c, [[33.2, 30.4 + i * 0.5], [34.2 + i * 0.3, 29.4 + i * 0.5], [35.4 + i * 0.3, 21 + i * 2.1]], 0.2);
-          for (let i = 0; i < 6; i++) track(c, [[23.4 + i * 0.5, 39.6], [23.4 + i * 0.5, 42.6], [30.48 + i * 2.54, 44.4 - (5 - i) * 0.2], [30.48 + i * 2.54, 45.2]], 0.22);
+          for (let i = 0; i < 6; i++) track(c, [[23.4 + i * 0.5, 39.6], [23.4 + i * 0.5, 42.6], [rst + i * 2.54, 44.4 - (5 - i) * 0.2], [rst + i * 2.54, 45.2]], 0.22);
           track(c, [[7.6, 15.2], [9.4, 15.2]], 0.5);
           track(c, [[12.6, 15.6], [13.4, 16.4], [13.4, 24.6], [14.4, 25.6]], 0.3);
-          track(c, [[14.4, 44.4], [15.6, 43.2]], 0.7);
+          track(c, [[12.6, 45.7], [15.2, 43.2]], 0.7);
           track(c, [[17.4, 34.4], [17.4, 32.4]], 0.7);
-          track(c, [[62, 10.8], [58, 10.8], [56, 12.8]], 0.25);
-          track(c, [[62, 11.8], [58.6, 11.8], [57.4, 13]], 0.25);
+          track(c, [[qx - 4.4, 10.8], [58, 10.8], [56, 12.8]], 0.25);
+          track(c, [[qx - 4.4, 11.8], [58.6, 11.8], [57.4, 13]], 0.25);
           vias(c, [[36.4, 16.9], [49, 13.6], [45.2, 10.4], [52.6, 15.6], [8.6, 34.6], [21.6, 44.4], [13.4, 39.6], [44.6, 41.4], [56.4, 40.6], [63.4, 33.6], [8.4, 22.4], [33.9, 26.6]]);
           // the lands of the matrix LEDs
           const land: [number, number, number, number][] = [];
           for (let r = 0; r < MX.rows; r++) for (let col = 0; col < MX.cols; col++) land.push([mxX(col) - 0.72, mxY(r), 0.42, 0.9], [mxX(col) + 0.72, mxY(r), 0.42, 0.9]);
           pads(c, land, '#b7babf');
-          joints(c, [[2.6, 44.4], [9, 40.8], [13.2, 44.4]], 1.5);
+          joints(c, [[6.4, 50.75]], 1.4);
           drawPinLabels(c, geo);
           const digital = rowsOf(geo, true), front = rowsOf(geo, false);
           const d = digital[digital.length - 1];
-          drawCaption(c, 'DIGITAL (PWM ~)', d.x0 - 1, Math.min(d.x1 + 1, qx - 5.2), 8.5, 1);
+          drawCaption(c, 'DIGITAL (PWM ~)', d.x0 - 1, Math.min(d.x1 + 1, qx - 4.9), 8.5, 1);
           if (front[0]) drawCaption(c, 'POWER', front[0].x0 - 1, front[0].x1 + 1, 44.35, -1);
           if (front[1]) drawCaption(c, 'ANALOG IN', front[1].x0 - 1, front[1].x1 + 1, 44.35, -1);
           c.fillStyle = INK.silk;
           text(c, 'UNO R4 WiFi', 49.4, 39.0, 3.7, { weight: 700, font: FONT_HEAD, spacing: 0.18 });
-          text(c, 'L', LEDS.l[0], LEDS.l[1] + 1.9, 1.2, { weight: 700 });
-          text(c, 'TX', LEDS.tx[0] - 2.5, LEDS.tx[1], 1.2, { weight: 700 });
-          text(c, 'RX', LEDS.rx[0] - 2.5, LEDS.rx[1] + 0.5, 1.2, { weight: 700 });
-          text(c, 'ON', LEDS.on[0] + 2.6, LEDS.on[1], 1.3, { weight: 700 });
+          text(c, 'L', LEDS.l[0] - 2.0, LEDS.l[1], 1.2, { weight: 700 });
+          text(c, 'TX', LEDS.tx[0] + 2.4, LEDS.tx[1], 1.2, { weight: 700 });
+          text(c, 'RX', LEDS.rx[0] + 2.4, LEDS.rx[1], 1.2, { weight: 700 });
+          text(c, 'ON', LEDS.on[0], LEDS.on[1] + 1.9, 1.2, { weight: 700 });
           text(c, 'RESET', 5.6, 7.9, 1.15, { weight: 700 });
           text(c, 'ICSP', ICSP.x - 0.2, ICSP.y + 5.4, 1.15, { weight: 700 });
-          text(c, 'I2C  3V3', qx - 2.2, QWIIC.y + 4.2, 1.0, { weight: 700 });
+          text(c, 'I2C', qx - 2.2, QWIIC.y + 4.1, 1.0, { weight: 700 });
           text(c, 'ESP', ESP.x, ESP.y + 5.2, 1.1, { weight: 700 });
           text(c, 'OFF GND VRTC', VRTC.x, VRTC.y - 2.2, 0.95, { weight: 700 });
           text(c, '1', ICSP.x - 3.5, ICSP.y - 2.6, 1.1, { weight: 700 });
@@ -177,16 +180,9 @@ export default defineModel<PartState>({
         quad: geo.quad(RADIO.x + 2.05, RADIO.y, canTop + 0.02, RADIO.can / 2 - 0.4, RADIO.w / 2 - 1.1),
         ppm: 12,
         draw(c) {
-          c.strokeStyle = 'rgba(70,72,78,0.55)';
-          c.lineWidth = 0.14;
-          c.beginPath();
-          c.roundRect(-6.4, -5.5, 12.8, 11, 0.5);
-          c.stroke();
           c.fillStyle = '#54565c';
-          text(c, 'ESP32-S3-MINI-1', 0, -2.6, 1.3, { weight: 700, font: FONT_MONO });
-          text(c, 'N8   2.4 GHz', 0, -0.5, 1.05, { weight: 600, font: FONT_MONO });
-          text(c, 'MODEL  S3M1-8', 0, 1.5, 0.9, { weight: 600, font: FONT_MONO });
-          text(c, '24 31  00F1A2', 0, 3.2, 0.9, { weight: 600, font: FONT_MONO });
+          text(c, 'ESP32-S3-MINI-1', 0, -0.9, 1.3, { weight: 700, font: FONT_MONO });
+          text(c, 'N8', 0, 1.2, 1.1, { weight: 600, font: FONT_MONO });
         },
       }),
       print({
@@ -195,9 +191,8 @@ export default defineModel<PartState>({
         ppm: 14,
         draw(c) {
           c.fillStyle = '#a9a8a2';
-          text(c, 'R7FA4M1', 0, -1.35, 1.55, { weight: 600, font: FONT_MONO, spacing: 0.05 });
-          text(c, 'AB3CFM', 0, 0.45, 1.55, { weight: 600, font: FONT_MONO, spacing: 0.05 });
-          text(c, '2431 KA', 0, 2.1, 1.05, { weight: 600, font: FONT_MONO });
+          text(c, 'R7FA4M1', 0, -0.95, 1.55, { weight: 600, font: FONT_MONO, spacing: 0.05 });
+          text(c, 'AB3CFM', 0, 0.95, 1.55, { weight: 600, font: FONT_MONO, spacing: 0.05 });
         },
       }),
       matrix,
@@ -223,10 +218,10 @@ export default defineModel<PartState>({
     return again;
   },
   states: {
-    heart: partState({ visuals: { led: 1 }, outputs: { matrix0: 0x3184a444, matrix1: 0x44042081, matrix2: 0x100a0040 } }),
-    idle: partState({ visuals: { led: 0 }, outputs: { matrix0: 0, matrix1: 0, matrix2: 0 } }),
-    full: partState({ visuals: { led: 1 }, outputs: { matrix0: 0xffffffff, matrix1: 0xffffffff, matrix2: 0xffffffff, tx: 1, rx: 1 } }),
-    off: partState({ power: { on: false, reason: 'no supply' }, outputs: { matrix0: 0x3184a444, matrix1: 0x44042081, matrix2: 0x100a0040 } }),
-    crashed: partState({ crashed: true, outputs: { matrix0: 0x3184a444, matrix1: 0x44042081, matrix2: 0x100a0040 } }),
+    heart: partState({ outputs: { ...HEART, led: 1, tx: 0, rx: 0, crashed: false } }),
+    idle: partState({ outputs: { matrix0: 0, matrix1: 0, matrix2: 0, led: 0, tx: 0, rx: 0, crashed: false } }),
+    full: partState({ outputs: trafficOutputs({ matrix0: 0xffffffff, matrix1: 0xffffffff, matrix2: 0xffffffff }) }),
+    off: partState({ power: { on: false, reason: 'no supply' }, outputs: { ...HEART, led: 0, tx: 0, rx: 0, crashed: false } }),
+    crashed: partState({ crashed: true, outputs: { ...HEART, led: 0, tx: 0, rx: 0, crashed: true } }),
   },
 });
