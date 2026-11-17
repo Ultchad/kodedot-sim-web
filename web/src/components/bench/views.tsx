@@ -7,6 +7,7 @@ import { useI18n, type TKey } from '../../i18n';
 import { useLive } from '../../state/hooks';
 import { useHost } from '../../state/host';
 import { BatteryArt, DoorArt, SignalBars, TvArt, Well } from './art';
+import { signalAt } from '../../workbench/layout';
 import { Field } from './Field';
 import { LiveLines, StatusPill } from './Feedback';
 
@@ -128,11 +129,16 @@ const Router: View = ({ obj }) => {
   return (
     <>
       <div className="flex items-center gap-3">
-        <SignalBars dbm={Number(obj.fields.signal)} on={on && obj.near} />
+        <SignalBars dbm={signalAt(Number(obj.fields.signal), obj.pos)} on={on && obj.near} />
         <StatusPill tone={tone} testid="router-state">
           {text}
         </StatusPill>
       </div>
+      {on && obj.near && (
+        <p className="m-0 text-[13px] leading-snug text-ink2" data-testid="router-signal">
+          {t('wifi.signalAt', { dbm: signalAt(Number(obj.fields.signal), obj.pos) })}
+        </p>
+      )}
       <Fields obj={obj} />
       <LiveLines id={obj.id} max={5} label={t('wifi.requests')} />
     </>

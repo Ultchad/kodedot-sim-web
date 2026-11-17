@@ -97,16 +97,9 @@ async function setZoom(page, z) {
 }
 async function ensureMotionObject(page, vp) {
   await showBench(page, vp);
-  await clickIf(page, '[data-testid=area-motion]');
-  await sleep(150);
-  if (!(await has(page, '[data-testid=bench-object]'))) {
-    await clickIf(page, '[data-testid="area-motion"]');
-    await clickIf(page, '[data-testid="add-motion.pose"]');
-    await sleep(200);
-  }
-  const active = await page.$eval('[data-testid=bench-object]', (e) => e.dataset.active === 'true').catch(() => true);
-  if (!active) await clickIf(page, '[data-testid=toggle-near]');
-  await sleep(150);
+  // tilt and shake live in the Dot's own card: select the Dot in the list
+  await clickIf(page, '[data-testid=row-dot] [data-testid=row-select]');
+  await sleep(200);
 }
 
 // shaped like the 3D code's store: a built-in choice, the state of the bundled file, a performance switch

@@ -1,5 +1,6 @@
 /**
- * Print on a model: silkscreen, legends, pin labels, coils, logos you invent (never a real brand's). A print is a flat
+ * Print on a model: silkscreen, legends, pin labels, coils. Functional, generic markings only: no brand,
+ * real or invented, no maker's name, no logo-like mark (README.md, "No brands"). A print is a flat
  * quad with a small texture drawn by code, laid on the surface as a decal (device3d/decal.ts: pulled towards the
  * camera, never fighting the surface for depth). One texture per print per MODEL, shared by every copy on the table.
  */

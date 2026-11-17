@@ -112,7 +112,7 @@ describe('BenchRuntime: NFC', () => {
     const { bench } = setup({ nfc: nfc.api });
     const o = bench.add('nfc.tag')!;
     const h = [...nfc.objs.values()][0];
-    expect(h.spec.text).toBe('Hello from the bench');
+    expect(h.spec.text).toBe('Hello');
     expect(h.spec.uid).toBe(o.fields.uid);
     expect(h.info().near).toBe(true);
   });
@@ -152,7 +152,7 @@ describe('BenchRuntime: NFC', () => {
     bench.setField(o.id, 'text', 'changed');
     expect([...nfc.objs.values()][0].spec.text).toBe('changed');
     bench.setField(o.id, 'mode', 'link');
-    expect([...nfc.objs.values()][0].spec.uri).toBe('https://kode.diy');
+    expect([...nfc.objs.values()][0].spec.uri).toBe('https://example.com');
     bench.setNear(o.id, false);
     expect([...nfc.objs.values()][0].info().near).toBe(false);
     bench.remove(o.id);
@@ -225,7 +225,7 @@ describe('BenchRuntime: Wi-Fi', () => {
     expect(w.routers).toHaveLength(1);
     const again = fakeWifi(2);
     dev.boot({ wifi: again.api });
-    expect(again.routers.map((r) => r.ssid)).toEqual(['Dot-Bench']);
+    expect(again.routers.map((r) => r.ssid)).toEqual(['Home WiFi']);
   });
 
   it('range and power follow the bench; a short password is refused with a message', () => {
@@ -237,7 +237,7 @@ describe('BenchRuntime: Wi-Fi', () => {
     bench.setField(o.id, 'security', 'wpa2');
     bench.setField(o.id, 'password', 'short');
     expect(live.get(o.id).entries.at(-1)?.key).toBe('live.error');
-    expect(w.routers[0].cfg.password).toBe('dotbench1'); // the bad one never reached the router
+    expect(w.routers[0].cfg.password).toBe('12345678'); // the bad one never reached the router
     bench.setField(o.id, 'password', 'longenough1');
     expect(w.routers[0].cfg).toMatchObject({ security: 'wpa2', password: 'longenough1' });
   });

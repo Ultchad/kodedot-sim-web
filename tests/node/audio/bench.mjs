@@ -94,6 +94,11 @@ export async function bootAudio(pkg) {
   };
   /** Read an int16 mono recording the app left in memory (RES recsamples ... addr=). */
   a.mem16 = (addr, frames) => new Int16Array(M.HEAPU8.buffer.slice(addr, addr + frames * 2));
+  // With the BLE area in the firmware, a Node boot without radio glue has the first ~1.5 s taken by AO_Radio's failed link-up (esp_hosted_init
+  // times out): an audio call issued inside that window lasts ~1.5 s longer than its playing time (measured: 2530 ms for a 1 s tone, 1057 ms
+  // afterwards and before the BLE merge). The timing tests measure the steady state, so they start once the attempt has ended.
+  const t0 = Date.now();
+  while (!/esp_hosted_init|kdrv\.radio link up/.test(a.logText()) && Date.now() - t0 < 8000) await sleep(25);
   return a;
 }
 
