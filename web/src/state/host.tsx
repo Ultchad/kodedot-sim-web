@@ -481,11 +481,12 @@ export function HostProvider({ children }: { children: ReactNode }) {
         },
         offerModel: (name: string) => setModelOffer(new File([new Uint8Array(1024)], name)),
         setTheme: (v: Theme) => setTheme(v),
+        setMode: (m: StageMode) => setMode(m),
         setLocale,
         notify: (kind: Notice['kind'], key: TKey, vars?: Vars) => say(kind, key, vars),
       },
     };
-  }, [bench, live, runtime, input, painter, setLocale, say, model, select, bus]);
+  }, [bench, live, runtime, input, painter, setLocale, say, model, select, bus, setMode]);
 
   // input: keyboard, visibility ---------------------------------------------
   useEffect(() => {

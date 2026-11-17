@@ -162,8 +162,14 @@ try {
   const card = objs.find((o) => o.kind === 'rfid.card');
   check('RFID: an EM4100 card is added near the Dot with the number typed in the page', !!card && card.near && /0A:1B:2C:3D:4E/i.test(String(card.fields.id)), String(card?.fields.id));
   await shot('rfid-1-card-added');
-  const openedR = await openFromList('RFID', 3);
-  check('RFID: the RFID app opens from kodeOS by touch', openedR);
+  // kodeOS's launcher rows move as apps are added (thirteen now, in category groups), so RFID is started from the page's Apps menu like Files
+  if (!(await page.$('[data-testid=apps-manager]'))) await page.click('[data-testid=apps-menu]');
+  await page.waitForSelector('[data-testid=app-rfid_kit]');
+  await page.click('[data-testid=app-rfid_kit]');
+  await page.keyboard.press('Escape');
+  const openedR = (await until(async () => (await program())?.name === 'RFID', 30000, 200)) >= 0;
+  await sleep(4500);
+  check('RFID: the RFID app opens from the Apps menu', openedR);
   await tap(205, 116); // Read
   const readR = await until(async () => (await live(card.id)).entries.some((e) => e.key === 'live.rfid.read'), 20000, 200);
   const lr = await live(card.id);

@@ -1,5 +1,5 @@
 // The Workbench, checked in the real page (headless Chrome, fresh profile, kodeOS running):
-//   npm run build && node scripts/workbench-check.mjs [--no-shots] [--no-perf]
+//   npm run build && node scripts/workbench-check.mjs [--no-shots] [--no-perf] [--only-shots]
 // - the mode boots with kodeOS, the Dot's screen is live and takes touch in the scene (kodeOS is unlocked and the NFC
 //   app opened by touch on the 3D screen);
 // - an NFC tag dragged with the mouse from far to near is read by the app, dragged away it is gone, the switch moves it;
@@ -29,7 +29,17 @@ const status = () => D(() => window.__dotbench.device().status.get());
 const logText = () => D(() => window.__dotbench.device().log.get().map((l) => l.text).join('\n'));
 const objects = () => D(() => window.__dotbench.bench.getState().objects);
 const live = (id) => D((i) => window.__dotbench.live.get(i), id);
-const shot = (name) => page.screenshot({ path: join(shots, `${name}.png`) });
+/** A screenshot; software GL on a busy machine can miss the browser's own deadline once, so it gets a second go. */
+const shot = async (name) => {
+  for (let i = 0; ; i++) {
+    try {
+      return await page.screenshot({ path: join(shots, `${name}.png`) });
+    } catch (e) {
+      if (i >= 1) throw e;
+      await sleep(3000);
+    }
+  }
+};
 const wbReady = () => until(() => D(() => !!window.__dotbenchWb && window.__dotbench3d?.info().model !== 'pending' && window.__dotbench3d.rendered() > 2), 40000);
 const settled = () => until(() => D(() => window.__dotbenchWb.settled()), 6000, 80);
 
@@ -104,6 +114,8 @@ const picture = () =>
 const boots = async () => ((await logText()).match(/khal\.id this board/g) ?? []).length;
 
 try {
+  if (args.has('--only-shots')) await ctx.close();
+  else {
   // ---- 1. the mode boots with kodeOS running, the Dot on the table
   await waitRunning(page, 90000);
   check('Workbench: the page opens in it and the scene is drawn', (await wbReady()) >= 0 && (await page.$eval('[data-testid=stage-3d]', (e) => e.dataset.mode)) === 'workbench');
@@ -252,6 +264,18 @@ try {
   await page.click('[data-testid=lay-flat]');
   await sleep(600);
 
+  // ---- a palette tile dropped on the table lands where it was dropped (a real drop event with the tile's data)
+  const dropAt = await tableAt(180, 110);
+  await D((pt) => {
+    const el = document.querySelector('[data-testid=webgl-canvas]');
+    const dt = new DataTransfer();
+    dt.setData('application/x-dotbench-kind', 'rfid.tag');
+    for (const type of ['dragover', 'drop']) el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, clientX: pt.x, clientY: pt.y, dataTransfer: dt }));
+  }, dropAt);
+  await sleep(500);
+  const fob = (await objects()).find((o) => o.kind === 'rfid.tag');
+  check('Palette: a tile dropped on the table puts the object there (away from the Dot: out of range) and selects it', !!fob && Math.abs(fob.pos.x - 180) <= 5 && Math.abs(fob.pos.z - 110) <= 5 && !fob.near && (await D((i) => window.__dotbench.select.has(i), fob?.id)), JSON.stringify(fob?.pos));
+
   // ---- 9. a reload keeps the table
   const saved = JSON.stringify((await objects()).map((o) => [o.id, o.pos, o.rot, o.near]));
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -266,6 +290,7 @@ try {
   const real = problems.filter((x) => !/ExitStatus/.test(x));
   check('no page errors', real.length === 0, real.join(' | '));
   await ctx.close();
+  }
 
   // ---- 10. frame time with 1, 20 and 60 objects (the whole table in view, 1280 x 720 window)
   if (!args.has('--no-perf')) {
@@ -337,6 +362,11 @@ try {
     await D(() => window.__dotbenchWb.setView({ az: -0.6, pol: 1.0 }));
     await sleep(1500);
     await shot('table-dozen-low-angle');
+    await D(() => window.__dotbench.ui.setTheme('dark'));
+    await sleep(1200);
+    await shot('table-dozen-dark');
+    await D(() => window.__dotbench.ui.setTheme('light'));
+    await sleep(600);
     await D(() => window.__dotbenchWb.frameAll());
     for (const kind of ['nfc.tag', 'rfid.tag', 'wifi.router', 'ir.tv', 'power.charger']) {
       await D((k) => window.__dotbenchWb.showRange(k), kind);
