@@ -8,9 +8,11 @@ export const BAND_COLOURS = ['#1a1714', '#7a4a26', '#d42a20', '#f08020', '#f2d21
 export const GOLD = 10;
 export const SILVER = 11;
 
+// the result of `twoDigits`, kept here so that asking for a value's digits allocates nothing (models call it from `animate`)
+let d1 = 1, d2 = 0, exp = 0;
 /** Two significant digits and a power of ten: value = (d1 * 10 + d2) * 10^exp. */
-function twoDigits(value: number): { d1: number; d2: number; exp: number } {
-  let exp = Math.floor(Math.log10(value)) - 1;
+function twoDigits(value: number): void {
+  exp = Math.floor(Math.log10(value)) - 1;
   let m = Math.round(value / Math.pow(10, exp));
   if (m >= 100) {
     m = Math.round(m / 10);
@@ -20,7 +22,8 @@ function twoDigits(value: number): { d1: number; d2: number; exp: number } {
     m *= 10;
     exp--;
   }
-  return { d1: Math.floor(m / 10), d2: m % 10, exp };
+  d1 = Math.floor(m / 10);
+  d2 = m % 10;
 }
 
 /**
@@ -30,7 +33,7 @@ function twoDigits(value: number): { d1: number; d2: number; exp: number } {
  */
 export function resistorBands(ohms: number): number {
   const v = Math.min(99e9, Math.max(0.1, Number.isFinite(ohms) ? ohms : 0.1));
-  const { d1, d2, exp } = twoDigits(v);
+  twoDigits(v);
   const mult = exp >= 0 ? exp : exp === -1 ? GOLD : SILVER;
   return d1 + 16 * d2 + 256 * mult + 4096 * GOLD;
 }
@@ -39,7 +42,7 @@ export const bandsOf = (code: number): [number, number, number, number] => [code
 /** The three-character code of a chip resistor: 330 -> "331", 4.7 -> "4R7", 10 k -> "103", 0 -> "000". */
 export function chipResistorCode(ohms: number): string {
   if (!(ohms >= 0.1)) return '000';
-  const { d1, d2, exp } = twoDigits(Math.min(99e6, ohms));
+  twoDigits(Math.min(99e6, ohms));
   if (exp === -1) return `${d1}R${d2}`;
   if (exp < -1) return `R${d1}${d2}`;
   return `${d1}${d2}${exp}`;
@@ -49,7 +52,7 @@ export function chipResistorCode(ohms: number): string {
 export function capacitorCode(uf: number): string {
   const pf = uf * 1e6;
   if (!(pf >= 1)) return '1';
-  const { d1, d2, exp } = twoDigits(pf);
+  twoDigits(pf);
   if (exp === -1) return d2 ? `${d1}p${d2}` : `${d1}`;
   if (exp === 0) return `${d1}${d2}`;
   return `${d1}${d2}${Math.min(9, exp)}`;

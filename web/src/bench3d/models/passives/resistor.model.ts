@@ -57,17 +57,17 @@ export default defineModel<PartState>({
     const bands = new Mesh(bandGeometry(code), familyMaterial('matte'));
     bands.name = 'bands';
     bands.userData.bench3d = 'bands';
-    bands.userData.code = code;
+    bands.userData.ohms = OHMS;
     root.add(bands, hotShell('hot', axialShell(AXIS_Y, BODY.filter((_, i) => i !== 2 && i !== 9), ctx.seg(14))));
     return root;
   },
   animate(st, obj, env) {
     const ohms = num(st.fields.ohms, OHMS);
-    const code = resistorBands(ohms);
     const bands = part(obj, 'bands') as Mesh;
-    if (bands.userData.code !== code) {
-      bands.userData.code = code;
-      bands.geometry = bandGeometry(code);
+    if (bands.userData.ohms !== ohms) {
+      // a new value: its bands (a geometry is built the first time a value is seen, then shared)
+      bands.userData.ohms = ohms;
+      bands.geometry = bandGeometry(resistorBands(ohms));
     }
     // P = I^2 R against the rating: the body glows while it is overloaded
     const amps = num(st.outputs.current_ma, 0) / 1000;

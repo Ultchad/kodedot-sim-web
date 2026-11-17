@@ -35,22 +35,13 @@ export default defineModel<PartState>({
     root.add(
       // the type on the body, where it is read from above and from the front
       printOnCylinder(
-        { o: [0, AXIS_Y, 0], axis: [1, 0, 0], u: [0, 0, 1], v: [0, 1, 0], r: R, a0: 0.3, a1: 1.45, t0: k > 0 ? -2.05 : -1.05, t1: k > 0 ? 1.05 : 2.05, reads: 'axis', seg: 5 },
+        { o: [0, AXIS_Y, 0], axis: [1, 0, 0], u: [0, 0, 1], v: [0, 1, 0], r: R, a0: 0.42, a1: 1.36, t0: k > 0 ? -2.05 : -1.05, t1: k > 0 ? 1.05 : 2.05, reads: 'axis', seg: 5 },
         {
           name: 'type',
           ppm: 34,
           draw(g) {
             g.fillStyle = '#c4c7cc';
-            text(g, '1N4007', 0, -0.26, 0.62, { weight: 700, font: FONT_MONO, spacing: 0.02 });
-            text(g, 'DB 2611', 0.1, 0.36, 0.4, { weight: 500, font: FONT_MONO });
-            // a made-up maker's mark: a small diamond
-            g.beginPath();
-            g.moveTo(-1.18, 0.36);
-            g.lineTo(-1.0, 0.2);
-            g.lineTo(-0.82, 0.36);
-            g.lineTo(-1.0, 0.52);
-            g.closePath();
-            g.fill();
+            text(g, '1N4007', 0, 0, 0.78, { weight: 700, font: FONT_MONO, spacing: 0.03 });
           },
         },
       ),
