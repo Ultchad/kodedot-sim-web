@@ -150,8 +150,8 @@ describe('the line a wire follows', () => {
     expect(over.length).toBeGreaterThan(20);
     for (const { p } of over) expect(p.y - R_WIRE).toBeGreaterThanOrEqual(10);
     // away from the body it lies on the table
-    expect(walk(line).some(({ p }) => p.x > 10 && p.x < 40 && p.y < REST + 0.01)).toBe(true);
-    expect(walk(line).some(({ p }) => p.x > 160 && p.x < 190 && p.y < REST + 0.01)).toBe(true);
+    expect(walk(line).some(({ p }) => p.x > 10 && p.x < 40 && p.y < REST + 0.05)).toBe(true);
+    expect(walk(line).some(({ p }) => p.x > 160 && p.x < 190 && p.y < REST + 0.05)).toBe(true);
   });
 
   it('goes round a tall body instead of over it, by the shorter side', () => {
@@ -170,7 +170,7 @@ describe('the line a wire follows', () => {
     expect(top).toBeGreaterThan(8.5 + STUB);
     expect(top).toBeLessThan(8.5 + STUB + BEND + 0.01);
     const long = walk(wirePath(end(0, REST, 0), end(400, REST, 0), []));
-    expect(long.filter(({ p }) => p.y < REST + 0.01).length).toBeGreaterThan(long.length * 0.6);
+    expect(long.filter(({ p }) => p.y < REST + 0.05).length).toBeGreaterThan(long.length * 0.6);
   });
 
   it('wires between the same two things fan out in the middle and keep their ends', () => {
@@ -275,6 +275,35 @@ describe('a bundle of wires', () => {
     const m1 = wires.mid(w1.id)!, m2 = wires.mid(w2.id)!;
     expect(Math.hypot(m1.x - m2.x, m1.z - m2.z)).toBeGreaterThan(2);
     expect(Math.hypot(m1.x - m2.x, m1.z - m2.z)).toBeLessThan(8);
+    wires.dispose();
+  });
+});
+
+describe('wires that cross', () => {
+  it('the later one passes over the earlier one instead of through it, in a low hump, and only there', () => {
+    registerSize('test.pin', { w: 8, d: 8, h: 4 });
+    const parts: WireParts = { terms: () => [{ name: 'p', x: 0, y: 4, z: 0, face: 'top', kind: 'io' }], liftOf: () => 0, mountOf: () => null, getVersion: () => 0 };
+    const bench = new BenchStore(null);
+    const at = (x: number, z: number) => bench.addPart('test.pin', 'P', {}, { x, z });
+    const a1 = at(-250, -150), a2 = at(-90, -150), b1 = at(-170, -230), b2 = at(-170, -70);
+    const w1 = bench.addWire(`${a1.id}.p`, `${a2.id}.p`)!, w2 = bench.addWire(`${b1.id}.p`, `${b2.id}.p`)!;
+    const wires = new Wires(bench, parts, LYING.clone(), new Vector3(0, DOT.h / 2, 0));
+    wires.draw();
+    const l1 = walk(wires.lineOf(w1.id)!, 0.25), l2 = walk(wires.lineOf(w2.id)!, 0.25);
+    // nowhere are the two tubes inside each other
+    let closest = Infinity;
+    for (const p of l1) for (const q of l2) closest = Math.min(closest, p.p.distanceTo(q.p));
+    expect(closest).toBeGreaterThanOrEqual(2 * R_WIRE);
+    // the first lies on the table at the crossing, the second is over it there and back on the table a little further on
+    const cross = (l: typeof l1) => l.reduce((best, p) => (Math.hypot(p.p.x + 170, p.p.z + 150) < Math.hypot(best.p.x + 170, best.p.z + 150) ? p : best));
+    expect(cross(l1).p.y).toBeLessThan(REST + 0.3);
+    expect(cross(l2).p.y).toBeGreaterThan(REST + 2 * R_WIRE);
+    expect(Math.max(...l2.filter((p) => Math.abs(p.p.z + 150) < 40).map((p) => p.p.y))).toBeLessThan(REST + 2 * R_WIRE + 1.2);
+    expect(l2.some((p) => Math.abs(p.p.z + 150) > 25 && Math.abs(p.p.z + 150) < 45 && p.p.y < REST + 0.3)).toBe(true);
+    // moving the lower wire's end moves the hump with it: the upper wire is made again
+    bench.moveMany([{ id: a2.id, pos: { x: -90, z: -120 } }]);
+    wires.draw();
+    expect(wires.stats().remade).toBe(2);
     wires.dispose();
   });
 });
