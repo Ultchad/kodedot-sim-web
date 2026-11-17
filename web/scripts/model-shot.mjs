@@ -5,7 +5,8 @@
 // Writes web/screenshots/models/<id>/{front,back,side,low,top}.png (top = drawing with terminals and a millimetre
 // scale) and state-<name>.png for each example state of the model, prints the triangle count against the budget and
 // what the contract check found. Exit code 1 when a model breaks the contract.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { createServer as netServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
@@ -14,12 +15,26 @@ import { createServer } from 'vite';
 export const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function startStand(port = Number(process.env.STAND_PORT ?? 4396)) {
+/** A port nobody uses right now (several people render at the same time), unless STAND_PORT names one. */
+const freePort = () =>
+  new Promise((resolve, reject) => {
+    const s = netServer();
+    s.once('error', reject);
+    s.listen(0, () => {
+      const { port } = s.address();
+      s.close(() => resolve(port));
+    });
+  });
+
+export async function startStand(port) {
+  port ??= process.env.STAND_PORT ? Number(process.env.STAND_PORT) : await freePort();
+  // in a git worktree node_modules is a link to another checkout: the fonts are served from where it really is
+  const modules = realpathSync(join(root, 'node_modules'));
   const server = await createServer({
     configFile: false,
     root: join(root, 'src', 'bench3d', 'harness'),
     publicDir: join(root, 'public'),
-    server: { port, strictPort: true, hmr: false, fs: { allow: [join(root, '..')] } }, // the repository: models may import parts/<id>/manifest.json
+    server: { port, strictPort: true, hmr: false, fs: { allow: [join(root, '..'), modules, join(modules, '..')] } }, // the repository (models may import parts/<id>/manifest.json) and the real node_modules
     logLevel: 'error',
   });
   await server.listen();

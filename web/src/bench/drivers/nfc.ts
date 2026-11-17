@@ -28,7 +28,7 @@ export const nfcKinds: KindDef[] = [
       { key: 'locked', labelKey: 'field.readOnly', type: 'toggle' },
       { key: 'uid', labelKey: 'field.uid', type: 'text', mono: true },
     ],
-    defaults: { mode: 'text', text: 'Hello from the bench', uri: 'https://kode.diy', locked: false, uid: '04:11:22:33:44:55:66' },
+    defaults: { mode: 'text', text: 'Hello', uri: 'https://example.com', locked: false, uid: '04:11:22:33:44:55:66' },
     unique: () => ({ uid: randomHex(7, [0x04]) }),
   },
   {

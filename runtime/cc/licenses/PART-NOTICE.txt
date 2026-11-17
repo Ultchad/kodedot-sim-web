@@ -1,0 +1,6 @@
+This part's WebAssembly binary was built in the browser by the dotbench compiler and links code from:
+  wasi-libc (Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT; includes musl, MIT, Copyright (c) 2005-2020 Rich Felker et al.),
+  libc++ and libc++abi and compiler-rt (Apache-2.0 WITH LLVM-exception),
+  ArduinoCore-API (LGPL-2.1, Copyright (c) Arduino LLC),
+  dotcore, the dotbench Arduino core (GPL-3.0-or-later).
+Licence texts: https://github.com/WebAssembly/wasi-libc, https://github.com/llvm/llvm-project, https://github.com/arduino/ArduinoCore-API

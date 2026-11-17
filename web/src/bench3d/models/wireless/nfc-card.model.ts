@@ -18,14 +18,13 @@ export default defineModel<WirelessState>({
         draw(g) {
           rr(g, -42.8, -27, 85.6, 54, 3.3);
           g.clip();
-          // two soft shapes: a lighter blue and the page's amber
+          // a plain lighter band across the lower corner: a card, nobody's card
           g.fillStyle = '#3fa3cf';
           g.beginPath();
-          g.arc(30, 30, 34, 0, Math.PI * 2);
-          g.fill();
-          g.fillStyle = INK.amber;
-          g.beginPath();
-          g.arc(31, 17, 7.5, 0, Math.PI * 2);
+          g.moveTo(-6, 27);
+          g.lineTo(42.8, -4);
+          g.lineTo(42.8, 27);
+          g.closePath();
           g.fill();
           // the contact pad of the chip
           g.fillStyle = INK.gold;

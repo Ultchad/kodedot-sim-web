@@ -106,8 +106,8 @@
     {
       "id": "shaft",
       "effect": "rotate",
-      "x": 460,
-      "y": 130,
+      "x": 560,
+      "y": 210,
       "r": 40,
       "source": {
         "output": "angle"

@@ -27,7 +27,7 @@ var check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`);
 };
 
-const { page, problems, ctx } = await openPage(browser, { id: 'desk', w: 1440, h: 900 }, { view: '2d' });
+const { page, problems, ctx } = await openPage(browser, { id: 'desk', w: 1440, h: 900 }, { view: '2d' }); // Device mode: the bench works without the 3D table
 const D = (fn, ...a) => page.evaluate(fn, ...a);
 const program = () => D(() => window.__dotbench.device().program.get());
 const logText = () => D(() => window.__dotbench.device().log.get().map((l) => l.text).join('\n'));
@@ -109,7 +109,8 @@ const freshLock = async () => {
   await until(async () => D((n) => window.__dotbench.device().log.get().slice(n).some((l) => /kaos\.storage sd mounted/.test(l.text)), n0), 60000, 200);
   await sleep(3000);
 };
-const tab = (area) => page.click(`[data-testid=area-${area}]`).catch(() => {});
+// the bench is one list now: only the microSD card needs choosing (its panel is the inspector of the card's row)
+const tab = (area) => (area === 'sd' ? page.$eval('[data-testid=row-sd] [data-testid=row-select]', (e) => e.click()) : Promise.resolve());
 
 try {
   await waitRunning(page);
@@ -123,7 +124,7 @@ try {
   await sleep(600);
   let objs = await objects();
   const tag = objs.find((o) => o.kind === 'nfc.tag');
-  check('NFC: "Add an NFC tag" makes a text tag and puts it near', !!tag && tag.near && tag.fields.mode === 'text' && /bench/i.test(String(tag.fields.text)), JSON.stringify(tag?.fields));
+  check('NFC: "Add an NFC tag" makes a text tag and puts it near', !!tag && tag.near && tag.fields.mode === 'text' && /hello/i.test(String(tag.fields.text)), JSON.stringify(tag?.fields));
   await shot('nfc-1-tag-added');
   const opened = await openFromList('NFC', 2);
   check('NFC: the NFC app opens from kodeOS by touch', opened);
@@ -161,8 +162,14 @@ try {
   const card = objs.find((o) => o.kind === 'rfid.card');
   check('RFID: an EM4100 card is added near the Dot with the number typed in the page', !!card && card.near && /0A:1B:2C:3D:4E/i.test(String(card.fields.id)), String(card?.fields.id));
   await shot('rfid-1-card-added');
-  const openedR = await openFromList('RFID', 3);
-  check('RFID: the RFID app opens from kodeOS by touch', openedR);
+  // kodeOS's launcher rows move as apps are added (thirteen now, in category groups), so RFID is started from the page's Apps menu like Files
+  if (!(await page.$('[data-testid=apps-manager]'))) await page.click('[data-testid=apps-menu]');
+  await page.waitForSelector('[data-testid=app-rfid_kit]');
+  await page.click('[data-testid=app-rfid_kit]');
+  await page.keyboard.press('Escape');
+  const openedR = (await until(async () => (await program())?.name === 'RFID', 30000, 200)) >= 0;
+  await sleep(4500);
+  check('RFID: the RFID app opens from the Apps menu', openedR);
   await tap(205, 116); // Read
   const readR = await until(async () => (await live(card.id)).entries.some((e) => e.key === 'live.rfid.read'), 20000, 200);
   const lr = await live(card.id);
@@ -195,7 +202,7 @@ try {
   await sleep(2500);
   await shot('wifi-3-connected');
   const log3 = await logText();
-  check('Wi-Fi: the Dot joined and got an address (device log)', /joined 'Dot-Bench' as/i.test(log3), (log3.match(/.*joined 'Dot-Bench'.*/) ?? [''])[0]);
+  check('Wi-Fi: the Dot joined and got an address (device log)', /joined 'Home WiFi' as/i.test(log3), (log3.match(/.*joined 'Home WiFi'.*/) ?? [''])[0]);
 
   // ---- 4. Infrared (no shipped app transmits or arms the receiver: area-level)
   await tab('ir');
@@ -281,10 +288,9 @@ async function gallery(vp, tag) {
     await gp.click('[data-testid=sheet-handle]').catch(() => {}); // half -> full
     await sleep(700);
   }
-  const area = (a) => gp.click(`[data-testid=area-${a}]`);
-  const add = async (kind, area_) => {
-    await area(area_);
-    await gp.click(`[data-testid="add-${kind}"]`);
+  const area = (a) => (a === 'sd' ? gp.$eval('[data-testid=row-sd] [data-testid=row-select]', (e) => e.click()) : gp.$eval('[data-testid=wb-deselect]', (e) => e.click()).catch(() => {}));
+  const add = async (kind) => {
+    await gp.$eval(`[data-testid="add-${kind}"]`, (e) => e.click());
     await sleep(500);
   };
   const cards = [

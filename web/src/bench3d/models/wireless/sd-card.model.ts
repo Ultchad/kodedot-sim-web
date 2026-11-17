@@ -19,17 +19,14 @@ export default defineModel<WirelessState>({
         quad: topQuad(0, 0, 0.82, 5.5, 7.5),
         ppm: 24,
         draw(g) {
-          g.fillStyle = INK.red;
+          // a plain label: the capacity, and the card format in small
+          g.fillStyle = INK.amber;
           rr(g, -4.7, -5.6, 8.4, 10.6, 0.7);
           g.fill();
-          g.fillStyle = INK.amber;
-          rr(g, -4.7, 2.3, 8.4, 2.7, 0.7);
-          g.fill();
-          g.fillStyle = '#ffffff';
-          text(g, 'micro', -0.5, -3.4, 2.3, { weight: 700 });
-          text(g, 'SD', -0.5, -0.6, 3.3, { weight: 800 });
           g.fillStyle = '#231a05';
-          text(g, '8 GB', -0.5, 3.75, 1.9, { weight: 800 });
+          text(g, '8', -0.5, -2.2, 4.6, { weight: 800 });
+          text(g, 'GB', -0.5, 1.4, 2.4, { weight: 800 });
+          text(g, 'microSD', -0.5, 3.9, 1.35, { weight: 700 });
         },
       }),
     );

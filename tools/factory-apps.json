@@ -2,14 +2,57 @@
   "format": 1,
   "comment": "The apps kodeOS has on a fresh device, in list order. `source` is relative to the repo (apps/<name>), or absolute, or sdk:examples/<name>. build with tools/build-factory.sh",
   "apps": [
-    { "name": "kody_kart", "source": "/home/claude/src/kode-app/kody_kart" },
-    { "name": "light", "source": "apps/light" },
-    { "name": "nfc_kit", "source": "apps/nfc_kit" },
-    { "name": "rfid_kit", "source": "apps/rfid_kit" },
-    { "name": "level", "source": "apps/level" },
-    { "name": "files", "source": "apps/files" },
-    { "name": "sound", "source": "apps/sound" },
-    { "name": "display_lvgl", "source": "sdk:examples/display_lvgl" },
-    { "name": "buttons_led", "source": "sdk:examples/buttons_led" }
+    {
+      "name": "kody_kart",
+      "source": "/home/claude/src/kode-app/kody_kart"
+    },
+    {
+      "name": "light",
+      "source": "apps/light"
+    },
+    {
+      "name": "nfc_kit",
+      "source": "apps/nfc_kit"
+    },
+    {
+      "name": "rfid_kit",
+      "source": "apps/rfid_kit"
+    },
+    {
+      "name": "ir_kit",
+      "source": "apps/ir_kit"
+    },
+    {
+      "name": "wifi_kit",
+      "source": "apps/wifi_kit"
+    },
+    {
+      "name": "ble_kit",
+      "source": "apps/ble_kit"
+    },
+    {
+      "name": "gpio_kit",
+      "source": "apps/gpio_kit"
+    },
+    {
+      "name": "level",
+      "source": "apps/level"
+    },
+    {
+      "name": "files",
+      "source": "apps/files"
+    },
+    {
+      "name": "sound",
+      "source": "apps/sound"
+    },
+    {
+      "name": "display_lvgl",
+      "source": "sdk:examples/display_lvgl"
+    },
+    {
+      "name": "buttons_led",
+      "source": "sdk:examples/buttons_led"
+    }
   ]
 }

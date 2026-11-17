@@ -68,49 +68,129 @@
     ]
   },
   "body": {
-    "w_mm": 74.98,
+    "w_mm": 70.48,
     "d_mm": 53.34,
     "h_mm": 15
   },
   "picture": {
     "file": "picture.svg",
-    "width": 600,
+    "width": 564,
     "height": 427
   },
   "logic_mv": 5000,
+  "outline": [
+    {
+      "x": 1.9,
+      "y": 0
+    },
+    {
+      "x": 66.416,
+      "y": 0
+    },
+    {
+      "x": 67.94,
+      "y": 1.524
+    },
+    {
+      "x": 67.94,
+      "y": 12.954
+    },
+    {
+      "x": 70.48,
+      "y": 15.494
+    },
+    {
+      "x": 70.48,
+      "y": 48.26
+    },
+    {
+      "x": 67.94,
+      "y": 50.8
+    },
+    {
+      "x": 67.94,
+      "y": 53.34
+    },
+    {
+      "x": 1.9,
+      "y": 53.34
+    }
+  ],
+  "refs": [
+    {
+      "name": "hole1",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 15.87,
+        "y": 50.8,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole2",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 17.14,
+        "y": 2.54,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole3",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 67.94,
+        "y": 17.78,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole4",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 67.94,
+        "y": 45.72,
+        "z": 0
+      }
+    }
+  ],
   "pins": [
-    {"name":"SCL","kind":"io","pos":{"x":201.6,"y":20.3},"mm":{"x":25.2,"y":2.54,"z":11.4},"face":"top","label":{"en":"SCL"},"abs_max_mv":5500,"caps":["i2c_scl"]},
-    {"name":"SDA","kind":"io","pos":{"x":221.9,"y":20.3},"mm":{"x":27.74,"y":2.54,"z":11.4},"face":"top","label":{"en":"SDA"},"abs_max_mv":5500,"caps":["i2c_sda"]},
-    {"name":"AREF","kind":"io","pos":{"x":242.2,"y":20.3},"mm":{"x":30.28,"y":2.54,"z":11.4},"face":"top","label":{"en":"AREF"},"abs_max_mv":5500,"caps":["analog"]},
-    {"name":"GND_T","kind":"ground","pos":{"x":262.6,"y":20.3},"mm":{"x":32.82,"y":2.54,"z":11.4},"face":"top","label":{"en":"GND"}},
-    {"name":"D13","kind":"io","pos":{"x":282.9,"y":20.3},"mm":{"x":35.36,"y":2.54,"z":11.4},"face":"top","label":{"en":"13 (L)"},"gpio":13,"abs_max_mv":5500,"caps":["digital","spi_sck","interrupt"]},
-    {"name":"D12","kind":"io","pos":{"x":303.2,"y":20.3},"mm":{"x":37.9,"y":2.54,"z":11.4},"face":"top","label":{"en":"12"},"gpio":12,"abs_max_mv":5500,"caps":["digital","spi_miso","interrupt"]},
-    {"name":"D11","kind":"io","pos":{"x":323.5,"y":20.3},"mm":{"x":40.44,"y":2.54,"z":11.4},"face":"top","label":{"en":"11"},"gpio":11,"abs_max_mv":5500,"caps":["digital","pwm","spi_mosi","interrupt"]},
-    {"name":"D10","kind":"io","pos":{"x":343.8,"y":20.3},"mm":{"x":42.98,"y":2.54,"z":11.4},"face":"top","label":{"en":"10"},"gpio":10,"abs_max_mv":5500,"caps":["digital","pwm","spi_ss","interrupt"]},
-    {"name":"D9","kind":"io","pos":{"x":364.2,"y":20.3},"mm":{"x":45.52,"y":2.54,"z":11.4},"face":"top","label":{"en":"9"},"gpio":9,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
-    {"name":"D8","kind":"io","pos":{"x":384.5,"y":20.3},"mm":{"x":48.06,"y":2.54,"z":11.4},"face":"top","label":{"en":"8"},"gpio":8,"abs_max_mv":5500,"caps":["digital","interrupt"]},
-    {"name":"D7","kind":"io","pos":{"x":417,"y":20.3},"mm":{"x":52.12,"y":2.54,"z":11.4},"face":"top","label":{"en":"7"},"gpio":7,"abs_max_mv":5500,"caps":["digital","interrupt"]},
-    {"name":"D6","kind":"io","pos":{"x":437.3,"y":20.3},"mm":{"x":54.66,"y":2.54,"z":11.4},"face":"top","label":{"en":"6"},"gpio":6,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
-    {"name":"D5","kind":"io","pos":{"x":457.6,"y":20.3},"mm":{"x":57.2,"y":2.54,"z":11.4},"face":"top","label":{"en":"5"},"gpio":5,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
-    {"name":"D4","kind":"io","pos":{"x":477.9,"y":20.3},"mm":{"x":59.74,"y":2.54,"z":11.4},"face":"top","label":{"en":"4"},"gpio":4,"abs_max_mv":5500,"caps":["digital","interrupt"]},
-    {"name":"D3","kind":"io","pos":{"x":498.2,"y":20.3},"mm":{"x":62.28,"y":2.54,"z":11.4},"face":"top","label":{"en":"3"},"gpio":3,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
-    {"name":"D2","kind":"io","pos":{"x":518.6,"y":20.3},"mm":{"x":64.82,"y":2.54,"z":11.4},"face":"top","label":{"en":"2"},"gpio":2,"abs_max_mv":5500,"caps":["digital","interrupt"]},
-    {"name":"D1","kind":"io","pos":{"x":538.9,"y":20.3},"mm":{"x":67.36,"y":2.54,"z":11.4},"face":"top","label":{"en":"1"},"gpio":1,"abs_max_mv":5500,"caps":["digital","uart_tx","interrupt"]},
-    {"name":"D0","kind":"io","pos":{"x":559.2,"y":20.3},"mm":{"x":69.9,"y":2.54,"z":11.4},"face":"top","label":{"en":"0"},"gpio":0,"abs_max_mv":5500,"caps":["digital","uart_rx","interrupt"]},
-    {"name":"NC","kind":"nc","pos":{"x":274.7,"y":406.4},"mm":{"x":34.34,"y":50.8,"z":11.4},"face":"top","label":{"en":"NC"}},
-    {"name":"IOREF","kind":"power_out","pos":{"x":295,"y":406.4},"mm":{"x":36.88,"y":50.8,"z":11.4},"face":"top","label":{"en":"IOREF"},"out_mv":5000,"out_ohms":50},
-    {"name":"RESET","kind":"io","pos":{"x":315.4,"y":406.4},"mm":{"x":39.42,"y":50.8,"z":11.4},"face":"top","label":{"en":"RESET"},"abs_max_mv":5500},
-    {"name":"V33","kind":"power_out","pos":{"x":335.7,"y":406.4},"mm":{"x":41.96,"y":50.8,"z":11.4},"face":"top","label":{"en":"3V3"},"out_mv":3300,"out_ohms":10},
-    {"name":"V5","kind":"power_in","pos":{"x":356,"y":406.4},"mm":{"x":44.5,"y":50.8,"z":11.4},"face":"top","label":{"en":"5V"},"min_mv":4500,"max_mv":5500,"typ_ma":120,"supply_group":"pwr","internal":{"mv":5000,"ohms":0.5,"field":"usb"}},
-    {"name":"GND_1","kind":"ground","pos":{"x":376.3,"y":406.4},"mm":{"x":47.04,"y":50.8,"z":11.4},"face":"top","label":{"en":"GND"}},
-    {"name":"GND_2","kind":"ground","pos":{"x":396.6,"y":406.4},"mm":{"x":49.58,"y":50.8,"z":11.4},"face":"top","label":{"en":"GND"}},
-    {"name":"VIN","kind":"power_in","pos":{"x":417,"y":406.4},"mm":{"x":52.12,"y":50.8,"z":11.4},"face":"top","label":{"en":"VIN"},"min_mv":6500,"max_mv":24000,"typ_ma":120,"supply_group":"pwr"},
-    {"name":"A0","kind":"io","pos":{"x":457.6,"y":406.4},"mm":{"x":57.2,"y":50.8,"z":11.4},"face":"top","label":{"en":"A0"},"gpio":14,"abs_max_mv":5500,"caps":["analog","digital","dac"]},
-    {"name":"A1","kind":"io","pos":{"x":477.9,"y":406.4},"mm":{"x":59.74,"y":50.8,"z":11.4},"face":"top","label":{"en":"A1"},"gpio":15,"abs_max_mv":5500,"caps":["analog","digital"]},
-    {"name":"A2","kind":"io","pos":{"x":498.2,"y":406.4},"mm":{"x":62.28,"y":50.8,"z":11.4},"face":"top","label":{"en":"A2"},"gpio":16,"abs_max_mv":5500,"caps":["analog","digital"]},
-    {"name":"A3","kind":"io","pos":{"x":518.6,"y":406.4},"mm":{"x":64.82,"y":50.8,"z":11.4},"face":"top","label":{"en":"A3"},"gpio":17,"abs_max_mv":5500,"caps":["analog","digital"]},
-    {"name":"A4","kind":"io","pos":{"x":538.9,"y":406.4},"mm":{"x":67.36,"y":50.8,"z":11.4},"face":"top","label":{"en":"A4"},"gpio":18,"abs_max_mv":5500,"caps":["analog","digital","i2c_sda"]},
-    {"name":"A5","kind":"io","pos":{"x":559.2,"y":406.4},"mm":{"x":69.9,"y":50.8,"z":11.4},"face":"top","label":{"en":"A5"},"gpio":19,"abs_max_mv":5500,"caps":["analog","digital","i2c_scl"]}
+    {"name":"SCL","kind":"io","pos":{"x":165.6,"y":20.3},"mm":{"x":20.7,"y":2.54,"z":11.4},"face":"top","label":{"en":"SCL"},"abs_max_mv":5500,"caps":["i2c_scl"]},
+    {"name":"SDA","kind":"io","pos":{"x":185.9,"y":20.3},"mm":{"x":23.24,"y":2.54,"z":11.4},"face":"top","label":{"en":"SDA"},"abs_max_mv":5500,"caps":["i2c_sda"]},
+    {"name":"AREF","kind":"io","pos":{"x":206.2,"y":20.3},"mm":{"x":25.78,"y":2.54,"z":11.4},"face":"top","label":{"en":"AREF"},"abs_max_mv":5500,"caps":["analog"]},
+    {"name":"GND_T","kind":"ground","pos":{"x":226.6,"y":20.3},"mm":{"x":28.32,"y":2.54,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"D13","kind":"io","pos":{"x":246.9,"y":20.3},"mm":{"x":30.86,"y":2.54,"z":11.4},"face":"top","label":{"en":"13 (L)"},"gpio":13,"abs_max_mv":5500,"caps":["digital","spi_sck","interrupt"]},
+    {"name":"D12","kind":"io","pos":{"x":267.2,"y":20.3},"mm":{"x":33.4,"y":2.54,"z":11.4},"face":"top","label":{"en":"12"},"gpio":12,"abs_max_mv":5500,"caps":["digital","spi_miso","interrupt"]},
+    {"name":"D11","kind":"io","pos":{"x":287.5,"y":20.3},"mm":{"x":35.94,"y":2.54,"z":11.4},"face":"top","label":{"en":"11"},"gpio":11,"abs_max_mv":5500,"caps":["digital","pwm","spi_mosi","interrupt"]},
+    {"name":"D10","kind":"io","pos":{"x":307.8,"y":20.3},"mm":{"x":38.48,"y":2.54,"z":11.4},"face":"top","label":{"en":"10"},"gpio":10,"abs_max_mv":5500,"caps":["digital","pwm","spi_ss","interrupt"]},
+    {"name":"D9","kind":"io","pos":{"x":328.2,"y":20.3},"mm":{"x":41.02,"y":2.54,"z":11.4},"face":"top","label":{"en":"9"},"gpio":9,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
+    {"name":"D8","kind":"io","pos":{"x":348.5,"y":20.3},"mm":{"x":43.56,"y":2.54,"z":11.4},"face":"top","label":{"en":"8"},"gpio":8,"abs_max_mv":5500,"caps":["digital","interrupt"]},
+    {"name":"D7","kind":"io","pos":{"x":381,"y":20.3},"mm":{"x":47.62,"y":2.54,"z":11.4},"face":"top","label":{"en":"7"},"gpio":7,"abs_max_mv":5500,"caps":["digital","interrupt"]},
+    {"name":"D6","kind":"io","pos":{"x":401.3,"y":20.3},"mm":{"x":50.16,"y":2.54,"z":11.4},"face":"top","label":{"en":"6"},"gpio":6,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
+    {"name":"D5","kind":"io","pos":{"x":421.6,"y":20.3},"mm":{"x":52.7,"y":2.54,"z":11.4},"face":"top","label":{"en":"5"},"gpio":5,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
+    {"name":"D4","kind":"io","pos":{"x":441.9,"y":20.3},"mm":{"x":55.24,"y":2.54,"z":11.4},"face":"top","label":{"en":"4"},"gpio":4,"abs_max_mv":5500,"caps":["digital","interrupt"]},
+    {"name":"D3","kind":"io","pos":{"x":462.2,"y":20.3},"mm":{"x":57.78,"y":2.54,"z":11.4},"face":"top","label":{"en":"3"},"gpio":3,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
+    {"name":"D2","kind":"io","pos":{"x":482.6,"y":20.3},"mm":{"x":60.32,"y":2.54,"z":11.4},"face":"top","label":{"en":"2"},"gpio":2,"abs_max_mv":5500,"caps":["digital","interrupt"]},
+    {"name":"D1","kind":"io","pos":{"x":502.9,"y":20.3},"mm":{"x":62.86,"y":2.54,"z":11.4},"face":"top","label":{"en":"1"},"gpio":1,"abs_max_mv":5500,"caps":["digital","uart_tx","interrupt"]},
+    {"name":"D0","kind":"io","pos":{"x":523.2,"y":20.3},"mm":{"x":65.4,"y":2.54,"z":11.4},"face":"top","label":{"en":"0"},"gpio":0,"abs_max_mv":5500,"caps":["digital","uart_rx","interrupt"]},
+    {"name":"NC","kind":"nc","pos":{"x":238.7,"y":406.4},"mm":{"x":29.84,"y":50.8,"z":11.4},"face":"top","label":{"en":"NC"}},
+    {"name":"IOREF","kind":"power_out","pos":{"x":259,"y":406.4},"mm":{"x":32.38,"y":50.8,"z":11.4},"face":"top","label":{"en":"IOREF"},"out_mv":5000,"out_ohms":50},
+    {"name":"RESET","kind":"io","pos":{"x":279.4,"y":406.4},"mm":{"x":34.92,"y":50.8,"z":11.4},"face":"top","label":{"en":"RESET"},"abs_max_mv":5500},
+    {"name":"V33","kind":"power_out","pos":{"x":299.7,"y":406.4},"mm":{"x":37.46,"y":50.8,"z":11.4},"face":"top","label":{"en":"3V3"},"out_mv":3300,"out_ohms":10},
+    {"name":"V5","kind":"power_in","pos":{"x":320,"y":406.4},"mm":{"x":40,"y":50.8,"z":11.4},"face":"top","label":{"en":"5V"},"min_mv":4500,"max_mv":5500,"typ_ma":120,"supply_group":"pwr","internal":{"mv":5000,"ohms":0.5,"field":"usb"}},
+    {"name":"GND_1","kind":"ground","pos":{"x":340.3,"y":406.4},"mm":{"x":42.54,"y":50.8,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"GND_2","kind":"ground","pos":{"x":360.6,"y":406.4},"mm":{"x":45.08,"y":50.8,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"VIN","kind":"power_in","pos":{"x":381,"y":406.4},"mm":{"x":47.62,"y":50.8,"z":11.4},"face":"top","label":{"en":"VIN"},"min_mv":6500,"max_mv":24000,"typ_ma":120,"supply_group":"pwr"},
+    {"name":"A0","kind":"io","pos":{"x":421.6,"y":406.4},"mm":{"x":52.7,"y":50.8,"z":11.4},"face":"top","label":{"en":"A0"},"gpio":14,"abs_max_mv":5500,"caps":["analog","digital","dac"]},
+    {"name":"A1","kind":"io","pos":{"x":441.9,"y":406.4},"mm":{"x":55.24,"y":50.8,"z":11.4},"face":"top","label":{"en":"A1"},"gpio":15,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A2","kind":"io","pos":{"x":462.2,"y":406.4},"mm":{"x":57.78,"y":50.8,"z":11.4},"face":"top","label":{"en":"A2"},"gpio":16,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A3","kind":"io","pos":{"x":482.6,"y":406.4},"mm":{"x":60.32,"y":50.8,"z":11.4},"face":"top","label":{"en":"A3"},"gpio":17,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A4","kind":"io","pos":{"x":502.9,"y":406.4},"mm":{"x":62.86,"y":50.8,"z":11.4},"face":"top","label":{"en":"A4"},"gpio":18,"abs_max_mv":5500,"caps":["analog","digital","i2c_sda"]},
+    {"name":"A5","kind":"io","pos":{"x":523.2,"y":406.4},"mm":{"x":65.4,"y":50.8,"z":11.4},"face":"top","label":{"en":"A5"},"gpio":19,"abs_max_mv":5500,"caps":["analog","digital","i2c_scl"]}
   ],
   "groups": [
     {"pins":["A4","SDA"]},
@@ -213,7 +293,7 @@
     {
       "id": "led",
       "effect": "glow",
-      "x": 299,
+      "x": 263,
       "y": 64,
       "r": 7,
       "color": "#f5c518",
