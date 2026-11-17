@@ -3,6 +3,7 @@ import type { BenchObject, FieldValue } from '../bench/model';
 import { WIRE_COLORS, termOwner, type Wire } from '../bench/store';
 import { useI18n, type TKey } from '../i18n';
 import { buttonHint, buttonsOf, inputFieldsOf } from '../parts/controls';
+import { thumbUrl, useThumbs } from '../parts/thumbs';
 import { text3, type LibraryEntry, type PartField, type PartsService } from '../parts/service';
 import { useBenchState } from '../state/bench';
 import { useHost } from '../state/host';
@@ -22,6 +23,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
   const { t, locale } = useI18n();
   const { parts, bench, select, bus, mode } = useHost();
   useParts(parts);
+  useThumbs();
   const state = useBenchState(bench);
   const sel = useSyncExternalStore(select.subscribe, select.get);
   const [query, setQuery] = useState('');
@@ -67,7 +69,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
                       onClick={(e) => (e.shiftKey || e.ctrlKey || e.metaKey ? select.toggle(o.id) : select.only(o.id))}
                       onDoubleClick={() => mode === 'workbench' && bus.send({ type: 'focus', id: o.id })}
                     >
-                      <IconTile area="part" size={36} />
+                      <PartThumb id={o.kind} name={nameOf(o.kind)} size={36} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14.5px] font-semibold leading-snug">{o.name}</span>
                         <span className="block truncate text-[12.5px] leading-snug text-ink2">{nameOf(o.kind)}</span>
@@ -138,7 +140,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
                       title={text3(p.description, locale) || undefined}
                       data-testid={`part-${p.id}`}
                     >
-                      <IconTile area="part" size={32} />
+                      <PartThumb id={p.id} name={text3(p.name, locale)} user={p.user} size={44} />
                       <span className="min-w-0 flex-1 text-[13.5px] font-semibold leading-tight">{text3(p.name, locale)}</span>
                       <Icon name="plus" size={15} className="shrink-0 opacity-60" />
                     </button>
@@ -151,6 +153,13 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
       </ScrollArea>
     </div>
   );
+}
+
+/** The picture of a library part's model in a fixed box (no layout shift), or the generic icon when it has none. */
+export function PartThumb({ id, name, user, size }: { id: string; name: string; user?: boolean; size: number }) {
+  const src = thumbUrl(id, user);
+  if (!src) return <IconTile area="part" size={size} />;
+  return <img src={src} alt={name} width={size} height={size} loading="lazy" decoding="async" draggable={false} className="shrink-0 select-none object-contain" style={{ width: size, height: size }} />;
 }
 
 /** One wired part: its fields, what its pins carry right now, its problems and the repair. */
@@ -269,7 +278,7 @@ function PartCard({ obj }: { obj: BenchObject }) {
   return (
     <section className="inner anim-fade flex flex-col gap-3 p-4" data-testid="part-card" data-id={obj.id} data-kind={obj.kind}>
       <div className="flex items-center gap-3">
-        <IconTile area="part" size={40} />
+        <PartThumb id={obj.kind} name={text3(m?.name, locale, obj.kind)} size={40} />
         <div className="min-w-0 flex-1">
           <h3 className="break-words text-[17px] leading-snug">{obj.name}</h3>
           <p className="tag m-0 mt-0.5 !text-[11px]">{text3(m?.name, locale, obj.kind)}</p>
