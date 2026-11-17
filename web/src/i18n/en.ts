@@ -5,6 +5,8 @@ export const en = {
   'nav.console': 'Console',
   'nav.apps': 'Apps',
   'nav.settings': 'Settings',
+  'nav.guide': 'Guide',
+  'guide.how': 'How?',
 
   'top.restart': 'Restart',
   'top.stop': 'Stop',

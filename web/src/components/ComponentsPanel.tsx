@@ -49,7 +49,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3" data-testid="components-panel">
-      <SectionTitle title={t('nav.components')} subtitle={t('components.subtitle')} compact={compact} />
+      <SectionTitle title={t('nav.components')} subtitle={t('components.subtitle')} compact={compact} guide="workbench" />
       <ScrollArea className="-mx-2 min-h-0 flex-1 px-2 py-1" label={t('nav.components')}>
         <div className="flex flex-col gap-4">
           {picked && <PartCard obj={picked} />}

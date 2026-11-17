@@ -99,7 +99,7 @@ export function MakePanel({ compact = false }: { compact?: boolean }) {
   const mine = parts.userParts();
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3" data-testid="make-panel">
-      <SectionTitle title={t('make.title')} subtitle={t('make.subtitle')} compact={compact} />
+      <SectionTitle title={t('make.title')} subtitle={t('make.subtitle')} compact={compact} guide="your-own-parts" />
       <ScrollArea className="-mx-2 min-h-0 flex-1 px-2 py-1" label={t('make.title')}>
         <div className="flex flex-col gap-4">
           <section className="flex flex-col gap-2" aria-label={t('make.import')}>

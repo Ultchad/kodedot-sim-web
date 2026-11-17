@@ -14,6 +14,7 @@ import { LeftPanel } from './LeftPanel';
 import { ModelControls } from './ModelControls';
 import { About } from './TopBar';
 import { ScrollArea, useTabs } from './ui';
+import { GuideButton } from '../guide/entry';
 
 type Tab = 'bench' | 'console' | 'apps' | 'settings';
 const TABS: readonly Tab[] = ['bench', 'console', 'apps', 'settings'];
@@ -237,6 +238,8 @@ export function Sheet({ landscape, onInset }: { landscape: boolean; onInset(px: 
       >
         <span aria-hidden className="h-1 w-10 rounded-full bg-ink/40" />
       </button>
+      {/* the guide, always one tap away: in the strip above the panel that the device keeps clear for the handle */}
+      <GuideButton variant="edge" />
       <div className="h-5 shrink-0" />
       {header}
       {/* closed: the content is not reachable by Tab, by touch or by assistive technology */}

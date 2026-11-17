@@ -16,6 +16,7 @@ import { DeviceStatusCard } from './DeviceStatusCard';
 import { Icon } from './Glyphs';
 import { ModelOffer } from './ModelControls';
 import { NoticeBanner } from './Notice';
+import { GuideLink } from '../guide/entry';
 
 const Device3D = lazy(() => import('./Device3D'));
 const CodeEditor = lazy(() => import('./CodeEditor'));
@@ -349,7 +350,7 @@ export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | '
     <aside className="anim-rise shrink-0 pb-1 pt-2" aria-label={t('welcome.title')} data-testid="welcome">
       <div className="inner mx-auto flex max-w-[44rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <p className="m-0 min-w-[14rem] flex-1 text-[14px] leading-snug">
-          <strong className="font-semibold">{t('welcome.title')}</strong> {t('welcome.body')}
+          <strong className="font-semibold">{t('welcome.title')}</strong> {t('welcome.body')} <GuideLink to="your-own-app" />
         </p>
         <div className="flex shrink-0 gap-2">
           <button type="button" className="btn btn-sm" onClick={requestApps} data-testid="welcome-open">
