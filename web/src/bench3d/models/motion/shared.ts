@@ -199,25 +199,29 @@ export function dpak(s: Shape, o: { x: number; z: number; y: number; turn?: numb
 }
 /**
  * KIT: a shrouded wire-to-board header (JST XH style, 2.5 mm pitch), `n` ways along X, its latch wall towards +Z before
- * `turn`. Returns the pin positions at the height where a plug's wires would enter.
+ * `turn`; with `plug`, the wire housing sits in it. Returns where each wire leaves: the top of the plug (or of the shroud).
  */
-export function shroudedHeader(s: Shape, o: { x: number; z: number; y: number; n: number; turn?: number; pitch?: number; finish?: Finish }): V3[] {
+export function shroudedHeader(s: Shape, o: { x: number; z: number; y: number; n: number; turn?: number; pitch?: number; plug?: boolean; finish?: Finish }): V3[] {
   const pitch = o.pitch ?? 2.5, w = (o.n - 1) * pitch + 4.9, d = 5.75, h = 7;
   const fin = o.finish ?? PAL.plasticWhite;
+  const top = o.plug ? h + 2.4 : h;
   const m = new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(turnY(o.turn ?? 0));
   s.with(m, () => {
     s.box(...fin, 0, 0, w, d, 0, 1.6, 0.3, 0.15, { ao: 0.92 });
-    s.box(...fin, 0, -d / 2 + 0.4, w, 0.8, 1.6, h, 0.2, 0.2, { ao: 0.95 });
-    for (const sx of [-1, 1]) s.box(...fin, sx * (w / 2 - 0.4), 0, 0.8, d, 1.6, h, 0.2, 0.2, { ao: 0.95 });
+    s.box(...fin, 0, -d / 2 + 0.4, w, 0.8, 1.6, h, 0.1, 0.2, { ao: 0.95 });
+    for (const sx of [-1, 1]) s.box(...fin, sx * (w / 2 - 0.4), 0, 0.8, d, 1.6, h, 0.1, 0.2, { ao: 0.95 });
     // the latch wall is slotted: two posts
-    for (const sx of [-1, 1]) s.box(...fin, sx * (w / 2 - 1.5), d / 2 - 0.4, 2.2, 0.8, 1.6, h, 0.2, 0.2, { ao: 0.95 });
-    for (let i = 0; i < o.n; i++) s.box(...PAL.tin, (i - (o.n - 1) / 2) * pitch, 0, 0.64, 0.64, -2.6, 5.6, 0.06, 0.15, { cap: true, ao: 0.95 });
+    for (const sx of [-1, 1]) s.box(...fin, sx * (w / 2 - 1.5), d / 2 - 0.4, 2.2, 0.8, 1.6, h, 0.1, 0.2, { ao: 0.95 });
+    if (o.plug) {
+      s.box(...PAL.paper, 0, 0, w - 1.9, d - 1.9, 1.6, top, 0.3, 0.3, { ao: 0.95 });
+      for (let i = 0; i < o.n; i++) brick(s, DARK, (i - (o.n - 1) / 2) * pitch, d / 2 - 0.93, 1.3, 0.06, h + 0.3, top - 0.5);
+    } else for (let i = 0; i < o.n; i++) brick(s, PAL.tin, (i - (o.n - 1) / 2) * pitch, 0, 0.64, 0.64, 1.6, 5.6, 0.1);
   });
   const e = m.elements;
   const out: V3[] = [];
   for (let i = 0; i < o.n; i++) {
     const px = (i - (o.n - 1) / 2) * pitch;
-    out.push([e[0] * px + e[12], o.y + h, e[2] * px + e[14]]);
+    out.push([e[0] * px + e[12], o.y + top, e[2] * px + e[14]]);
   }
   return out;
 }
