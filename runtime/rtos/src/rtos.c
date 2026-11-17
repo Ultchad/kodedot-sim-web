@@ -1075,18 +1075,23 @@ static void *timer_service(void *unused)
     return NULL;
 }
 
-static void timer_service_ensure_locked(void)
+/* Decide under g_k, create OUTSIDE it: a pthread_create that finds the worker pool empty is proxied to the browser's main thread and waits for it,
+ * and the main thread may at that moment be waiting (page-side exports) for a lock that needs g_k. Never hold g_k across a thread creation. */
+static bool timer_service_claim_locked(void)
 {
-    if (!g_tmr_started) {
-        g_tmr_started = true;
-        cond_init(&g_tmr_cv);
-        pthread_t th;
-        pthread_attr_t a;
-        pthread_attr_init(&a);
-        pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
-        pthread_create(&th, &a, timer_service, NULL);
-        pthread_attr_destroy(&a);
-    }
+    if (g_tmr_started) return false;
+    g_tmr_started = true;
+    cond_init(&g_tmr_cv);
+    return true;
+}
+static void timer_service_spawn(void)
+{
+    pthread_t th;
+    pthread_attr_t a;
+    pthread_attr_init(&a);
+    pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
+    pthread_create(&th, &a, timer_service, NULL);
+    pthread_attr_destroy(&a);
 }
 
 static TimerHandle_t timer_make(struct tmrTimerControl *t, const char *name, TickType_t period,
@@ -1094,10 +1099,11 @@ static TimerHandle_t timer_make(struct tmrTimerControl *t, const char *name, Tic
 {
     t->name = name; t->period = period; t->reload = reload != 0; t->id = id; t->cb = cb;
     pthread_mutex_lock(&g_k);
-    timer_service_ensure_locked();
+    bool spawn = timer_service_claim_locked();
     t->next = g_timers;
     g_timers = t;
     pthread_mutex_unlock(&g_k);
+    if (spawn) timer_service_spawn();
     return t;
 }
 TimerHandle_t xTimerCreate(const char *name, TickType_t period, BaseType_t reload, void *id,
