@@ -95,8 +95,10 @@ DOTBENCH_BUILD=/tmp/ble tests/node/kodeos/run.sh              # kodeOS role: KOD
 * Stubs: no `kdrv_ble_*` function is generated as a stub in either role (`grep kdrv_ble_ <build>/stubs <build>/kodeos/stubs` is empty); no test hits a
   `not implemented` line for a BLE function.
 
-Other suites re-run after BLE was switched on for every app (see risks): `radio` (needs one change, below), wifi, net (mqtt, network example), ir,
-acceptance all PASSED.
+Other suites re-run after BLE was switched on for every app (see risks): wifi, net (mqtt, network example), ir, acceptance, nfc, rfid, sd, storage, time,
+nvs PASSED. Not caused by this area: `radio` (needs one change, below); `system/restart` (rss growth, fails the same on the pre-change build); `persist`
+(region-table assertions: the "ble" region is one more entry, the test fails on the pre-change build too); audio pacing checks (`audio/files`,
+`audio/record`, `audio/tone_volume`) fail only while the 2-core machine runs at load average 14 (the measured call takes 2.0 s against a 1.4 s limit).
 
 ## Assumptions
 
