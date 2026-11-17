@@ -213,6 +213,11 @@ export default {
           "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number", "description": "Height of the contact point above the table. Default: the face's own height (top: body.h_mm, bottom: 0)."}},
           "description": "Terminal position in millimetres on the footprint (origin top-left, x right, y down, see body)."
         },
+        "caps": {
+          "type": "array", "maxItems": 12, "uniqueItems": true,
+          "items": {"enum": ["digital", "pwm", "analog", "dac", "interrupt", "i2c_sda", "i2c_scl", "spi_sck", "spi_miso", "spi_mosi", "spi_ss", "uart_rx", "uart_tx", "touch", "boot_strap", "input_only"]},
+          "description": "What the pin can do on the real board (a board part: pin capabilities for the page and the sketch editor). Informational: the part still decides what its sketch does."
+        },
         "face": {"enum": ["top", "bottom", "left", "right", "front", "back"], "default": "top", "description": "Which face the terminal is on: top (header pins, screw terminals), bottom (leads that plug into a breadboard), left/right (x edges), front (y = d_mm) and back (y = 0)."}
       },
       "allOf": [
@@ -428,7 +433,7 @@ export default {
         "type": {"const": "wasm"},
         "entry": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]{1,80}\\.wasm$"},
         "abi": {"const": 1},
-        "core": {"enum": ["esp32", "uno-r3", "uno-r4", "esp32-s3"], "default": "esp32", "description": "Which dotcore variant the sketch is compiled against: pin names and numbers, analogRead and analogWrite resolution, PWM pins, default Wire and SPI pins."},
+        "core": {"enum": ["esp32", "esp32-s3", "uno-r3", "uno-r4-minima", "uno-r4-wifi"], "default": "esp32", "description": "Which dotcore variant the sketch is compiled against: pin names and numbers, analogRead and analogWrite resolution, PWM pins, default Wire and SPI pins."},
         "memory_kb": {"type": "integer", "minimum": 256, "maximum": 8192, "default": 1024},
         "stack_kb": {"type": "integer", "minimum": 16, "maximum": 512, "default": 64},
         "wasm_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
@@ -735,6 +740,78 @@ export default {
             "current_output": {"$ref": "#/$defs/fieldName"}
           },
           "description": "A floating voltage source (battery, bench supply): + at `pos`, `mv` above `neg`; its minus is 0 V when nothing else defines the reference."
+        },
+        {
+          "type": "object",
+          "required": ["type", "a", "b"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "motor"},
+            "a": {"$ref": "#/$defs/pinName"}, "b": {"$ref": "#/$defs/pinName"},
+            "ohms": {"type": "number", "minimum": 0.1, "default": 8, "description": "Winding resistance: the motor loads its nets (no back-EMF, no inductance)."},
+            "rated_mv": {"type": "number", "default": 6000}, "start_mv": {"type": "number", "default": 500, "description": "Below this voltage it does not turn."},
+            "rpm": {"type": "number", "default": 200, "description": "Speed at rated_mv, no load."},
+            "max_ma": {"type": "number", "description": "Stall current: above it an overcurrent hazard is shown."},
+            "speed_output": {"$ref": "#/$defs/fieldName", "description": "-1..1 (sign = direction), 1 at rated_mv; a PWM-driven motor follows the average voltage."},
+            "rpm_output": {"$ref": "#/$defs/fieldName"}, "current_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A brushed DC motor: a winding resistance and a speed that follows the voltage across it."
+        },
+        {
+          "type": "object",
+          "required": ["type", "in", "out", "vs"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "half_bridge"},
+            "in": {"$ref": "#/$defs/pinName"}, "out": {"$ref": "#/$defs/pinName"}, "vs": {"$ref": "#/$defs/pinName", "description": "The motor supply pin; the output swings between it (minus drop_mv) and 0 V."},
+            "en": {"$ref": "#/$defs/pinName", "description": "Enable: low (and not PWM) leaves the output high impedance; a PWM enable chops the output."},
+            "drop_mv": {"type": "number", "default": 1400}, "ohms": {"type": "number", "default": 2},
+            "output": {"$ref": "#/$defs/fieldName", "description": "Output level as a fraction of vs, 0..1."}
+          },
+          "description": "One leg of an H-bridge driving its `out` pin (a real source on the net, unlike the older h_bridge element)."
+        },
+        {
+          "type": "object",
+          "required": ["type", "in1", "in2", "in3", "in4"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "stepper_unipolar"},
+            "in1": {"$ref": "#/$defs/pinName"}, "in2": {"$ref": "#/$defs/pinName"}, "in3": {"$ref": "#/$defs/pinName"}, "in4": {"$ref": "#/$defs/pinName"},
+            "steps_per_rev": {"type": "integer", "default": 4096, "description": "Half steps per output-shaft revolution (28BYJ-48: 4096)."},
+            "max_sps": {"type": "number", "default": 1000, "description": "Half steps per second above which the rotor skips (stalled)."},
+            "position_output": {"$ref": "#/$defs/fieldName"}, "angle_output": {"$ref": "#/$defs/fieldName"}, "stalled_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A unipolar stepper behind a ULN2003: the energised-coil pattern on in1..in4 moves the shaft one half step per phase."
+        },
+        {
+          "type": "object",
+          "required": ["type", "step", "dir"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "stepper_step_dir"},
+            "step": {"$ref": "#/$defs/pinName"}, "dir": {"$ref": "#/$defs/pinName"}, "en": {"$ref": "#/$defs/pinName"},
+            "ms1": {"$ref": "#/$defs/pinName"}, "ms2": {"$ref": "#/$defs/pinName"}, "ms3": {"$ref": "#/$defs/pinName"},
+            "rst": {"$ref": "#/$defs/pinName"}, "slp": {"$ref": "#/$defs/pinName"},
+            "steps_per_rev": {"type": "integer", "default": 200, "description": "Full steps per revolution (NEMA 17: 200)."},
+            "max_sps": {"type": "number", "default": 2000, "description": "Full steps per second above which the rotor skips."},
+            "position_output": {"$ref": "#/$defs/fieldName", "description": "Position in 1/16 full steps (the finest A4988 microstep)."},
+            "angle_output": {"$ref": "#/$defs/fieldName"}, "stalled_output": {"$ref": "#/$defs/fieldName"}, "microstep_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A bipolar stepper behind an A4988-style step/dir driver: each rising STEP edge moves 1, 1/2, 1/4, 1/8 or 1/16 full step by the MS pins, in the DIR direction, while EN is low and RST and SLP are high."
+        },
+        {
+          "type": "object",
+          "required": ["type", "in", "com", "no", "nc"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "relay"},
+            "in": {"$ref": "#/$defs/pinName"},
+            "active": {"oneOf": [{"enum": ["low", "high"]}, {"type": "object", "required": ["field", "op", "value"], "additionalProperties": false, "properties": {"field": {"$ref": "#/$defs/fieldName"}, "op": {"enum": ["eq", "ne", "gt", "ge", "lt", "le"]}, "value": {"type": ["number", "boolean", "string"]}}}], "default": "low"},
+            "com": {"$ref": "#/$defs/pinName"}, "no": {"$ref": "#/$defs/pinName"}, "nc": {"$ref": "#/$defs/pinName"},
+            "coil_ms": {"type": "number", "default": 8, "description": "Virtual time the contact takes to move."},
+            "energized_output": {"$ref": "#/$defs/fieldName"}, "closed_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A relay: COM joins NC at rest, NO when the coil is energised (module powered and IN at its active level). With the module unpowered COM-NC still conducts."
         }
       ]
     }

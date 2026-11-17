@@ -101,7 +101,7 @@ export function checkWasmModule(mod) {
 
 // ------------------------------------------------------------------------------ semantic lint (what `dotbench part check` adds to the schema)
 const ELEM_PIN_KEYS = { switch: ["a", "b"], bridge: ["a", "b"], divider: ["top", "bottom", "wiper"], source: ["pin"], drive: ["pin"], i2c_slave: ["sda", "scl"],
-  h_bridge: ["in1", "in2", "enable"], servo: ["pin"], led: ["anode", "cathode"], buzzer: ["pin", "ref"], resistor: ["a", "b"], capacitor: ["a", "b"], diode: ["anode", "cathode"], cell: ["pos", "neg"] };
+  h_bridge: ["in1", "in2", "enable"], servo: ["pin"], led: ["anode", "cathode"], buzzer: ["pin", "ref"], resistor: ["a", "b"], capacitor: ["a", "b"], diode: ["anode", "cathode"], cell: ["pos", "neg"], motor: ["a", "b"], half_bridge: ["in", "out", "vs", "en"], stepper_unipolar: ["in1", "in2", "in3", "in4"], stepper_step_dir: ["step", "dir", "en", "ms1", "ms2", "ms3", "rst", "slp"], relay: ["in", "com", "no", "nc"] };
 /** Cross references and bounds. Returns {errors:[{path,message}], warnings:[{path,message}]} (schema errors are NOT repeated here). */
 export function lintManifest(m, files = null, opts = {}) {
   const errors = [], warnings = [];

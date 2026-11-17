@@ -26,8 +26,14 @@ export class PartTester {
       if (pin.kind === "io" || pin.kind === "analog") { if (n < 14) { this.exp.set(pin.name, n); b.connect(`device.EXP${n + 1}`, `${this.instance}.${pin.name}`); n++; } }
       else if (pin.kind === "ground") b.connect("device.GND", `${this.instance}.${pin.name}`);
       else if (pin.kind === "power_in") {
-        const v5 = (pin.min_mv ?? 0) <= 5000 && (pin.max_mv ?? 0) >= 5000 && !((pin.min_mv ?? 0) <= 3300 && (pin.max_mv ?? 0) >= 3300);
-        b.connect(v5 ? "device.V5" : "device.V33", `${this.instance}.${pin.name}`);
+        const lo = pin.min_mv ?? 0, hi = pin.max_mv ?? 0;
+        const v5 = lo <= 5000 && hi >= 5000 && !(lo <= 3300 && hi >= 3300);
+        if (!v5 && !(lo <= 3300 && hi >= 3300)) {       // a supply the Dot cannot give (a motor supply, 8 to 35 V): a helper source, 12 V clipped into the range
+          const mv = Math.min(Math.max(12000, lo), hi), id = "tester.psu";
+          if (!b.defs.has(id)) b.registerPart({ manifest: { id, version: "1.0.0", name: { en: "tester supply" }, category: "power", pins: [{ name: "POS", kind: "io", abs_max_mv: 60000 }, { name: "NEG", kind: "io", abs_max_mv: 60000 }], fields: [{ name: "mv", type: "number", default: 12000 }], behaviour: { type: "declarative", engine: 1, elements: [{ type: "cell", pos: "POS", neg: "NEG", mv: { field: "mv" }, ohms: 0.2 }] } }, sha256: "" });
+          const psu = b.addPart(id, { fields: { mv }, label: "tester supply" });
+          b.connect(`${psu}.POS`, `${this.instance}.${pin.name}`); b.connect(`${psu}.NEG`, "device.GND");
+        } else b.connect(v5 ? "device.V5" : "device.V33", `${this.instance}.${pin.name}`);
       }
     }
     for (const nm of ["SDA", "SCL"]) if (this.exp.has(nm)) b.setDevicePin(this.exp.get(nm), { mode: "in", pull: "up" });

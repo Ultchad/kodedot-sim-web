@@ -43,6 +43,14 @@ DP_IMPORT(spi_xfer)       int      dp_spi_xfer(int port, const uint8_t *w, uint8
 DP_IMPORT(field_f64)      double   dp_field_f64(int idx);
 DP_IMPORT(output_f64)     void     dp_output_f64(int idx, double v);
 
+// persistent bytes of this part instance (8 KB, erased = 0xFF), kept by the bench with the layout: EEPROM and Preferences live here.
+// Both return the byte count, or -1 when off+n is out of range.
+DP_IMPORT(nvs_get)        int      dp_nvs_get(int off, uint8_t *p, int n);
+DP_IMPORT(nvs_set)        int      dp_nvs_set(int off, const uint8_t *p, int n);
+
+// a note for the part's console (not Serial): who is not simulated, what was refused
+DP_IMPORT(log)            void     dp_log(const uint8_t *p, int n);
+
 // I2C slave: the bench will call dp_i2c_slave_event() for each transaction aimed at addr
 DP_IMPORT(i2c_slave_begin) void    dp_i2c_slave_begin(int port, int addr, int sda, int scl);
 }

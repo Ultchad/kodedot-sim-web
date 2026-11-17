@@ -96,6 +96,7 @@ export class DeclarativePart {
       if (el.type === "wireless") this.warnings.push(`wireless port ${el.port} is not simulated by this bench build`);
     });
     this.last = new Map();        // output name -> value, for servo hold
+    this.motion = new Map();      // element index -> {pos, last, lastT, stalled, lvl...}: steppers, relays
     this.diodeOn = new Map();     // branch id -> conducting (carried between solves)
     this.br = new Map();          // branch id -> last result {cur (mA, duty average), curHi, curLo, vd (mV)}
     this.capV = new Map();        // branch id -> capacitor voltage (mV, plus minus)
@@ -120,11 +121,13 @@ export class DeclarativePart {
       const id = "e" + i;
       if (el.type === "resistor") out.push({ id, kind: "r", a: T(el.a), b: T(el.b), g: 1 / this._ohms(el) });
       else if (el.type === "capacitor") { if (!this.capV.has(id)) this.capV.set(id, 0); out.push({ id, kind: "cap", a: T(el.a), b: T(el.b), c: Math.max(1e-12, num(evalExpr(el.farads, f))), esr: el.esr_ohms ?? 0, v: this.capV.get(id) }); }
+      else if (el.type === "motor") out.push({ id, kind: "r", a: T(el.a), b: T(el.b), g: 1 / Math.max(0.1, el.ohms ?? 8) });
       else if (el.type === "diode") out.push({ id, kind: "diode", a: T(el.anode), b: T(el.cathode), vf: el.vf_mv ?? 700, rs: el.rs_ohms ?? 10 });
       else if (el.type === "cell") out.push({ id, kind: "emf", a: T(el.pos), b: T(el.neg), g: 1 / Math.max(0.001, el.ohms ?? 1.5), e: num(evalExpr(el.mv, f)), refB: true });
     });
     return out;
   }
+  clearBranches() { this.br.clear(); }
   onBranch(id, b, commitDt) {
     this.br.set(id, { cur: b.cur, curHi: b.curHi, curLo: b.curLo, vd: b.vd });
     if (b.kind === "diode") this.diodeOn.set(id, !!b.on);
@@ -138,6 +141,7 @@ export class DeclarativePart {
       const id = "e" + i, r = this.br.get(id), inst = this.host.instance;
       if (this.failed.has(i)) { out.push({ class: this.failed.get(i).class, terms: [inst], net: -1, text: `${inst}: ${this.failed.get(i).text}` }); return; }
       if (el.type === "resistor" && el.rated_mw && r) { const pw = (r.cur * r.cur * this._ohms(el)) / 1000; if (pw > el.rated_mw) out.push({ class: "overpower", terms: [T(el.a), T(el.b)], net: N(el.a).id, text: `${inst}: resistor dissipates ${Math.round(pw)} mW, rated ${el.rated_mw} mW` }); }
+      else if (el.type === "motor" && el.max_ma && r && Math.abs(r.cur) > el.max_ma) out.push({ class: "overcurrent", terms: [T(el.a), T(el.b)], net: N(el.a).id, text: `${inst}: ${Math.round(Math.abs(r.cur))} mA through a motor that stalls at ${el.max_ma} mA` });
       else if (el.type === "diode" && el.max_ma && r && r.cur > el.max_ma) out.push({ class: "overcurrent", terms: [T(el.anode), T(el.cathode)], net: N(el.anode).id, text: `${inst}: ${Math.round(r.cur)} mA through a ${el.max_ma} mA part: add a series resistor` });
       else if (el.type === "capacitor" && el.polarity) {
         const v = this.capV.get(id) ?? 0, rev = el.polarity.plus === el.a ? -v : v;
@@ -177,8 +181,63 @@ export class DeclarativePart {
     this.elements.forEach((el, i) => {
       if (el.type === "bridge") out.push([T(el.a), T(el.b)]);
       else if (el.type === "switch" && this.sw.get(i).closed) out.push([T(el.a), T(el.b)]);
+      else if (el.type === "relay") { const m = this._relay(i); out.push([T(el.com), T(m.closed ? el.no : el.nc)]); }
     });
     return out;
+  }
+  /** A part with no power still has its resting contacts (a relay's COM-NC). */
+  joinsUnpowered() {
+    const out = [];
+    this.elements.forEach((el, i) => { if (el.type === "relay") { this._relay(i, true); out.push([this.host.term(el.com), this.host.term(el.nc)]); } });
+    return out;
+  }
+  _relay(i, off) {
+    let m = this.motion.get(i);
+    if (!m) { m = { closed: false, want: false, cancel: null }; this.motion.set(i, m); }
+    if (off && (m.closed || m.want)) { m.cancel?.(); m.closed = m.want = false; }
+    return m;
+  }
+  /** A level seen on one of this part's pins (from a solve or precisely from a firmware part's pin write): drives the steppers' step counters. */
+  onLevel(pin, level, t) {
+    this.lvl ??= new Map(); this.lvl.set(pin, level ? 1 : 0);
+    this.elements.forEach((el, i) => {
+      if (el.type === "stepper_step_dir" && pin === el.step) {
+        const m = this.motion.get(i) ?? (this.motion.set(i, { pos: 0, lvl: 0, lastT: -1e12, stalled: false, adj: 0 }), this.motion.get(i));
+        const prev = m.lvl; m.lvl = level ? 1 : 0;
+        if (prev === 0 && m.lvl === 1) this._stepPulse(el, m, t ?? this.host.clock().now());
+      }
+    });
+  }
+  edge(pin, level, t) { this.onLevel(pin, level, t); }
+  /** The pins whose levels onLevel wants (for precise edges). */
+  watchPins() { return this.elements.filter((e) => e.type === "stepper_step_dir").flatMap((e) => [e.step, e.dir, e.en, e.ms1, e.ms2, e.ms3, e.rst, e.slp].filter(Boolean)); }
+  _stepPulse(el, m, t) {
+    const lv = (p) => (p ? (this.lvl?.has(p) ? this.lvl.get(p) : this.host.net(this.host.term(p)).level) : 0);
+    const en = el.en ? lv(el.en) : 0, awake = (el.rst ? lv(el.rst) : 1) && (el.slp ? lv(el.slp) : 1);
+    if (en || !awake) return;
+    const div = lv(el.ms1) && lv(el.ms2) && lv(el.ms3) ? 16 : [1, 2, 4, 8][lv(el.ms1) + 2 * lv(el.ms2)];   // A4988: MS1 MS2 MS3 = 000 full, 100 half, 010 quarter, 110 eighth, 111 sixteenth
+    const fullSteps = 1 / div, dt = Math.max(1, t - m.lastT) / 1e6, rate = fullSteps / dt;
+    m.lastT = t; m.rate = rate;
+    if (rate > (el.max_sps ?? 2000)) { m.stalled = true; this.host.changed(); return; }
+    m.stalled = false;
+    m.pos += (lv(el.dir) ? 1 : -1) * (16 / div);
+    m.div = div; m.moved = true;
+    this.host.changed();
+  }
+  /** UL2003 / 28BYJ-48: decode the four coil inputs into a position in half steps. */
+  _uln(el, i) {
+    const m = this.motion.get(i) ?? (this.motion.set(i, { pos: 0, phase: -1, lastT: -1e12, stalled: false }), this.motion.get(i));
+    const lv = [el.in1, el.in2, el.in3, el.in4].map((p) => this.host.net(this.host.term(p)).level), code = lv[0] | (lv[1] << 1) | (lv[2] << 2) | (lv[3] << 3);
+    const SEQ = [0b0001, 0b0011, 0b0010, 0b0110, 0b0100, 0b1100, 0b1000, 0b1001], ph = SEQ.indexOf(code);
+    if (ph < 0) return m;
+    if (m.phase < 0) { m.phase = ph; return m; }
+    let d = ((ph - m.phase + 12) % 8) - 4; if (d === -4) d = 4;
+    if (d === 0 || d === 4) return m;
+    const t = this.host.clock().now(), dt = Math.max(1, t - m.lastT) / 1e6;
+    if (dt > 20e-6 && Math.abs(d) / dt > (el.max_sps ?? 1000)) { m.stalled = true; m.phase = ph; m.lastT = t; return m; }
+    if (dt > 20e-6) m.stalled = false;
+    m.pos += d; m.phase = ph; m.lastT = t;
+    return m;
   }
   /** Voltage sources the elements contribute (divider wiper, analog source, driven pin). vhigh: this part's logic-high voltage. */
   sources(vhigh) {
@@ -191,6 +250,16 @@ export class DeclarativePart {
         out.push({ term: T(el.wiper), mv: vb + p * (vt - vb), ohms: Math.max(1, el.ohms * p * (1 - p)), kind: "analog" });
       } else if (el.type === "source") {
         out.push({ term: T(el.pin), mv: num(evalExpr(el.mv, f)), ohms: el.ohms ?? 100, kind: "analog" });
+      } else if (el.type === "half_bridge") {
+        const vsn = this.host.net(T(el.vs)), vs = vsn.floating ? 0 : vsn.mv, inn = this.host.net(T(el.in)), en = el.en ? this.host.net(T(el.en)) : null;
+        const drop = el.drop_mv ?? 1400, hi = Math.max(0, vs - drop);
+        if (vs < 4000) continue;
+        const ohms = el.ohms ?? 2;
+        if (en && !en.level && !en.pwm) continue;                         // disabled: high impedance, the load coasts
+        if (inn.pwm && inn.pwm.hz > 0) out.push({ term: T(el.out), mv: hi, ohms, kind: "out", pwm: { hz: inn.pwm.hz, duty: inn.pwm.duty } });
+        else if (en && en.pwm && inn.level) out.push({ term: T(el.out), mv: hi, ohms, kind: "out", pwm: { hz: en.pwm.hz, duty: en.pwm.duty } });
+        else if (en && en.pwm) out.push({ term: T(el.out), mv: 0, ohms, kind: "out" });
+        else out.push({ term: T(el.out), mv: inn.level ? hi : 0, ohms, kind: "out" });
       } else if (el.type === "drive") {
         const level = truthy(evalExpr(el.level, f)) ? 1 : 0, od = el.mode === "open_drain";
         const pin = this.part.def.manifest.pins.find((p) => p.name === el.pin), ohms = 50 + (pin?.series_ohms ?? 0);
@@ -230,6 +299,35 @@ export class DeclarativePart {
         if (el.current_output) set(el.current_output, Math.round((r?.cur ?? 0) * 100) / 100);
       } else if (el.type === "cell") {
         if (el.current_output) set(el.current_output, Math.round(Math.abs(r?.cur ?? 0) * 10) / 10);
+      } else if (el.type === "motor") {
+        const v = r?.vd ?? 0, a = Math.abs(v), rated = el.rated_mv ?? 6000, start = el.start_mv ?? 500;
+        const f = a <= start ? 0 : Math.min(1.2, (a - start) / (rated - start)), sp = Math.round(Math.sign(v) * f * 1000) / 1000;
+        if (el.speed_output) set(el.speed_output, sp);
+        if (el.rpm_output) set(el.rpm_output, Math.round(sp * (el.rpm ?? 200) * 10) / 10);
+        if (el.current_output) set(el.current_output, Math.round(Math.abs(r?.cur ?? 0)));
+      } else if (el.type === "half_bridge") {
+        if (el.output) { const o = this.host.net(this.host.term(el.out)), vs = this.host.net(this.host.term(el.vs)); set(el.output, vs.mv > 0 && !o.floating ? Math.round(clamp(o.mv / vs.mv, 0, 1) * 1000) / 1000 : 0); }
+      } else if (el.type === "stepper_unipolar") {
+        const m = this._uln(el, i), n = el.steps_per_rev ?? 4096;
+        if (el.position_output) set(el.position_output, m.pos);
+        if (el.angle_output) set(el.angle_output, Math.round((((m.pos % n) + n) % n) / n * 3600) / 10);
+        if (el.stalled_output) set(el.stalled_output, !!m.stalled);
+      } else if (el.type === "stepper_step_dir") {
+        const m = this.motion.get(i) ?? { pos: 0, stalled: false }, n = (el.steps_per_rev ?? 200) * 16;
+        if (el.position_output) set(el.position_output, m.pos);
+        if (el.angle_output) set(el.angle_output, Math.round((((m.pos % n) + n) % n) / n * 3600) / 10);
+        if (el.stalled_output) set(el.stalled_output, !!m.stalled);
+        if (el.microstep_output) set(el.microstep_output, m.div ?? 1);
+      } else if (el.type === "relay") {
+        const m = this._relay(i), inn = this.host.net(this.host.term(el.in)), act = typeof el.active === "object" ? truthy(evalExpr(el.active, f)) : el.active === "high";
+        const want = !inn.floating && (act ? !!inn.level : !inn.level);
+        if (want !== m.want) {
+          m.want = want; m.cancel?.();
+          const clock = this.host.clock();
+          m.cancel = clock.schedule(clock.now() + (el.coil_ms ?? 8) * 1000, () => { m.closed = want; this.host.changed(); });
+        }
+        if (el.energized_output) set(el.energized_output, m.want);
+        if (el.closed_output) set(el.closed_output, m.closed);
       }
     });
     if (this.failed.size !== (this._nf ?? 0)) { this._nf = this.failed.size; this.host.changed(); }

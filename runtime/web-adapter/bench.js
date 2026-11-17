@@ -185,7 +185,9 @@ export class Bench {
   netId(term) { this._flush(); return this._net.get(term)?.id ?? -1; }
 
   // ---------------------------------------------------------------- solving
-  _touch() { this._dirty = true; this._flush(); }
+  _touch() { this._dirty = true; if (!this._batch) this._flush(); }
+  /** Run fn with the solver paused, then solve once: loading a layout or wiring many terminals costs one solve instead of one per call. */
+  batch(fn) { this._batch = (this._batch ?? 0) + 1; try { return fn(); } finally { if (--this._batch === 0) this._flush(); } }
   _flush() {
     if (this._flushing) { this._again = true; return; }
     this._flushing = true;
@@ -202,7 +204,7 @@ export class Bench {
     for (const p of this.parts.values()) for (const pin of p.def.manifest.pins) if (pin.kind !== "nc") terms.push(`${p.instance}.${pin.name}`);
     for (const w of this.wires.values()) pairs.push([w.from, w.to]);
     for (const p of this.parts.values()) for (const g of p.def.manifest.groups ?? []) for (let i = 1; i < g.pins.length; i++) pairs.push([`${p.instance}.${g.pins[0]}`, `${p.instance}.${g.pins[i]}`]);
-    for (const p of this.parts.values()) if (power.get(p.instance) && p.impl?.joins) for (const j of p.impl.joins()) pairs.push(j);
+    for (const p of this.parts.values()) { if (power.get(p.instance)) { if (p.impl?.joins) for (const j of p.impl.joins()) pairs.push(j); } else if (p.impl?.joinsUnpowered) for (const j of p.impl.joinsUnpowered()) pairs.push(j); }
     const { netOf, nets } = computeNets(terms, pairs);
     const srcs = nets.map(() => []);
     const add = (s) => { const i = netOf.get(s.term); if (i !== undefined) srcs[i].push(s); };
@@ -331,10 +333,13 @@ export class Bench {
     const nowT = this.clock.now();
     const commit = this._capRun && nowT - this._capT >= this.capStepUs * 0.5;
     const dtc = this._capRun ? Math.max((nowT - this._capT) / 1e6, 1e-6) : 1e-6;
+    const lvl0 = this._lvl, owner = (t) => t.split(".")[0];
+    let lv = new Map();
     for (let pass = 0; pass < 4; pass++) {
       res = this._pass(power, prev, dtc);
+      const lvNow = this._levels(res, lvl0, nowT);
       this._net.clear();
-      for (const [t, i] of res.netOf) this._net.set(t, { ...res.info[i], level: this._lvl.get(t) ?? 0 });
+      for (const [t, i] of res.netOf) { const l = lvNow.get(t); this._net.set(t, { ...res.info[i], level: l[0], vdd: l[1], term: t }); }
       const mv = new Map();
       for (const [t, i] of res.netOf) mv.set(t, res.info[i].floating ? 0 : res.info[i].mv);
       const pw = this._powerOf(res.netOf, res.info);
@@ -342,25 +347,18 @@ export class Bench {
       let changed = false;
       for (const [k, v] of pw.power) if (power.get(k) !== v) changed = true;
       for (const [t, v] of mv) if (Math.abs((prev.get(t) ?? 0) - v) > 1) changed = true;
-      power = pw.power; prev = mv;
+      for (const [t, l] of lvNow) if (lv.get(t)?.[0] !== l[0]) changed = true;       // levels feed back into sources (a half bridge follows its inputs)
+      lv = lvNow; power = pw.power; prev = mv;
       if (!changed) break;
     }
-    // commit nets
-    this._net.clear();
+    // commit nets and levels
     const { netOf, info } = res;
-    const owner = (t) => t.split(".")[0];
     const now = this.clock.now();
     const edges = [];
-    for (const [t, i] of netOf) {
-      const n = info[i], o = owner(t);
-      let vdd = VDD_DEVICE;
-      if (o !== DEVICE) { const part = this.parts.get(o); vdd = this._partMv(part, (x) => { const k = netOf.get(x); return k === undefined ? { mv: 0, floating: true } : info[k]; }) || VDD_DEVICE; }
-      let mvNow = n.mv;
-      if (n.pwm) mvNow = ((now * n.pwm.hz) % 1e6) / 1e6 < n.pwm.duty ? n.mvHigh : n.mvLow;
-      const was = this._lvl.get(t) ?? 0, level = n.floating ? 0 : digital(mvNow, vdd, was);
-      this._lvl.set(t, level);
-      if (level !== was) edges.push({ term: t, level });
-      this._net.set(t, { ...n, level, vdd, term: t });
+    for (const [t, l] of lv) {
+      const was = lvl0.get(t) ?? 0;
+      this._lvl.set(t, l[0]);
+      if (l[0] !== was) edges.push({ term: t, level: l[0] });
     }
     this._prevMv = prev;
     // part power transitions, then outputs
@@ -381,9 +379,24 @@ export class Bench {
     this.version++;
     this._emit("change", { version: this.version });
   }
+  /** Digital level of every terminal (with hysteresis from lvl0) and the reader's supply: Map term -> [level, vdd mV]. */
+  _levels(res, lvl0, now) {
+    const { netOf, info } = res, out = new Map();
+    const look = (x) => { const k = netOf.get(x); return k === undefined ? { mv: 0, floating: true } : info[k]; };
+    for (const [t, i] of netOf) {
+      const n = info[i], o = t.split(".")[0];
+      let vdd = VDD_DEVICE;
+      if (o !== DEVICE) vdd = this._partMv(this.parts.get(o), look) || VDD_DEVICE;
+      let mvNow = n.mv;
+      if (n.pwm) mvNow = ((now * n.pwm.hz) % 1e6) / 1e6 < n.pwm.duty ? n.mvHigh : n.mvLow;
+      out.set(t, [n.floating ? 0 : digital(mvNow, vdd, lvl0.get(t) ?? 0), vdd]);
+    }
+    return out;
+  }
   /** Hand each solved branch back to its part; step the capacitors (commit: dt in seconds) and keep the transient clock ticking while any capacitor still moves. */
   _branchResults(br, commitDt, now) {
     let moving = false, maxDv = 0, hasCap = false;
+    for (const p of this.parts.values()) p.impl?.clearBranches?.();                // a component that was not solved (nothing drives it) reports no current
     for (const b of br ?? []) {
       try { b.part.impl.onBranch?.(b.id, b, commitDt); } catch (e) { console.error(e); }
       if (b.kind === "cap") {
@@ -401,6 +414,18 @@ export class Bench {
     if (!hasCap) this._capRun = false;
     if (this._capCancel && (commitDt > 0 || !this._capRun)) { this._capCancel(); this._capCancel = null; }
     if (this._capRun && !this._capCancel) this._capCancel = this.clock.schedule(now + this._capDt, () => { this._capCancel = null; this._touch(); });
+  }
+  /**
+   * A firmware part wrote a pin: tell the parts that count pulses (a STEP input) at once, with the pin write's own virtual time, so a 2 us pulse that
+   * would have been collapsed inside one solve still counts. Receivers are the powered parts whose watchPins() are on the same net.
+   */
+  preciseLevel(term, level, t) {
+    const id = this._netInfo(term).id;
+    if (id < 0) return;
+    for (const p of this.parts.values()) {
+      if (!this._power.get(p.instance) || !p.impl?.watchPins) continue;
+      for (const pin of p.impl.watchPins()) if (this._netInfo(`${p.instance}.${pin}`).id === id) p.impl.onLevel(pin, level, t);
+    }
   }
   _applyPower(part, on) {
     if (part.def.manifest.behaviour.type === "wasm") {
@@ -726,7 +751,8 @@ export class Bench {
     };
   }
   /** Replace the bench by a layout. Returns {missing: [{instance, id, version}], dropped: [string], notes: [string]}. Parts whose definition is not loaded are listed in `missing` and skipped, with their wires. */
-  restore(layout) {
+  restore(layout) { return this.batch(() => this._restore(layout)); }
+  _restore(layout) {
     if (!layout || layout.format !== "dotbench-layout") throw new Error("not a dotbench layout");
     if (layout.version !== 1) throw new Error(`layout version ${layout.version} is not supported`);
     for (const i of [...this.parts.keys()]) this.removePart(i);

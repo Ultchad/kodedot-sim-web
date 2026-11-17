@@ -130,10 +130,57 @@ await test("performance: DC-only bench stays cheap, a 40-part network solves qui
   const b = await mk();
   const bb = b.addPart("dotbench.breadboard-full");
   const t0 = performance.now(); const bat = b.addPart("dotbench.battery-9v"); b.connect(bat + ".POS", bb + ".T1_1"); b.connect(bat + ".NEG", bb + ".T2_1");
-  for (let k = 0; k < 20; k++) { const r = b.addPart("dotbench.resistor", { fields: { ohms: 1000 } }), led = b.addPart("dotbench.led-red"); b.connect(r + ".A", bb + `.a${k + 2}`); b.connect(r + ".B", bb + `.b${k + 2}`); b.connect(led + ".A", bb + `.c${k + 2}`); b.connect(led + ".K", bb + `.T2_${k + 2}`); b.connect(bb + `.d${k + 2}`, bb + ".T1_2"); }
+  b.batch(() => { for (let k = 0; k < 20; k++) { const r = b.addPart("dotbench.resistor", { fields: { ohms: 1000 } }), led = b.addPart("dotbench.led-red"); b.connect(r + ".A", bb + `.a${k + 2}`); b.connect(r + ".B", bb + `.b${k + 2}`); b.connect(led + ".A", bb + `.c${k + 2}`); b.connect(led + ".K", bb + `.T2_${k + 2}`); b.connect(bb + `.d${k + 2}`, bb + ".T1_2"); } });
   await ms(b, 5);
   const dt = performance.now() - t0;
   check(dt < 3000, `61 parts, 40 wires plus plug-ins solve in ${Math.round(dt)} ms`, dt);
+});
+
+await test("circuit: L298N, battery and DC motor driven by the Dot's pins (direction, PWM speed, enable)", async () => {
+  const b = await mk();
+  const bat = b.addPart("dotbench.battery-9v"), drv = b.addPart("dotbench.l298n"), m = b.addPart("dotbench.dc-motor");
+  b.connect(bat + ".POS", drv + ".VS"); b.connect(bat + ".NEG", drv + ".GND"); b.connect("device.GND", drv + ".GND");
+  b.connect(drv + ".OUT1", m + ".M1"); b.connect(drv + ".OUT2", m + ".M2");
+  b.connect("device.EXP1", drv + ".IN1"); b.connect("device.EXP2", drv + ".IN2"); b.connect("device.EXP3", drv + ".ENA");
+  b.setDevicePin(0, { mode: "out", level: 0 }); b.setDevicePin(1, { mode: "out", level: 0 }); b.setDevicePin(2, { mode: "out", level: 1 });
+  await ms(b, 2);
+  check(out(b, m, "speed") === 0, "both inputs low: the motor is braked at 0 V, still");
+  b.setDevicePin(0, { mode: "out", level: 1 }); await ms(b, 2);
+  const v = (9000 - 1400) * 4 / (4 + 2 + 2), sp = (v - 500) / 5500;
+  check(near(out(b, m, "speed"), sp, 0.04) && out(b, m, "rpm") > 3000, "IN1 high: (9 - 1.4) V through 2 + 4 + 2 ohm, forward", [out(b, m, "speed"), v]);
+  check(near(out(b, m, "current_ma"), (9000 - 1400) / 8, 40), "motor current is about 950 mA", out(b, m, "current_ma"));
+  b.setDevicePin(0, { mode: "out", level: 0 }); b.setDevicePin(1, { mode: "out", level: 1 }); await ms(b, 2);
+  check(near(out(b, m, "speed"), -sp, 0.04), "IN2 high: reverse", out(b, m, "speed"));
+  b.setDevicePin(2, { mode: "pwm", hz: 1000, duty: 32768 }); await ms(b, 2);
+  check(Math.abs(out(b, m, "speed")) < sp * 0.7 && Math.abs(out(b, m, "speed")) > sp * 0.3, "ENA at 50 % PWM: about half the voltage, slower", out(b, m, "speed"));
+  b.setDevicePin(2, { mode: "out", level: 0 }); await ms(b, 2);
+  check(out(b, m, "speed") === 0, "ENA low: outputs off, motor still");
+});
+
+await test("circuit: relay module switches a battery LED load, powered from a supply part", async () => {
+  const b = await mk();
+  const sup = b.addPart("dotbench.supply"), rel = b.addPart("dotbench.relay-module"), bat = b.addPart("dotbench.battery-9v"), r = b.addPart("dotbench.resistor", { fields: { ohms: 560 } }), led = b.addPart("dotbench.led-green");
+  b.connect(sup + ".POS", rel + ".VCC"); b.connect(sup + ".NEG", rel + ".GND"); b.connect("device.GND", rel + ".GND"); b.connect("device.EXP1", rel + ".IN");
+  b.connect(bat + ".POS", rel + ".COM"); b.connect(rel + ".NO", r + ".A"); b.connect(r + ".B", led + ".A"); b.connect(led + ".K", bat + ".NEG");
+  b.setDevicePin(0, { mode: "out", level: 1 }); await ms(b, 30);
+  check(out(b, led, "current_ma") === 0 && out(b, rel, "energized") === false, "IN high (active low): coil off, load off");
+  b.setDevicePin(0, { mode: "out", level: 0 }); await ms(b, 3);
+  check(out(b, led, "current_ma") === 0, "the contact needs 8 ms");
+  await ms(b, 20);
+  check(out(b, rel, "closed") === true && near(out(b, led, "current_ma"), (9000 - 2100) / (560 + 10 + 2), 0.5), "energised: COM-NO closed, the LED runs on the battery", out(b, led, "current_ma"));
+  b.setField(rel, "active", "high"); await ms(b, 30);
+  check(out(b, rel, "closed") === false, "flip the jumper field: the same IN low is now inactive");
+  b.disconnect(b.wireOf(sup + ".POS", rel + ".VCC")); await ms(b, 30);
+  check(b.state().parts.find((p) => p.instance === rel).power.on === false, "unpowered module");
+});
+
+await test("batch(): many connections, one solve", async () => {
+  const b = await mk(); let solves = 0; b.on("change", () => solves++);
+  const bb = b.addPart("dotbench.breadboard-half"), res = [];
+  for (let k = 0; k < 6; k++) res.push(b.addPart("dotbench.resistor"));
+  solves = 0;
+  b.batch(() => { res.forEach((r, k) => { b.connect(r + ".A", bb + `.a${k + 1}`); b.connect(r + ".B", bb + `.a${k + 9}`); }); });
+  check(solves === 1, "12 connects inside batch() emit one change", solves);
 });
 
 process.exit(finish("circuit"));

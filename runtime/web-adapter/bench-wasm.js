@@ -9,8 +9,8 @@ export const RING_CAP = 2048, REC_WORDS = 8;
 export const L = {
   WAKE: 0, STATE: 1, DL_LO: 2, DL_HI: 3, REQ: 4, KIND: 5, ADDR: 6, WLEN: 7, RLEN: 8, RES: 9, RDONE: 10, HEARTBEAT: 12, MREPLY: 13, MRES: 14, MRDONE: 15,
   EV_HEAD: 16, EV_TAIL: 17, UART_HEAD: 18, UART_TAIL: 21, PARKS: 24, PIN_LVL: 64, PIN_MV: 128, EV: 256, EV_CAP: 256,
-  WDATA: 4096, RDATA: 5120, UART_RX: 6144, FIELDS: 9216, BYTES: 12288, XFER_MAX: 256, RING_CAP, REC_WORDS,
-  K: { PIN_MODE: 1, PIN_WRITE: 2, UART: 3, PWM: 4, I2C_SLAVE: 5, I2C_MASTER: 6, UART_BEGIN: 7, PIN_IRQ: 8, OUTPUT: 9, I2C_XFER: 10, SPI_BEGIN: 11, SPI_BEGIN2: 12, SPI_XFER: 13, DAC: 14 },
+  WDATA: 4096, RDATA: 5120, UART_RX: 6144, FIELDS: 9216, STORE: 12288, STORE_SIZE: 8192, BYTES: 20480, XFER_MAX: 256, RING_CAP, REC_WORDS,
+  K: { PIN_MODE: 1, PIN_WRITE: 2, UART: 3, PWM: 4, I2C_SLAVE: 5, I2C_MASTER: 6, UART_BEGIN: 7, PIN_IRQ: 8, OUTPUT: 9, I2C_XFER: 10, SPI_BEGIN: 11, SPI_BEGIN2: 12, SPI_XFER: 13, DAC: 14, STORE: 15 },
 };
 const R = { OK: 0, NACK_ADDR: 1, NACK_DATA: 2 };
 const ARDUINO_CODE = { 0: 0, 1: 2, 2: 3 };       // bench result -> Wire.endTransmission code (others: 4)
@@ -46,6 +46,8 @@ export class WasmPart {
     this.slaves = []; this.i2cMaster = null; this.spiMaster = null; this.uart = [null, null, null];
     this.fieldIdx = (this.m.fields ?? []).filter((f) => ["number", "integer", "boolean", "enum"].includes(f.type));
     this.sab = new SharedArrayBuffer(L.BYTES); this.mb = new Int32Array(this.sab); this.mb8 = new Uint8Array(this.sab); this.f64 = new Float64Array(this.sab, L.FIELDS, 32);
+    // per-instance persistent bytes (EEPROM / Preferences): the bench keeps them on the part, the Worker reads and writes them in the mailbox
+    if (part.storage) this.mb8.set(part.storage.subarray(0, L.STORE_SIZE), L.STORE); else this.mb8.fill(0xff, L.STORE, L.STORE + L.STORE_SIZE);
     this.ringSab = new SharedArrayBuffer(8 * 4 + RING_CAP * REC_WORDS * 4); this.ring = new Int32Array(this.ringSab);
     this.worker = null; this.dead = false; this.busy = false; this.lastBeat = 0; this.stale = 0; this.parkMark = -1;
     this.reqQueue = []; this.reqActive = false;
@@ -210,17 +212,22 @@ export class WasmPart {
       const tail = Atomics.load(ring, 1);
       if (head === tail) break;
       const o = 8 + head * REC_WORDS, k = ring[o], a = ring[o + 1], b = ring[o + 2], c = ring[o + 3], d = ring[o + 6], e = ring[o + 7];
+      const tlo = ring[o + 4] >>> 0, thi = ring[o + 5] >>> 0, tv = thi * 4294967296 + tlo;
       head = (head + 1) % RING_CAP; Atomics.store(ring, 0, head);
-      try { if (this._record(k, a, b, c, d, e)) dirty = true; } catch (err) { console.error(err); }
+      try { if (this._record(k, a, b, c, d, e, tv)) dirty = true; } catch (err) { console.error(err); }
     }
     if (dirty) this.host.changed();
   }
-  _record(k, a, b, c, d, e) {
+  _record(k, a, b, c, d, e, tv) {
     const K = L.K;
     switch (k) {
       case K.PIN_MODE: { const st = this.pin.get(a) ?? this._adhoc(a); st.pwm = null; st.dac = null;
         st.mode = b === 1 ? "out" : b === 4 ? "od" : "in"; st.pull = b === 2 ? "up" : b === 3 ? "down" : "none"; return true; }
-      case K.PIN_WRITE: { const st = this.pin.get(a) ?? this._adhoc(a); st.level = b ? 1 : 0; return true; }
+      case K.PIN_WRITE: {
+        const st = this.pin.get(a) ?? this._adhoc(a), was = st.level; st.level = b ? 1 : 0;
+        if (was !== st.level && st.mode === "out") { const term = this._term(a); if (term) this.bench.preciseLevel(term, st.level, tv); }
+        return true;
+      }
       case K.PWM: { const st = this.pin.get(a) ?? this._adhoc(a); st.pwm = b > 0 ? { hz: b >>> 0, duty: Math.min(65536, c >>> 0) } : null; if (b > 0) st.mode = "out"; return true; }
       case K.DAC: { const st = this.pin.get(a) ?? this._adhoc(a); st.dac = b; return true; }
       case K.PIN_IRQ: { const st = this.pin.get(a) ?? this._adhoc(a); st.irq = b; return false; }
@@ -233,6 +240,7 @@ export class WasmPart {
         const out = (this.m.outputs ?? [])[a]; if (out) this.host.setOutput(out.name, out.type === "boolean" ? v !== 0 : v);
         return false;
       }
+      case K.STORE: this.part.storage = this.mb8.slice(L.STORE, L.STORE + L.STORE_SIZE); return false;     // a commit: the page can save the layout
       case K.I2C_XFER: this._i2cXfer(a, b, c, d, e); return false;
       case K.SPI_BEGIN: this.spiMaster = { ...(this.spiMaster ?? {}), port: a, sck: b, miso: c, mosi: d, cs: e }; return false;
       case K.SPI_BEGIN2: if (this.spiMaster) { this.spiMaster.hz = b >>> 0; this.spiMaster.mode = c; } return false;
@@ -242,6 +250,7 @@ export class WasmPart {
   }
   _adhoc(gpio) { const st = { mode: "z", pull: "none", level: 0, pwm: null, dac: null, irq: 0 }; this.pin.set(gpio, st); return st; }
   _uartOut(port, bytes) {
+    if (port === 7) { this.host.warn("note", this.consoleDecoder.decode(bytes)); return; }       // dp_log: a note from the core (e.g. WiFi is not simulated)
     if (port === 0) { this.host.console(this.consoleDecoder.decode(bytes, { stream: true })); return; }
     const u = this.uart[port]; if (!u || u.tx < 0) return;
     const term = this._term(u.tx); if (term) this.bench.uartSend(term, bytes, u.baud, this.part.instance);

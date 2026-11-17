@@ -1,0 +1,134 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.stepper-28byj48",
+  "name": {
+    "en": "Stepper 28BYJ-48 + ULN2003",
+    "pt-BR": "Motor de passo 28BYJ-48 + ULN2003",
+    "es": "Motor paso a paso 28BYJ-48 + ULN2003"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "The 5 V 28BYJ-48 geared stepper on its ULN2003 driver board: IN1..IN4 energise the coils (high = coil on), V5 and GND power it. The coil pattern is decoded into a position in half steps (4096 per shaft turn): a full-step sequence moves 2 per phase, the half-step sequence 1. The page reads position, angle (degrees) and a stalled flag (above 1000 half steps/s the rotor skips). Not modelled: torque, load, current draw by pattern.",
+    "pt-BR": "O motor de passo 28BYJ-48 de 5 V com redução na placa driver ULN2003: IN1..IN4 energizam as bobinas (alto = bobina ligada), V5 e GND alimentam. O padrão das bobinas vira posição em meios passos (4096 por volta do eixo): a sequência de passo completo anda 2 por fase, a de meio passo 1. A página lê posição, ângulo (graus) e um sinal de travado (acima de 1000 meios passos/s o rotor perde passos). Não modelado: torque, carga, consumo por padrão.",
+    "es": "El motor paso a paso 28BYJ-48 de 5 V con reductora en su placa driver ULN2003: IN1..IN4 energizan las bobinas (alto = bobina activa), V5 y GND lo alimentan. El patrón de bobinas se decodifica en posición en medios pasos (4096 por vuelta del eje): la secuencia de paso completo avanza 2 por fase, la de medio paso 1. La página lee posición, ángulo (grados) y una marca de atascado (por encima de 1000 medios pasos/s el rotor pierde pasos). No modelado: par, carga, consumo por patrón."
+  },
+  "category": "actuator",
+  "tags": [
+    "stepper",
+    "28byj-48",
+    "uln2003",
+    "motor"
+  ],
+  "keywords": {
+    "en": [
+      "stepper",
+      "28byj-48",
+      "uln2003",
+      "motor",
+      "step",
+      "rotation"
+    ],
+    "pt-BR": [
+      "motor de passo",
+      "28byj-48",
+      "uln2003",
+      "passo",
+      "rotação"
+    ],
+    "es": [
+      "motor paso a paso",
+      "28byj-48",
+      "uln2003",
+      "paso",
+      "rotación"
+    ]
+  },
+  "body": {
+    "w_mm": 62,
+    "d_mm": 32,
+    "h_mm": 19
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 620,
+    "height": 320
+  },
+  "logic_mv": 3000,
+  "pins": [
+    {"name":"IN1","kind":"io","pos":{"x":100,"y":40},"mm":{"x":10,"y":4},"face":"top","label":{"en":"IN1"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN2","kind":"io","pos":{"x":125.4,"y":40},"mm":{"x":12.54,"y":4},"face":"top","label":{"en":"IN2"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN3","kind":"io","pos":{"x":150.8,"y":40},"mm":{"x":15.08,"y":4},"face":"top","label":{"en":"IN3"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN4","kind":"io","pos":{"x":176.2,"y":40},"mm":{"x":17.62,"y":4},"face":"top","label":{"en":"IN4"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"V5","kind":"power_in","pos":{"x":220,"y":40},"mm":{"x":22,"y":4},"face":"top","label":{"en":"5V"},"min_mv":4000,"max_mv":6500,"typ_ma":240},
+    {"name":"GND","kind":"ground","pos":{"x":245.4,"y":40},"mm":{"x":24.54,"y":4},"face":"top","label":{"en":"GND"}}
+  ],
+  "outputs": [
+    {
+      "name": "position",
+      "type": "number",
+      "unit": "steps/2",
+      "label": {
+        "en": "Position",
+        "pt-BR": "Posição",
+        "es": "Posición"
+      }
+    },
+    {
+      "name": "angle",
+      "type": "number",
+      "unit": "°",
+      "min": 0,
+      "max": 360,
+      "label": {
+        "en": "Angle",
+        "pt-BR": "Ângulo",
+        "es": "Ángulo"
+      }
+    },
+    {
+      "name": "stalled",
+      "type": "boolean",
+      "label": {
+        "en": "Skipping",
+        "pt-BR": "Perdendo passos",
+        "es": "Perdiendo pasos"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "shaft",
+      "effect": "rotate",
+      "x": 470,
+      "y": 160,
+      "r": 40,
+      "source": {
+        "output": "angle"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "stepper_unipolar",
+        "in1": "IN1",
+        "in2": "IN2",
+        "in3": "IN3",
+        "in4": "IN4",
+        "steps_per_rev": 4096,
+        "max_sps": 1000,
+        "position_output": "position",
+        "angle_output": "angle",
+        "stalled_output": "stalled"
+      }
+    ]
+  }
+}

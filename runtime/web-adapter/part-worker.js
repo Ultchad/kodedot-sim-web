@@ -134,6 +134,10 @@ async function run({ module, bytes, clockSab, mbSab, ringSab, L }) {
         if (rn && res === 0) { new Uint8Array(X.memory.buffer, rp, rn).set(mb8.subarray(L.RDATA, L.RDATA + Math.min(got, rn))); if (got < rn) new Uint8Array(X.memory.buffer, rp + got, rn - got).fill(0xff); }
         return res;
       },
+      // persistent bytes of this part instance (EEPROM, Preferences): nvs_get(off, ptr, n) reads, nvs_set(off, ptr, n) writes and tells the bench
+      nvs_get: (off, ptr, n) => { hb(); if (off < 0 || n < 0 || off + n > L.STORE_SIZE) return -1; new Uint8Array(X.memory.buffer, ptr, n).set(mb8.subarray(L.STORE + off, L.STORE + off + n)); return n; },
+      nvs_set: (off, ptr, n) => { hb(); if (off < 0 || n < 0 || off + n > L.STORE_SIZE) return -1; mb8.set(new Uint8Array(X.memory.buffer, ptr, n), L.STORE + off); push(L.K.STORE, off, n); return n; },
+      log: (ptr, n) => { hb(); imports.dotbench.uart_write(7, ptr, Math.min(n, 160)); },
       i2c_slave_begin: (port, addr, sda, scl) => push(L.K.I2C_SLAVE, port, addr, sda, scl),
       spi_begin: (port, sck, miso, mosi, cs, hz, mode) => { push(L.K.SPI_BEGIN, port, sck, miso, mosi, cs); push(L.K.SPI_BEGIN2, port, hz | 0, mode); },
       spi_xfer: (port, wp, rp, n) => {
