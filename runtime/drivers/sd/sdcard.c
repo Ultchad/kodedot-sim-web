@@ -36,7 +36,9 @@
 #include "dotbench_vfs.h"
 
 #ifndef DBSD_EXTRA_MB
-#define DBSD_EXTRA_MB 0u                         /* optional second pool region; 0 = none (see STATUS-persistence.md) */
+#define DBSD_EXTRA_MB 24u                        /* second pool region "sd-pool2" (sparse cards only). The wasm memory is a fixed 96 MB; measured
+                                                    * firmware needs: kodeOS ends at 52.7 MB with ~44.5 MB of regions below it, the apps at 48..52 MB.
+                                                    * 24 MB more leaves >= 19 MB for kodeOS (it uses 8 MB of malloc). 0 = none. */
 #endif
 #define CH         4096u
 #define SPC        8u                            /* sectors per chunk */

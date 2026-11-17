@@ -158,8 +158,8 @@ await check("fill to the bound: a proper I/O error, the card keeps working, free
   assert.ok(await mountCard(run, sd));
   const big = pattern(MB, 1);
   let err = "none";
-  for (let i = 0; i < 40 && err === "none"; i++) err = code(() => fs.write(`/sdcard/f${i}.bin`, big));
-  assert.ok(err !== "none", "writing 40 MiB to a card that can hold 32 fails");
+  for (let i = 0; i < 90 && err === "none"; i++) err = code(() => fs.write(`/sdcard/f${i}.bin`, big));
+  assert.ok(err !== "none", "writing 90 MiB to a card that can hold 56 fails");
   console.log("       file system error at the bound: " + err);
   assert.equal(fs.read("/sdcard/f0.bin").length, MB);
   await cli(run, "sd_unmount"); await sleep(100);
