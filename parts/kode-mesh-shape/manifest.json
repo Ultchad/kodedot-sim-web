@@ -14,9 +14,9 @@
   },
   "license": "GPL-3.0-or-later",
   "description": {
-    "en": "SHAPE ONLY: it mounts on the header and passes the rails and the 14 signal terminals through, and does nothing else. The LoRa radio (LR2021) and the GNSS receiver is not simulated: no behaviour, no chip, no bus device. The pin names follow the published pin map.",
-    "pt-BR": "SÓ A FORMA: encaixa no cabeçalho e repassa os trilhos e os 14 terminais de sinal, e nada mais. The LoRa radio (LR2021) and the GNSS receiver não é simulado: sem comportamento, sem chip, sem dispositivo de barramento. Os nomes dos pinos seguem o mapa publicado.",
-    "es": "SOLO LA FORMA: encaja en el cabezal y pasa los rieles y los 14 terminales de señal, y nada más. The LoRa radio (LR2021) and the GNSS receiver no se simula: sin comportamiento, sin chip, sin dispositivo de bus. Los nombres de los pines siguen el mapa publicado."
+    "en": "SHAPE ONLY: it mounts on the header and passes the rails and the 14 signal terminals through, and does nothing else. The LoRa radio (LR2021) and the GNSS receiver is not simulated: no behaviour, no chip, no bus device. The pin names follow the published pin map and the 20 pins sit in the real 2x10 connector. Housing estimate (50 x 24 mm, 91 mm with the antennas, pictures only): wide upper block, tongue behind it, two whip antennas (about 21 and 41 mm) on SMA bases listed in refs (non-electrical). Size and terminal positions are estimates from pictures (header pitch 2.54 mm is exact).",
+    "pt-BR": "SÓ A FORMA: encaixa no cabeçalho e repassa os trilhos e os 14 terminais de sinal, e nada mais. The LoRa radio (LR2021) and the GNSS receiver não é simulado: sem comportamento, sem chip, sem dispositivo de barramento. Os nomes dos pinos seguem o mapa publicado e os 20 pinos ficam no conector 2x10 real. Estimativa da caixa (50 x 24 mm, 91 mm com as antenas, só fotos): bloco superior largo, aba atrás, duas antenas chicote (cerca de 21 e 41 mm) em bases SMA listadas em refs (não elétrico). Tamanho e posições dos terminais são estimativas a partir de fotos (o passo de 2,54 mm do cabeçalho é exato).",
+    "es": "SOLO LA FORMA: encaja en el cabezal y pasa los rieles y los 14 terminales de señal, y nada más. The LoRa radio (LR2021) and the GNSS receiver no se simula: sin comportamiento, sin chip, sin dispositivo de bus. Los nombres de los pines siguen el mapa publicado y los 20 pines están en el conector 2x10 real. Estimación de la carcasa (50 x 24 mm, 91 mm con las antenas, solo fotos): bloque superior ancho, lengüeta detrás, dos antenas látigo (unos 21 y 41 mm) en bases SMA listadas en refs (no eléctrico). El tamaño y las posiciones de los terminales son estimaciones a partir de fotos (el paso de 2,54 mm del cabezal es exacto)."
   },
   "category": "kode-module",
   "tags": [
@@ -53,14 +53,15 @@
     ]
   },
   "body": {
-    "w_mm": 41.9,
-    "d_mm": 44.7,
-    "h_mm": 20
+    "w_mm": 50,
+    "d_mm": 24,
+    "h_mm": 91,
+    "estimate": true
   },
   "picture": {
     "file": "picture.svg",
-    "width": 335,
-    "height": 358
+    "width": 400,
+    "height": 192
   },
   "mount": {
     "via": "interposer",
@@ -97,20 +98,8 @@
         "gpio": 14
       },
       {
-        "pin": "I2C_SCL",
-        "gpio": 15
-      },
-      {
-        "pin": "I2C_SDA",
-        "gpio": 16
-      },
-      {
-        "pin": "LORA_MOSI",
-        "gpio": 17
-      },
-      {
-        "pin": "LORA_BUSY",
-        "gpio": 18
+        "pin": "LORA_SCK",
+        "gpio": 21
       },
       {
         "pin": "LORA_MISO",
@@ -121,8 +110,20 @@
         "gpio": 20
       },
       {
-        "pin": "LORA_SCK",
-        "gpio": 21
+        "pin": "LORA_MOSI",
+        "gpio": 17
+      },
+      {
+        "pin": "LORA_BUSY",
+        "gpio": 18
+      },
+      {
+        "pin": "I2C_SCL",
+        "gpio": 15
+      },
+      {
+        "pin": "I2C_SDA",
+        "gpio": 16
       }
     ],
     "rails": [
@@ -137,27 +138,95 @@
       {
         "pin": "GND",
         "rail": "GND"
+      },
+      {
+        "pin": "GND_2",
+        "rail": "GND"
+      },
+      {
+        "pin": "V33_2",
+        "rail": "V33"
+      },
+      {
+        "pin": "V5_2",
+        "rail": "V5"
       }
-    ]
+    ],
+    "connector": {
+      "seat_mm": {
+        "x": 25,
+        "y": 12.9,
+        "z": 34
+      },
+      "pin_dir": "-z",
+      "pin_length_mm": 6,
+      "odd_row": "high_y",
+      "source": "assumed"
+    },
+    "placement": {
+      "anchor_dot_mm": {
+        "x": 0,
+        "y": 38.5,
+        "z": 0
+      },
+      "upright": {
+        "x": "+X",
+        "y": "+Z",
+        "z": "+Y"
+      },
+      "source": "assumed"
+    }
   },
+  "refs": [
+    {
+      "name": "SMA1",
+      "kind": "antenna_sma",
+      "mm": {
+        "x": 16,
+        "y": 9,
+        "z": 50
+      },
+      "length_mm": 21,
+      "note": "estimate from the store pictures"
+    },
+    {
+      "name": "SMA2",
+      "kind": "antenna_sma",
+      "mm": {
+        "x": 34,
+        "y": 9,
+        "z": 50
+      },
+      "length_mm": 41,
+      "note": "estimate from the store pictures"
+    }
+  ],
   "pins": [
-    {"name":"GNSS_RESET","kind":"io","pos":{"x":40,"y":325.6},"mm":{"x":5,"y":40.7},"face":"bottom","label":{"en":"GNSS_RESET"},"abs_max_mv":3600},
-    {"name":"GNSS_TX","kind":"io","pos":{"x":60.3,"y":325.6},"mm":{"x":7.54,"y":40.7},"face":"bottom","label":{"en":"GNSS_TX"},"abs_max_mv":3600},
-    {"name":"GNSS_PPS","kind":"io","pos":{"x":80.6,"y":325.6},"mm":{"x":10.08,"y":40.7},"face":"bottom","label":{"en":"GNSS_PPS"},"abs_max_mv":3600},
-    {"name":"GNSS_RX","kind":"io","pos":{"x":101,"y":325.6},"mm":{"x":12.62,"y":40.7},"face":"bottom","label":{"en":"GNSS_RX"},"abs_max_mv":3600},
-    {"name":"LORA_RESET","kind":"io","pos":{"x":121.3,"y":325.6},"mm":{"x":15.16,"y":40.7},"face":"bottom","label":{"en":"LORA_RESET"},"abs_max_mv":3600},
-    {"name":"LORA_IRQ","kind":"io","pos":{"x":141.6,"y":325.6},"mm":{"x":17.7,"y":40.7},"face":"bottom","label":{"en":"LORA_IRQ"},"abs_max_mv":3600},
-    {"name":"LORA_DIO8","kind":"io","pos":{"x":161.9,"y":325.6},"mm":{"x":20.24,"y":40.7},"face":"bottom","label":{"en":"LORA_DIO8"},"abs_max_mv":3600},
-    {"name":"I2C_SCL","kind":"io","pos":{"x":182.2,"y":325.6},"mm":{"x":22.78,"y":40.7},"face":"bottom","label":{"en":"I2C_SCL"},"abs_max_mv":3600},
-    {"name":"I2C_SDA","kind":"io","pos":{"x":202.6,"y":325.6},"mm":{"x":25.32,"y":40.7},"face":"bottom","label":{"en":"I2C_SDA"},"abs_max_mv":3600},
-    {"name":"LORA_MOSI","kind":"io","pos":{"x":222.9,"y":325.6},"mm":{"x":27.86,"y":40.7},"face":"bottom","label":{"en":"LORA_MOSI"},"abs_max_mv":3600},
-    {"name":"LORA_BUSY","kind":"io","pos":{"x":243.2,"y":325.6},"mm":{"x":30.4,"y":40.7},"face":"bottom","label":{"en":"LORA_BUSY"},"abs_max_mv":3600},
-    {"name":"LORA_MISO","kind":"io","pos":{"x":263.5,"y":325.6},"mm":{"x":32.94,"y":40.7},"face":"bottom","label":{"en":"LORA_MISO"},"abs_max_mv":3600},
-    {"name":"LORA_CS","kind":"io","pos":{"x":283.8,"y":325.6},"mm":{"x":35.48,"y":40.7},"face":"bottom","label":{"en":"LORA_CS"},"abs_max_mv":3600},
-    {"name":"LORA_SCK","kind":"io","pos":{"x":304.2,"y":325.6},"mm":{"x":38.02,"y":40.7},"face":"bottom","label":{"en":"LORA_SCK"},"abs_max_mv":3600},
-    {"name":"V5","kind":"io","pos":{"x":40,"y":345.6},"mm":{"x":5,"y":43.2},"face":"bottom","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"V33","kind":"io","pos":{"x":60.3,"y":345.6},"mm":{"x":7.54,"y":43.2},"face":"bottom","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"GND","kind":"io","pos":{"x":80.6,"y":345.6},"mm":{"x":10.08,"y":43.2},"face":"bottom","label":{"en":"GND"},"abs_max_mv":60000}
+    {"name":"V5","kind":"io","pos":{"x":108.6,"y":113.4},"mm":{"x":13.57,"y":14.17,"z":31},"face":"bottom","label":{"en":"V5"},"abs_max_mv":60000,"ref":"KDINT.1"},
+    {"name":"V33","kind":"io","pos":{"x":108.6,"y":93},"mm":{"x":13.57,"y":11.63,"z":31},"face":"bottom","label":{"en":"V33"},"abs_max_mv":60000,"ref":"KDINT.2"},
+    {"name":"GNSS_RESET","kind":"io","pos":{"x":128.9,"y":113.4},"mm":{"x":16.11,"y":14.17,"z":31},"face":"bottom","label":{"en":"GNSS_RESET"},"abs_max_mv":3600,"ref":"KDINT.3"},
+    {"name":"GNSS_TX","kind":"io","pos":{"x":128.9,"y":93},"mm":{"x":16.11,"y":11.63,"z":31},"face":"bottom","label":{"en":"GNSS_TX"},"abs_max_mv":3600,"ref":"KDINT.4"},
+    {"name":"GNSS_PPS","kind":"io","pos":{"x":149.2,"y":113.4},"mm":{"x":18.65,"y":14.17,"z":31},"face":"bottom","label":{"en":"GNSS_PPS"},"abs_max_mv":3600,"ref":"KDINT.5"},
+    {"name":"GNSS_RX","kind":"io","pos":{"x":149.2,"y":93},"mm":{"x":18.65,"y":11.63,"z":31},"face":"bottom","label":{"en":"GNSS_RX"},"abs_max_mv":3600,"ref":"KDINT.6"},
+    {"name":"LORA_RESET","kind":"io","pos":{"x":169.5,"y":113.4},"mm":{"x":21.19,"y":14.17,"z":31},"face":"bottom","label":{"en":"LORA_RESET"},"abs_max_mv":3600,"ref":"KDINT.7"},
+    {"name":"LORA_IRQ","kind":"io","pos":{"x":169.5,"y":93},"mm":{"x":21.19,"y":11.63,"z":31},"face":"bottom","label":{"en":"LORA_IRQ"},"abs_max_mv":3600,"ref":"KDINT.8"},
+    {"name":"LORA_DIO8","kind":"io","pos":{"x":189.8,"y":113.4},"mm":{"x":23.73,"y":14.17,"z":31},"face":"bottom","label":{"en":"LORA_DIO8"},"abs_max_mv":3600,"ref":"KDINT.9"},
+    {"name":"GND","kind":"io","pos":{"x":189.8,"y":93},"mm":{"x":23.73,"y":11.63,"z":31},"face":"bottom","label":{"en":"GND"},"abs_max_mv":60000,"ref":"KDINT.10"},
+    {"name":"GND_2","kind":"io","pos":{"x":210.2,"y":113.4},"mm":{"x":26.27,"y":14.17,"z":31},"face":"bottom","label":{"en":"GND_2"},"abs_max_mv":60000,"ref":"KDINT.11"},
+    {"name":"LORA_SCK","kind":"io","pos":{"x":210.2,"y":93},"mm":{"x":26.27,"y":11.63,"z":31},"face":"bottom","label":{"en":"LORA_SCK"},"abs_max_mv":3600,"ref":"KDINT.12"},
+    {"name":"LORA_MISO","kind":"io","pos":{"x":230.5,"y":113.4},"mm":{"x":28.81,"y":14.17,"z":31},"face":"bottom","label":{"en":"LORA_MISO"},"abs_max_mv":3600,"ref":"KDINT.13"},
+    {"name":"LORA_CS","kind":"io","pos":{"x":230.5,"y":93},"mm":{"x":28.81,"y":11.63,"z":31},"face":"bottom","label":{"en":"LORA_CS"},"abs_max_mv":3600,"ref":"KDINT.14"},
+    {"name":"LORA_MOSI","kind":"io","pos":{"x":250.8,"y":113.4},"mm":{"x":31.35,"y":14.17,"z":31},"face":"bottom","label":{"en":"LORA_MOSI"},"abs_max_mv":3600,"ref":"KDINT.15"},
+    {"name":"LORA_BUSY","kind":"io","pos":{"x":250.8,"y":93},"mm":{"x":31.35,"y":11.63,"z":31},"face":"bottom","label":{"en":"LORA_BUSY"},"abs_max_mv":3600,"ref":"KDINT.16"},
+    {"name":"I2C_SCL","kind":"io","pos":{"x":271.1,"y":113.4},"mm":{"x":33.89,"y":14.17,"z":31},"face":"bottom","label":{"en":"I2C_SCL"},"abs_max_mv":3600,"ref":"KDINT.17"},
+    {"name":"I2C_SDA","kind":"io","pos":{"x":271.1,"y":93},"mm":{"x":33.89,"y":11.63,"z":31},"face":"bottom","label":{"en":"I2C_SDA"},"abs_max_mv":3600,"ref":"KDINT.18"},
+    {"name":"V33_2","kind":"io","pos":{"x":291.4,"y":113.4},"mm":{"x":36.43,"y":14.17,"z":31},"face":"bottom","label":{"en":"V33_2"},"abs_max_mv":60000,"ref":"KDINT.19"},
+    {"name":"V5_2","kind":"io","pos":{"x":291.4,"y":93},"mm":{"x":36.43,"y":11.63,"z":31},"face":"bottom","label":{"en":"V5_2"},"abs_max_mv":60000,"ref":"KDINT.20"}
+  ],
+  "groups": [
+    {"pins":["V5","V5_2"]},
+    {"pins":["V33","V33_2"]},
+    {"pins":["GND","GND_2"]}
   ],
   "behaviour": {
     "type": "declarative",
