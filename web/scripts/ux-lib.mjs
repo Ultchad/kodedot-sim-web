@@ -8,7 +8,9 @@ import puppeteer from 'puppeteer-core';
 
 export const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const PORT = Number(process.env.UX_PORT ?? 4390);
-export const BASE = `http://localhost:${PORT}/?debug`;
+// The checks written for the device alone ask for that mode in the URL (not remembered by the page); the Workbench has its own.
+export const BASE = `http://localhost:${PORT}/?debug&mode=device`;
+export const WB_BASE = `http://localhost:${PORT}/?debug&mode=workbench`;
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** The review matrix. `touch` viewports are emulated as touch devices (coarse pointer). */
@@ -73,7 +75,7 @@ const colours = (page) =>
 export const waitRunning = (page, ms = 45000) => until(async () => (await statusOf(page)) === 'running' && (await colours(page)) > 5, ms);
 
 /**
- * Opens the page at a viewport. opts: { theme, lang, view ('3d'|'2d'), zoom (1|2|3|'fit'), mock, prefs: {key: value}, isolate: false to strip COOP/COEP }.
+ * Opens the page at a viewport. opts: { theme, lang, mode ('device'|'workbench', default device), view ('3d'|'2d'), zoom (1|2|3|'fit'), mock, prefs: {key: value}, isolate: false to strip COOP/COEP }.
  * Returns { ctx, page, vp, problems }.
  */
 export async function openPage(browser, vp, opts = {}) {
@@ -84,6 +86,8 @@ export async function openPage(browser, vp, opts = {}) {
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
   await page.setViewport({ width: vp.w, height: vp.h, deviceScaleFactor: opts.dpr ?? 1, isMobile: !!vp.touch, hasTouch: !!vp.touch });
   const prefs = { 'dotbench.lang': opts.lang ?? 'en', 'dotbench.theme': opts.theme ?? 'light', ...(opts.prefs ?? {}) };
+  // the scenes and checks written for the device alone keep it; the Workbench is asked for with opts.mode
+  prefs[vp.phone ? 'dotbench.mode.phone' : 'dotbench.mode'] = opts.mode ?? 'device';
   if (opts.view) prefs[vp.phone ? 'dotbench.view.phone' : 'dotbench.view'] = opts.view;
   if (opts.zoom) prefs['dotbench.zoom2d'] = opts.zoom;
   if (opts.mock) prefs['dotbench.mock'] = true;
@@ -102,7 +106,7 @@ export async function openPage(browser, vp, opts = {}) {
       } else req.continue();
     });
   }
-  await page.goto(opts.base ?? BASE, { waitUntil: 'domcontentloaded' });
+  await page.goto(opts.base ?? (opts.mode === 'workbench' ? WB_BASE : BASE), { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__dotbench, { timeout: 30000 });
   return { ctx, page, vp, problems };
 }

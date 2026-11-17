@@ -11,7 +11,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const shots = join(root, 'screenshots');
 mkdirSync(shots, { recursive: true });
 const PORT = 4173;
-const BASE = `http://localhost:${PORT}/?debug`;
+const BASE = `http://localhost:${PORT}/?debug&mode=device`; // the checks below are about the device alone; the Workbench has scripts/workbench-check.mjs
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const results = [];

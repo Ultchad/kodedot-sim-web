@@ -149,6 +149,27 @@ const ICONS = {
   file: <path d="M7 3.5h7l4.5 4.5v11a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5zM14 3.5V8h4.5" />,
   plus: <path d="M12 5.5v13M5.5 12h13" />,
   cube: <path d="M12 3.5l7.5 4.2v8.6L12 20.5l-7.5-4.2V7.7L12 3.5zM4.5 7.7l7.5 4.3 7.5-4.3M12 12v8.5" />,
+  undo: <path d="M8.5 5.5L4.5 9.5l4 4M4.5 9.5h9.2a5.3 5.3 0 0 1 0 10.6H9.5" />,
+  redo: <path d="M15.5 5.5l4 4-4 4M19.5 9.5h-9.2a5.3 5.3 0 0 0 0 10.6h4.2" />,
+  rotate: <path d="M19 12a7 7 0 1 1-2.1-5M19.5 3.8v4.4h-4.4" />,
+  table: (
+    <>
+      <rect x="3" y="6.5" width="18" height="11" rx="2.6" />
+      <rect x="10" y="9.2" width="4" height="5.6" rx="1" />
+    </>
+  ),
+  device: (
+    <>
+      <rect x="7" y="3" width="10" height="18" rx="2.8" />
+      <path d="M10 6.5h4M12 17.2h.01" />
+    </>
+  ),
+  target: (
+    <>
+      <circle cx="12" cy="12" r="7.5" />
+      <circle cx="12" cy="12" r="2.6" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="8.5" />

@@ -1,5 +1,6 @@
 import type { BenchObject, KindDef } from '../model';
 import type { AreaDriver, DriverCtx, DriverState } from './types';
+import { signalAt } from '../../workbench/layout';
 
 export const WIFI_ROUTER = 'wifi.router';
 
@@ -53,7 +54,7 @@ export function routerConfig(o: BenchObject) {
   const password = security === 'open' ? '' : String(f.password ?? '');
   if (!ssid || new TextEncoder().encode(ssid).length > 32) throw new Error('name: 1 to 32 characters');
   if (security !== 'open' && (password.length < 8 || password.length > 63)) throw new Error('password: 8 to 63 characters');
-  return { ssid, security, password, signal: Number(f.signal ?? -45), channel: Number(f.channel ?? 6), internet: !!f.internet, on: f.on !== false, inRange: o.near };
+  return { ssid, security, password, signal: signalAt(Number(f.signal ?? -45), o.pos), channel: Number(f.channel ?? 6), internet: !!f.internet, on: f.on !== false, inRange: o.near };
 }
 
 function routerBySsid(st: DriverState, ssid: string): string | undefined {
@@ -76,7 +77,8 @@ export const wifiDriver: AreaDriver<WifiApi, Router> = {
     'area:net:udp',
     'area:net:mqtt',
   ],
-  sig: (o) => JSON.stringify([o.kind, o.fields]),
+  // the signal the Dot sees falls with the distance on the table
+  sig: (o) => JSON.stringify([o.kind, o.fields, signalAt(Number(o.fields.signal ?? -45), o.pos)]),
   // routers live in a module that a later run of the same program finds again: start from none
   wipe: (api) => api.clearRouters(),
   create(api, o, _c, st) {

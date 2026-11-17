@@ -21,8 +21,11 @@ import { loadPref, safeLocal, savePref } from '../lib/prefs';
 import { ScreenPainter } from '../lib/screen';
 import { SensorBridge, vibrate } from '../lib/sensors';
 import { useObservable } from './hooks';
+import { Selection, WorkbenchBus } from '../workbench/state';
 
 export type ViewMode = '3d' | '2d';
+/** 'device': the Dot alone (3D or 2D). 'workbench': the Dot on the table among the bench objects (3D only). */
+export type StageMode = 'device' | 'workbench';
 export type Theme = 'dark' | 'light';
 export interface Notice {
   id: number;
@@ -91,6 +94,13 @@ export interface Host {
   /** True when WebGL failed or was lost: the 3D view is unavailable this session. */
   glFailed: boolean;
   reportGlFailure(reason: 'unavailable' | 'lost'): void;
+  /** Which stage is on show. The Workbench needs WebGL: without it this reads 'device'. */
+  mode: StageMode;
+  setMode(m: StageMode): void;
+  /** What is selected on the bench (the Workbench scene and the side panel share it). */
+  select: Selection;
+  /** Commands from the page to the Workbench scene. */
+  bus: WorkbenchBus;
   tiltLink: boolean;
   setTiltLink(v: boolean): void;
   applyPose(p: MotionPose): void;
@@ -125,13 +135,13 @@ export function HostProvider({ children }: { children: ReactNode }) {
   tRef.current = t;
 
   // long-lived services ------------------------------------------------------
-  const services = useRef<{ bench: BenchStore; live: LiveStore; runtime: BenchRuntime; painter: ScreenPainter; model: ModelController } | null>(null);
+  const services = useRef<{ bench: BenchStore; live: LiveStore; runtime: BenchRuntime; painter: ScreenPainter; model: ModelController; select: Selection; bus: WorkbenchBus } | null>(null);
   if (!services.current) {
     const b = new BenchStore(safeLocal());
     const l = new LiveStore();
-    services.current = { bench: b, live: l, runtime: new BenchRuntime(b, l, DRIVERS), painter: new ScreenPainter(), model: new ModelController() };
+    services.current = { bench: b, live: l, runtime: new BenchRuntime(b, l, DRIVERS), painter: new ScreenPainter(), model: new ModelController(), select: new Selection(), bus: new WorkbenchBus() };
   }
-  const { bench, live, runtime, painter, model } = services.current;
+  const { bench, live, runtime, painter, model, select, bus } = services.current;
   // the 3D code's own store; the controller tolerates anything that does not follow the contract
   useEffect(() => {
     if (!model.available && isModelStore(customModel)) model.setStore(customModel);
@@ -365,6 +375,21 @@ export function HostProvider({ children }: { children: ReactNode }) {
     },
     [viewKey],
   );
+  // Device or Workbench: remembered apart for the desk and for the phone, where the device alone stays the way in.
+  // `?mode=device|workbench` in the URL decides for one visit without being remembered (the check scripts use it).
+  const modeKey = phone ? 'dotbench.mode.phone' : 'dotbench.mode';
+  const [modePrefs, setModePrefs] = useState<Record<string, StageMode>>(() => {
+    const forced = new URLSearchParams(location.search).get('mode');
+    const pick = (k: string, d: StageMode): StageMode => (forced === 'device' || forced === 'workbench' ? forced : loadPref<StageMode>(k, d) === 'workbench' ? 'workbench' : loadPref<StageMode>(k, d) === 'device' ? 'device' : d);
+    return { 'dotbench.mode': pick('dotbench.mode', 'workbench'), 'dotbench.mode.phone': pick('dotbench.mode.phone', 'device') };
+  });
+  const setMode = useCallback(
+    (m: StageMode) => {
+      setModePrefs((p) => ({ ...p, [modeKey]: m }));
+      savePref(modeKey, m);
+    },
+    [modeKey],
+  );
   const [glFailed, setGlFailed] = useState(false);
   const reportGlFailure = useCallback(
     (reason: 'unavailable' | 'lost') => {
@@ -418,6 +443,8 @@ export function HostProvider({ children }: { children: ReactNode }) {
       device: () => deviceRef.current,
       bench,
       live,
+      select,
+      bus,
       runtime,
       input,
       painter,
@@ -458,7 +485,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
         notify: (kind: Notice['kind'], key: TKey, vars?: Vars) => say(kind, key, vars),
       },
     };
-  }, [bench, live, runtime, input, painter, setLocale, say, model]);
+  }, [bench, live, runtime, input, painter, setLocale, say, model, select, bus]);
 
   // input: keyboard, visibility ---------------------------------------------
   useEffect(() => {
@@ -604,6 +631,10 @@ export function HostProvider({ children }: { children: ReactNode }) {
     setViewMode,
     glFailed,
     reportGlFailure,
+    mode: glFailed ? 'device' : modePrefs[modeKey],
+    setMode,
+    select,
+    bus,
     tiltLink,
     setTiltLink,
     applyPose,

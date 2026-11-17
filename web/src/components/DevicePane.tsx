@@ -1,4 +1,5 @@
-import { Component, Suspense, lazy, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { getKind } from '../bench/kinds';
 import { poseOf, MOTION_KIND } from '../bench/drivers/motion';
 import { customModel } from '../device3d/customModel';
 import { useBenchState } from '../state/bench';
@@ -104,6 +105,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
   const host = useHost();
   const { layout, viewMode, device, painter } = host;
   const phone = isPhone(layout);
+  const benchState = useBenchState(host.bench);
   const reduced = useReducedMotion();
   const [zoom2d, setZoom2d] = useState<Zoom2D>(() => {
     const z = loadPref<unknown>('dotbench.zoom2d', 'fit');
@@ -116,7 +118,6 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
     if (viewMode === '3d' && !host.glFailed && !webglAvailable()) host.reportGlFailure('unavailable');
   }, [viewMode, host]);
 
-  const benchState = useBenchState(host.bench);
   const active = benchState.objects.find((o) => o.near && o.kind === MOTION_KIND);
   const storePose = active ? poseOf(active) : ZERO_POSE;
 
@@ -125,8 +126,33 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
     savePref('dotbench.zoom2d', z);
   };
 
-  const showToolbar = !phone || viewMode === '3d';
-  const show3d = viewMode === '3d' && !host.glFailed;
+  const workbench = host.mode === 'workbench';
+  const showToolbar = !phone || viewMode === '3d' || workbench;
+  // the Workbench is always the 3D scene; the device alone can be either
+  const show3d = (workbench || viewMode === '3d') && !host.glFailed;
+  useEffect(() => {
+    if (workbench && !host.glFailed && !webglAvailable()) host.reportGlFailure('unavailable');
+  }, [workbench, host]);
+  const tRef = useRef(t);
+  tRef.current = t;
+  const world = useMemo(
+    () => ({
+      bench: host.bench,
+      live: host.live,
+      runtime: host.runtime,
+      device,
+      select: host.select,
+      bus: host.bus,
+      applyPose: host.applyPose,
+      nameFor: (kind: string) => {
+        const k = getKind(kind);
+        return k ? `${tRef.current(k.labelKey)} ${host.bench.countOf(kind) + 1}` : kind;
+      },
+    }),
+    [host.bench, host.live, host.runtime, device, host.select, host.bus, host.applyPose],
+  );
+  const benchUndo = benchState.undo;
+  const benchRedo = benchState.redo;
   // the bundled model is fetched while the 3D code itself is still loading, so the two arrive together
   useEffect(() => {
     if (show3d) void customModel.ensureBundled();
@@ -149,6 +175,37 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
         <div className={`@container flex shrink-0 items-center gap-2 ${phone ? 'justify-center px-2 py-2' : 'relative z-[35] h-[60px] px-2'}`} role="toolbar" aria-label={t('device.view')} style={phone ? { paddingTop: 'max(8px, env(safe-area-inset-top))' } : undefined}>
           {panels && <PanelToggle id="bench" ctl={panels.bench} />}
           <div className={`flex min-w-0 items-center justify-center gap-2 ${phone ? '' : 'flex-1'}`}>
+            <div className="seg" role="group" aria-label={t('mode.label')}>
+              <button type="button" className="chip" aria-pressed={!workbench} title={t('mode.device.hint')} onClick={() => host.setMode('device')} data-testid="mode-device">
+                <Icon name="device" />
+                <span className="hidden @[620px]:inline">{t('mode.device')}</span>
+              </button>
+              <button type="button" className="chip" aria-pressed={workbench} disabled={host.glFailed} title={host.glFailed ? t('device.glFallback') : t('mode.workbench.hint')} onClick={() => host.setMode('workbench')} data-testid="mode-workbench">
+                <Icon name="table" />
+                <span className="hidden @[620px]:inline">{t('mode.workbench')}</span>
+              </button>
+            </div>
+            {workbench ? (
+              <div className="flex items-center gap-2" role="group" aria-label={t('wb.toolbar')} data-testid="wb-tools">
+                <button type="button" className="chip" onClick={() => host.bus.send({ type: 'focus-dot' })} data-testid="wb-focus-dot" aria-label={t('wb.focusDot')} title={t('wb.focusDot')}>
+                  <Icon name="target" />
+                  <span className="hidden @[760px]:inline">{t('wb.focusDot')}</span>
+                </button>
+                <button type="button" className="chip" onClick={() => host.bus.send({ type: 'frame-all' })} data-testid="wb-frame-all" aria-label={t('wb.wholeTable')} title={t('wb.wholeTable')}>
+                  <Icon name="recenter" />
+                  <span className="hidden @[760px]:inline">{t('wb.wholeTable')}</span>
+                </button>
+                <div className="seg" role="group">
+                  <button type="button" className="chip" disabled={!benchUndo} onClick={() => host.bench.undo()} data-testid="wb-undo" aria-label={t('wb.undo')} title={`${t('wb.undo')} (Ctrl+Z)`}>
+                    <Icon name="undo" />
+                  </button>
+                  <button type="button" className="chip" disabled={!benchRedo} onClick={() => host.bench.redo()} data-testid="wb-redo" aria-label={t('wb.redo')} title={`${t('wb.redo')} (Ctrl+Shift+Z)`}>
+                    <Icon name="redo" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
             <div className="seg" role="group" aria-label={t('device.view')}>
               <button type="button" className="chip" aria-pressed={show3d} disabled={host.glFailed} title={host.glFailed ? t('device.glFallback') : undefined} onClick={() => host.setViewMode('3d')} data-testid="view-3d">
                 3D
@@ -161,7 +218,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
               <>
                 <button type="button" className="chip" onClick={() => setResetSignal((n) => n + 1)} data-testid="recenter" aria-label={t('device.recenter')} title={t('device.recenter')}>
                   <Icon name="recenter" />
-                  <span className="hidden @[600px]:inline">{t('device.recenter')}</span>
+                  <span className="hidden @[900px]:inline">{t('device.recenter')}</span>
                 </button>
                 <label className="pill h-[var(--compact-h)] cursor-pointer !gap-2 !pl-1.5" title={t('device.tilt.hint')}>
                   <input
@@ -175,7 +232,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
                       if (e.target.checked && !host.bench.activeIn('motion')) host.applyPose(ZERO_POSE);
                     }}
                   />
-                  <span className="font-semibold">{t('device.tilt')}</span>
+                  <span className="hidden font-semibold @[760px]:inline">{t('device.tilt')}</span>
                 </label>
               </>
             ) : (
@@ -189,6 +246,8 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
                 </div>
               )
             )}
+            </>
+            )}
           </div>
           {panels && <PanelToggle id="console" ctl={panels.console} />}
         </div>
@@ -196,7 +255,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
 
       <div className="relative flex min-h-0 min-w-0 flex-1" data-testid="stage" style={phone ? { padding: `${showToolbar ? '0px' : 'env(safe-area-inset-top)'} env(safe-area-inset-right) 0 env(safe-area-inset-left)` } : undefined}>
         {mount3d && (
-          <div className={show3d ? 'anim-fade flex min-h-0 min-w-0 flex-1' : 'hidden'} data-testid="stage-3d" data-shown={show3d}>
+          <div className={show3d ? 'anim-fade flex min-h-0 min-w-0 flex-1' : 'hidden'} data-testid="stage-3d" data-shown={show3d} data-mode={workbench ? 'workbench' : 'device'}>
             <Boundary onError={() => host.reportGlFailure('unavailable')}>
               <Suspense fallback={<div className="m-auto text-[14px] text-ink2">{t('device.loading3d')}</div>}>
                 <Live3D
@@ -208,6 +267,9 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
                   onPose={host.applyPose}
                   resetSignal={resetSignal}
                   reducedMotion={reduced}
+                  mode={workbench ? 'workbench' : 'device'}
+                  world={world}
+                  dark={host.theme === 'dark'}
                   // a context lost while the view is only kept in reserve is not a failure: let go of it quietly
                   onContextLost={() => (showRef.current ? host.reportGlFailure('lost') : setKept3d(false))}
                 />

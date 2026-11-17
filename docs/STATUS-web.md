@@ -240,3 +240,44 @@ What the fakes lack or do differently (nothing worked around in the page):
 - microSD: inserting does not mount; the page calls `sd.mount()` (kodeOS boots with the card mounted).
 - RFID objects are per program (recreated by the page); Power is not persisted by the fake (page re-applies it).
 - An emscripten `ExitStatus` page error shows up now and then when a program is restarted while it boots; the check ignores that one name.
+
+
+## Bench3D kit and the Workbench (2026-11-17, in progress)
+
+### Bench3D: the model kit (`web/src/bench3d/`, guide in its README.md)
+A kit and a contract for procedural 3D models, usable without touching the page: one model per file under
+`web/src/bench3d/models/<family>/<part-id>.model.ts` (default export `defineModel({ id, title, footprintMm, plugMm?, build, terminals?, animate?, states? })`),
+found by file name (`registry.ts`, `import.meta.glob`). Millimetres; origin at the centre of the footprint on the table, X right,
+Z towards the viewer, Y up; the front of a part faces +Z.
+- Wired parts take everything from the parts engine's manifest: id = manifest id, `footprintOf(body)`, `terminalsFromManifest(manifest)`
+  (manifest frame: origin top-left, x right, y down the picture, z up; model X = mm.x - w/2, Z = mm.y - d/2, Y = mm.z or the face's
+  height; face -> wire direction), state = `PartState` (the part's entry of `bench.state().parts[]`). The mapping is stated in the
+  README and unit-tested.
+- `shape.ts`: `Shape` accumulates bevelled solids (prism with holes, box, disc, lathe, tube, rod, band, block) in a colour and a material
+  family (matte, gloss, metal, soft, pcb, glass) and merges them into one mesh per family: the static body, instanced by the Workbench.
+- `materials.ts`: `PAL` finishes (boards, tin, gold, copper, plastics, rubber, resins) and `INK` print colours.
+- `parts.ts`: pcb (rounded, drilled), pinHeader (male/female, 1 or 2 rows), lead/axialLeads/roundCorners, soic, qfp, qfn, moduleCan,
+  usbC, microUsb, usbB, barrelJack, tactButton, electrolytic, ledDome/ledLeads, screwTerminal, heatsink, shaft, gear, pad.
+- `print.ts`: `print()` decals drawn by code in millimetres (silkscreen, pinLabels, legends), redrawn when the page's fonts arrive.
+- `nodes.ts`: `lamp`, `glowing`, `screen`, `part`, `setLamp`, `drawScreen` for what changes per copy; `instantiate` for hosts.
+- `contract.ts`: types, `budgetFor` (triangles by footprint area), `inspectModel` (inside the footprint, not under the table beyond
+  `plugMm`, budget, mesh count, terminals).
+- Reference models: `nfc.tag` (simple, 398 triangles), `wifi.router` (complex, 1,486, three lamps with states), `ref.led-5mm`
+  (wired: manifest size and terminals, legs, glowing dome, hazard states), `ref.kit-sampler` (every builder on one board, 10,842).
+
+Run (any engineer, one model, no page): `node scripts/model-shot.mjs --model <id> [--state <name|json>]` writes
+`web/screenshots/models/<id>/{front,back,side,low,top}.png` and `state-<name>.png` (top = drawing with terminals and a millimetre
+scale), prints triangles against the budget and the contract problems, exit code 1 on a problem; `--all`, `--list`.
+`node scripts/model-gallery.mjs` writes the contact sheet `web/screenshots/models/_gallery.png`. `npx vitest run src/bench3d`
+checks every model in node. Last run: unit tests 196/196, `npm run build` green, `model-shot --all` 4/4 ok.
+
+### Workbench (first step; the rest of phase 1 follows)
+- `host.mode`: 'device' | 'workbench' (desk default workbench, phone default device; `?mode=` in the URL decides for one visit; the
+  existing check scripts ask for `mode=device`). The toolbar has the Device / Workbench switch; in the Workbench: Focus on the Dot,
+  Whole table, Undo, Redo.
+- One canvas, one Dot: `Device3D` got `mode`/`world`; in the Workbench the same model lies face up on the table
+  (`web/src/workbench/`: `world.ts` scene, `World.tsx` input, `camera.ts` orbit rig, `table.ts` desk and mat, `layout.ts` table maths),
+  the screen stays live, the buttons press; switching modes moves the Dot and the camera, nothing restarts.
+- Bench store v3: every object has `pos` and `rot`; `near` is what the position means for kinds with a range; `move`, `rotate`,
+  `setNear` (moves the object), fixtures (the microSD card's place), `checkpoint`/`undo`/`redo`; older benches get places.
+- Not yet: bodies on the table, dragging, ranges, the new side panel, the Workbench checks.

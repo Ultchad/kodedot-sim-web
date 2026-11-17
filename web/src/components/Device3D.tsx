@@ -20,7 +20,7 @@
  * is on it is mirrored to the bench's Movimento object, and the sliders move it.
  */
 import { useFrame, useThree, Canvas, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useSyncExternalStore, Suspense } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, Suspense } from 'react';
 import {
   AdditiveBlending,
   Box3,
@@ -39,6 +39,7 @@ import {
   type PerspectiveCamera,
   PointLight,
   Plane,
+  Quaternion,
   Raycaster,
   SRGBColorSpace,
   type Texture,
@@ -74,6 +75,10 @@ import { makeStudioEnvironment } from '../device3d/studio';
 import { makeGrainNormalMap, makeOcclusionTexture, makeShadowTexture } from '../device3d/textures';
 import type { PreparedModel } from '../device3d/prepare';
 import { backlightFactor } from './Device2D';
+import type { WorldApi, WorldDeps } from '../workbench/World';
+
+/** The Workbench scene: its code is fetched the first time that mode is shown. */
+const World = lazy(() => import('../workbench/World'));
 
 const M = metrics(SPEC);
 const D = bodyDims(M);
@@ -130,6 +135,10 @@ export interface Device3DProps {
   resetSignal: number;
   reducedMotion: boolean;
   onContextLost(): void;
+  /** 'workbench': the Dot lies on the table of the Workbench, among the bench objects (needs `world`). Default 'device'. */
+  mode?: 'device' | 'workbench';
+  world?: WorldDeps;
+  dark?: boolean;
 }
 
 function toGeometry(m: MeshData): BufferGeometry {
@@ -175,7 +184,7 @@ const STAGE_FADE = 'linear-gradient(to bottom, #000 calc(100% - 36px), transpare
 export default function Device3D(props: Device3DProps) {
   return (
     // the ground shadow may reach the lower edge of the stage: it fades out there instead of ending in a hard line
-    <div className="device-surface relative min-h-0 min-w-0 flex-1" style={{ touchAction: 'none', maskImage: STAGE_FADE, WebkitMaskImage: STAGE_FADE }} data-testid="device-3d">
+    <div className="device-surface relative min-h-0 min-w-0 flex-1" style={props.mode === 'workbench' ? { touchAction: 'none' } : { touchAction: 'none', maskImage: STAGE_FADE, WebkitMaskImage: STAGE_FADE }} data-testid="device-3d" data-mode={props.mode ?? 'device'}>
       <Canvas
         frameloop="demand"
         dpr={[1, 2]}
@@ -200,8 +209,25 @@ export default function Device3D(props: Device3DProps) {
 }
 
 // -------------------------------------------------------------------- scene
-function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSignal, reducedMotion }: Device3DProps) {
+function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSignal, reducedMotion, mode = 'device', world, dark = false }: Device3DProps) {
   const { gl, camera, size, invalidate, scene } = useThree();
+
+  // ---- the Workbench: once shown it stays mounted, so going back and forth is only a move of the Dot and the camera
+  const workbench = mode === 'workbench' && !!world;
+  const [worldKept, setWorldKept] = useState(workbench);
+  if (workbench && !worldKept) setWorldKept(true);
+  const worldApi = useRef<WorldApi | null>(null);
+  const onWorldApi = useCallback(
+    (api: WorldApi | null) => {
+      worldApi.current = api;
+      invalidate();
+    },
+    [invalidate],
+  );
+  /** 0 = the device alone, 1 = lying on the table; in between while the mode changes. */
+  const mix = useRef(workbench ? 1 : 0);
+  const worldGrp = useRef<Group>(null);
+  useEffect(() => invalidate(), [workbench, invalidate]);
 
   // ---- which model
   const active = useSyncExternalStore(customModel.subscribe, customModel.getActive);
@@ -329,8 +355,8 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
   const zoom = useRef({ target: 1, display: 1 });
   const press = useRef<Record<ButtonId, number>>({ top: 0, bottom: 0, up: 0, down: 0, left: 0, right: 0 });
   const cancelInteraction = useRef<(() => void) | null>(null);
-  const live = useRef({ tiltLink, onPose, reducedMotion, kind });
-  live.current = { tiltLink, onPose, reducedMotion, kind };
+  const live = useRef({ tiltLink, onPose, reducedMotion, kind, workbench });
+  live.current = { tiltLink, onPose, reducedMotion, kind, workbench };
   const dragging = useRef(false);
 
   // ---- subscriptions that wake the demand loop (nothing is drawn while the tab or the canvas is out of sight)
@@ -402,7 +428,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
 
   // ---- helpers
   const ray = useMemo(() => new Raycaster(), []);
-  const tmp = useMemo(() => ({ v: new Vector3(), n: new Vector3(), p: new Plane(), ndc: new Vector2(), box: new Box3() }), []);
+  const tmp = useMemo(() => ({ v: new Vector3(), n: new Vector3(), p: new Plane(), ndc: new Vector2(), box: new Box3(), q: new Quaternion() }), []);
 
 
   /** Screen pixel under a client point: exact plane maths on the picture's own rectangle (keeps tracking off the glass), for every model. */
@@ -459,7 +485,8 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pts.size === 2) {
         cancelInteraction.current?.();
-        pinchStart = { d: dist(), z: zoom.current.target };
+        // in the Workbench two fingers belong to the table's camera
+        pinchStart = live.current.workbench ? null : { d: dist(), z: zoom.current.target };
       }
     };
     const move = (e: PointerEvent) => {
@@ -475,6 +502,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
       if (pts.size < 2) pinchStart = null;
     };
     const wheel = (e: WheelEvent) => {
+      if (live.current.workbench) return;
       e.preventDefault();
       zoom.current.target = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom.current.target * Math.exp(-e.deltaY * 0.0015)));
       invalidate();
@@ -533,6 +561,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
   };
 
   const onBodyDown = (e: ThreeEvent<PointerEvent>) => {
+    if (live.current.workbench) return worldApi.current?.dotDown(e);
     e.stopPropagation();
     const ne = e.nativeEvent;
     if (ne.pointerType === 'mouse' && ne.button !== 0) return;
@@ -559,6 +588,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
 
   const onBodyDouble = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    if (live.current.workbench) return worldApi.current?.dotDouble();
     target.current = { ...ZERO_POSE };
     zoom.current.target = 1;
     if (live.current.tiltLink) live.current.onPose({ ...ZERO_POSE });
@@ -673,6 +703,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
 
     // pose damping
     const k = rm ? 1 : 1 - Math.exp(-dt * 16);
+    let hap = 0;
     const d = display.current;
     const t = target.current;
     d.pitch += (t.pitch - d.pitch) * k;
@@ -687,6 +718,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
       else g.rotation.set(ex, ey, ez, 'YXZ');
       // haptic: a small physical shake
       const h = rm ? 0 : device.haptic.get();
+      hap = h;
       if (h > 0.01) {
         g.position.set((Math.random() - 0.5) * h * 1.6, (Math.random() - 0.5) * h * 1.6, 0);
         busy = true;
@@ -695,7 +727,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
       // ground shadow follows the footprint
       const sh = shadowMesh.current;
       if (sh) {
-        sh.visible = view.current.shadow && live.current.kind !== 'pending';
+        sh.visible = view.current.shadow && live.current.kind !== 'pending' && mix.current < 1;
         g.updateMatrix();
         const f = footprint(g.matrix.elements, D);
         const groundY = -(D.hh + GROUND_GAP_MM);
@@ -704,7 +736,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
         sh.position.set(f.x, groundY, f.z);
         sh.rotation.set(-Math.PI / 2, 0, -f.angle);
         sh.scale.set(f.a * 2 * soft, f.b * 2 * soft, 1);
-        mats.shadow.opacity = 0.62 / (1 + gap * 0.035);
+        mats.shadow.opacity = (0.62 / (1 + gap * 0.035)) * (1 - mix.current);
       }
     }
 
@@ -725,8 +757,38 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
     const lookY = -view.current.offsetY * M.bodyMm.h;
     camera.position.set(0, lookY + dist * Math.sin(view.current.elevation), dist * Math.cos(view.current.elevation));
     camera.lookAt(0, lookY, 0);
-    const near = view.current.near ?? Math.max(dist * 0.15, dist - DEPTH_REACH_MM);
-    const far = view.current.far ?? dist + DEPTH_REACH_MM + 30;
+    let near = view.current.near ?? Math.max(dist * 0.15, dist - DEPTH_REACH_MM);
+    let far = view.current.far ?? dist + DEPTH_REACH_MM + 30;
+
+    // the Workbench: the Dot lies on the table and the camera is the table's; while the mode changes, both travel
+    const w = worldApi.current;
+    const goal = live.current.workbench && w ? 1 : 0;
+    if (mix.current !== goal) {
+      mix.current += (goal - mix.current) * (rm ? 1 : 1 - Math.exp(-dt * 8));
+      if (Math.abs(goal - mix.current) < 0.003) mix.current = goal;
+      else busy = true;
+    }
+    if (worldGrp.current) worldGrp.current.visible = mix.current > 0 || goal === 1;
+    if (mix.current > 0 && w && g) {
+      if (w.step(dt, rm)) busy = true;
+      const e = mix.current * mix.current * (3 - 2 * mix.current);
+      if (e >= 1) {
+        g.quaternion.copy(w.dotQuat);
+        g.position.copy(w.dotPos);
+        if (hap > 0.01) g.position.x += (Math.random() - 0.5) * hap * 1.2;
+        camera.position.copy(w.camPos);
+        camera.lookAt(w.camLook);
+      } else {
+        tmp.q.copy(g.quaternion);
+        g.quaternion.slerpQuaternions(tmp.q, w.dotQuat, e);
+        g.position.lerp(w.dotPos, e);
+        camera.position.lerp(w.camPos, e);
+        camera.lookAt(tmp.v.set(0, lookY, 0).lerp(w.camLook, e));
+      }
+      const wd = camera.position.distanceTo(w.camLook);
+      near += (Math.max(wd * 0.1, wd - 520) - near) * e;
+      far += (wd + 1100 - far) * e;
+    }
     if (Math.abs(cam.near - near) > 0.01 || Math.abs(cam.far - far) > 0.01) {
       cam.near = near;
       cam.far = far;
@@ -829,10 +891,19 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
         <planeGeometry args={[1, 1]} />
       </mesh>
 
-      {/* background plane: drag to orbit */}
-      <mesh position={[0, 0, -90]} material={mats.hit} onPointerDown={onBodyDown} onDoubleClick={onBodyDouble}>
-        <planeGeometry args={[900, 900]} />
-      </mesh>
+      {/* background plane: drag to orbit (the Workbench has its own surroundings) */}
+      {!workbench && (
+        <mesh position={[0, 0, -90]} material={mats.hit} onPointerDown={onBodyDown} onDoubleClick={onBodyDouble}>
+          <planeGeometry args={[900, 900]} />
+        </mesh>
+      )}
+      {worldKept && world && (
+        <Suspense fallback={null}>
+          <group ref={worldGrp} visible={workbench}>
+            <World deps={world} active={workbench} dark={dark} storePose={storePose} onApi={onWorldApi} />
+          </group>
+        </Suspense>
+      )}
 
       <group ref={model}>
         {/* the model itself */}

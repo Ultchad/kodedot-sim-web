@@ -52,6 +52,9 @@ export interface BenchObject {
   fields: Record<string, FieldValue>;
   /** Near the Dot / in range / pointing at it / plugged in. Kept between visits. */
   near: boolean;
+  /** Where it stands on the table (mm, the Dot at the origin; workbench/layout.ts) and its quarter turns. For kinds with a range, `near` is what this position means. */
+  pos: { x: number; z: number };
+  rot: 0 | 1 | 2 | 3;
 }
 
 export interface AreaDef {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { KindDef } from './model';
 import { BENCH_STORAGE_KEY, BenchStore, type StorageLike } from './store';
+import { DOT_RECT, SD_ID, isNear, overlaps, rectOf } from '../workbench/layout';
 
 const base = { labelKey: 'kind.motion.pose', descKey: 'kind.motion.pose.desc', fields: [] as never[] } as const;
 const kinds: Record<string, KindDef> = {
@@ -104,7 +105,8 @@ describe('BenchStore', () => {
     const p = s.add('nfc.card')!;
     s.takeAway(p.id);
     const s2 = new BenchStore(st, kindOf);
-    expect(s2.getState().objects).toEqual([o, { ...p, near: false }]);
+    expect(s.get(p.id)!.near).toBe(false);
+    expect(s2.getState().objects).toEqual([o, s.get(p.id)]);
     expect(s2.nearIn('nfc').map((x) => x.id)).toEqual([o.id]);
   });
 
@@ -136,5 +138,85 @@ describe('BenchStore', () => {
     const s = new BenchStore(boom, kindOf);
     expect(() => s.add('nfc.tag')).not.toThrow();
     expect(s.getState().objects).toHaveLength(1);
+  });
+
+  it('places things on the table: near means inside the range, the switch moves the object, nothing overlaps', () => {
+    const s = new BenchStore(null, kindOf);
+    const a = s.add('nfc.tag')!;
+    expect(isNear('nfc.tag', a.pos, a.rot)).toBe(true);
+    s.setNear(a.id, false);
+    const away = s.get(a.id)!;
+    expect(away.near).toBe(false);
+    expect(isNear('nfc.tag', away.pos, away.rot)).toBe(false);
+    // dragging back in flips the state; dragging out flips it again
+    s.move(a.id, { x: -45, z: -15 });
+    expect(s.get(a.id)!.near).toBe(true);
+    s.move(a.id, { x: -200, z: 100 });
+    expect(s.get(a.id)!.near).toBe(false);
+    // dropped at a place: that place decides
+    const b = s.add('nfc.card', 'B', { x: 0, z: 0 })!; // on the Dot: pushed beside it
+    expect(overlaps(rectOf('nfc.card', b.pos, b.rot), DOT_RECT)).toBe(false);
+    expect(b.near).toBe(true);
+    const c = s.add('nfc.card', 'C', b.pos)!;
+    expect(overlaps(rectOf('nfc.card', c.pos, c.rot), rectOf('nfc.card', b.pos, b.rot))).toBe(false);
+    // a quarter turn swaps the footprint and keeps clear of the neighbours
+    s.rotate([b.id]);
+    const r = s.get(b.id)!;
+    expect(r.rot).toBe(1);
+    expect(overlaps(rectOf('nfc.card', r.pos, r.rot), DOT_RECT)).toBe(false);
+    // the battery has no range: moving it changes nothing else
+    const bat = s.add('power.battery')!;
+    s.move(bat.id, { x: 100, z: 100 });
+    expect(s.get(bat.id)!.pos).toEqual({ x: 100, z: 100 });
+  });
+
+  it('gives a bench saved before the table existed its places, and keeps them', () => {
+    const st = new MemStorage();
+    st.setItem(BENCH_STORAGE_KEY, JSON.stringify({ v: 2, objects: [
+      { id: 'a', area: 'nfc', kind: 'nfc.tag', name: 'A', near: true, fields: {} },
+      { id: 'b', area: 'nfc', kind: 'nfc.tag', name: 'B', near: false, fields: {} },
+      { id: 'c', area: 'nfc', kind: 'nfc.card', name: 'C', near: true, fields: {} },
+    ] }));
+    const s = new BenchStore(st, kindOf);
+    const [a, b, c] = s.getState().objects;
+    expect([a.near, b.near, c.near]).toEqual([true, false, true]);
+    expect(isNear(a.kind, a.pos, a.rot)).toBe(true);
+    expect(isNear(b.kind, b.pos, b.rot)).toBe(false);
+    expect(isNear(c.kind, c.pos, c.rot)).toBe(true);
+    expect(overlaps(rectOf(a.kind, a.pos, a.rot), rectOf(c.kind, c.pos, c.rot))).toBe(false);
+    expect(s.getState().fixtures[SD_ID]).toBeTruthy();
+    s.move('b', { x: -250, z: 150 });
+    const s2 = new BenchStore(st, kindOf);
+    expect(s2.get('b')!.pos).toEqual({ x: -250, z: 150 });
+    expect(s2.get('a')!.pos).toEqual(a.pos);
+    expect(s2.getState().fixtures).toEqual(s.getState().fixtures);
+  });
+
+  it('undoes and redoes bench edits; edits with one tag in quick succession are one step', () => {
+    const s = new BenchStore(null, kindOf);
+    s.checkpoint();
+    const a = s.add('nfc.tag')!;
+    s.checkpoint('move');
+    s.move(a.id, { x: -200, z: 100 });
+    s.checkpoint('move');
+    s.move(a.id, { x: -210, z: 100 });
+    expect(s.getState().undo).toBe(2);
+    s.checkpoint();
+    s.remove(a.id);
+    expect(s.undo()).toBe(true);
+    expect(s.get(a.id)!.pos).toEqual({ x: -210, z: 100 });
+    expect(s.undo()).toBe(true);
+    expect(s.get(a.id)!.pos).toEqual(a.pos);
+    expect(s.get(a.id)!.near).toBe(true);
+    expect(s.redo()).toBe(true);
+    expect(s.get(a.id)!.near).toBe(false);
+    expect(s.undo()).toBe(true);
+    expect(s.undo()).toBe(true);
+    expect(s.getState().objects).toHaveLength(0);
+    expect(s.undo()).toBe(false);
+    expect(s.getState().redo).toBe(3);
+    s.checkpoint();
+    s.add('nfc.card');
+    expect(s.getState().redo).toBe(0);
   });
 });

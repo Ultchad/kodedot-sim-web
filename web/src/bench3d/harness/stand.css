@@ -1,0 +1,14 @@
+html, body { margin: 0; height: 100%; background: #c2bab3; overflow: hidden; font-family: 'DM Sans', system-ui, sans-serif; color: #191919; }
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#overlay { position: fixed; inset: 0; pointer-events: none; }
+#caption { position: fixed; left: 14px; bottom: 12px; right: 14px; font-size: 13px; font-weight: 600; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; pointer-events: none; }
+#caption b { font-family: 'Outfit', 'DM Sans', sans-serif; font-size: 17px; }
+#caption .bad { color: #a3232f; }
+.pin { position: absolute; transform: translate(-50%, -50%); width: 7px; height: 7px; border-radius: 50%; background: #ffac00; box-shadow: 0 0 0 2px #191919; }
+.pin-label { position: absolute; transform-origin: 0 50%; transform: translate(5px, -50%) rotate(-58deg) translate(4px, 0); font: 600 11px 'DM Mono', ui-monospace, monospace; background: rgba(25, 25, 25, 0.86); color: #f4f1ea; padding: 1px 5px; border-radius: 6px; white-space: nowrap; }
+.scale { position: absolute; height: 0; border-top: 3px solid #191919; }
+.scale::before, .scale::after { content: ''; position: absolute; top: -8px; height: 13px; border-left: 3px solid #191919; }
+.scale::before { left: 0; }
+.scale::after { right: 0; }
+.scale span { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); font: 600 12px 'DM Mono', ui-monospace, monospace; white-space: nowrap; }
+.dims { position: absolute; right: 14px; top: 12px; font: 600 12px 'DM Mono', ui-monospace, monospace; background: rgba(255, 255, 255, 0.6); padding: 4px 8px; border-radius: 10px; }
