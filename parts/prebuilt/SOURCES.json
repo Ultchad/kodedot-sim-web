@@ -107,8 +107,8 @@
    "id": "dotbench.kode-camera-shape",
    "file": "dotbench.kode-camera-shape.dotpart",
    "kind": "declarative",
-   "hash": "6ad4b78e4555b306816d08e135e7a904641f5033ec8d4854487a2a326bc63b57",
-   "sha256": "d56dcac732a6a43caa023089b1d4fb4b87822082deb0d3917f62710e146d97ae"
+   "hash": "5ec32e20aa74847b7cfbef02c08349fc1faee975b4d90a604973ef10078e6c60",
+   "sha256": "cbdb76e5d0e8ceae0d5f40c2870a1f6fa1746daaa022ebd5abe29ac88da561fb"
   },
   "kode-hacking-shape": {
    "id": "dotbench.kode-hacking-shape",
@@ -121,8 +121,8 @@
    "id": "dotbench.kode-maker",
    "file": "dotbench.kode-maker.dotpart",
    "kind": "declarative",
-   "hash": "7f7be6cb355ad38d2f418ca98683e329d67c5a34cd67620d4b31bc52830bfd91",
-   "sha256": "f0d496cd942c5091b0afdb012e4015a949bfb653d0f42a2b4c833973d48593eb"
+   "hash": "77e8595783ab86f0470cb64ee8691444bd2b20cd1458c74c781e3dc9b8f6990e",
+   "sha256": "720686a816342dd69a6a05b410fabf9f969ce954db2983b2e62f93d547b54651"
   },
   "kode-mesh-shape": {
    "id": "dotbench.kode-mesh-shape",
@@ -135,8 +135,8 @@
    "id": "dotbench.kode-robotics",
    "file": "dotbench.kode-robotics.dotpart",
    "kind": "declarative",
-   "hash": "fc65cec3457b9c999f0a71a43b5882e9fcde75c9d72d5e3eedf96bf24b91d4f8",
-   "sha256": "b755d9ee22c0b39d63ba2858208b8fcb4ccb33cc1d7d28bbbb3706fe007852f4"
+   "hash": "aab6ccb9647a99506d8030a346d1451f3198f6032f87ea538e08d096d9312feb",
+   "sha256": "dadbf3a7263e7415eb4c1777b7dee10f012966c2061420214401fab5a94ad30c"
   },
   "l298n": {
    "id": "dotbench.l298n",

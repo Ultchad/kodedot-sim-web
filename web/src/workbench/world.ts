@@ -11,12 +11,11 @@ import { Wires, type WireParts } from './wires';
 import { Bodies, type BodiesDeps } from './bodies';
 import { OrbitRig } from './camera';
 import { DOT, type Rect } from './layout';
+import { LYING, dotCorners, lowestY, lyingQuat, restTilt } from './rest';
 import { TABLE_DARK, TABLE_LIGHT, buildTable, type Table } from './table';
 
 const D = bodyDims();
 const DEG = Math.PI / 180;
-/** The Dot lying on its back: the model's front (+Z) looks up, its top edge (+Y) points away from the viewer (-Z). */
-const LYING = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0));
 /** How far the Dot can be tipped on the table by hand. */
 export const TILT_LIMIT = { pitch: 75, roll: 75 } as const;
 
@@ -35,7 +34,12 @@ export class BenchWorld {
   private shadowMat: MeshBasicMaterial;
   private euler = new Euler(0, 0, 0, 'YXZ');
   private q = new Quaternion();
-  private v = new Vector3();
+  /** The Dot's own corners, and the module on its header (points in the Dot's frame): what the assembly rests on. */
+  private corners = dotCorners(D.hw, D.hh, D.zf, D.zb);
+  private mounted: Float32Array | null = null;
+  /** How the assembly lies by itself (radians about the Dot's X: a module deeper than the Dot's back props its top end up). */
+  private rest = 0;
+  private restGoal = 0;
   /** What stands on the table. */
   readonly bodies: Bodies;
   /** Where the tilt handle floats: off the Dot's top edge, level with its face (it moves with the Dot). */
@@ -93,13 +97,10 @@ export class BenchWorld {
     // the heading is taken the short way round (359 and 1 are two degrees apart)
     this.euler.set(p.pitch * DEG, p.roll * DEG, -p.heading * DEG, 'YXZ');
     this.q.setFromEuler(this.euler);
-    this.dotQuat.copy(LYING).multiply(this.q);
-    // rest on the lowest corner
-    let low = Infinity;
-    for (let i = 0; i < 8; i++) {
-      this.v.set(i & 1 ? D.hw : -D.hw, i & 2 ? D.hh : -D.hh, i & 4 ? D.zf : D.zb).applyQuaternion(this.dotQuat);
-      if (this.v.y < low) low = this.v.y;
-    }
+    // the way the Dot and its module lie by themselves comes first (about the Dot's own X), the hand's tilt on top;
+    // then the whole assembly rests on its lowest point: the Dot's corners or the module's
+    lyingQuat(this.q, this.rest, this.dotQuat);
+    const low = Math.min(lowestY(this.corners, this.dotQuat), this.mounted ? lowestY(this.mounted, this.dotQuat) : Infinity);
     const wobble = this.shake > 0.01 ? Math.sin(this.shake * 60) * this.shake * 2.2 : 0;
     this.dotPos.set(wobble, -low + Math.abs(wobble) * 0.4, wobble * 0.3);
     const lift = -low - D.depth / 2; // how far the middle rose above lying flat
@@ -138,6 +139,17 @@ export class BenchWorld {
     if (this.shake > 0) {
       this.shake = reduced ? 0 : Math.max(0, this.shake - dt * 1.8);
       busy = busy || this.shake > 0;
+    }
+    // a module was put on the header or taken off: the assembly settles into the way it now lies
+    const mounted = this.bodies.mountedPoints();
+    if (mounted !== this.mounted) {
+      this.mounted = mounted;
+      this.restGoal = mounted ? restTilt([this.corners, mounted]) : 0;
+    }
+    if (this.rest !== this.restGoal) {
+      this.rest += (this.restGoal - this.rest) * (reduced ? 1 : 1 - Math.exp(-dt * 12));
+      if (Math.abs(this.restGoal - this.rest) < 0.0005) this.rest = this.restGoal;
+      else busy = true;
     }
     this.placeDot();
     busy = this.bodies.step(dt, reduced) || busy;

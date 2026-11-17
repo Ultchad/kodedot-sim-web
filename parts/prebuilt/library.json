@@ -847,8 +847,8 @@
       "id": "dotbench.kode-camera-shape",
       "version": "1.0.0",
       "file": "dotbench.kode-camera-shape.dotpart",
-      "bytes": 2369,
-      "sha256": "d56dcac732a6a43caa023089b1d4fb4b87822082deb0d3917f62710e146d97ae",
+      "bytes": 2375,
+      "sha256": "cbdb76e5d0e8ceae0d5f40c2870a1f6fa1746daaa022ebd5abe29ac88da561fb",
       "name": {
         "en": "Kode Camera module (shape only)",
         "pt-BR": "Kode Camera module (só a forma)",
@@ -964,8 +964,8 @@
       "id": "dotbench.kode-maker",
       "version": "1.0.0",
       "file": "dotbench.kode-maker.dotpart",
-      "bytes": 6643,
-      "sha256": "f0d496cd942c5091b0afdb012e4015a949bfb653d0f42a2b4c833973d48593eb",
+      "bytes": 6650,
+      "sha256": "720686a816342dd69a6a05b410fabf9f969ce954db2983b2e62f93d547b54651",
       "name": {
         "en": "Kode Maker module",
         "pt-BR": "Módulo Kode Maker",
@@ -1087,8 +1087,8 @@
       "id": "dotbench.kode-robotics",
       "version": "1.0.0",
       "file": "dotbench.kode-robotics.dotpart",
-      "bytes": 4557,
-      "sha256": "b755d9ee22c0b39d63ba2858208b8fcb4ccb33cc1d7d28bbbb3706fe007852f4",
+      "bytes": 4558,
+      "sha256": "dadbf3a7263e7415eb4c1777b7dee10f012966c2061420214401fab5a94ad30c",
       "name": {
         "en": "Kode Robotics module",
         "pt-BR": "Módulo Kode Robotics",

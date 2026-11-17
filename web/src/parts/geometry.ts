@@ -212,14 +212,33 @@ export interface MountGeo {
   placement?: { anchor_dot_mm: { x: number; y: number; z: number }; upright?: Record<string, string>; turned?: Record<string, string> };
 }
 const AXIS: Record<string, [number, number, number]> = { '+X': [1, 0, 0], '-X': [-1, 0, 0], '+Y': [0, 1, 0], '-Y': [0, -1, 0], '+Z': [0, 0, 1], '-Z': [0, 0, -1] };
+const mountCache = new WeakMap<object, Map<string, number[] | null>>();
 /**
  * The 4x4 (column-major, as three.js keeps it) that takes a point of the part's MODEL frame to the Dot's own frame for a
- * mounted module, or null when the manifest does not say where it sits.
+ * mounted module, or null when the manifest does not say where it sits. The same array is returned every time for one
+ * manifest and side, so a caller can tell "nothing changed" by identity.
+ *
+ * What the two sides mean (the manifests' `mount.placement`, from the maker's documents; docs/STATUS-web.md has the
+ * evidence): `upright` is the documented way round: a flat module (Maker, Robotics, Camera) lies in the Dot's plane
+ * past its top edge with its component side on the screen's side, so with the Dot face up on the table the breadboard,
+ * the screw terminals or the lens look up; `turned` is the same board half a turn about the Dot's long axis, component
+ * side toward the Dot's back (the header takes it both ways, the rails stay, every GPIO moves). The cased radio modules
+ * only go one way: tongue against the Dot's back, block on its top edge.
  */
 export function mountMatrix(body: BodyGeo, mount: MountGeo | undefined, side: 'upright' | 'turned'): number[] | null {
-  const axes = mount?.placement?.[side];
-  const seat = mount?.connector?.seat_mm;
-  const anchor = mount?.placement?.anchor_dot_mm;
+  if (!mount) return null;
+  let per = mountCache.get(mount);
+  if (!per) mountCache.set(mount, (per = new Map()));
+  const key = `${side}|${body.w_mm}|${body.d_mm}`;
+  if (per.has(key)) return per.get(key)!;
+  const made = makeMountMatrix(body, mount, side);
+  per.set(key, made);
+  return made;
+}
+function makeMountMatrix(body: BodyGeo, mount: MountGeo, side: 'upright' | 'turned'): number[] | null {
+  const axes = mount.placement?.[side];
+  const seat = mount.connector?.seat_mm;
+  const anchor = mount.placement?.anchor_dot_mm;
   if (!axes || !seat || !anchor) return null;
   const ax = AXIS[axes.x], ay = AXIS[axes.y], az = AXIS[axes.z];
   if (!ax || !ay || !az) return null;
