@@ -16,7 +16,8 @@
  * (the end of the 5V and GND pins in both manifests).
  */
 import {
-  FONT, FONT_MONO, INK, PAL, Shape, defineModel, footprintOf, fromManifestMm, glowing, microUsb, partState, pcb, print, setLamp, silkBox, terminalsFromManifest, text,
+  FONT, FONT_MONO, INK, PAL, Shape, defineModel, drawScreen, footprintOf, fromManifestMm, glowing, microUsb, partState, pcb, print, screen, setLamp, silkBox,
+  terminalsFromManifest, text,
   topQuad, usbC, type BuildCtx, type ManifestBody, type ManifestPin, type PartModel, type PartState, type PrintDef, type Terminal, type V3,
 } from '../../index';
 import { MLCC, RES, chip, ledChip, legRow, lensOf, qfnLean, radioModule, rgbLed, smdButton, sod123, sot223, sot23, type RadioModuleOut } from './kit';
@@ -43,7 +44,23 @@ interface Built {
   s: Shape;
   pwr: Shape;
   led: Shape;
+  /** Where the board LED is, and how far its light spills on the board. */
+  spill: { x: number; z: number; r: number };
   prints: PrintDef[];
+}
+
+// the light an LED throws on the board round it: drawn per copy, only when its level changes
+let spillRgb = '255,255,255', spillLevel = 0;
+function drawSpill(g: CanvasRenderingContext2D, w: number, h: number): void {
+  if (spillLevel <= 0) return;
+  const r = Math.min(w, h) / 2;
+  const grad = g.createRadialGradient(w / 2, h / 2, r * 0.08, w / 2, h / 2, r);
+  grad.addColorStop(0, `rgba(${spillRgb},${0.95 * spillLevel})`);
+  grad.addColorStop(0.3, `rgba(${spillRgb},${0.48 * spillLevel})`);
+  grad.addColorStop(0.65, `rgba(${spillRgb},${0.16 * spillLevel})`);
+  grad.addColorStop(1, `rgba(${spillRgb},0)`);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
 }
 interface Row {
   z: number;
@@ -247,7 +264,7 @@ function buildClassic(ctx: BuildCtx, m: Esp32Manifest, rows: Row[]): Built {
       text(g, '+', X(42.4), Z(17.3), 1.1, { weight: 700, font: FONT_MONO });
     },
   };
-  return { s, pwr, led, prints: [silk, canMarking(mod, { name: 'ESP32-WROOM-32E', sub: 'N4 · 2.4 GHz', small: ['Wi-Fi b/g/n', 'BT 4.2 + LE', 'LOT 2246 B'] })] };
+  return { s, pwr, led, spill: { x: at.x, z: at.z, r: 5.5 }, prints: [silk, canMarking(mod, { name: 'ESP32-WROOM-32E', sub: 'N4 · 2.4 GHz', small: ['Wi-Fi b/g/n', 'BT 4.2 + LE', 'LOT 2246 B'] })] };
 }
 
 function buildS3(ctx: BuildCtx, m: Esp32Manifest, rows: Row[]): Built {
@@ -334,20 +351,22 @@ function buildS3(ctx: BuildCtx, m: Esp32Manifest, rows: Row[]): Built {
       g.fillRect(X(26.3), -d / 2 + 3.2, 0.14, d - 6.4);
     },
   };
-  return { s, pwr, led, prints: [silk, canMarking(mod, { name: 'ESP32-S3-WROOM-1', sub: 'N16R8 · 2.4 GHz', small: ['Wi-Fi b/g/n', 'Bluetooth 5 LE', 'LOT 2246 B'] })] };
+  return { s, pwr, led, spill: { x: at.x, z: at.z, r: 7 }, prints: [silk, canMarking(mod, { name: 'ESP32-S3-WROOM-1', sub: 'N16R8 · 2.4 GHz', small: ['Wi-Fi b/g/n', 'Bluetooth 5 LE', 'LOT 2246 B'] })] };
 }
 
 // ------------------------------------------------------------------------------------------------------- model
 /**
  * The model of one ESP32 board manifest. Live state: the power LED follows `power.on`; the board LED (GPIO2 of the
  * classic board, the RGB LED on GPIO48 of the S3) follows the manifest's `led` visual, 0 to 1, in the colour the
- * manifest gives it. These manifests declare no hazard outputs, and the boards have no serial activity LEDs.
+ * manifest gives it, and throws its light on the board round it. These manifests declare no hazard outputs, and
+ * the boards have no serial activity LEDs.
  */
 export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState> {
   const m = raw as Esp32Manifest;
   const terminals = terminalsFromManifest(m);
   const rows = rowsOf(terminals);
   const colour = ledPlace(m).colour;
+  const rgb = `${colour >> 16},${(colour >> 8) & 255},${colour & 255}`;
   return defineModel<PartState>({
     id: m.id,
     title: m.name.en,
@@ -358,14 +377,17 @@ export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState
       const b = board === 's3' ? buildS3(ctx, m, rows) : buildClassic(ctx, m, rows);
       const root = b.s.toObject();
       for (const p of b.prints) root.add(print(p));
-      root.add(glowing('pwr', b.pwr), glowing('led', b.led));
+      root.add(glowing('pwr', b.pwr), glowing('led', b.led), screen('spill', topQuad(b.spill.x, b.spill.z, TOP + 0.04, b.spill.r, b.spill.r), 6, { lit: false }));
       return root;
     },
     animate(st, obj) {
       const on = st.power.on;
       setLamp(obj, 'pwr', RED, on ? 1 : 0);
-      const level = Number(st.visuals.led ?? 0);
-      setLamp(obj, 'led', colour, on && level > 0 ? Math.min(1, level) : 0);
+      const level = on ? Math.min(1, Math.max(0, Number(st.visuals.led ?? 0))) : 0;
+      setLamp(obj, 'led', colour, level * 1.5);
+      spillRgb = rgb;
+      spillLevel = level;
+      drawScreen(obj, 'spill', Math.round(level * 24), drawSpill);
     },
     states: {
       running: partState({ visuals: { led: 1 } }),
