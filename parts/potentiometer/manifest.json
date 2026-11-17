@@ -26,21 +26,22 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 150,
-    "height": 150
+    "width": 145,
+    "height": 110
   },
   "pins": [
     {
       "name": "T",
       "kind": "analog",
       "pos": {
-        "x": 30,
-        "y": 134
+        "x": 21.9,
+        "y": 100
       },
       "abs_max_mv": 5500,
       "mm": {
-        "x": 2.25,
-        "y": 10
+        "x": 2.19,
+        "y": 10,
+        "z": 0
       },
       "face": "bottom"
     },
@@ -48,13 +49,14 @@
       "name": "W",
       "kind": "analog",
       "pos": {
-        "x": 75,
-        "y": 134
+        "x": 72.7,
+        "y": 100
       },
       "abs_max_mv": 5500,
       "mm": {
-        "x": 7.25,
-        "y": 10
+        "x": 7.27,
+        "y": 10,
+        "z": 0
       },
       "face": "bottom"
     },
@@ -62,13 +64,14 @@
       "name": "B",
       "kind": "analog",
       "pos": {
-        "x": 120,
-        "y": 134
+        "x": 123.5,
+        "y": 100
       },
       "abs_max_mv": 5500,
       "mm": {
-        "x": 12.25,
-        "y": 10
+        "x": 12.35,
+        "y": 10,
+        "z": 0
       },
       "face": "bottom"
     }
@@ -93,10 +96,10 @@
     {
       "field": "position",
       "region": {
-        "x": 25,
-        "y": 15,
-        "w": 100,
-        "h": 90
+        "x": 24.2,
+        "y": 11,
+        "w": 96.7,
+        "h": 66
       },
       "mode": "rotate"
     }
@@ -105,9 +108,9 @@
     {
       "id": "knob",
       "effect": "rotate",
-      "x": 75,
-      "y": 60,
-      "r": 36,
+      "x": 72.5,
+      "y": 44,
+      "r": 26.4,
       "source": {
         "field": "position"
       },

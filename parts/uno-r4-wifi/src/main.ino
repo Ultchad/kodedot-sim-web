@@ -4,7 +4,7 @@
 #include "dotbench_fields.h"        // FIELD_BLINK_MS, OUTPUT_MATRIX0.. (generated from manifest.json)
 #include <Arduino_LED_Matrix.h>
 ArduinoLEDMatrix matrix;
-static const uint32_t HEART[3] = { 0x3184a444, 0x44042081, 0x100a0 };
+static const uint32_t HEART[3] = { 0x3184a444, 0x44042081, 0x100a0040 };
 
 static uint32_t last = 0; static bool on = false;
 

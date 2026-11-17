@@ -13,6 +13,7 @@ step() { echo "== $1"; shift; "$@" || rc=1; }
 step "schema copies" node "$root/tools/dblib/part/gen-schema.mjs" --check
 step "built-in library: build and run every part's scenarios" node "$root/parts/build-library.mjs" --test
 step "bench unit tests" node "$here/bench.test.mjs"
+step "geometry of every part (picture = mm x scale, grid, inside the body, contact heights)" node "$here/geometry.test.mjs"
 step "circuit tests (nodal solve, capacitors, hazards)" node "$here/circuit.test.mjs"
 step "boards and Arduino libraries (compiles sketches for each board)" node "$here/boards.test.mjs"
 step "Kode modules (mount, Maker, Robotics, a Dot app)" node "$here/modules.test.mjs"
