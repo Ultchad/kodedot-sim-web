@@ -124,6 +124,12 @@ static void name_key_cb(lv_event_t *e)
         if ( 0U < len )
         {
             n->text[len - 1U] = '\0';
+            /* An empty field starts a name again, with a capital. */
+            if ( 1U == len )
+            {
+                n->mode = KIT_NAME_UPPER;
+                name_keys(keys, n->mode);
+            }
         }
     }
     else if ( 0 == strcmp(txt, "Space") )

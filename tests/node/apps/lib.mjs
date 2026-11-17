@@ -37,7 +37,7 @@ const rgbaHash = (fb) => { let h = 2166136261; for (let i = 0; i < fb.length; i 
 export async function launch(bench, pkg, { name, glue = {}, reason = RESET.POWERON } = {}) {
   const run = await bench.boot(pkg, { reason });
   const emitted = [];
-  const ctx = glueCtx(run.M, emitted);
+  const ctx = Object.assign(glueCtx(run.M, emitted), { statePtr: run.statePtr, u32: run.u32, i32: run.i32, setU32: (o, v) => dv().setUint32(run.statePtr + o, v >>> 0, true) });
   const api = {};
   for (const [k, mod] of Object.entries(glue)) api[k] = mod.default(ctx);
   const app = {
@@ -111,4 +111,20 @@ export function storeShots(app, labels) {
     if (!s) throw new Error("no shot " + l);
     savePng(path.join(dir, `${i + 1}.png`), s.fb, 410, 502, 410 * 4);
   });
+}
+
+// ---- The name keypad (apps/_kit/kit_name.c): 7 columns at x 32..378, 5 rows at y 130..392 ----
+const KEY_W = (346 - 36) / 7, KEY_H = (262 - 24) / 5;
+const keyX = (c) => 32 + c * (KEY_W + 6) + KEY_W / 2;
+const keyY = (r) => 130 + r * (KEY_H + 6) + KEY_H / 2;
+export const KEYS = { del: [331, keyY(3)], space: [306, keyY(4)], lower: [keyX(0) + 22, keyY(4)], symbols: [keyX(2) + 22, keyY(4)] };
+/** Tap the keys of a text made of letters (a-z, either case, the page decides) and spaces; `clear` first deletes `clear` characters. */
+export async function typeText(app, text, clear = 0) {
+  for (let i = 0; i < clear; i++) await app.tap(...KEYS.del, 90);
+  for (const ch of text) {
+    if (ch === " ") { await app.tap(...KEYS.space, 90); continue; }
+    const i = ch.toLowerCase().charCodeAt(0) - 97;
+    await app.tap(keyX(i % 7), keyY(Math.floor(i / 7)), 90);
+  }
+  await app.settle(300);
 }

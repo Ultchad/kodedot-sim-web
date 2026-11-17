@@ -230,6 +230,27 @@ static uint8_t remote_count(IrKitAo const *me, uint8_t r)
 }
 
 /**
+ * @brief A remote's count in words: "1 button", "3 buttons".
+ * @param me  The Active Object.
+ * @param r   The remote.
+ * @param out Where.
+ * @param cap Its size.
+ */
+static void remote_sub(IrKitAo const *me, uint8_t r, char *out, size_t cap)
+{
+    uint8_t const n = remote_count(me, r);
+
+    if ( 1U == n )
+    {
+        (void)snprintf(out, cap, "1 button");
+    }
+    else
+    {
+        (void)snprintf(out, cap, "%u buttons", (unsigned)n);
+    }
+}
+
+/**
  * @brief A button's second line.
  * @param b   The button.
  * @param out Where.
@@ -385,6 +406,7 @@ static void capture_answer(IrKitAo *me, kode_sys_ir_capture_answer_t const *a)
     else
     {
         me->want = false;
+        KLOG_I(TAG, "nothing learned (status %d)", (int)rc);
         if ( KODE_TIMEOUT == rc )
         {
             me->lstate = IR_L_NONE;
@@ -422,6 +444,7 @@ static void last_answer(IrKitAo *me, kode_sys_ir_last_answer_t const *a)
     me->want = false;
     if ( ((uint8_t)KODE_OK == a->rc) && a->have && a->frame.nec )
     {
+        KLOG_I(TAG, "heard NEC addr=0x%04X cmd=0x%04X", (unsigned)a->frame.addr, (unsigned)a->frame.cmd);
         me->found.kind = IR_KIND_NEC;
         me->found.addr = a->frame.addr;
         me->found.cmd  = a->frame.cmd;
@@ -429,6 +452,7 @@ static void last_answer(IrKitAo *me, kode_sys_ir_last_answer_t const *a)
     }
     else
     {
+        KLOG_I(TAG, "heard raw signal, %u pulses", (unsigned)me->found_total);
         me->found.kind = IR_KIND_RAW;
         me->lstate     = (IR_KEEP < me->found_total) ? IR_L_LONG : IR_L_RAW;
     }
@@ -877,7 +901,7 @@ static void page_pick(kit_t *kit, void *arg)
     {
         char sub[24];
 
-        (void)snprintf(sub, sizeof(sub), "%u buttons", (unsigned)remote_count(me, (uint8_t)i));
+        remote_sub(me, (uint8_t)i, sub, sizeof(sub));
         (void)kit_row(kit, body, me->remotes[i].name, sub, &app_glyph_ir_40, NULL, KUI_COLOR_ACCENT, &pick_cb,
                       (void *)(uintptr_t)i);
     }
@@ -924,7 +948,7 @@ static void page_remotes(kit_t *kit, void *arg)
         {
             char sub[24];
 
-            (void)snprintf(sub, sizeof(sub), "%u buttons", (unsigned)remote_count(me, (uint8_t)i));
+            remote_sub(me, (uint8_t)i, sub, sizeof(sub));
             (void)kit_row(kit, body, me->remotes[i].name, sub, &app_glyph_ir_40, NULL, KUI_COLOR_ACCENT,
                           &remotes_pick_cb, (void *)(uintptr_t)i);
         }
@@ -1078,8 +1102,10 @@ static void page_edit(kit_t *kit, void *arg)
         {
             char sub[24];
 
+            char letter[2] = { me->buttons[i].name[0], '\0' };
+
             button_sub(&me->buttons[i], sub, sizeof(sub));
-            (void)kit_row(kit, body, me->buttons[i].name, sub, NULL, "...", KUI_COLOR_ACCENT, &edit_pick_cb,
+            (void)kit_row(kit, body, me->buttons[i].name, sub, NULL, letter, KUI_COLOR_ACCENT, &edit_pick_cb,
                           (void *)(uintptr_t)i);
         }
     }
@@ -1155,7 +1181,7 @@ static void page_button(kit_t *kit, void *arg)
     row = kit_row(kit, page, "Rename", "Change its name", &app_glyph_edit_40, NULL, KUI_COLOR_ACTION,
                   &button_rename_cb, me);
     lv_obj_set_pos(row, KIT_SIDE, 250);
-    row = kit_row(kit, page, "Delete", "Remove it from the remote", &app_glyph_trash_40, NULL, KUI_COLOR_DANGER,
+    row = kit_row(kit, page, "Delete", "Remove it", &app_glyph_trash_40, NULL, KUI_COLOR_DANGER,
                   &button_delete_cb, me);
     kit_row_danger(row);
     lv_obj_set_pos(row, KIT_SIDE, 342);
