@@ -26,16 +26,16 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 180,
-    "height": 150
+    "width": 146,
+    "height": 99
   },
   "pins": [
     {
       "name": "R",
       "kind": "io",
       "pos": {
-        "x": 30,
-        "y": 134
+        "x": 8.5,
+        "y": 49.3
       },
       "abs_max_mv": 5500,
       "mm": {
@@ -48,8 +48,8 @@
       "name": "COM",
       "kind": "io",
       "pos": {
-        "x": 70,
-        "y": 134
+        "x": 51.7,
+        "y": 49.3
       },
       "abs_max_mv": 5500,
       "mm": {
@@ -62,8 +62,8 @@
       "name": "G",
       "kind": "io",
       "pos": {
-        "x": 110,
-        "y": 134
+        "x": 94.9,
+        "y": 49.3
       },
       "abs_max_mv": 5500,
       "mm": {
@@ -76,8 +76,8 @@
       "name": "B",
       "kind": "io",
       "pos": {
-        "x": 150,
-        "y": 134
+        "x": 138,
+        "y": 49.3
       },
       "abs_max_mv": 5500,
       "mm": {

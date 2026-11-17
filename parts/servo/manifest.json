@@ -26,16 +26,16 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 200,
-    "height": 150
+    "width": 180,
+    "height": 98
   },
   "pins": [
     {
       "name": "GND",
       "kind": "ground",
       "pos": {
-        "x": 55,
-        "y": 134
+        "x": 0,
+        "y": 29.3
       },
       "mm": {
         "x": 0,
@@ -47,8 +47,8 @@
       "name": "V5",
       "kind": "power_in",
       "pos": {
-        "x": 100,
-        "y": 134
+        "x": 0,
+        "y": 49.6
       },
       "min_mv": 4000,
       "max_mv": 6000,
@@ -63,8 +63,8 @@
       "name": "SIG",
       "kind": "io",
       "pos": {
-        "x": 145,
-        "y": 134
+        "x": 0,
+        "y": 69.9
       },
       "abs_max_mv": 5500,
       "mm": {

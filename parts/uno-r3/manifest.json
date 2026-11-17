@@ -57,50 +57,50 @@
     ]
   },
   "body": {
-    "w_mm": 68.58,
+    "w_mm": 74.98,
     "d_mm": 53.34,
     "h_mm": 15
   },
   "picture": {
     "file": "picture.svg",
-    "width": 549,
+    "width": 600,
     "height": 427
   },
   "logic_mv": 5000,
   "vih_pct": 60,
   "pins": [
-    {"name":"SCL","kind":"io","pos":{"x":170.7,"y":20.3},"mm":{"x":21.34,"y":2.54},"face":"top","label":{"en":"SCL"},"abs_max_mv":5500,"caps":["i2c_scl"]},
-    {"name":"SDA","kind":"io","pos":{"x":191,"y":20.3},"mm":{"x":23.88,"y":2.54},"face":"top","label":{"en":"SDA"},"abs_max_mv":5500,"caps":["i2c_sda"]},
-    {"name":"AREF","kind":"io","pos":{"x":211.4,"y":20.3},"mm":{"x":26.42,"y":2.54},"face":"top","label":{"en":"AREF"},"abs_max_mv":5500,"caps":["analog"]},
-    {"name":"GND_T","kind":"ground","pos":{"x":231.7,"y":20.3},"mm":{"x":28.96,"y":2.54},"face":"top","label":{"en":"GND"}},
-    {"name":"D13","kind":"io","pos":{"x":252,"y":20.3},"mm":{"x":31.5,"y":2.54},"face":"top","label":{"en":"13 (L)"},"gpio":13,"abs_max_mv":5500,"caps":["digital","spi_sck"]},
-    {"name":"D12","kind":"io","pos":{"x":272.3,"y":20.3},"mm":{"x":34.04,"y":2.54},"face":"top","label":{"en":"12"},"gpio":12,"abs_max_mv":5500,"caps":["digital","spi_miso"]},
-    {"name":"D11","kind":"io","pos":{"x":292.6,"y":20.3},"mm":{"x":36.58,"y":2.54},"face":"top","label":{"en":"11"},"gpio":11,"abs_max_mv":5500,"caps":["digital","pwm","spi_mosi"]},
-    {"name":"D10","kind":"io","pos":{"x":313,"y":20.3},"mm":{"x":39.12,"y":2.54},"face":"top","label":{"en":"10"},"gpio":10,"abs_max_mv":5500,"caps":["digital","pwm","spi_ss"]},
-    {"name":"D9","kind":"io","pos":{"x":333.3,"y":20.3},"mm":{"x":41.66,"y":2.54},"face":"top","label":{"en":"9"},"gpio":9,"abs_max_mv":5500,"caps":["digital","pwm"]},
-    {"name":"D8","kind":"io","pos":{"x":353.6,"y":20.3},"mm":{"x":44.2,"y":2.54},"face":"top","label":{"en":"8"},"gpio":8,"abs_max_mv":5500,"caps":["digital"]},
-    {"name":"D7","kind":"io","pos":{"x":386.1,"y":20.3},"mm":{"x":48.26,"y":2.54},"face":"top","label":{"en":"7"},"gpio":7,"abs_max_mv":5500,"caps":["digital"]},
-    {"name":"D6","kind":"io","pos":{"x":406.4,"y":20.3},"mm":{"x":50.8,"y":2.54},"face":"top","label":{"en":"6"},"gpio":6,"abs_max_mv":5500,"caps":["digital","pwm"]},
-    {"name":"D5","kind":"io","pos":{"x":426.7,"y":20.3},"mm":{"x":53.34,"y":2.54},"face":"top","label":{"en":"5"},"gpio":5,"abs_max_mv":5500,"caps":["digital","pwm"]},
-    {"name":"D4","kind":"io","pos":{"x":447,"y":20.3},"mm":{"x":55.88,"y":2.54},"face":"top","label":{"en":"4"},"gpio":4,"abs_max_mv":5500,"caps":["digital"]},
-    {"name":"D3","kind":"io","pos":{"x":467.4,"y":20.3},"mm":{"x":58.42,"y":2.54},"face":"top","label":{"en":"3"},"gpio":3,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
-    {"name":"D2","kind":"io","pos":{"x":487.7,"y":20.3},"mm":{"x":60.96,"y":2.54},"face":"top","label":{"en":"2"},"gpio":2,"abs_max_mv":5500,"caps":["digital","interrupt"]},
-    {"name":"D1","kind":"io","pos":{"x":508,"y":20.3},"mm":{"x":63.5,"y":2.54},"face":"top","label":{"en":"1"},"gpio":1,"abs_max_mv":5500,"caps":["digital","uart_tx"]},
-    {"name":"D0","kind":"io","pos":{"x":528.3,"y":20.3},"mm":{"x":66.04,"y":2.54},"face":"top","label":{"en":"0"},"gpio":0,"abs_max_mv":5500,"caps":["digital","uart_rx"]},
-    {"name":"NC","kind":"nc","pos":{"x":203.2,"y":406.4},"mm":{"x":25.4,"y":50.8},"face":"top","label":{"en":"NC"}},
-    {"name":"IOREF","kind":"power_out","pos":{"x":223.5,"y":406.4},"mm":{"x":27.94,"y":50.8},"face":"top","label":{"en":"IOREF"},"out_mv":5000,"out_ohms":50},
-    {"name":"RESET","kind":"io","pos":{"x":243.8,"y":406.4},"mm":{"x":30.48,"y":50.8},"face":"top","label":{"en":"RESET"},"abs_max_mv":5500},
-    {"name":"V33","kind":"power_out","pos":{"x":264.2,"y":406.4},"mm":{"x":33.02,"y":50.8},"face":"top","label":{"en":"3V3"},"out_mv":3300,"out_ohms":10},
-    {"name":"V5","kind":"power_in","pos":{"x":284.5,"y":406.4},"mm":{"x":35.56,"y":50.8},"face":"top","label":{"en":"5V"},"min_mv":4500,"max_mv":5500,"typ_ma":50,"supply_group":"pwr","internal":{"mv":5000,"ohms":0.5,"field":"usb"}},
-    {"name":"GND_1","kind":"ground","pos":{"x":304.8,"y":406.4},"mm":{"x":38.1,"y":50.8},"face":"top","label":{"en":"GND"}},
-    {"name":"GND_2","kind":"ground","pos":{"x":325.1,"y":406.4},"mm":{"x":40.64,"y":50.8},"face":"top","label":{"en":"GND"}},
-    {"name":"VIN","kind":"power_in","pos":{"x":345.4,"y":406.4},"mm":{"x":43.18,"y":50.8},"face":"top","label":{"en":"VIN"},"min_mv":6500,"max_mv":20000,"typ_ma":50,"supply_group":"pwr"},
-    {"name":"A0","kind":"io","pos":{"x":386.1,"y":406.4},"mm":{"x":48.26,"y":50.8},"face":"top","label":{"en":"A0"},"gpio":14,"abs_max_mv":5500,"caps":["analog","digital"]},
-    {"name":"A1","kind":"io","pos":{"x":406.4,"y":406.4},"mm":{"x":50.8,"y":50.8},"face":"top","label":{"en":"A1"},"gpio":15,"abs_max_mv":5500,"caps":["analog","digital"]},
-    {"name":"A2","kind":"io","pos":{"x":426.7,"y":406.4},"mm":{"x":53.34,"y":50.8},"face":"top","label":{"en":"A2"},"gpio":16,"abs_max_mv":5500,"caps":["analog","digital"]},
-    {"name":"A3","kind":"io","pos":{"x":447,"y":406.4},"mm":{"x":55.88,"y":50.8},"face":"top","label":{"en":"A3"},"gpio":17,"abs_max_mv":5500,"caps":["analog","digital"]},
-    {"name":"A4","kind":"io","pos":{"x":467.4,"y":406.4},"mm":{"x":58.42,"y":50.8},"face":"top","label":{"en":"A4"},"gpio":18,"abs_max_mv":5500,"caps":["analog","digital","i2c_sda"]},
-    {"name":"A5","kind":"io","pos":{"x":487.7,"y":406.4},"mm":{"x":60.96,"y":50.8},"face":"top","label":{"en":"A5"},"gpio":19,"abs_max_mv":5500,"caps":["analog","digital","i2c_scl"]}
+    {"name":"SCL","kind":"io","pos":{"x":201.6,"y":20.3},"mm":{"x":25.2,"y":2.54,"z":11.4},"face":"top","label":{"en":"SCL"},"abs_max_mv":5500,"caps":["i2c_scl"]},
+    {"name":"SDA","kind":"io","pos":{"x":221.9,"y":20.3},"mm":{"x":27.74,"y":2.54,"z":11.4},"face":"top","label":{"en":"SDA"},"abs_max_mv":5500,"caps":["i2c_sda"]},
+    {"name":"AREF","kind":"io","pos":{"x":242.2,"y":20.3},"mm":{"x":30.28,"y":2.54,"z":11.4},"face":"top","label":{"en":"AREF"},"abs_max_mv":5500,"caps":["analog"]},
+    {"name":"GND_T","kind":"ground","pos":{"x":262.6,"y":20.3},"mm":{"x":32.82,"y":2.54,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"D13","kind":"io","pos":{"x":282.9,"y":20.3},"mm":{"x":35.36,"y":2.54,"z":11.4},"face":"top","label":{"en":"13 (L)"},"gpio":13,"abs_max_mv":5500,"caps":["digital","spi_sck"]},
+    {"name":"D12","kind":"io","pos":{"x":303.2,"y":20.3},"mm":{"x":37.9,"y":2.54,"z":11.4},"face":"top","label":{"en":"12"},"gpio":12,"abs_max_mv":5500,"caps":["digital","spi_miso"]},
+    {"name":"D11","kind":"io","pos":{"x":323.5,"y":20.3},"mm":{"x":40.44,"y":2.54,"z":11.4},"face":"top","label":{"en":"11"},"gpio":11,"abs_max_mv":5500,"caps":["digital","pwm","spi_mosi"]},
+    {"name":"D10","kind":"io","pos":{"x":343.8,"y":20.3},"mm":{"x":42.98,"y":2.54,"z":11.4},"face":"top","label":{"en":"10"},"gpio":10,"abs_max_mv":5500,"caps":["digital","pwm","spi_ss"]},
+    {"name":"D9","kind":"io","pos":{"x":364.2,"y":20.3},"mm":{"x":45.52,"y":2.54,"z":11.4},"face":"top","label":{"en":"9"},"gpio":9,"abs_max_mv":5500,"caps":["digital","pwm"]},
+    {"name":"D8","kind":"io","pos":{"x":384.5,"y":20.3},"mm":{"x":48.06,"y":2.54,"z":11.4},"face":"top","label":{"en":"8"},"gpio":8,"abs_max_mv":5500,"caps":["digital"]},
+    {"name":"D7","kind":"io","pos":{"x":417,"y":20.3},"mm":{"x":52.12,"y":2.54,"z":11.4},"face":"top","label":{"en":"7"},"gpio":7,"abs_max_mv":5500,"caps":["digital"]},
+    {"name":"D6","kind":"io","pos":{"x":437.3,"y":20.3},"mm":{"x":54.66,"y":2.54,"z":11.4},"face":"top","label":{"en":"6"},"gpio":6,"abs_max_mv":5500,"caps":["digital","pwm"]},
+    {"name":"D5","kind":"io","pos":{"x":457.6,"y":20.3},"mm":{"x":57.2,"y":2.54,"z":11.4},"face":"top","label":{"en":"5"},"gpio":5,"abs_max_mv":5500,"caps":["digital","pwm"]},
+    {"name":"D4","kind":"io","pos":{"x":477.9,"y":20.3},"mm":{"x":59.74,"y":2.54,"z":11.4},"face":"top","label":{"en":"4"},"gpio":4,"abs_max_mv":5500,"caps":["digital"]},
+    {"name":"D3","kind":"io","pos":{"x":498.2,"y":20.3},"mm":{"x":62.28,"y":2.54,"z":11.4},"face":"top","label":{"en":"3"},"gpio":3,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
+    {"name":"D2","kind":"io","pos":{"x":518.6,"y":20.3},"mm":{"x":64.82,"y":2.54,"z":11.4},"face":"top","label":{"en":"2"},"gpio":2,"abs_max_mv":5500,"caps":["digital","interrupt"]},
+    {"name":"D1","kind":"io","pos":{"x":538.9,"y":20.3},"mm":{"x":67.36,"y":2.54,"z":11.4},"face":"top","label":{"en":"1"},"gpio":1,"abs_max_mv":5500,"caps":["digital","uart_tx"]},
+    {"name":"D0","kind":"io","pos":{"x":559.2,"y":20.3},"mm":{"x":69.9,"y":2.54,"z":11.4},"face":"top","label":{"en":"0"},"gpio":0,"abs_max_mv":5500,"caps":["digital","uart_rx"]},
+    {"name":"NC","kind":"nc","pos":{"x":274.7,"y":406.4},"mm":{"x":34.34,"y":50.8,"z":11.4},"face":"top","label":{"en":"NC"}},
+    {"name":"IOREF","kind":"power_out","pos":{"x":295,"y":406.4},"mm":{"x":36.88,"y":50.8,"z":11.4},"face":"top","label":{"en":"IOREF"},"out_mv":5000,"out_ohms":50},
+    {"name":"RESET","kind":"io","pos":{"x":315.4,"y":406.4},"mm":{"x":39.42,"y":50.8,"z":11.4},"face":"top","label":{"en":"RESET"},"abs_max_mv":5500},
+    {"name":"V33","kind":"power_out","pos":{"x":335.7,"y":406.4},"mm":{"x":41.96,"y":50.8,"z":11.4},"face":"top","label":{"en":"3V3"},"out_mv":3300,"out_ohms":10},
+    {"name":"V5","kind":"power_in","pos":{"x":356,"y":406.4},"mm":{"x":44.5,"y":50.8,"z":11.4},"face":"top","label":{"en":"5V"},"min_mv":4500,"max_mv":5500,"typ_ma":50,"supply_group":"pwr","internal":{"mv":5000,"ohms":0.5,"field":"usb"}},
+    {"name":"GND_1","kind":"ground","pos":{"x":376.3,"y":406.4},"mm":{"x":47.04,"y":50.8,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"GND_2","kind":"ground","pos":{"x":396.6,"y":406.4},"mm":{"x":49.58,"y":50.8,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"VIN","kind":"power_in","pos":{"x":417,"y":406.4},"mm":{"x":52.12,"y":50.8,"z":11.4},"face":"top","label":{"en":"VIN"},"min_mv":6500,"max_mv":20000,"typ_ma":50,"supply_group":"pwr"},
+    {"name":"A0","kind":"io","pos":{"x":457.6,"y":406.4},"mm":{"x":57.2,"y":50.8,"z":11.4},"face":"top","label":{"en":"A0"},"gpio":14,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A1","kind":"io","pos":{"x":477.9,"y":406.4},"mm":{"x":59.74,"y":50.8,"z":11.4},"face":"top","label":{"en":"A1"},"gpio":15,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A2","kind":"io","pos":{"x":498.2,"y":406.4},"mm":{"x":62.28,"y":50.8,"z":11.4},"face":"top","label":{"en":"A2"},"gpio":16,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A3","kind":"io","pos":{"x":518.6,"y":406.4},"mm":{"x":64.82,"y":50.8,"z":11.4},"face":"top","label":{"en":"A3"},"gpio":17,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A4","kind":"io","pos":{"x":538.9,"y":406.4},"mm":{"x":67.36,"y":50.8,"z":11.4},"face":"top","label":{"en":"A4"},"gpio":18,"abs_max_mv":5500,"caps":["analog","digital","i2c_sda"]},
+    {"name":"A5","kind":"io","pos":{"x":559.2,"y":406.4},"mm":{"x":69.9,"y":50.8,"z":11.4},"face":"top","label":{"en":"A5"},"gpio":19,"abs_max_mv":5500,"caps":["analog","digital","i2c_scl"]}
   ],
   "groups": [
     {"pins":["A4","SDA"]},
@@ -134,11 +134,49 @@
       "ui": "slider"
     }
   ],
+  "outputs": [
+    {
+      "name": "led",
+      "type": "number",
+      "label": {
+        "en": "User LED (0 to 1)",
+        "pt-BR": "LED do usuário (0 a 1)",
+        "es": "LED del usuario (0 a 1)"
+      }
+    },
+    {
+      "name": "tx",
+      "type": "number",
+      "label": {
+        "en": "Serial bytes sent",
+        "pt-BR": "Bytes seriais enviados",
+        "es": "Bytes seriales enviados"
+      }
+    },
+    {
+      "name": "rx",
+      "type": "number",
+      "label": {
+        "en": "Serial bytes received",
+        "pt-BR": "Bytes seriais recebidos",
+        "es": "Bytes seriales recibidos"
+      }
+    },
+    {
+      "name": "crashed",
+      "type": "boolean",
+      "label": {
+        "en": "Stopped (crashed)",
+        "pt-BR": "Parada (travou)",
+        "es": "Detenida (falló)"
+      }
+    }
+  ],
   "visuals": [
     {
       "id": "led",
       "effect": "glow",
-      "x": 284,
+      "x": 299,
       "y": 64,
       "r": 7,
       "color": "#f5c518",

@@ -25,16 +25,16 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 120,
-    "height": 150
+    "width": 151,
+    "height": 151
   },
   "pins": [
     {
       "name": "A",
       "kind": "io",
       "pos": {
-        "x": 40,
-        "y": 134
+        "x": 42.4,
+        "y": 75.4
       },
       "label": {
         "en": "A"
@@ -50,8 +50,8 @@
       "name": "K",
       "kind": "io",
       "pos": {
-        "x": 80,
-        "y": 134
+        "x": 108.4,
+        "y": 75.4
       },
       "label": {
         "en": "K"

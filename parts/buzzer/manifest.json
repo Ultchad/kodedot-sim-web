@@ -26,16 +26,16 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 120,
-    "height": 130
+    "width": 156,
+    "height": 156
   },
   "pins": [
     {
       "name": "P",
       "kind": "io",
       "pos": {
-        "x": 40,
-        "y": 114
+        "x": 28.6,
+        "y": 78
       },
       "abs_max_mv": 5500,
       "mm": {
@@ -48,8 +48,8 @@
       "name": "N",
       "kind": "io",
       "pos": {
-        "x": 80,
-        "y": 114
+        "x": 127.4,
+        "y": 78
       },
       "abs_max_mv": 5500,
       "mm": {

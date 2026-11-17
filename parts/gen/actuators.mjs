@@ -117,7 +117,7 @@ export function actuators() {
         { set_field: { active: "high" } }, { advance_ms: 20 }, { comment: "active high jumper: the same IN high now energises it", expect_pin: { pin: "NO", level: 1 } },
       ] } } })); }
   // ---------------------------------------------------------------- antenna
-  { const pins = [P("FEED", "io", 5, 3, { face: "bottom", abs_max_mv: HI }), P("GND", "io", 5, 7, { face: "bottom", abs_max_mv: HI })];
+  { const pins = [P("FEED", "io", 5, 3.73, { face: "bottom", abs_max_mv: HI }), P("GND", "io", 5, 6.27, { face: "bottom", abs_max_mv: HI })];
     out.push(writePart({ id: "dotbench.antenna", dir: "antenna", w: 10, d: 10, h: 60, category: "wireless", tags: ["antenna", "rf", "wireless", "sma"],
       name: L("Antenna (SMA stub)", "Antena (SMA)", "Antena (SMA)"),
       desc: L("A passive stub antenna on an SMA base: FEED goes to a module's antenna pin, GND to its ground. It is a wiring target and a model for the 3D scene: to the bench it is an open circuit at DC (a 1 Gohm resistor), so it never changes a voltage. The band and gain are fields the page can read. It does NOT model radiation, matching (VSWR), range or detuning: wireless range is decided by distance on the bench table, and a module works with or without an antenna in this build.",

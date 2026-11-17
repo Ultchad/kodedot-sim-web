@@ -27,3 +27,11 @@ static const uint8_t SCK = 12;
 static const uint8_t MISO = 13;
 static const uint8_t A0 = 1, A1 = 2, A2 = 3, A3 = 4, A4 = 5, A5 = 6, A6 = 7, A7 = 8, A8 = 9, A9 = 10, A10 = 11, A11 = 12, A12 = 13, A13 = 14, A14 = 15, A15 = 16, A16 = 17, A17 = 18, A18 = 19, A19 = 20;
 #define digitalPinToInterrupt(p) (p)
+// The on-board RGB LED (arduino-esp32 neopixelWrite / rgbLedWrite). The part's outputs 0, 1, 2 are rgb_r, rgb_g, rgb_b (0 to 255), so a model shows the colour;
+// the pin itself is also driven (any colour on = high) so the part's single LED visual keeps working.
+void dotbenchOutput(int outputIndex, double v);
+static inline void neopixelWrite(uint8_t pin, uint8_t r, uint8_t g, uint8_t b) {
+  dotbenchOutput(0, r); dotbenchOutput(1, g); dotbenchOutput(2, b);
+  pinMode(pin, OUTPUT); digitalWrite(pin, (r | g | b) ? HIGH : LOW);
+}
+static inline void rgbLedWrite(uint8_t pin, uint8_t r, uint8_t g, uint8_t b) { neopixelWrite(pin, r, g, b); }

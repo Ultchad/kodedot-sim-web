@@ -26,20 +26,20 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 120,
-    "height": 120
+    "width": 150,
+    "height": 150
   },
   "pins": [
     {
       "name": "A",
       "kind": "io",
       "pos": {
-        "x": 24,
-        "y": 100
+        "x": 11.5,
+        "y": 75
       },
       "abs_max_mv": 5500,
       "mm": {
-        "x": 0.75,
+        "x": 0.46,
         "y": 3
       },
       "face": "bottom"
@@ -48,12 +48,12 @@
       "name": "B",
       "kind": "io",
       "pos": {
-        "x": 96,
-        "y": 100
+        "x": 138.5,
+        "y": 75
       },
       "abs_max_mv": 5500,
       "mm": {
-        "x": 5.25,
+        "x": 5.54,
         "y": 3
       },
       "face": "bottom"

@@ -239,6 +239,7 @@
           "items": {"enum": ["digital", "pwm", "analog", "dac", "interrupt", "i2c_sda", "i2c_scl", "spi_sck", "spi_miso", "spi_mosi", "spi_ss", "uart_rx", "uart_tx", "touch", "boot_strap", "input_only"]},
           "description": "What the pin can do on the real board (a board part: pin capabilities for the page and the sketch editor). Informational: the part still decides what its sketch does."
         },
+        "aliases": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/pinName"}, "description": "Old or alternative names of this terminal: bench.connect, wireOf and net accept them and mean this pin (a renamed pin keeps its old name working)."},
         "ref": {"type": "string", "maxLength": 24, "description": "Non-electrical: the board designator and pin number of this terminal on the real part (J401.17)."},
         "face": {"enum": ["top", "bottom", "left", "right", "front", "back"], "default": "top", "description": "Which face the terminal is on: top (header pins, screw terminals), bottom (leads that plug into a breadboard), left/right (x edges), front (y = d_mm) and back (y = 0)."}
       },

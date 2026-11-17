@@ -65,8 +65,8 @@
     "height": 100
   },
   "pins": [
-    {"name":"FEED","kind":"io","pos":{"x":50,"y":30},"mm":{"x":5,"y":3},"face":"bottom","label":{"en":"FEED"},"abs_max_mv":60000},
-    {"name":"GND","kind":"io","pos":{"x":50,"y":70},"mm":{"x":5,"y":7},"face":"bottom","label":{"en":"GND"},"abs_max_mv":60000}
+    {"name":"FEED","kind":"io","pos":{"x":50,"y":37.3},"mm":{"x":5,"y":3.73},"face":"bottom","label":{"en":"FEED"},"abs_max_mv":60000},
+    {"name":"GND","kind":"io","pos":{"x":50,"y":62.7},"mm":{"x":5,"y":6.27},"face":"bottom","label":{"en":"GND"},"abs_max_mv":60000}
   ],
   "fields": [
     {

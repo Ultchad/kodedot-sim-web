@@ -27,258 +27,80 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 480,
-    "height": 260
+    "width": 490,
+    "height": 251
   },
   "pins": [
     {
       "name": "V33",
       "kind": "power_in",
-      "pos": {
-        "x": 30,
-        "y": 238
-      },
       "label": {
         "en": "3V3"
       },
       "min_mv": 3000,
       "max_mv": 3600,
       "typ_ma": 60,
+      "supply_group": "pwr",
       "mm": {
-        "x": 5,
-        "y": 26.7
+        "x": 3.4,
+        "y": 26.67
       },
-      "face": "bottom"
-    },
-    {
-      "name": "GND",
-      "kind": "ground",
       "pos": {
-        "x": 58,
-        "y": 238
-      },
-      "label": {
-        "en": "GND"
-      },
-      "mm": {
-        "x": 7.54,
-        "y": 26.7
+        "x": 30.6,
+        "y": 240
       },
       "face": "bottom"
     },
     {
-      "name": "TX",
+      "name": "EN",
       "kind": "io",
-      "gpio": 17,
-      "pos": {
-        "x": 86,
-        "y": 238
-      },
       "label": {
-        "en": "TX"
+        "en": "EN"
       },
       "abs_max_mv": 3600,
       "mm": {
-        "x": 10.08,
-        "y": 26.7
+        "x": 5.94,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 53.5,
+        "y": 240
       },
       "face": "bottom"
     },
     {
-      "name": "RX",
+      "name": "IO36",
       "kind": "io",
-      "gpio": 16,
-      "pos": {
-        "x": 114,
-        "y": 238
-      },
+      "gpio": 36,
       "label": {
-        "en": "RX"
+        "en": "36"
       },
       "abs_max_mv": 3600,
       "mm": {
-        "x": 12.62,
-        "y": 26.7
+        "x": 8.48,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 76.3,
+        "y": 240
       },
       "face": "bottom"
     },
     {
-      "name": "SDA",
+      "name": "IO39",
       "kind": "io",
-      "gpio": 21,
-      "pos": {
-        "x": 142,
-        "y": 238
-      },
+      "gpio": 39,
       "label": {
-        "en": "SDA"
+        "en": "39"
       },
       "abs_max_mv": 3600,
       "mm": {
-        "x": 15.16,
-        "y": 26.7
+        "x": 11.02,
+        "y": 26.67
       },
-      "face": "bottom"
-    },
-    {
-      "name": "SCL",
-      "kind": "io",
-      "gpio": 22,
       "pos": {
-        "x": 170,
-        "y": 238
-      },
-      "label": {
-        "en": "SCL"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 17.7,
-        "y": 26.7
-      },
-      "face": "bottom"
-    },
-    {
-      "name": "IO4",
-      "kind": "io",
-      "gpio": 4,
-      "pos": {
-        "x": 198,
-        "y": 238
-      },
-      "label": {
-        "en": "4"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 20.24,
-        "y": 26.7
-      },
-      "face": "bottom"
-    },
-    {
-      "name": "IO5",
-      "kind": "io",
-      "gpio": 5,
-      "pos": {
-        "x": 226,
-        "y": 238
-      },
-      "label": {
-        "en": "5"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 22.78,
-        "y": 26.7
-      },
-      "face": "bottom"
-    },
-    {
-      "name": "IO13",
-      "kind": "io",
-      "gpio": 13,
-      "pos": {
-        "x": 254,
-        "y": 238
-      },
-      "label": {
-        "en": "13"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 25.32,
-        "y": 26.7
-      },
-      "face": "bottom"
-    },
-    {
-      "name": "IO14",
-      "kind": "io",
-      "gpio": 14,
-      "pos": {
-        "x": 282,
-        "y": 238
-      },
-      "label": {
-        "en": "14"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 27.86,
-        "y": 26.7
-      },
-      "face": "bottom"
-    },
-    {
-      "name": "IO18",
-      "kind": "io",
-      "gpio": 18,
-      "pos": {
-        "x": 310,
-        "y": 238
-      },
-      "label": {
-        "en": "18"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 30.4,
-        "y": 26.7
-      },
-      "face": "bottom"
-    },
-    {
-      "name": "IO19",
-      "kind": "io",
-      "gpio": 19,
-      "pos": {
-        "x": 338,
-        "y": 238
-      },
-      "label": {
-        "en": "19"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 32.94,
-        "y": 26.7
-      },
-      "face": "bottom"
-    },
-    {
-      "name": "IO23",
-      "kind": "io",
-      "gpio": 23,
-      "pos": {
-        "x": 366,
-        "y": 238
-      },
-      "label": {
-        "en": "23"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 35.48,
-        "y": 26.7
-      },
-      "face": "bottom"
-    },
-    {
-      "name": "IO25",
-      "kind": "io",
-      "gpio": 25,
-      "pos": {
-        "x": 394,
-        "y": 238
-      },
-      "label": {
-        "en": "25"
-      },
-      "abs_max_mv": 3600,
-      "mm": {
-        "x": 38.02,
-        "y": 26.7
+        "x": 99.2,
+        "y": 240
       },
       "face": "bottom"
     },
@@ -286,17 +108,17 @@
       "name": "IO34",
       "kind": "analog",
       "gpio": 34,
-      "pos": {
-        "x": 422,
-        "y": 238
-      },
       "label": {
         "en": "34"
       },
       "abs_max_mv": 3600,
       "mm": {
-        "x": 40.56,
-        "y": 26.7
+        "x": 13.56,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 122,
+        "y": 240
       },
       "face": "bottom"
     },
@@ -304,17 +126,592 @@
       "name": "IO35",
       "kind": "analog",
       "gpio": 35,
-      "pos": {
-        "x": 450,
-        "y": 238
-      },
       "label": {
         "en": "35"
       },
       "abs_max_mv": 3600,
       "mm": {
-        "x": 43.1,
-        "y": 26.7
+        "x": 16.1,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 144.9,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO32",
+      "kind": "io",
+      "gpio": 32,
+      "label": {
+        "en": "32"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 18.64,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 167.8,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO33",
+      "kind": "io",
+      "gpio": 33,
+      "label": {
+        "en": "33"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 21.18,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 190.6,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO25",
+      "kind": "io",
+      "gpio": 25,
+      "label": {
+        "en": "25"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 23.72,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 213.5,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO26",
+      "kind": "io",
+      "gpio": 26,
+      "label": {
+        "en": "26"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 26.26,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 236.3,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO27",
+      "kind": "io",
+      "gpio": 27,
+      "label": {
+        "en": "27"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 28.8,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 259.2,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO14",
+      "kind": "io",
+      "gpio": 14,
+      "label": {
+        "en": "14"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 31.34,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 282.1,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO12",
+      "kind": "io",
+      "gpio": 12,
+      "label": {
+        "en": "12"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 33.88,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 304.9,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "GND_1",
+      "kind": "ground",
+      "label": {
+        "en": "GND"
+      },
+      "aliases": [
+        "GND"
+      ],
+      "mm": {
+        "x": 36.42,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 327.8,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO13",
+      "kind": "io",
+      "gpio": 13,
+      "label": {
+        "en": "13"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 38.96,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 350.6,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO9",
+      "kind": "nc",
+      "label": {
+        "en": "SD2 (flash)"
+      },
+      "mm": {
+        "x": 41.5,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 373.5,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO10",
+      "kind": "nc",
+      "label": {
+        "en": "SD3 (flash)"
+      },
+      "mm": {
+        "x": 44.04,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 396.4,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO11",
+      "kind": "nc",
+      "label": {
+        "en": "CMD (flash)"
+      },
+      "mm": {
+        "x": 46.58,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 419.2,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "V5",
+      "kind": "power_in",
+      "label": {
+        "en": "5V"
+      },
+      "min_mv": 4500,
+      "max_mv": 5500,
+      "typ_ma": 60,
+      "supply_group": "pwr",
+      "mm": {
+        "x": 49.12,
+        "y": 26.67
+      },
+      "pos": {
+        "x": 442.1,
+        "y": 240
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "GND_2",
+      "kind": "ground",
+      "label": {
+        "en": "GND"
+      },
+      "mm": {
+        "x": 3.4,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 30.6,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO23",
+      "kind": "io",
+      "gpio": 23,
+      "label": {
+        "en": "23"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 5.94,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 53.5,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO22",
+      "kind": "io",
+      "gpio": 22,
+      "label": {
+        "en": "22"
+      },
+      "abs_max_mv": 3600,
+      "aliases": [
+        "SCL"
+      ],
+      "mm": {
+        "x": 8.48,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 76.3,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "TXD0",
+      "kind": "io",
+      "gpio": 1,
+      "label": {
+        "en": "TXD0"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 11.02,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 99.2,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "RXD0",
+      "kind": "io",
+      "gpio": 3,
+      "label": {
+        "en": "RXD0"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 13.56,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 122,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO21",
+      "kind": "io",
+      "gpio": 21,
+      "label": {
+        "en": "21"
+      },
+      "abs_max_mv": 3600,
+      "aliases": [
+        "SDA"
+      ],
+      "mm": {
+        "x": 16.1,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 144.9,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "GND_3",
+      "kind": "ground",
+      "label": {
+        "en": "GND"
+      },
+      "mm": {
+        "x": 18.64,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 167.8,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO19",
+      "kind": "io",
+      "gpio": 19,
+      "label": {
+        "en": "19"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 21.18,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 190.6,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO18",
+      "kind": "io",
+      "gpio": 18,
+      "label": {
+        "en": "18"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 23.72,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 213.5,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO5",
+      "kind": "io",
+      "gpio": 5,
+      "label": {
+        "en": "5"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 26.26,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 236.3,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO17",
+      "kind": "io",
+      "gpio": 17,
+      "label": {
+        "en": "17"
+      },
+      "abs_max_mv": 3600,
+      "aliases": [
+        "TX"
+      ],
+      "mm": {
+        "x": 28.8,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 259.2,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO16",
+      "kind": "io",
+      "gpio": 16,
+      "label": {
+        "en": "16"
+      },
+      "abs_max_mv": 3600,
+      "aliases": [
+        "RX"
+      ],
+      "mm": {
+        "x": 31.34,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 282.1,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO4",
+      "kind": "io",
+      "gpio": 4,
+      "label": {
+        "en": "4"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 33.88,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 304.9,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO0",
+      "kind": "io",
+      "gpio": 0,
+      "label": {
+        "en": "0"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 36.42,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 327.8,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO2",
+      "kind": "io",
+      "gpio": 2,
+      "label": {
+        "en": "2"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 38.96,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 350.6,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO15",
+      "kind": "io",
+      "gpio": 15,
+      "label": {
+        "en": "15"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 41.5,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 373.5,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO8",
+      "kind": "nc",
+      "label": {
+        "en": "SD1 (flash)"
+      },
+      "mm": {
+        "x": 44.04,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 396.4,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO7",
+      "kind": "nc",
+      "label": {
+        "en": "SD0 (flash)"
+      },
+      "mm": {
+        "x": 46.58,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 419.2,
+        "y": 11.4
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO6",
+      "kind": "nc",
+      "label": {
+        "en": "CLK (flash)"
+      },
+      "mm": {
+        "x": 49.12,
+        "y": 1.27
+      },
+      "pos": {
+        "x": 442.1,
+        "y": 11.4
       },
       "face": "bottom"
     }
@@ -328,14 +725,50 @@
         "pt-BR": "Apertos contados",
         "es": "Pulsaciones contadas"
       }
+    },
+    {
+      "name": "led",
+      "type": "number",
+      "label": {
+        "en": "User LED (0 to 1)",
+        "pt-BR": "LED do usuário (0 a 1)",
+        "es": "LED del usuario (0 a 1)"
+      }
+    },
+    {
+      "name": "tx",
+      "type": "number",
+      "label": {
+        "en": "Serial bytes sent",
+        "pt-BR": "Bytes seriais enviados",
+        "es": "Bytes seriales enviados"
+      }
+    },
+    {
+      "name": "rx",
+      "type": "number",
+      "label": {
+        "en": "Serial bytes received",
+        "pt-BR": "Bytes seriais recebidos",
+        "es": "Bytes seriales recibidos"
+      }
+    },
+    {
+      "name": "crashed",
+      "type": "boolean",
+      "label": {
+        "en": "Stopped (crashed)",
+        "pt-BR": "Parada (travou)",
+        "es": "Detenida (falló)"
+      }
     }
   ],
   "visuals": [
     {
       "id": "led",
       "effect": "glow",
-      "x": 420,
-      "y": 70,
+      "x": 432,
+      "y": 126,
       "r": 10,
       "color": "#3ddc84",
       "source": {
@@ -345,10 +778,10 @@
     {
       "id": "count",
       "effect": "text",
-      "x": 330,
-      "y": 80,
-      "w": 120,
-      "h": 22,
+      "x": 216,
+      "y": 153,
+      "w": 110,
+      "h": 20,
       "color": "#ffffff",
       "source": {
         "output": "presses"
@@ -367,8 +800,8 @@
     "core": "esp32"
   },
   "body": {
-    "w_mm": 55,
-    "d_mm": 28,
+    "w_mm": 54.4,
+    "d_mm": 27.94,
     "h_mm": 13
   },
   "keywords": {
@@ -396,5 +829,14 @@
       "uart",
       "3,3v"
     ]
-  }
+  },
+  "groups": [
+    {
+      "pins": [
+        "GND_1",
+        "GND_2",
+        "GND_3"
+      ]
+    }
+  ]
 }
