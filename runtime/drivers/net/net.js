@@ -264,6 +264,7 @@ export default function create(ctx) {
       close() {},
     };
   }
+  const OFFLINE_HOSTS = new Set(["api.kode.diy"]);
   async function viaFetch(router, req, noredir, timeoutMs) {
     const ac = new AbortController();
     const tm = setTimeout(() => ac.abort(), timeoutMs); tm.unref?.();
@@ -333,6 +334,11 @@ export default function create(ctx) {
           s = await viaFetch(router, fwd, noredir, timeout);
         } else s = await viaLocal(router, entry, req, timeout);
         if (entry.latencyMs) await w.sleep(entry.latencyMs);
+      } else if (OFFLINE_HOSTS.has(u.hostname.toLowerCase())) {
+        // kodeOS 0.1.2 asks the maker's service (api.kode.diy) at boot whether a newer kodeOS exists. The bench never calls it: the page's CSP only
+        // lets it talk to itself, and a visitor's simulator should not phone the maker. kodeOS sees an unreachable host and shows no offer.
+        w.note(`http: ${url} is not contacted from the bench (the update service of the maker); a router host '${u.hostname}' answers it instead`);
+        emit("unreachable", { url, why: "not contacted" }); return E_CONNECT;
       } else if (router.internet) s = await viaFetch(router, req, noredir, timeout);
       else { w.note(`http: ${url} unreachable: the router has no internet and no local host '${u.hostname}'`); emit("unreachable", { url, why: "no internet" }); return E_CONNECT; }
       if (s.error) return s.error === "timeout" ? E_FETCH_HEADER : E_CONNECT;
