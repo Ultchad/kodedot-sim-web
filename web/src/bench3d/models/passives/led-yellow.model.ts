@@ -5,8 +5,9 @@
  */
 import manifest from '../../../../../parts/led-yellow/manifest.json';
 import type { Finish } from '../../index';
+import { asSeen } from './common';
 import { ledModel } from './led5';
 
-const RESIN_YELLOW: Finish = ['glass', '#f1cf1f'];
+const RESIN_YELLOW: Finish = ['glass', asSeen('#f2d226')];
 
 export default ledModel(manifest, { resin: RESIN_YELLOW });

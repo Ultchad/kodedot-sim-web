@@ -32,6 +32,19 @@ export const terminalOf = (terminals: Terminal[], id: string): V3 => terminals.f
 /** A number of a part's live fields, or its default. */
 export const num = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 
+// --------------------------------------------------------------------------------------------------- colours
+/**
+ * A colour for the Shape builders that is SEEN as `hex`. The kit's Shape.add linearises a colour twice (`Color.set`
+ * already converts sRGB to linear, `convertSRGBToLinear` does it again), so a hex given to a builder comes out darker
+ * and more saturated: orange turns red, yellow turns amber. Where the hue carries meaning (a resistor's bands, a
+ * yellow LED) the colour is encoded once more here, so the double conversion lands on the intended one.
+ */
+export function asSeen(hex: string): string {
+  const enc = (v: number) => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+  const n = parseInt(hex.slice(1), 16);
+  return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => enc(c / 255).toString(16).padStart(2, '0')).join('')}`;
+}
+
 // --------------------------------------------------------------------------------------------------- placing
 /**
  * The frame of a part lying along X at height `y` (an axial resistor or diode): inside `s.with(axial(y, z), ...)`
@@ -140,11 +153,11 @@ export function hotShell(name: string, shell: Shape): Object3D {
   return g;
 }
 /** Shows or hides a `hotShell`; while hot it pulses (call every frame: return true from `animate`). */
-export function setHot(obj: Object3D, name: string, hot: boolean, time: number, colour = 0xff4a12): void {
+export function setHot(obj: Object3D, name: string, hot: boolean, time: number, colour = 0xd62400): void {
   const n = part(obj, name);
   if (!n) return;
   n.visible = hot;
-  if (hot) setLamp(obj, name, colour, 0.62 + 0.3 * Math.sin(time * 7));
+  if (hot) setLamp(obj, name, colour, 0.42 + 0.26 * Math.sin(time * 7));
 }
 
 /** Multiplies the colours of a `glowing` part of one copy (its materials are its own): 0xffffff is as built. */
@@ -160,4 +173,22 @@ export function tint(node: Object3D, hex: number): void {
 export function show(obj: Object3D, name: string, on: boolean): void {
   const n = part(obj, name);
   if (n) n.visible = on;
+}
+
+// ------------------------------------------------------------------------------------------------ axial parts
+/** How far the leads of this family's parts reach below the seating plane (into a breadboard). */
+export const PLUG = 6;
+/**
+ * The two leads of a part lying along X at height `y`: out of the body's ends at x0 and x1, bent down at the
+ * terminals `a` and `b` and on below the seating plane.
+ */
+export function axialLeadsTo(s: Shape, a: V3, b: V3, y: number, x0: number, x1: number, d = 0.55, plug = PLUG): void {
+  bentLead(s, [[x0, y, a[2]], [a[0], y, a[2]], [a[0], -plug, a[2]]], d, Math.min(0.9, y * 0.7));
+  bentLead(s, [[x1, y, b[2]], [b[0], y, b[2]], [b[0], -plug, b[2]]], d, Math.min(0.9, y * 0.7));
+}
+/** The clear shell of an axial body for `hotShell`: the body's outline as [radius, x], drawn a little larger. */
+export function axialShell(y: number, profile: V2[], seg: number, colour = asSeen('#ea3a0e')): Shape {
+  const s = new Shape();
+  s.with(axial(y), () => s.lathe('glass', colour, 0, 0, profile.map(([r, x], i) => [r > 0 ? r + 0.1 : 0, x + (i < profile.length / 2 ? -0.1 : 0.1)] as V2), seg));
+  return s;
 }
