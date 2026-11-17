@@ -40,7 +40,12 @@
       },
       "min_mv": 2700,
       "max_mv": 5500,
-      "typ_ma": 1
+      "typ_ma": 1,
+      "mm": {
+        "x": 5.08,
+        "y": 10.5
+      },
+      "face": "bottom"
     },
     {
       "name": "GND",
@@ -48,7 +53,12 @@
       "pos": {
         "x": 77,
         "y": 134
-      }
+      },
+      "mm": {
+        "x": 7.62,
+        "y": 10.5
+      },
+      "face": "bottom"
     },
     {
       "name": "SDA",
@@ -57,7 +67,12 @@
         "x": 123,
         "y": 134
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 10.16,
+        "y": 10.5
+      },
+      "face": "bottom"
     },
     {
       "name": "SCL",
@@ -66,7 +81,12 @@
         "x": 170,
         "y": 134
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 12.7,
+        "y": 10.5
+      },
+      "face": "bottom"
     }
   ],
   "fields": [
@@ -199,6 +219,34 @@
           }
         ]
       }
+    ]
+  },
+  "body": {
+    "w_mm": 20,
+    "d_mm": 12,
+    "h_mm": 3
+  },
+  "keywords": {
+    "en": [
+      "hdc1080",
+      "temperature",
+      "humidity",
+      "i2c",
+      "sensor"
+    ],
+    "pt-BR": [
+      "hdc1080",
+      "temperatura",
+      "umidade",
+      "i2c",
+      "sensor"
+    ],
+    "es": [
+      "hdc1080",
+      "temperatura",
+      "humedad",
+      "i2c",
+      "sensor"
     ]
   }
 }

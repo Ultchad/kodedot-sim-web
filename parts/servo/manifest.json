@@ -36,7 +36,12 @@
       "pos": {
         "x": 55,
         "y": 134
-      }
+      },
+      "mm": {
+        "x": 0,
+        "y": 3.66
+      },
+      "face": "left"
     },
     {
       "name": "V5",
@@ -47,7 +52,12 @@
       },
       "min_mv": 4000,
       "max_mv": 6000,
-      "typ_ma": 150
+      "typ_ma": 150,
+      "mm": {
+        "x": 0,
+        "y": 6.2
+      },
+      "face": "left"
     },
     {
       "name": "SIG",
@@ -56,7 +66,12 @@
         "x": 145,
         "y": 134
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 0,
+        "y": 8.74
+      },
+      "face": "left"
     }
   ],
   "outputs": [
@@ -107,6 +122,35 @@
         "max_us": 2400,
         "range_deg": 180
       }
+    ]
+  },
+  "body": {
+    "w_mm": 22.5,
+    "d_mm": 12.2,
+    "h_mm": 22.7
+  },
+  "keywords": {
+    "en": [
+      "servo",
+      "sg90",
+      "motor",
+      "angle",
+      "pwm",
+      "arduino servo"
+    ],
+    "pt-BR": [
+      "servo",
+      "sg90",
+      "motor",
+      "ângulo",
+      "pwm"
+    ],
+    "es": [
+      "servo",
+      "sg90",
+      "motor",
+      "ángulo",
+      "pwm"
     ]
   }
 }

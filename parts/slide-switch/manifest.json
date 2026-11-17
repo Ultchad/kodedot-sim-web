@@ -36,7 +36,12 @@
         "x": 30,
         "y": 94
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 1.35,
+        "y": 1.8
+      },
+      "face": "bottom"
     },
     {
       "name": "COM",
@@ -45,7 +50,12 @@
         "x": 75,
         "y": 94
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 3.85,
+        "y": 1.8
+      },
+      "face": "bottom"
     },
     {
       "name": "B",
@@ -54,7 +64,12 @@
         "x": 120,
         "y": 94
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 6.35,
+        "y": 1.8
+      },
+      "face": "bottom"
     }
   ],
   "fields": [
@@ -139,6 +154,30 @@
         },
         "bounce_ms": 2
       }
+    ]
+  },
+  "body": {
+    "w_mm": 8.6,
+    "d_mm": 3.6,
+    "h_mm": 8.5
+  },
+  "keywords": {
+    "en": [
+      "switch",
+      "slide",
+      "toggle",
+      "input"
+    ],
+    "pt-BR": [
+      "chave",
+      "deslizante",
+      "interruptor",
+      "entrada"
+    ],
+    "es": [
+      "interruptor",
+      "deslizante",
+      "entrada"
     ]
   }
 }

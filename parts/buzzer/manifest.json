@@ -37,7 +37,12 @@
         "x": 40,
         "y": 114
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 2.2,
+        "y": 6
+      },
+      "face": "bottom"
     },
     {
       "name": "N",
@@ -46,7 +51,12 @@
         "x": 80,
         "y": 114
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 9.8,
+        "y": 6
+      },
+      "face": "bottom"
     }
   ],
   "outputs": [
@@ -87,6 +97,34 @@
         "ref": "N",
         "output": "hz"
       }
+    ]
+  },
+  "body": {
+    "w_mm": 12,
+    "d_mm": 12,
+    "h_mm": 9.5
+  },
+  "keywords": {
+    "en": [
+      "buzzer",
+      "beep",
+      "sound",
+      "piezo",
+      "speaker"
+    ],
+    "pt-BR": [
+      "buzzer",
+      "campainha",
+      "som",
+      "piezo",
+      "alto-falante"
+    ],
+    "es": [
+      "zumbador",
+      "buzzer",
+      "sonido",
+      "piezo",
+      "altavoz"
     ]
   }
 }

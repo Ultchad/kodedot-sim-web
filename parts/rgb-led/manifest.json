@@ -37,7 +37,12 @@
         "x": 30,
         "y": 134
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 0.5,
+        "y": 2.9
+      },
+      "face": "bottom"
     },
     {
       "name": "COM",
@@ -46,7 +51,12 @@
         "x": 70,
         "y": 134
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 3.04,
+        "y": 2.9
+      },
+      "face": "bottom"
     },
     {
       "name": "G",
@@ -55,7 +65,12 @@
         "x": 110,
         "y": 134
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 5.58,
+        "y": 2.9
+      },
+      "face": "bottom"
     },
     {
       "name": "B",
@@ -64,7 +79,12 @@
         "x": 150,
         "y": 134
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 8.12,
+        "y": 2.9
+      },
+      "face": "bottom"
     }
   ],
   "fields": [
@@ -185,6 +205,31 @@
         },
         "full_ma": 10
       }
+    ]
+  },
+  "body": {
+    "w_mm": 8.6,
+    "d_mm": 5.8,
+    "h_mm": 9
+  },
+  "keywords": {
+    "en": [
+      "rgb",
+      "led",
+      "color",
+      "light"
+    ],
+    "pt-BR": [
+      "rgb",
+      "led",
+      "cor",
+      "luz"
+    ],
+    "es": [
+      "rgb",
+      "led",
+      "color",
+      "luz"
     ]
   }
 }
