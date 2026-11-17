@@ -329,12 +329,13 @@ export function tubeIndices(n: number, seg: number, closed = false): Uint32Array
     const a = i * seg, b = ((i + 1) % n) * seg;
     for (let s = 0; s < seg; s++) {
       const t = (s + 1) % seg;
+      // wound so that the faces look outward (ring vertices turn from u to t x u: see writeTube)
       out[k++] = a + s;
-      out[k++] = b + s;
-      out[k++] = a + t;
       out[k++] = a + t;
       out[k++] = b + s;
+      out[k++] = a + t;
       out[k++] = b + t;
+      out[k++] = b + s;
     }
   }
   return out;

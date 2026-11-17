@@ -569,3 +569,111 @@ Not done
   not with the keyboard, in the page (the handlers are there).
 - `_gallery.png` of the model shots was not redrawn.
 
+## Wires, modules on the Dot, nothing under the table (2026-11-17, branch fix/wires-mount)
+
+Run: `cd web && npm test` (378 passed, 31 files; 302 before), `npm run build`, and for the pictures
+`UX_PORT=4398 node scripts/wires-mount-shots.mjs [--only wires,legs,cross,modules] [--cost]` (headless Chrome on the built site;
+every picture named below is in `web/screenshots/workbench2/`). The owner reported three defects; each was reproduced in a
+picture first (same script, same views), fixed, and looked at again.
+
+### 1. Wires looked like glass and went through things
+- Root of the look: every triangle of every tube was wound inward (`tubeIndices` in the kit, and the copy of it the wires had).
+  With a front-side material the near wall was culled and what showed was the inside of the far wall, lit from behind: hollow,
+  striped, "see-through". The material itself was always opaque. Fixed where it was wrong, in the kit (`bench3d/shape.ts`), so
+  the models' cables and antennas and the charger's lead are right too; the wires write their own rings (`writeRings`,
+  `writeRingIndices`) and a test checks the winding of both.
+- Root of the passing through: the old line was a curve from terminal to terminal that only knew the height of the table under
+  each point and the Dot's footprint; it rose from a hole toward the other end at once (through the board's own body) and
+  climbed onto a body only when it was already inside it.
+- `workbench/wires.ts`, `wirePath(a, b, boxes, { fan, seed })` (pure, tested): out of each terminal straight along the terminal's
+  own direction for 4.5 mm (up out of a hole or a socket, outward from a side pin, out of the header's opening in the Dot's top
+  wall), a bend of 5.5 mm, then the run: in plan the straight line, or the shortest way round what is gone round (the Dot with
+  its module, and anything taller than 24 mm: corners of their boxes 11 mm out, rounded); in height on the table, rising to each
+  end and over every body under the line (its top + 1.8 mm, reached 5 mm before the body begins), dips rounded. An end that
+  faces away from the run turns aside by 9 mm instead of folding back. Only the two stubs may be inside a box: their own
+  terminal's. Bodies are boxes (`WireBox`): every thing on the table with its height (a part in a board's holes or on its legs
+  included), the Dot as it lies (tilted too) and the module on its header.
+- A leg under a body (`face: bottom`) is left sideways and a little up, past the nearest side, not up through the body. The 20
+  pins of a mounted module's own connector are in the Dot's header: they are no longer offered as terminals while it is mounted.
+- Wires between the same two things are a bundle: they bow to the same side (2 to 7 mm of slack on a free run) and are pushed
+  apart in the middle only where they would lie on each other (2.6 mm), in the order they already lie in, so they do not cross.
+- Look: 1.6 mm tube, six sides with smooth normals, satin opaque plastic in the wire's colour (roughness 0.58, no metal, depth
+  written, drawn with the solid bodies), closed down onto a 0.64 mm tinned pin at each end that goes 1.4 mm into the terminal (a
+  second mesh: one more draw call).
+- Cost: each wire's line and tube are kept (`Built`) and made again only when its ends, its place in a bundle, its thickness or a
+  body in or against the rectangle its line was made in change; a colour is only copied. Measured with `--cost` (the proof's
+  scene p: 60 mixed parts, 40 wires, whole table, 1440x900, software GL, 2 cores shared with other jobs), before -> after:
+  frame 502 / 452 / 545 ms -> 463 / 538 / 415 ms (the same within this machine's noise); 181 -> 183 draw calls; 198,654 ->
+  200,208 triangles (the wires 15,360 -> 16,912); all 40 wires made from nothing 2.7 -> 12.6 ms (once); one part moved a step
+  5.3 ms with all 40 wires made again -> 5.1 ms with 2 made again; a frame with nothing changed 0.002 ms both.
+- Pictures: `wire-header-to-breadboard-front.png`, `-side.png`, `wire-header-from-behind.png` (out of the hole printed IO8, down
+  to the table, up over the board's edge, down into the hole), `wire-round-the-dot.png`, `wires-fan.png`,
+  `wires-crossing-a-board.png`, `-low.png` (three wires from the header over a breadboard to an Uno, a fourth from the board).
+
+### 2 and 3. Modules on the Dot
+- Root of "upside down": data. `mount.placement` of the three flat modules (Maker, Robotics, Camera) had `upright` and `turned`
+  the wrong way round (flagged `assumed`, "no mounted photo of them"): upright put the component side on the Dot's back. The
+  two tables are swapped in `parts/kode-{maker,robotics,camera-shape}/manifest.json` (the `mount` block only; `parts/prebuilt`
+  regenerated, `parts:check` up to date) and flagged `documented`.
+- Evidence for which face is up when the Dot lies screen-up:
+  1. The maker's documents (as read in `/home/claude/research/06-official-modules-spec.md`, each marked [DOC]): the Maker's
+     breadboard is "on the screen side when mounted"; the Robotics pin table is headed "Attach (screen-side, upright)"; the
+     Camera's two tables are "lens towards you (lens on the screen side)" and "lens looking away"; turned round "power stays safe,
+     every GPIO moves" and the factory tests Robotics turned, so both ways exist physically.
+  2. The parts library's own definition (`parts/gen/data/modules.json`): `gpio` is what a pin meets "when mounted upright
+     (screen side)". The engine's `upright` is that map; the picture now is that pose.
+  3. The store picture (ref-4) against the Dot's own print: on the Robotics board seen from its component side with the connector
+     toward the viewer the legends GPIO8..11 run down the left edge and GPIO15..18 down the right; the Dot's shell prints IO8..IO14
+     beside the left half of its header (seen from the front) and IO15..IO21 beside the right half. Component side on the screen
+     side, the two agree; the other way every line would have to cross the board.
+  4. ref-5 and ref-8 (the cased radio modules on the Dot): the block's marked face is on the screen side, the tongue on the back.
+- Where the connector meets the header, and how thick the stack is: the header is in the middle of the top wall's thickness (the
+  render of the Dot's top wall, `shots/model-custom-top.png`: the two rows of holes sit midway between the wall's edges, 2.54 mm
+  apart), so its axis is 9.9 mm above the table when the Dot (19.8 mm) lies face up. A flat module's right-angle connector has its
+  two rows 2.87 and 5.41 mm above the board's underside (manifest), axis 4.14 mm. Upright: the board lies in the Dot's plane past
+  its top edge, underside 5.76 mm above the table (it hangs on the header), its tallest part at 19.76 mm, level with the Dot's
+  face. Turned: the same board half a turn about the Dot's long axis, parts hanging down to 3.5 mm (Maker), 3.8 mm (Robotics),
+  6.2 mm (Camera) above the table: nothing touches, the Dot lies flat. The radio modules (one way only): the tongue, 14 mm thick,
+  lies against the back of the Dot's upper 26 mm; the stack is 33.8 mm thick there.
+- Both orientations are kept for the flat modules (both exist and the engine maps the pins for each); the card's "Mount turned
+  over" now is the component side down.
+- Root of "through the table": the Dot was rested on the lowest of its own eight corners only, and a module was drawn as its
+  child wherever that put it. Now (`workbench/rest.ts`, used by `world.ts`) the Dot and the module on its header are one rigid
+  thing that lies on the lowest points of the whole assembly: the corners of the module's model hull (65 to 413 points, kept
+  per kind) through the mount matrix join the Dot's corners. When the module reaches lower than the Dot's back the stack TILTS
+  (chosen over lifting the Dot level, which would leave its bottom end hovering): it rests on the Dot's bottom edge and on the
+  module, on the edge of the side outline that is under the Dot's middle. With a radio module that is 14.8 degrees, top end up,
+  the Dot's middle 19.4 mm above the table. The tilt is a way of lying, under the hand's own tilt (the amber ball), and is not
+  reported to the motion sensors. Wires, terminals, the card slot and the USB plug follow, as they follow any pose of the Dot.
+- Found by the new invariant: 21 library parts with legs (`plugMm`: LEDs, resistor, diode, capacitors, buzzer, potentiometer,
+  push button, slide switch, HDC1080, antenna, the four ESP32 boards) stood with their legs 3.5 to 7 mm under the table when not
+  in a board. They now stand on their legs (`standLift`), as the model stand always showed them; in a board's holes nothing changed.
+- Invariant test (`workbench/rest.test.ts`, 53 tests): every library part alone (39, all with models), and the Dot with each of
+  the five modules in each allowed orientation (8 poses), placed by the same functions the scene uses: no vertex of the model
+  below the table (0.1 mm), something on the table (nothing hovers), and for a propped stack both the Dot and the module touching.
+- Pictures: `module-{maker,robotics,camera,mesh,hacking}-side.png` (the eye at table level), `-above.png`, `-angle.png`,
+  `module-{maker,robotics,camera}-turned-side.png`, `legged-parts-stand.png`.
+
+### Data for the parts engineer (nothing outside the three `mount` blocks was changed under parts/)
+- `parts/gen/modules.mjs` line 36 (`flatMount`) still writes the old tables; the next `gen-parts` run would undo the fix. It must
+  read `upright: { x: "+X", y: "-Y", z: "+Z" }, turned: { x: "-X", y: "-Y", z: "-Z" }, source: "documented"`. `docs/STATUS-parts.md`
+  ("component side facing the back for upright") says the old thing too.
+- The 20 pins of the flat modules' connector have their `mm` laid out for the old pose (and `connector.odd_row: "low_z"`): with the
+  board the right way up, pin J401.17 (GPIO8) is drawn where the Dot's pin 18 (IO16) is, and so on: each connector terminal is on
+  the hole a half turn away from the one it is joined to. To agree with the header's print the pins must be mirrored about the
+  board's centre line and the two rows exchanged (odd row high). Rails are unaffected (the header is symmetric). On a mounted module
+  these pins are hidden now; on a loose module the names are right and the places are mirrored.
+- `anchor_dot_mm` (header centred in the wall's thickness and across the Dot) is read off a render, not a drawing.
+
+### Weak or not done
+- Bodies are bounding boxes: a wire to a socket that is lower than its board's tallest part first rises to clear that height,
+  and the radio modules' box includes the whips, so a wire climbs over empty air beside an antenna.
+- Wires do not see each other: two that cross lie through each other at the crossing; bundles are only kept apart sideways.
+- A wire on the table still comes down to the table between two raised places close together (a dip) where a real jumper would
+  hang in the air; a terminal that faces down (a socket of a module mounted turned) gets a wire that starts into the table's side.
+- The Dot's shell is rested as its box: its real bottom-back edge is chamfered, so a propped Dot hovers about a millimetre there.
+- A module mounted while the Dot's header already carries wires: those wires still end in the header, inside the module's connector.
+- `tests/node/parts`: schema copies, `geometry.test.mjs` (257 checks) and `modules.test.mjs` were run for the manifest change; the
+  whole `run.sh` (the firmware end-to-end part needs apps built with the SDK) was not.
+- Not tried: touch, a real GPU, a phone.
+

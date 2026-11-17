@@ -26,6 +26,7 @@ import { CHARGER_EXIT } from '../bench3d/models/wireless/power-charger.model';
 import { COMPUTER_EXIT } from '../bench3d/models/wireless/usb-computer.model';
 import type { WirelessState } from '../bench3d/models/wireless/state';
 import { MAT, SD_ID, SIZES, hasBody, isNear, modelIdOf, zoneOf, type Rot, type Zone } from './layout';
+import { hullCorners, transformed, vertexCloud } from './rest';
 
 const D = bodyDims();
 const HALF_PI = Math.PI / 2;
@@ -591,6 +592,37 @@ export class Bodies {
       any = true;
     }
     return any ? { x0, x1, z0, z1, h } : null;
+  }
+
+  // ------------------------------------------------------------------------------------------- the module on the Dot
+  private hulls = new Map<string, Float32Array>();
+  private mountKind = '';
+  private mountMat: number[] | null = null;
+  private mountPts: Float32Array | null = null;
+  /**
+   * The module on the Dot's header as points in the Dot's own frame (the corners of its model's hull through the mount
+   * matrix), or null when nothing is mounted: what the Dot needs to rest the whole assembly on the table (world.ts).
+   * The same array comes back until the module or the way it is mounted changes.
+   */
+  mountedPoints(): Float32Array | null {
+    const mounts = this.deps.bench.getState().mounts;
+    let id = '';
+    for (const k in mounts) {
+      id = k;
+      break;
+    }
+    const it = id ? this.items.get(id) : undefined;
+    const mat = it?.isPart ? (this.deps.parts?.mountOf?.(it.id) ?? null) : null;
+    if (!it || !mat) {
+      this.mountMat = null;
+      return (this.mountPts = null);
+    }
+    if (mat === this.mountMat && it.kind === this.mountKind) return this.mountPts;
+    let hull = this.hulls.get(it.kind);
+    if (!hull) this.hulls.set(it.kind, (hull = hullCorners(vertexCloud(it.batch.template))));
+    this.mountMat = mat;
+    this.mountKind = it.kind;
+    return (this.mountPts = transformed(hull, mat));
   }
 
   // --------------------------------------------------------------------------------------------------------- frame

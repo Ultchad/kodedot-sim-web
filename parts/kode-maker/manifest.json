@@ -174,16 +174,16 @@
         "z": 0
       },
       "upright": {
-        "x": "-X",
-        "y": "-Y",
-        "z": "-Z"
-      },
-      "turned": {
         "x": "+X",
         "y": "-Y",
         "z": "+Z"
       },
-      "source": "assumed"
+      "turned": {
+        "x": "-X",
+        "y": "-Y",
+        "z": "-Z"
+      },
+      "source": "documented"
     }
   },
   "refs": [
