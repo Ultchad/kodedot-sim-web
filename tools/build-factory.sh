@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build kodeOS and every factory app (tools/factory-apps.json) into the build dir, and print name, size and path of each package.
 # usage: tools/build-factory.sh [dest-dir]    (dest-dir: also copy each <name>.dotbench to <dest-dir>/<name>/<name>.dotbench)
-# env:   DOTBENCH_BUILD, DOTBENCH_SDK, DOTBENCH_KODEOS
+# env:   DOTBENCH_DEPS (where setup.sh fetched dep: sources), DOTBENCH_BUILD, DOTBENCH_SDK, DOTBENCH_KODEOS
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sdk="${DOTBENCH_SDK:-/home/claude/src/kode-sdk}"; kos="${DOTBENCH_KODEOS:-/home/claude/src/KodeOS}"
@@ -10,7 +10,7 @@ dest="${1:-}"
 "$root/tools/dotbench" build "$kos" --role kodeos | tail -1
 names=(kodeos)
 while IFS=$'\t' read -r name src; do
-  case "$src" in sdk:*) src="$sdk/${src#sdk:}" ;; /*) ;; *) src="$root/$src" ;; esac
+  case "$src" in sdk:*) src="$sdk/${src#sdk:}" ;; dep:*) src="${DOTBENCH_DEPS:-$root/.deps}/${src#dep:}" ;; /*) ;; *) src="$root/$src" ;; esac
   "$root/tools/dotbench" build "$src" | tail -1
   names+=("$name")
 done < <(python3 -I -c 'import json,sys

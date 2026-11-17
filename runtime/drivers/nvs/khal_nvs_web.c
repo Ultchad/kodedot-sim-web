@@ -47,6 +47,7 @@ static dbp_region_t *g_r;
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
 DB_PAGE_REGISTER(nvs, "nvs", g_mu, DB_LOCK_MUTEX)
 static bool g_ready;
+static bool g_erased;               /* khal_nvs_init() erased the store in this boot (another version wrote it) */
 static uint32_t g_serial;            /* highest serial seen/used */
 
 __attribute__((constructor(110))) static void nvs_register(void) { g_r = dbp_register("nvs", g_nvs, sizeof g_nvs, 0); }
@@ -229,10 +230,25 @@ static bool is_live(const rec_hdr_t *h, const char *ns, const char *key)
     return e.serial == h->serial && e.type == h->type;
 }
 
+/* A page header written by another version of this store ("NVP" and a version digit above this one's): the real NVS answers
+ * ESP_ERR_NVS_NEW_VERSION_FOUND to such a partition and khal_nvs_init() erases it whole. */
+static bool page_other_version(uint32_t p)
+{
+    const uint8_t *b = page_ptr(p);
+    return b[0] == 'N' && b[1] == 'V' && b[2] == 'P' && b[3] > '1' && b[3] <= '9';
+}
+
 static void init_locked(void)
 {
     if (g_ready) return;
     g_ready = true;
+    for (uint32_t p = 0; p < NPAGES; p++) {
+        if (page_other_version(p)) {                    /* settings and app data go back to their defaults, and the boot says so */
+            for (uint32_t q = 0; q < NPAGES; q++) wipe_page(q);
+            g_erased = true;
+            break;
+        }
+    }
     uint32_t mx = 0; int any = 0;
     { FOR_EACH_REC(p, off, h, ns, key, d) if (h.serial > mx) mx = h.serial; any = 1; (void)d; (void)ns; (void)key; END_EACH(off) }
     g_serial = mx;
@@ -437,6 +453,58 @@ kode_status_t khal_nvs_namespace(uint16_t idx, char *out, size_t cap)
     n->idx = idx; n->out = out; n->cap = cap; n->st = KODE_DENIED;
     visit_live(NULL, nth_ns, n);
     kode_status_t st = n->st; free(n);
+    UNLOCK();
+    return st;
+}
+
+/* khal_nvs_erased(): the real driver erases a partition of another NVS version at init and says so, once for the whole boot. Here a page
+ * header of another version of this store's format is the same case (init_locked); a blank region is simply formatted, exactly as a
+ * blank flash partition is initialised without an erase, and the store compacts instead of running out of pages. */
+bool khal_nvs_erased(void)
+{
+    LOCK_OR(false);                 /* the first call of a boot runs the init, as khal_nvs_init() does */
+    bool const erased = g_erased;
+    UNLOCK();
+    return erased;
+}
+/* Test hook (tests/node/nvs, the SDK's own "a store a newer NVS wrote" case): leave the first page as a newer version of this store would,
+ * and have the next call run the init again, as the SDK host runner does before its first khal_nvs_init(). */
+EMSCRIPTEN_KEEPALIVE void dbnvs_test_newer_version(void)
+{
+    pthread_mutex_lock(&g_mu);
+    wipe_page(0);
+    memcpy(page_ptr(0), "NVP2", 4);
+    dbp_dirty(g_r, 0, PAGE);
+    g_ready = false; g_erased = false;
+    pthread_mutex_unlock(&g_mu);
+}
+
+/* khal_nvs_set_str_within(): NVS counts a namespace's space in 32-byte entries (a string: its header plus its bytes, NUL
+ * included, in whole entries; a number: one; a blob: its index plus a header and the bytes of each chunk). */
+#define ENTRY_BYTES 32u
+static size_t str_entries(size_t size) { return 1u + (size + ENTRY_BYTES - 1u) / ENTRY_BYTES; }
+typedef struct { const char *key; size_t used, held; } within_t;
+static bool within_cb(const char *ns, const char *key, uint8_t t, uint32_t sz, void *c)
+{
+    (void)ns; within_t *w = c; size_t e;
+    if (t == T_STR) e = str_entries(sz);
+    else if (t == T_BLOB_IDX) { size_t chunks = (sz + BLOB_CHUNK - 1u) / BLOB_CHUNK; e = 1u + chunks + (sz + ENTRY_BYTES - 1u) / ENTRY_BYTES; }
+    else e = 1u;
+    w->used += e;
+    if (t == T_STR && !strcmp(key, w->key)) w->held = e;
+    return true;
+}
+kode_status_t khal_nvs_set_str_within(const char *ns, const char *key, const char *value, size_t share)
+{
+    if (!value || !name_ok(ns) || !name_ok(key)) return KODE_ERROR;
+    size_t n = strlen(value) + 1;
+    if (n > STR_MAX) return KODE_ERROR;
+    LOCK_OR(KODE_ERROR);
+    within_t w = { key, 0, 0 };
+    visit_live(ns, within_cb, &w);
+    size_t after = (w.used - (w.held <= w.used ? w.held : 0) + str_entries(n)) * ENTRY_BYTES;
+    if (after > share) { UNLOCK(); return KODE_NO_RESOURCES; }
+    kode_status_t st = append(T_STR, ns, key, value, (uint32_t)n, ++g_serial, 0);
     UNLOCK();
     return st;
 }

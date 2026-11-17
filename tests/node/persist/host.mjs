@@ -23,9 +23,10 @@ export const tmpDir = (p = "dbp-") => fs.mkdtempSync(path.join(os.tmpdir(), p));
 /** Build (or rebuild) a test app from a directory with CMakeLists.txt + main/ (tools/dotbench build reads only those). */
 export function buildApp(appDir) {
   const out = execFileSync(path.join(root, "tools/dotbench"), ["--build", buildDir(), "build", appDir], { encoding: "utf8", env: process.env });
-  const m = /dotbench build: (.*\.dotbench)/.exec(out);
+  // the tool prints the .zip it wrote (commit 04cbcdc) and writes <name>.dotbench beside it, the same bytes under the old extension
+  const m = /dotbench build: (.*)\.(?:zip|dotbench)\b/.exec(out);
   if (!m) throw new Error("build failed: " + out);
-  return m[1];
+  return m[1] + ".dotbench";
 }
 /** Assemble a throw-away app project under <build>/testapps/<name>: files = {relative path: text | Buffer | {copy: absolute path}}. */
 export function assembleApp(name, files) {

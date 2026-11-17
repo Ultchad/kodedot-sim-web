@@ -39,6 +39,9 @@ await check("boots, the real AOs come up and the first frame is drawn", async ()
   const t = a.logText();
   for (const s of ["kaos.storage up", "kaos.ioexp up", "kaos.buttons up", "kaos.display up at 100%", "kaos.ledmgr up", "kcli console up"])
     assert.ok(t.includes(s), "missing log line: " + s);
+  // kodeOS 0.1.2 fades the glass up at boot (kgui, "fade the glass up at boot"): the panel is switched on a moment after the first frame is
+  // logged, so wait for it instead of reading it at the instant of the log line
+  await a.waitFor(() => a.u32(OFF.panelOn) === 1, 15000, "panel on");
   assert.equal(a.u32(OFF.panelOn), 1);
   assert.equal(a.u32(OFF.fbW), 410);
   assert.equal(a.u32(OFF.fbH), 502);

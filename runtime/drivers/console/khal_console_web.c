@@ -149,5 +149,23 @@ void khal_console_write(const char *buf, size_t len)
         (void)usb_cable_write(buf + off, n, CABLE_TX_WAIT_MS);
     }
 }
+/* The cable port's frame count (khal_console_frame): a host that keeps the port in use sends a start-of-frame every millisecond and the
+ * count is eleven bits wide, so with a computer attached (usb_cable_up) it is the millisecond clock modulo KHAL_CONSOLE_FRAME_SPAN_MS; with
+ * none it stands still, which is how AO_Log's "bounce" tells a host that gave the port up. */
+kode_status_t khal_console_frame(uint32_t *frame)
+{
+    if (!frame) return KODE_DENIED;
+    static uint32_t still;
+    if (usb_cable_up()) {
+        struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
+        still = (uint32_t)(((int64_t)t.tv_sec * 1000 + t.tv_nsec / 1000000) % KHAL_CONSOLE_FRAME_SPAN_MS);
+    }
+    *frame = still;
+    return KODE_OK;
+}
+/* The pad on the bus, or off it (khal_console_pad). The bench's cable has no pad to take off the bus: a computer attached stays attached,
+ * so this only remembers the state and says so. */
+static volatile bool g_pad_on = true;
+kode_status_t khal_console_pad(bool on) { g_pad_on = on; return KODE_OK; }
 kode_status_t khal_console_dock_release(void) { return KODE_OK; }
 kode_status_t khal_console_dock_take(void) { return KODE_OK; }

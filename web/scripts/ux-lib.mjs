@@ -47,7 +47,7 @@ export async function startServer() {
 
 export const launch = () =>
   puppeteer.launch({
-    executablePath: '/usr/bin/google-chrome',
+    executablePath: process.env.CHROME ?? '/usr/bin/google-chrome',
     headless: true,
     args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'],
   });

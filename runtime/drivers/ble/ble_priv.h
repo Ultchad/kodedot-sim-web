@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * Declarations of the SDK's PRIVATE radio headers that ble_host.c needs, copied verbatim (kode-sdk c9568a3):
+ * Declarations of the SDK's PRIVATE radio headers that ble_host.c needs, copied verbatim (kode-sdk v0.1.2):
  *   components/kdrv/radio/src/kdrv_ble_app.h, kdrv_ble_bonds.h, kdrv_ble_find.h.
  * The area's sources are compiled without the SDK's private src dirs on the include path, and these three are the seams between
  * kdrv_ble.c (which this area replaces) and the SDK files that stay (kdrv_ble_app.c, kdrv_ble_bonds.c, kdrv_ble_find.c).
@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "kdrv_ble.h"
+#include "kdrv_ble_hid.h"
 
 #define KDRV_BLE_UUID128_BYTES  16U
 #define KDRV_BLE_APP_RING_SLOTS 8U
@@ -42,6 +43,11 @@ uint16_t kdrv_ble_app_read(uint8_t chr, uint16_t offset, uint16_t span, uint8_t 
 uint8_t *kdrv_ble_app_scratch(void);
 bool kdrv_ble_app_peek(uint8_t *chr, uint8_t *out, uint16_t *len);
 void kdrv_ble_app_pop(void);
+
+/* kdrv_ble_hid_table.h: the HID ring's drain seam (the SDK's kdrv_ble_hid.c stays, the host side is ble_host.c) */
+bool kdrv_ble_hid_queued(void);
+bool kdrv_ble_hid_peek(uint8_t *kind, uint8_t *out, uint16_t *len);
+void kdrv_ble_hid_pop(bool sent);
 
 bool kdrv_ble_bonds_changed(uint8_t n);
 uint32_t kdrv_ble_bonds_begin(void);

@@ -36,7 +36,15 @@ from dblib import areas as A            # noqa: E402
 from dblib import kodeos as K          # noqa: E402
 from dblib import appdata as AD        # noqa: E402
 
-PINNED_SDK_COMMIT = "c9568a3"
+def _pinned_sdk_commit():
+    """The kode-sdk commit tools/pins.env pins (short), recorded in every package's manifest."""
+    for line in (ROOT / "tools" / "pins.env").read_text().splitlines():
+        if line.startswith("KODE_SDK_COMMIT="):
+            return line.split("=", 1)[1].strip()[:7]
+    sys.exit("dotbench: tools/pins.env has no KODE_SDK_COMMIT")
+
+
+PINNED_SDK_COMMIT = _pinned_sdk_commit()
 
 
 def paths(a):

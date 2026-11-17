@@ -18,8 +18,12 @@ void unity_fail(const char *file, int line, const char *msg)
     g_cur_failed = 1;
     longjmp(unity_jmp, 1);
 }
+/* khal_nvs_web.c's test hook: leave the store as a newer NVS would, as the SDK's own host runner does (tests/host_nvs/main/runner.c) */
+void dbnvs_test_newer_version(void);
+
 void app_main(void)
 {
+    dbnvs_test_newer_version();
     /* constructors register in link order; the SDK sorts its cases, we keep file order */
     for (int i = 0; i < g_n; i++) {
         g_cur_failed = 0;

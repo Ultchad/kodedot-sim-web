@@ -7,3 +7,6 @@
 #include "kdrv_slot.h"
 
 bool kdrv_otadata_blank(void) { return true; }
+/* kdrv_slot_newer(): "otadata selected the slot after the running one". With no otadata there is no selection: false, which is what the
+ * board answers from factory or with no entry naming the slot. AO_Boot hands it to boot_other_of() with the slot state. */
+bool kdrv_slot_newer(void) { return false; }

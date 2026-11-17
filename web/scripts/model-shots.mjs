@@ -522,7 +522,7 @@ try {
     try { if ((await fetch(base)).ok) break; } catch { /* not up yet */ }
     await sleep(250);
   }
-  browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
+  browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
   const b64 = (file) => readFileSync(file).toString('base64');
   if (customFile) {
     const raw = flags.has('--raw');

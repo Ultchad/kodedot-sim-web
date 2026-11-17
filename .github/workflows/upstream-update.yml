@@ -1,0 +1,94 @@
+# Keeps the simulator on the newest released kodeOS / kode-sdk, by itself.
+#
+# Once a day (and on "Run workflow") it asks GitHub for the newest release tag vX.Y.Z that kode-sdk and KodeOS both have. Nothing newer than
+# tools/pins.env: the run ends there. Otherwise it builds the new release on a free GitHub runner, runs the Node suites and the page
+# checks in headless Chrome (tools/upstream-update.sh), and ONLY IF EVERYTHING PASSES commits the new pins and packages to main; Vercel then
+# deploys main by itself. If anything fails nothing is committed, the run is marked failed (GitHub e-mails the owner) and its summary names the
+# step. To turn it off: Actions tab > "Upstream update" > the "..." menu > Disable workflow. See docs/STATUS-upstream.md.
+name: Upstream update
+
+on:
+  schedule:
+    - cron: '17 5 * * *'      # every day, 05:17 UTC
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to move to (vX.Y.Z), even when it is not newer than the pins. Empty: look for a newer release.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+# one run at a time; a run that is waiting is never cancelled half way (it would leave nothing behind, but it would waste the cache)
+concurrency:
+  group: upstream-update
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Is there a newer release?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      update: ${{ steps.look.outputs.update }}
+      tag: ${{ steps.look.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - id: look
+        env:
+          FORCED_TAG: ${{ inputs.tag }}
+        run: |
+          if [ -n "$FORCED_TAG" ]; then
+            printf 'update=true\ntag=%s\nreason=forced from the Actions tab\n' "$FORCED_TAG" | tee -a "$GITHUB_OUTPUT"
+          else
+            # the script also appends update/tag/reason to $GITHUB_OUTPUT itself
+            tools/upstream-check.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+  update:
+    name: Build, test and publish ${{ needs.check.outputs.tag }}
+    needs: check
+    if: needs.check.outputs.update == 'true'
+    runs-on: ubuntu-latest          # the standard runner: free for public repositories
+    timeout-minutes: 180
+    permissions:
+      contents: write                # the built-in GITHUB_TOKEN may push to this repository, nothing else; no secret is used
+    env:
+      TAG: ${{ needs.check.outputs.tag }}
+      CHROME: /usr/bin/google-chrome
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1   # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Which Emscripten
+        id: emsdk
+        run: echo "version=$(sed -n 's/^EMSDK_VERSION=//p' tools/pins.env)" >> "$GITHUB_OUTPUT"
+      - name: Cache Emscripten
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9   # v6.1.0
+        with:
+          path: .deps/emsdk
+          key: emsdk-${{ runner.os }}-${{ steps.emsdk.outputs.version }}
+      - name: Build, test, stage (tools/upstream-update.sh)
+        run: tools/upstream-update.sh --to "$TAG"
+      - name: Commit and push to main
+        run: |
+          git config user.name "Murilo"
+          git config user.email "107654893+murilogpapa@users.noreply.github.com"
+          git add tools/pins.env web/public/apps
+          if git diff --cached --quiet; then echo "Nothing changed: already on $TAG."; exit 0; fi
+          git commit -q -m "Update to kode-sdk and KodeOS ${TAG}"
+          # a plain push: never forced. If main moved since this run began the push is refused and the run fails (the checks were made on
+          # an older main); run it again from the Actions tab.
+          git push origin HEAD:main
+          echo "Published ${TAG}: $(git rev-parse --short HEAD). Vercel deploys main on its own." | tee -a "$GITHUB_STEP_SUMMARY"

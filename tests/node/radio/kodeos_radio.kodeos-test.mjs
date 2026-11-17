@@ -11,7 +11,7 @@ await a.waitFor(() => a.logText().includes("kgui first frame"), 120000, "kodeOS 
 await a.waitLog(/KODE services v3/, 30000);
 const t = a.logText();
 check(/kaos\.net network services up \(offline until there is an address\)/.test(t), "kodeOS: AO_Net is up and offline");
-check(/kdrv\.radio link up; C5 slave firmware v2\.12\.9/.test(t), "kodeOS: the real kdrv_radio brought the C5 link up");
+check(/kdrv\.radio link up; esp-hosted v2\.12\.9/.test(t), "kodeOS: the real kdrv_radio brought the C5 link up");
 check(/khal\.id this board is KODE-/.test(t), "kodeOS: the board is named from the C5's MAC");
 const missing = t.split("\n").filter((l) => /dotbench: (kdrv_(radio|c5|c5svc|wifi|net|frames)|esp_(hosted|wifi|netif|http|mqtt)|mqtt|lwip)\w* not implemented/.test(l));
 check(missing.length === 0, "no 'not implemented' for radio, Wi-Fi or net functions (BLE and others belong to other areas)", missing.slice(0, 5));
