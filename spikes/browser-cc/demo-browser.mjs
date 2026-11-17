@@ -77,7 +77,7 @@ const warm = await page.evaluate(() => CC.start()).catch((e) => ({ error: String
 if (warm.error) check("offline restart of the toolchain", false, warm.error);
 else {
   R.offlineStart = { wall_ms: ms(warm.wall), ms: warm.ms, assetMs: warm.stats.ms, fetched: warm.stats.fetched, fromCache: Object.keys(warm.stats.fromCache) };
-  check("offline restart: no asset fetched, all from the Cache API", Object.keys(warm.stats.fetched).length === 0 && Object.keys(warm.stats.fromCache).length === 6, `${ms(warm.wall)} ms (assets ${ms(warm.ms.assets)}, first run ${ms(warm.ms.firstRun)})`);
+  check("offline restart: no asset fetched, all from the Cache API", Object.keys(warm.stats.fetched).length === 0 && Object.keys(warm.stats.fromCache).length === 8, `${ms(warm.wall)} ms (assets ${ms(warm.ms.assets)}, first run ${ms(warm.ms.firstRun)})`);
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "parts", PARTS[1], "manifest.json"), "utf8")), ino = fs.readFileSync(path.join(ROOT, "parts", PARTS[1], "src/main.ino"), "utf8");
   const r = await page.evaluate((a, b) => CC.compileLite(a, b), ino, manifest);
   check("offline compile works with the server down", r.ok, `${ms(r.ms.total)} ms`); R.offlineCompile = r.ms;

@@ -37,7 +37,7 @@ export async function installAssets({ base, cacheName = "dotbench-cc-v1", onProg
     },
     filesystem: async () => {
       const tree = {};
-      for (const n of ["inc.pack", "lib.pack"]) await timed(n, async () => { const r = await getResponse(n); toTree(unpack(new Uint8Array(await r.arrayBuffer())), tree); });
+      for (const n of ["inc.pack", "lib.pack", "board-esp32.pack", "board-uno.pack"]) await timed(n, async () => { const r = await getResponse(n); toTree(unpack(new Uint8Array(await r.arrayBuffer())), tree); });
       return tree;
     },
   };

@@ -43,9 +43,11 @@ const CASES = [
   ["random(), randomSeed(), map(), constrain()", `void setup(){ Serial.begin(115200); randomSeed(5); long r = random(10,20); Serial.println(r>=10 && r<20 ? "rand ok" : "rand bad"); Serial.println(map(5,0,10,0,100)); Serial.println(constrain(15,0,10)); }\nvoid loop(){ delay(1000); }\n`, { expect: /rand ok\r?\n50\r?\n10/ }],
   ["PROGMEM / F() macro / avr pgm_read_byte (AVR-only API)", `#include <avr/pgmspace.h>\nvoid setup(){}\nvoid loop(){}\n`, { expectFail: /pgmspace/ }],
 ];
+CASES.push(["board uno: pin map, avr/pgmspace.h shim, no ESP32 macro", `#include <avr/pgmspace.h>\nconst char msg[] PROGMEM = "flash text";\nvoid setup(){ Serial.begin(9600); Serial.println(LED_BUILTIN); Serial.println(A0); Serial.println(digitalPinToInterrupt(2)); char c = pgm_read_byte(&msg[1]); Serial.println(c);\n#ifdef ESP32\n Serial.println("esp32 macro set");\n#else\n Serial.println("no esp32 macro");\n#endif\n Serial.println(F("F macro")); }\nvoid loop(){ delay(1000); }\n`, { board: "uno", expect: /^13\r?\n14\r?\n2\r?\nl\r?\nno esp32 macro\r?\nF macro/ }]);
+CASES.push(["board esp32 for the same sketch: LED_BUILTIN 2, A0 36", `void setup(){ Serial.begin(115200); Serial.println(LED_BUILTIN); Serial.println(A0); }\nvoid loop(){ delay(1000); }\n`, { board: "esp32", expect: /^2\r?\n36/ }]);
 const out = [];
 for (const [name, ino, o] of CASES) {
-  const t = performance.now(); const r = await compile({ ino, manifest: base, extraSources: o.extra ?? {} });
+  const t = performance.now(); const r = await compile({ ino, manifest: base, extraSources: o.extra ?? {}, board: o.board ?? null });
   let verdict, detail = "";
   if (o.expectFail) {
     const first = (r.stderr.split("\n").find((l) => /error/.test(l)) ?? "").trim();

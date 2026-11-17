@@ -3,7 +3,7 @@
 // sketch text -> ino2cpp -> clang -cc1 (in wasm) -> wasm-ld (in wasm) against the precompiled libdotcore.a -> a plain wasm32 module ABI 1 accepts.
 import { inoToCpp } from "./ino2cpp.js";
 import { fieldsHeader } from "./part-glue.js";
-import { compileCpp, runTool, linkArgs, getFile } from "./cc-driver.js";
+import { compileCpp, runTool, linkArgs, getFile, pchPath, BOARDS } from "./cc-driver.js";
 
 /** Parse clang diagnostics ("file:line:col: severity: message") into objects; lines from our generated code are flagged. */
 export function parseDiagnostics(text) {
@@ -17,7 +17,7 @@ export function parseDiagnostics(text) {
 
 export class SketchCompiler {
   /** @param {{runLLVM: Function}} rt  @param {{memKb?:number, stackKb?:number}} defaults */
-  constructor(rt) { this.rt = rt; this.timings = {}; }
+  constructor(rt, { usePch = true } = {}) { this.rt = rt; this.usePch = usePch; }
 
   /**
    * @param {{ino: string, manifest: object, file?: string, extraSources?: Record<string,string>}} req
@@ -39,13 +39,13 @@ export class SketchCompiler {
     for (const p of Object.keys(extraSources)) { const m = /\.(cpp|cc|cxx|c)$/.exec(p); if (m) jobs.push({ src: "/src/" + p, out: `/obj${k++}.o`, lang: m[1] === "c" ? "c" : "c++", name: p }); }
     const objs = {};
     for (const j of jobs) {
-      const cc = await compileCpp(this.rt.runLLVM, files, { src: j.src, out: j.out, lang: j.lang, incs });
+      const cc = await compileCpp(this.rt.runLLVM, files, { src: j.src, out: j.out, lang: j.lang, incs, pch: this.usePch && j.lang === "c++" ? pchPath(board ?? "esp32") : null, board: board ?? "esp32" });
       stderr += cc.stderr; diagnostics.push(...parseDiagnostics(cc.stderr));
       if (!cc.ok) { const t1 = performance.now(); return { ok: false, diagnostics, stderr, ms: { cc: t1 - t0, ld: 0, total: t1 - t0 } }; }
       objs[j.out.slice(1)] = cc.obj;
     }
     const t1 = performance.now();
-    const ld = await runTool(this.rt.runLLVM, linkArgs({ objs: Object.keys(objs).map((o) => "/" + o), memKb: b.memory_kb ?? 1024, stackKb: b.stack_kb ?? 64 }), objs);
+    const ld = await runTool(this.rt.runLLVM, linkArgs({ objs: Object.keys(objs).map((o) => "/" + o), memKb: b.memory_kb ?? 1024, stackKb: b.stack_kb ?? 64, board: board ?? "esp32" }), objs);
     const t2 = performance.now();
     stderr += ld.stderr;
     if (!ld.ok) return { ok: false, diagnostics: [...diagnostics, ...linkDiagnostics(ld.stderr)], stderr, ms: { cc: t1 - t0, ld: t2 - t1, total: t2 - t0 } };
