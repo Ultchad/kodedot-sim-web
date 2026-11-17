@@ -3,8 +3,8 @@
  * three-digit code of a small capacitor or a chip resistor, the plain print of an electrolytic. Pure functions.
  */
 
-/** Band colours by index, as they should be seen: digits 0..9, then gold (10) and silver (11). */
-export const BAND_COLOURS = ['#1a1714', '#7a4a26', '#d42a20', '#f08020', '#f2d21c', '#2a9a48', '#2456c8', '#8a48c0', '#8d9299', '#f4f2ec', '#bd9530', '#bcc1c7'] as const;
+/** Band colours by index, the standard code (IEC 60062): digits 0..9 black to white, then gold (10) and silver (11). */
+export const BAND_COLOURS = ['#1a1817', '#7d4a22', '#d3241c', '#f47a14', '#f4d016', '#259443', '#1f55c6', '#8a45c0', '#8d9298', '#f4f2ec', '#c49a2e', '#bdc2c8'] as const;
 export const GOLD = 10;
 export const SILVER = 11;
 

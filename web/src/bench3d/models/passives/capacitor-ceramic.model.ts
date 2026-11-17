@@ -5,16 +5,15 @@
  * Dimensions (a common 50 V disc): 6.2 mm across, 2.5 mm thick, the coating running a little way down the leads.
  */
 import manifest from '../../../../../parts/capacitor-ceramic/manifest.json';
-import { FONT, Matrix4, PAL, Shape, defineModel, drawScreen, footprintOf, frontQuad, partState, screen, terminalsFromManifest, text, type Finish, type PartState } from '../../index';
+import { FONT, Matrix4, PAL, Shape, defineModel, drawScreen, footprintOf, frontQuad, partState, screen, terminalsFromManifest, text, type PartState } from '../../index';
 import { capacitorCode } from './codes';
-import { PLUG, asManifest, asSeen, fieldDefault, num, terminalOf } from './common';
+import { PLUG, asManifest, fieldDefault, num, terminalOf } from './common';
 
 const m = asManifest(manifest);
 const terminals = terminalsFromManifest(m);
 const UF = fieldDefault(m, 'uf', 0.1);
 const VOLTS = `${Math.round(Number(m.behaviour?.elements?.[0]?.max_mv ?? 50000) / 1000)}V`;
-/** The ochre dip of a ceramic disc (a candidate for PAL: ceramicOchre). */
-const DIP: Finish = ['matte', asSeen('#bd7a2e')];
+const DIP = PAL.dipOchre;
 const INK = '#2b1d12';
 const CY = 3.85, R = 3.1, T = 1.25;
 const FACE_W = 4.0, FACE_H = 2.7;
@@ -26,9 +25,8 @@ let value = UF;
 function drawCode(g: CanvasRenderingContext2D, w: number, h: number): void {
   g.setTransform(w / FACE_W, 0, 0, w / FACE_W, w / 2, h / 2); // millimetres from the middle of the face
   g.fillStyle = INK;
-  text(g, capacitorCode(value), 0, -0.32, 1.55, { weight: 700, font: FONT, spacing: 0.06 });
-  g.fillRect(-1.05, 0.52, 2.1, 0.09);
-  text(g, VOLTS, 0, 1.0, 0.62, { weight: 600, font: FONT });
+  text(g, capacitorCode(value), 0, -0.3, 1.55, { weight: 700, font: FONT, spacing: 0.06 });
+  text(g, VOLTS, 0, 0.92, 0.66, { weight: 600, font: FONT });
 }
 
 export default defineModel<PartState>({

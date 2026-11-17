@@ -11,7 +11,7 @@ import { MeshBuilder } from '../../../device3d/meshBuilder';
 import manifest from '../../../../../parts/capacitor-electrolytic/manifest.json';
 import { FONT, Matrix4, PAL, Shape, defineModel, drawScreen, footprintOf, part, partState, terminalsFromManifest, text, type Finish, type Object3D, type PartState, type V3 } from '../../index';
 import { microfarads } from './codes';
-import { asManifest, asSeen, fieldDefault, num, ribbon, screenOnCylinder, show, stripSize, terminalOf, type CylinderStrip } from './common';
+import { asManifest, fieldDefault, num, ribbon, screenOnCylinder, show, stripSize, terminalOf, type CylinderStrip } from './common';
 
 const m = asManifest(manifest);
 const terminals = terminalsFromManifest(m);
@@ -19,9 +19,9 @@ const POS = terminalOf(terminals, 'POS'), NEG = terminalOf(terminals, 'NEG');
 const UF = fieldDefault(m, 'uf', 100);
 const VOLTS = `${Math.round(Number(m.behaviour?.elements?.[0]?.max_mv ?? 25000) / 1000)}V`;
 const INK = m.visuals?.find((v) => v.id === 'value')?.color ?? '#e8eef5';
-/** The sleeve (a candidate for PAL: sleeveBlue), its stripe and what is printed on the stripe. */
-const SLEEVE: Finish = ['gloss', asSeen('#1d3a6e')];
-const STRIPE: Finish = ['matte', asSeen('#d3d9e0')];
+/** The sleeve and its stripe. */
+const SLEEVE = PAL.sleeveBlue;
+const STRIPE: Finish = ['matte', '#d6dbe1'];
 const R = 3.15, TOP = 11;
 const LEG_LONG = 7, LEG_SHORT = 5.6;
 /** The stripe looks towards the negative lead. */
@@ -41,9 +41,8 @@ function drawLabel(g: CanvasRenderingContext2D, w: number, h: number): void {
   // the longer the value, the smaller it is printed
   const size = Math.min(1.6, (LABEL_W - 0.5) / (s.length * 0.6));
   text(g, s, 0, -0.75, size, { weight: 700, font: FONT });
-  text(g, VOLTS, 0, 1.2, 1.3, { weight: 700, font: FONT });
+  text(g, VOLTS, 0, 1.05, 1.3, { weight: 700, font: FONT });
   text(g, '105°C', 0, 2.85, 0.75, { weight: 600, font: FONT });
-  g.fillRect(-LABEL_W / 2 + 0.4, 0.2, LABEL_W - 0.8, 0.1);
   if (leaked) drawLeak(g, -LABEL_H / 2);
 }
 /**
@@ -122,7 +121,7 @@ function burstMarks(): Object3D {
   // the wound foil and paper pushed out of the hole
   s.block('matte', '#b9a57a', 0.3, 0.14, 0.2, new Matrix4().makeTranslation(0.12, y + 0.44, -0.1).multiply(new Matrix4().makeRotationZ(0.5)), 0.05);
   // dried electrolyte: crusts round the hole, soot on the shoulder, a run down the front of the sleeve
-  const crust: Finish = ['matte', asSeen('#5b3d1f')];
+  const crust: Finish = ['matte', '#5b3d1f'];
   for (const [x, z, r] of [[1.75, 0.95, 0.5], [-1.45, 1.55, 0.4], [-0.7, -1.9, 0.44], [1.6, -1.3, 0.3], [0.25, 2.3, 0.4], [0.95, 2.05, 0.26]]) {
     const h = y + bulgeHeight(Math.hypot(x, z));
     s.lathe(...crust, x, z, [[r, h - 0.03], [r * 0.75, h + 0.07], [r * 0.3, h + 0.12], [0, h + 0.13]], 8);

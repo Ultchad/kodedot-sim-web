@@ -14,13 +14,13 @@ import { Mesh, type BufferGeometry } from 'three';
 import manifest from '../../../../../parts/resistor/manifest.json';
 import { Shape, defineModel, familyMaterial, footprintOf, part, partState, terminalsFromManifest, type Finish, type PartState, type V2 } from '../../index';
 import { BAND_COLOURS, GOLD, resistorBands } from './codes';
-import { PLUG, asManifest, asSeen, axial, axialLeadsTo, axialShell, fieldDefault, hotShell, num, setHot, terminalOf } from './common';
+import { PLUG, asManifest, axial, axialLeadsTo, axialShell, fieldDefault, hotShell, num, setHot, terminalOf } from './common';
 
 const m = asManifest(manifest);
 const terminals = terminalsFromManifest(m);
 const OHMS = fieldDefault(m, 'ohms', 330);
 /** The lacquer of a carbon film resistor (a candidate for PAL: resistorTan). */
-const TAN: Finish = ['gloss', '#e8d6b2'];
+const TAN: Finish = ['gloss', '#d7b682'];
 const AXIS_Y = 1.35;
 const R_CAP = 1.25, R_WAIST = 1.08;
 /** The body's outline, [radius, x]: two end caps and the waist between them. */
@@ -32,7 +32,7 @@ const BAND_W = 0.52;
 /** One band (or several) as a geometry: [index of the band's place, colour index]. */
 function bandGeometry(bands: [number, number][]): BufferGeometry {
   const s = new Shape();
-  s.with(axial(AXIS_Y), () => bands.forEach(([at, colour]) => s.band('matte', asSeen(BAND_COLOURS[colour]), 0, 0, BANDS[at][1], BANDS[at][0] - BAND_W / 2, BANDS[at][0] + BAND_W / 2, 0, Math.PI * 2, 14)));
+  s.with(axial(AXIS_Y), () => bands.forEach(([at, colour]) => s.band('matte', BAND_COLOURS[colour], 0, 0, BANDS[at][1], BANDS[at][0] - BAND_W / 2, BANDS[at][0] + BAND_W / 2, 0, Math.PI * 2, 14)));
   return s.build().matte!;
 }
 /** Every digit pair (index d1 + 16 * d2) and every multiplier, made once: `animate` only picks among them. */
@@ -61,7 +61,7 @@ export default defineModel<PartState>({
     s.with(axial(AXIS_Y), () => s.lathe(...TAN, 0, 0, BODY, ctx.seg(14)));
     axialLeadsTo(s, terminalOf(terminals, 'A'), terminalOf(terminals, 'B'), AXIS_Y, -3.05, 3.05);
     // the tolerance band: always gold
-    s.with(axial(AXIS_Y), () => s.band('matte', asSeen(BAND_COLOURS[GOLD]), 0, 0, BANDS[3][1], BANDS[3][0] - BAND_W / 2, BANDS[3][0] + BAND_W / 2, 0, Math.PI * 2, 14));
+    s.with(axial(AXIS_Y), () => s.band('matte', BAND_COLOURS[GOLD], 0, 0, BANDS[3][1], BANDS[3][0] - BAND_W / 2, BANDS[3][0] + BAND_W / 2, 0, Math.PI * 2, 14));
     const root = s.toObject();
     bandTables();
     const code = resistorBands(OHMS);

@@ -1,9 +1,9 @@
 /**
  * Shared builders of the passives family (resistor, capacitors, diode, LEDs). Several of them are candidates for the
  * kit (parts.ts / nodes.ts / print.ts): `axial`, `plate`, `ribbon`, `bentLead`, `cylinderStrip` with `printOnCylinder` and
- * `screenOnCylinder`, `hotShell`, `halo`, `tint`.
+ * `screenOnCylinder`, `hotShell`, `tint`.
  */
-import { BufferAttribute, BufferGeometry, CanvasTexture, SRGBColorSpace, Sprite, SpriteMaterial, type Mesh, type MeshStandardMaterial } from 'three';
+import { BufferAttribute, BufferGeometry, type Mesh, type MeshStandardMaterial } from 'three';
 import { MeshBuilder } from '../../../device3d/meshBuilder';
 import {
   Matrix4, PAL, Shape, glowing, part, print, roundCorners, screen, setLamp,
@@ -32,19 +32,6 @@ export const visualColour = (m: PartManifest, id: string, fallback: number): num
 export const terminalOf = (terminals: Terminal[], id: string): V3 => terminals.find((t) => t.id === id)!.pos;
 /** A number of a part's live fields, or its default. */
 export const num = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
-
-// --------------------------------------------------------------------------------------------------- colours
-/**
- * A colour for the Shape builders that is SEEN as `hex`. The kit's Shape.add linearises a colour twice (`Color.set`
- * already converts sRGB to linear, `convertSRGBToLinear` does it again), so a hex given to a builder comes out darker
- * and more saturated: orange turns red, yellow turns amber. Where the hue carries meaning (a resistor's bands, a
- * yellow LED) the colour is encoded once more here, so the double conversion lands on the intended one.
- */
-export function asSeen(hex: string): string {
-  const enc = (v: number) => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
-  const n = parseInt(hex.slice(1), 16);
-  return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => enc(c / 255).toString(16).padStart(2, '0')).join('')}`;
-}
 
 // --------------------------------------------------------------------------------------------------- placing
 /**
@@ -184,57 +171,11 @@ export function hotShell(name: string, shell: Shape): Object3D {
   return g;
 }
 /** Shows or hides a `hotShell`; while hot it pulses (call every frame: return true from `animate`). */
-export function setHot(obj: Object3D, name: string, hot: boolean, time: number, colour = 0xd62400): void {
+export function setHot(obj: Object3D, name: string, hot: boolean, time: number, colour = 0xff2a00): void {
   const n = part(obj, name);
   if (!n) return;
   n.visible = hot;
-  if (hot) setLamp(obj, name, colour, 0.42 + 0.26 * Math.sin(time * 7));
-}
-
-let glowMap: CanvasTexture | null = null;
-/** One soft round glow for every halo, drawn in code (none in node: unit tests have no canvas). */
-function glowTexture(): CanvasTexture | null {
-  if (typeof document === 'undefined') return null;
-  if (!glowMap) {
-    const c = document.createElement('canvas');
-    c.width = c.height = 64;
-    const g = c.getContext('2d')!;
-    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.22, 'rgba(255,255,255,0.62)');
-    grad.addColorStop(0.55, 'rgba(255,255,255,0.2)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 64, 64);
-    glowMap = new CanvasTexture(c);
-    glowMap.colorSpace = SRGBColorSpace;
-  }
-  return glowMap;
-}
-/**
- * The bloom round a light: a soft glow that always faces the viewer, centred on `pos`. It is light, not body: hidden
- * and a point in the template (so it adds nothing to the model's box), sized and coloured per copy with `setHalo`.
- */
-export function halo(name: string, pos: V3): Sprite {
-  const s = new Sprite(new SpriteMaterial({ map: glowTexture(), transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
-  s.name = name;
-  s.position.set(...pos);
-  s.scale.setScalar(0.01);
-  s.visible = false;
-  s.renderOrder = 4;
-  s.userData.bench3d = 'halo';
-  s.userData.perInstance = true;
-  return s;
-}
-/** Lights a halo of one copy: its colour (0xRRGGBB), how strong (0 hides it) and how wide in millimetres. No allocation. */
-export function setHalo(obj: Object3D, name: string, colour: number, strength: number, size: number): void {
-  const s = part(obj, name) as Sprite | undefined;
-  if (!s) return;
-  s.visible = strength > 0.004;
-  if (!s.visible) return;
-  s.material.color.setHex(colour);
-  s.material.opacity = Math.min(1, strength);
-  s.scale.set(size, size, 1);
+  if (hot) setLamp(obj, name, colour, 0.6 + 0.2 * Math.sin(time * 7));
 }
 
 /** Multiplies the colours of a `glowing` part of one copy (its materials are its own): 0xffffff is as built. */
@@ -264,7 +205,7 @@ export function axialLeadsTo(s: Shape, a: V3, b: V3, y: number, x0: number, x1: 
   bentLead(s, [[x1, y, b[2]], [b[0], y, b[2]], [b[0], -plug, b[2]]], d, Math.min(0.9, y * 0.7));
 }
 /** The clear shell of an axial body for `hotShell`: the body's outline as [radius, x], drawn a little larger. */
-export function axialShell(y: number, profile: V2[], seg: number, colour = asSeen('#ea3a0e')): Shape {
+export function axialShell(y: number, profile: V2[], seg: number, colour = '#d42a00'): Shape {
   const s = new Shape();
   s.with(axial(y), () => s.lathe('glass', colour, 0, 0, profile.map(([r, x], i) => [r > 0 ? r + 0.1 : 0, x + (i < profile.length / 2 ? -0.1 : 0.1)] as V2), seg));
   return s;

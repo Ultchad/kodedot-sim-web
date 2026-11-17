@@ -7,11 +7,12 @@
  * on the cathode side, 8.6 mm from the seating plane to the top, square leads 0.5 mm at 2.54 mm, the anode lead the
  * longer one. Inside the resin: the cathode's anvil with its reflector cup and the die, the anode's post, a bond wire.
  */
+import type { Mesh, MeshStandardMaterial } from 'three';
 import {
-  PAL, Shape, circleLoop, defineModel, footprintOf, glowing, part, partState, setLamp, terminalsFromManifest,
+  PAL, Shape, circleLoop, defineModel, footprintOf, glowing, halo, part, partState, setLamp, terminalsFromManifest,
   type AnimEnv, type BuildCtx, type Finish, type Object3D, type PartModel, type PartState, type Pt, type V2, type V3,
 } from '../../index';
-import { asManifest, halo, plate, ribbon, setHalo, show, squareLead, terminalOf, tint, visualColour, type PartManifest } from './common';
+import { asManifest, plate, ribbon, show, squareLead, terminalOf, tint, visualColour, type PartManifest } from './common';
 
 export const LENS_R = 2.5;
 export const FLANGE_R = 2.9;
@@ -81,6 +82,18 @@ export function burntMarks(y: number): Object3D {
   return g;
 }
 
+/**
+ * The tinted epoxies of the library's LEDs: deep enough to tell the colours apart when they are off, clear enough to
+ * see the lead frame (candidates for PAL, whose resins are paler).
+ */
+export const RESIN: Record<'red' | 'green' | 'blue' | 'yellow' | 'clear', Finish> = {
+  red: ['glass', '#d41616'],
+  green: ['glass', '#12a13c'],
+  blue: ['glass', '#1c58e0'],
+  yellow: ['glass', '#f2c500'],
+  clear: PAL.resinWhite,
+};
+
 export interface LedLook {
   /** The tinted epoxy. */
   resin: Finish;
@@ -118,57 +131,70 @@ export function ledDie(s: Shape, y: number, phosphor = false): void {
 const BURNT_TINT = 0x4b3b33;
 /** The colours of an overload, whatever the LED's own: the die white-hot, an orange warning glow round the body. */
 const WHITE_HOT = 0xfff3d2;
-const WARNING = 0xff5a14;
+const WARNING = 0xff4a10;
+const HOT_RESIN = 0xb43200;
+const HOT_TINT = 0xff8a48;
 /** `setLamp` level of a brightness 0..1: the eye's curve, so a dim LED is visibly on. */
 export const lampLevel = (b: number): number => (b > 0.004 ? 0.12 + 0.88 * Math.pow(Math.min(1, b), 0.7) : 0);
-/** The glare of an overloaded LED: its own colour washed out towards white-hot. */
-export const hotColour = (lit: number): number => {
-  const mix = (c: number, to: number) => Math.round(c + (to - c) * 0.5);
-  return (mix((lit >> 16) & 255, 255) << 16) | (mix((lit >> 8) & 255, 196) << 8) | mix(lit & 255, 130);
-};
-/** The white-hot core of an overloaded LED, round the die: a glowing part of its own, hidden until then. */
+/**
+ * The colour to light the resin with for a light of colour `lit`: the same hue at about 60 %. The resin is already
+ * tinted and fills up as it lights (`setLamp`), so the full colour on top of it burns out to a pastel; this keeps a
+ * lit LED the saturated colour of its light. No allocation.
+ */
+export const resinGlow = (lit: number): number => (Math.round(((lit >> 16) & 255) * 0.6) << 16) | (Math.round(((lit >> 8) & 255) * 0.6) << 8) | Math.round((lit & 255) * 0.6);
+/**
+ * The white-hot core of an overloaded LED, round the die: a glowing part of its own, hidden until then. It is drawn
+ * after the resin, at full strength: a glare the lens does not dim.
+ */
 export function hotCore(y: number): Object3D {
   const s = new Shape();
-  s.lathe('gloss', '#fff6e0', 0, 0, [[0, y + 4.35], [0.7, y + 4.6], [1.05, y + 5.3], [0.8, y + 6.0], [0, y + 6.3]], 8);
+  s.lathe('gloss', '#fff6e0', 0, 0, [[0, y + 4.5], [0.5, y + 4.62], [0.82, y + 4.95], [0.92, y + 5.35], [0.82, y + 5.75], [0.5, y + 6.08], [0, y + 6.2]], 10);
   const g = glowing('core', s);
+  for (const c of g.children) {
+    const mat = (c as Mesh).material as MeshStandardMaterial;
+    mat.transparent = true; // into the pass of the resin, after it
+    c.renderOrder = 4;
+  }
   g.visible = false;
   return g;
 }
 /**
- * Shows an LED's live state on one copy (`dome`, `core`, `halo` and `burnt` are its named parts): brightness with its
- * bloom, the overload (a white-hot core seen through the resin, a wide orange warning glow, all of it unsteady), the
- * dead look of a burnt-out one.
+ * Shows an LED's live state on one copy (`dome`, `core`, `halo` and `burnt` are its named parts): brightness and the
+ * light it throws on the board, the overload (the resin gone orange, a white-hot core seen through it, an orange
+ * light round its foot, all of it unsteady), the dead look of a burnt-out one.
  */
-export function animateLed(st: PartState, obj: Object3D, env: AnimEnv, lit: number, hot: number): boolean | void {
+export function animateLed(st: PartState, obj: Object3D, env: AnimEnv, lit: number): boolean | void {
+  const glow = resinGlow(lit);
   const dome = part(obj, 'dome')!;
   const o = st.outputs;
   if (o.burnt) {
     // burnt out: the resin smoked dark, cracked, a charred core
     show(obj, 'burnt', true);
     show(obj, 'core', false);
-    setHalo(obj, 'halo', 0, 0, 1);
+    setLamp(obj, 'halo', 0, 0);
     dome.scale.setScalar(1);
     tint(dome, BURNT_TINT);
     setLamp(obj, 'dome', 0x0b0605, 0.8);
     return;
   }
   show(obj, 'burnt', false);
-  tint(dome, 0xffffff);
   if (o.overcurrent && st.power.on) {
     const flick = Math.sin(env.time * 47), heave = Math.sin(env.time * 31);
-    // the resin stays half clear so the white-hot die shows through it
-    setLamp(obj, 'dome', hot, 0.5 + 0.12 * flick);
+    // the resin goes the orange of something overheating and stays half clear, so the white-hot die shows through it
+    tint(dome, HOT_TINT);
+    setLamp(obj, 'dome', HOT_RESIN, 0.3 + 0.08 * flick);
     show(obj, 'core', true);
-    setLamp(obj, 'core', WHITE_HOT, 3.4 + 0.6 * flick);
-    setHalo(obj, 'halo', WARNING, 0.78 + 0.16 * flick, 21 + 2.5 * heave);
+    setLamp(obj, 'core', WHITE_HOT, 3.5 + 0.5 * flick);
+    setLamp(obj, 'halo', WARNING, 1.2 + 0.2 * flick);
     dome.scale.setScalar(1 + 0.035 * heave);
     return true;
   }
+  tint(dome, 0xffffff);
   show(obj, 'core', false);
   dome.scale.setScalar(1);
   const level = st.power.on ? lampLevel(Number(o.brightness ?? 0)) : 0;
-  setLamp(obj, 'dome', lit, level);
-  setHalo(obj, 'halo', lit, level * 0.5, 9 + 6 * level);
+  setLamp(obj, 'dome', glow, level);
+  setLamp(obj, 'halo', lit, level);
 }
 
 export const LED_STATES: Record<string, PartState> = {
@@ -187,7 +213,7 @@ export function buildLed(ctx: BuildCtx, a: V3, k: V3, look: LedLook, more?: (s: 
   const root = s.toObject();
   const lens = lensShape({ y: 0, resin: look.resin, seg: ctx.seg(20), flat: k[0] >= a[0] ? 1 : -1 });
   ledDie(lens, 0, look.phosphor);
-  root.add(hotCore(0), glowing('dome', lens), burntMarks(0), halo('halo', [0, 4.9, 0]));
+  root.add(hotCore(0), glowing('dome', lens), burntMarks(0), halo('halo', [0, 0.03, 0], FLANGE_R + 0.2));
   return root;
 }
 
@@ -196,7 +222,6 @@ export function ledModel(manifestJson: unknown, look: Omit<LedLook, 'lit'> & { l
   const manifest: PartManifest = asManifest(manifestJson);
   const terminals = terminalsFromManifest(manifest);
   const lit = look.lit ?? visualColour(manifest, 'glow', 0xff3b30);
-  const hot = hotColour(lit);
   return defineModel<PartState>({
     id: manifest.id,
     title: manifest.name.en,
@@ -204,7 +229,7 @@ export function ledModel(manifestJson: unknown, look: Omit<LedLook, 'lit'> & { l
     plugMm: LEG_LONG,
     terminals,
     build: (ctx) => buildLed(ctx, terminalOf(terminals, 'A'), terminalOf(terminals, 'K'), { ...look, lit }),
-    animate: (st, obj, env) => animateLed(st, obj, env, lit, hot),
+    animate: (st, obj, env) => animateLed(st, obj, env, lit),
     states: LED_STATES,
   });
 }

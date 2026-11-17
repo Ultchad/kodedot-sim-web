@@ -7,13 +7,12 @@ import manifest from '../../../../../parts/led/manifest.json';
 import { FONT_MONO, Matrix4, PAL, defineModel, drawScreen, footprintOf, partState, screen, terminalsFromManifest, text, type PartState } from '../../index';
 import { chipResistorCode } from './codes';
 import { asManifest, fieldDefault, num, terminalOf, visualColour } from './common';
-import { LEG_LONG, animateLed, buildLed, hotColour } from './led5';
+import { LEG_LONG, RESIN, animateLed, buildLed } from './led5';
 
 const m = asManifest(manifest);
 const terminals = terminalsFromManifest(m);
 const A = terminalOf(terminals, 'A'), K = terminalOf(terminals, 'K');
 const LIT = visualColour(m, 'glow', 0xff3b30);
-const HOT = hotColour(LIT);
 const OHMS = fieldDefault(m, 'ohms', 330);
 /** The chip stands on the front of the anode's post (an 0603: 1.6 x 0.8 x 0.45 mm). */
 const side = Math.sign(K[0] - A[0]) || 1;
@@ -34,7 +33,7 @@ export default defineModel<PartState>({
   plugMm: LEG_LONG,
   terminals,
   build(ctx) {
-    const root = buildLed(ctx, A, K, { resin: PAL.resinRed, lit: LIT }, (s) => {
+    const root = buildLed(ctx, A, K, { resin: RESIN.red, lit: LIT }, (s) => {
       s.block('matte', '#1b1b1e', 0.4, 0.52, 0.2, new Matrix4().makeTranslation(CX, CY, CZ + 0.22), 0.04);
       for (const e of [-1, 1]) s.block(...PAL.tin, 0.42, 0.16, 0.22, new Matrix4().makeTranslation(CX, CY + e * 0.64, CZ + 0.22), 0.04);
     });
@@ -45,7 +44,7 @@ export default defineModel<PartState>({
   animate(st, obj, env) {
     marking = num(st.fields.ohms, OHMS);
     drawScreen(obj, 'ohms', marking, drawMarking);
-    return animateLed(st, obj, env, LIT, HOT);
+    return animateLed(st, obj, env, LIT);
   },
   states: {
     off: partState({ fields: { ohms: 330 }, outputs: { brightness: 0 } }),

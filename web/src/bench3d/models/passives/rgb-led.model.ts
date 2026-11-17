@@ -9,9 +9,9 @@
  */
 import type { Mesh, MeshStandardMaterial } from 'three';
 import manifest from '../../../../../parts/rgb-led/manifest.json';
-import { PAL, Shape, defineModel, footprintOf, glowing, part, partState, setLamp, terminalsFromManifest, type PartState, type V2 } from '../../index';
-import { asManifest, halo, num, plate, setHalo, squareLead, terminalOf, tint, visualColour } from './common';
-import { LED_H, LEG_LONG, LEG_SHORT, lampLevel, lensShape } from './led5';
+import { PAL, Shape, defineModel, footprintOf, glowing, halo, part, partState, setLamp, terminalsFromManifest, type PartState, type V2 } from '../../index';
+import { asManifest, num, plate, squareLead, terminalOf, tint, visualColour } from './common';
+import { LED_H, LEG_LONG, LEG_SHORT, lampLevel, lensShape, resinGlow } from './led5';
 
 const m = asManifest(manifest);
 const terminals = terminalsFromManifest(m);
@@ -61,7 +61,8 @@ export default defineModel<PartState>({
       const mat = (c as Mesh).material as MeshStandardMaterial;
       if (mat.transparent) mat.opacity = 0.86;
     }
-    root.add(dome, halo('halo', [0, Y0 + 4.9, 0]));
+    // the light it throws on the board between its leads
+    root.add(dome, halo('halo', [0, 0.03, 0], m.body.d_mm / 2 + 0.2));
     return root;
   },
   animate(st, obj) {
@@ -74,7 +75,7 @@ export default defineModel<PartState>({
     if (peak < 0.004) {
       tint(dome, 0xffffff);
       setLamp(obj, 'dome', 0, 0);
-      setHalo(obj, 'halo', 0, 0, 1);
+      setLamp(obj, 'halo', 0, 0);
       return;
     }
     // the lens adds the three lights; the hue is kept pure and the strongest channel sets the level
@@ -87,8 +88,8 @@ export default defineModel<PartState>({
     // the milky resin takes the light's colour (else its white washes every colour out to a pastel)
     const w = 255 * Math.max(0, 1 - level * 1.25), q = 1 - w / 255;
     tint(dome, (Math.round(w + R * k * q) << 16) | (Math.round(w + G * k * q) << 8) | Math.round(w + B * k * q));
-    setLamp(obj, 'dome', hex, level);
-    setHalo(obj, 'halo', hex, level * 0.5, 9 + 6 * level);
+    setLamp(obj, 'dome', resinGlow(hex), level);
+    setLamp(obj, 'halo', hex, level);
   },
   states: {
     off: partState({ outputs: { r: 0, g: 0, b: 0 } }),
