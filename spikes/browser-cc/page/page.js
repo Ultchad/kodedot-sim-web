@@ -25,8 +25,9 @@ window.CC = {
     const r = await ready; r.wall = performance.now() - t0; return r;
   },
   stop() { worker?.terminate(); worker = null; },
-  compile(ino, manifest) { return new Promise((res) => { const id = ++nid; pending.set(id, res); worker.postMessage({ type: "compile", id, ino, manifest }); }); },
-  async compileLite(ino, manifest) { const r = await this.compile(ino, manifest); r.wasmBytes = r.wasm?.length; delete r.wasm; return r; },
+  compile(ino, manifest, board = null) { return new Promise((res) => { const id = ++nid; pending.set(id, res); worker.postMessage({ type: "compile", id, ino, manifest, board }); }); },
+  config(o) { return new Promise((res) => { const id = ++nid; pending.set(id, res); worker.postMessage({ type: "config", id, ...o }); }); },
+  async compileLite(ino, manifest, board = null) { const r = await this.compile(ino, manifest, board); r.wasmBytes = r.wasm?.length; delete r.wasm; return r; },
   /** compiled wasm + the part's own manifest/picture/sources -> .dotpart bytes -> the real importer */
   async toPart(name, ino, manifest, wasm, picture) {
     const sha = [...new Uint8Array(await crypto.subtle.digest("SHA-256", wasm))].map((b) => b.toString(16).padStart(2, "0")).join("");

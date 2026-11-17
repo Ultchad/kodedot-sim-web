@@ -23,6 +23,9 @@ onMessage(async (m) => {
       await rt.runLLVM(["clang", "--version"], {}, { stdout: () => {}, stderr: () => {}, fetchProgress: () => {} });
       const t3 = performance.now();
       post({ type: "ready", stats, ms: { assets: t1 - t0, import: t2 - t1, firstRun: t3 - t2, total: t3 - t0 } });
+    } else if (m.type === "config") {
+      if (m.usePch !== undefined) compiler.usePch = m.usePch;
+      post({ type: "configured", id: m.id });
     } else if (m.type === "compile") {
       const r = await compiler.compile(m);
       post({ type: "result", id: m.id, ...r }, r.wasm ? [r.wasm.buffer] : []);

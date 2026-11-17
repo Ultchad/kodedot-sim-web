@@ -8,7 +8,9 @@ export const CSP = JSON.parse(fs.readFileSync(VJ, "utf8")).headers[0].headers.fi
 const TYPES = { ".js": "text/javascript", ".mjs": "text/javascript", ".html": "text/html", ".wasm": "application/wasm", ".json": "application/json", ".pack": "application/octet-stream" };
 export function startServer({ port = 0, compress = "br", cacheControl = "no-store" } = {}) {
   const stats = { requests: [], bytes: 0 };
-  const sockets = new Set();
+  const sockets = new Set(), brCache = new Map();
+  // compress once up front so a measurement of a cold load is not a measurement of this server's CPU
+  if (compress === "br") for (const f of fs.readdirSync(path.join(HERE, "build/site/cc"))) { const file = path.join(HERE, "build/site/cc", f), b = fs.readFileSync(file); if (b.length > 1024) brCache.set(file, zlib.brotliCompressSync(b, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: b.length } })); }
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url, "http://x"); let file = null;
     if (u.pathname === "/") file = path.join(HERE, "page/page.html");
@@ -22,7 +24,7 @@ export function startServer({ port = 0, compress = "br", cacheControl = "no-stor
     let body = fs.readFileSync(file); const type = TYPES[path.extname(file)] ?? "application/octet-stream";
     const accept = req.headers["accept-encoding"] ?? "";
     // like Vercel's CDN: compress compressible static files on the way out (we measure the compressed bytes)
-    if (compress === "br" && /br/.test(accept) && body.length > 1024) { body = zlib.brotliCompressSync(body, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: body.length } }); h["Content-Encoding"] = "br"; }
+    if (compress === "br" && /br/.test(accept) && body.length > 1024) { body = brCache.get(file) ?? (brCache.set(file, zlib.brotliCompressSync(body, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: body.length } })), brCache.get(file)); h["Content-Encoding"] = "br"; }
     stats.requests.push(u.pathname); stats.bytes += body.length;
     res.writeHead(200, { ...h, "Content-Type": type, "Content-Length": body.length }); res.end(body);
   });
