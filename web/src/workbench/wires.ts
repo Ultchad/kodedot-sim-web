@@ -85,6 +85,8 @@ const BLOCK = 5;
 const NODE = 11;
 /** How far a wire turns aside at an end that faces away from where it is going. */
 const LOOP = 9;
+/** How stiff a wire is: it falls 1 mm in the first sqrt(SAG) mm of run off a raised place, 4 mm in twice that. */
+const SAG = 150;
 const DEVICE = deviceTerms();
 
 /**
@@ -181,8 +183,6 @@ function rounded(p: P2[], r: number): P2[] {
   return out;
 }
 
-const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
-
 /** Drops the points a line does not need (Ramer-Douglas-Peucker, `tol` mm): straight runs keep their two ends. */
 function simplify(p: P3[], tol: number): P3[] {
   const keep = new Uint8Array(p.length);
@@ -216,6 +216,8 @@ export interface WirePathOptions {
   fan?: number;
   /** Which way a long free run bows (its slack): even to one side, odd to the other. */
   seed?: number;
+  /** Wires this one crosses: at each point (x, z) its middle is at least `y` high, so it passes over the other. */
+  over?: readonly { x: number; z: number; y: number }[];
 }
 /**
  * The line a wire follows from terminal `a` to terminal `b`, as x, y, z triples (the middle of the tube).
@@ -299,7 +301,8 @@ export function wirePath(a: WireEnd, b: WireEnd, boxes: readonly WireBox[], o: W
   const fan = o.fan ?? 0;
   if (!shift(fan + bow) && !shift(fan)) shift(0);
 
-  // how high: what is under each point, widened along the run so that the wire is up before a body begins
+  // how high. The least height at each point: the table, the top of the body under it, the end's own height at the two
+  // ends, and a little more than the wire it crosses where it crosses one (`over`)
   const floor = new Float64Array(n + 1);
   let lx0 = Infinity, lx1 = -Infinity, lz0 = Infinity, lz1 = -Infinity;
   for (let k = 0; k <= n; k++) {
@@ -309,29 +312,34 @@ export function wirePath(a: WireEnd, b: WireEnd, boxes: readonly WireBox[], o: W
     lz1 = Math.max(lz1, zs[k]);
   }
   const under = boxes.filter((bx) => bx.x1 + GROW > lx0 && bx.x0 - GROW < lx1 && bx.z1 + GROW > lz0 && bx.z0 - GROW < lz1);
+  const least = new Float64Array(n + 1);
   for (let k = 0; k <= n; k++) {
     let f = 0;
     for (const bx of under) if (bx.h > f && inRect(bx, xs[k], zs[k], GROW)) f = bx.h;
     floor[k] = f;
+    least[k] = f > 0 ? f + CLEAR : REST;
   }
-  const WIDE = 6;
+  const step = S / n || 1;
+  least[0] = Math.max(least[0], A.p2[1]);
+  least[n] = Math.max(least[n], B.p2[1]);
+  for (const h of o.over ?? []) {
+    const reach = step * 0.75 + 2 * R_WIRE;
+    for (let k = 1; k < n; k++) if (least[k] < h.y && Math.hypot(xs[k] - h.x, zs[k] - h.z) < reach) least[k] = h.y;
+  }
+  // The wire's own shape over that: from every raised place it comes away level and falls off as a parabola (it is
+  // stiff: SAG millimetres of run for the first millimetre of fall), so between two raised places close together it
+  // arcs without touching the table, between two far apart it comes down and lies on the table, and it is at a body's
+  // height before the body begins
   const ys = new Float64Array(n + 1);
-  const hA = A.p2[1], hB = B.p2[1];
-  const drop = (h: number, s: number) => REST + (h - REST) * (1 - smooth((s - 2) / Math.max(14, Math.min(70, 12 + (h - REST) * 2.2))));
   for (let k = 0; k <= n; k++) {
-    let f = 0;
-    for (let j = Math.max(0, k - WIDE); j <= Math.min(n, k + WIDE); j++) if (floor[j] > f) f = floor[j];
-    const s = (S * k) / n;
-    ys[k] = Math.max(drop(hA, s), drop(hB, S - s), f > 0 ? f + CLEAR : REST);
-  }
-  // softened (four passes reach four points to each side: less than the widening, so the wire is still up in time)
-  for (let pass = 0; pass < 4; pass++) {
-    let before = ys[0];
-    for (let k = 1; k < n; k++) {
-      const cur = ys[k];
-      ys[k] = Math.max((before + 2 * cur + ys[k + 1]) / 4, floor[k] > 0 ? floor[k] + CLEAR : REST);
-      before = cur;
+    let y = least[k];
+    for (let i = 0; i <= n; i++) {
+      if (least[i] <= y) continue;
+      const d = (i - k) * step;
+      const v = least[i] - (d * d) / SAG;
+      if (v > y) y = v;
     }
+    ys[k] = y;
   }
 
   // and the bottoms of its dips rounded upward (never lowered: it stays clear of what it crosses), so that a wire
@@ -448,7 +456,11 @@ interface Built {
   x1: number;
   z0: number;
   z1: number;
+  /** The line by itself, and the line as drawn: lifted over the wires it crosses (the same array when it crosses none). */
+  plain: Float32Array;
   line: Float32Array;
+  /** The crossings the drawn line was lifted for. */
+  overKey: string;
   length: number;
   pos: Float32Array;
   nor: Float32Array;
@@ -467,6 +479,7 @@ interface Want {
 }
 
 const HILITE = new Color('#ffac00');
+const EMPTY = new Float32Array(0);
 
 export class Wires {
   readonly group = new Group();
@@ -705,18 +718,79 @@ export class Wires {
     return s;
   }
 
-  private make(w: Want, key: string): Built {
-    const line = wirePath(w.a, w.b, this.boxes, { fan: w.fan, seed: w.seed });
-    const n = line.length / 3;
-    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, length = 0;
-    for (let i = 0; i < n; i++) {
-      x0 = Math.min(x0, line[i * 3]);
-      x1 = Math.max(x1, line[i * 3]);
-      z0 = Math.min(z0, line[i * 3 + 2]);
-      z1 = Math.max(z1, line[i * 3 + 2]);
-      if (i) length += Math.hypot(line[i * 3] - line[i * 3 - 3], line[i * 3 + 1] - line[i * 3 - 2], line[i * 3 + 2] - line[i * 3 - 1]);
+  /** A wire's line by itself (no other wire considered), with the place on the table it was made in. */
+  private route(w: Want, key: string): Built {
+    const plain = wirePath(w.a, w.b, this.boxes, { fan: w.fan, seed: w.seed });
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < plain.length; i += 3) {
+      x0 = Math.min(x0, plain[i]);
+      x1 = Math.max(x1, plain[i]);
+      z0 = Math.min(z0, plain[i + 2]);
+      z1 = Math.max(z1, plain[i + 2]);
     }
     const room = NODE + 6;
+    const made: Built = { key, sig: '', x0: x0 - room, x1: x1 + room, z0: z0 - room, z1: z1 + room, plain, line: plain, overKey: '?', length: 0, pos: EMPTY, nor: EMPTY, rings: 0, tipPos: EMPTY, tipNor: EMPTY };
+    made.sig = this.near(made.x0, made.x1, made.z0, made.z1);
+    return made;
+  }
+
+  /**
+   * Where a wire's line crosses the wires made before it at nearly their height (it would pass through them): the
+   * points, and how high its middle must be there to pass over. The first and last stretch of either wire do not
+   * count: the stubs go where their terminals are.
+   */
+  private crossings(b: Built, before: readonly Built[]): { x: number; z: number; y: number }[] {
+    const out: { x: number; z: number; y: number }[] = [];
+    const p = b.plain, ends = STUB + BEND + 1.5;
+    const total = (l: Float32Array) => {
+      let t = 0;
+      for (let i = 3; i < l.length; i += 3) t += Math.hypot(l[i] - l[i - 3], l[i + 2] - l[i - 1]);
+      return t;
+    };
+    let lenP = -1;
+    for (const e of before) {
+      // their places on the table overlap (both carry the same room round them)
+      if (e.x1 < b.x0 + 2 * (NODE + 6) || e.x0 > b.x1 - 2 * (NODE + 6) || e.z1 < b.z0 + 2 * (NODE + 6) || e.z0 > b.z1 - 2 * (NODE + 6)) continue;
+      const q = e.line;
+      let lenQ = -1, runP = 0;
+      for (let i = 3; i < p.length; i += 3) {
+        const ax = p[i - 3], az = p[i - 1], bx = p[i], bz = p[i + 2];
+        const segP = Math.hypot(bx - ax, bz - az);
+        let runQ = 0;
+        for (let k = 3; k < q.length; k += 3) {
+          const cx = q[k - 3], cz = q[k - 1], dx = q[k], dz = q[k + 2];
+          const segQ = Math.hypot(dx - cx, dz - cz);
+          const den = (bx - ax) * (dz - cz) - (bz - az) * (dx - cx);
+          if (Math.abs(den) > 1e-9) {
+            const t = ((cx - ax) * (dz - cz) - (cz - az) * (dx - cx)) / den, u = ((cx - ax) * (bz - az) - (cz - az) * (bx - ax)) / den;
+            if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+              if (lenP < 0) lenP = total(p);
+              if (lenQ < 0) lenQ = total(q);
+              const sP = runP + segP * t, sQ = runQ + segQ * u;
+              if (sP > ends && lenP - sP > ends && sQ > ends && lenQ - sQ > ends) {
+                const yP = p[i - 2] + (p[i + 1] - p[i - 2]) * t, yQ = q[k - 2] + (q[k + 1] - q[k - 2]) * u;
+                // through each other when their middles are less than two radii (and a hair) apart in height
+                if (Math.abs(yP - yQ) < 2 * R_WIRE + 0.3) out.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, y: yQ + 2 * R_WIRE + 0.5 });
+              }
+            }
+          }
+          runQ += segQ;
+        }
+        runP += segP;
+      }
+    }
+    return out;
+  }
+
+  /** The tube round a wire's line (lifted over `over`), and its two pins. */
+  private tube(b: Built, w: Want, over: readonly { x: number; z: number; y: number }[], overKey: string): void {
+    const line = over.length ? wirePath(w.a, w.b, this.boxes, { fan: w.fan, seed: w.seed, over }) : b.plain;
+    b.line = line;
+    b.overKey = overKey;
+    const n = line.length / 3;
+    let length = 0;
+    for (let i = 1; i < n; i++) length += Math.hypot(line[i * 3] - line[i * 3 - 3], line[i * 3 + 1] - line[i * 3 - 2], line[i * 3 + 2] - line[i * 3 - 1]);
+    b.length = length;
     // the insulation: the line without the bare ends of the two pins, closed down onto the pin at each end
     const R = w.wide ? R_WIRE * 1.6 : R_WIRE;
     const ins = new Float32Array((n + 2) * 3);
@@ -733,11 +807,13 @@ export class Wires {
     ins.set(line.subarray(3, (n - 1) * 3), 6);
     cut((n - 1) * 3, (n - 2) * 3, TIP_OUT + 0.5, n * 3);
     cut((n - 1) * 3, (n - 2) * 3, TIP_OUT, (n + 1) * 3);
-    const rings = n + 2;
-    const pos = new Float32Array(rings * SIDES * 3), nor = new Float32Array(rings * SIDES * 3);
-    writeRings(pos, nor, 0, ins, (i, m) => (i === 0 || i === m - 1 ? R_TIP : R), SIDES);
+    b.rings = n + 2;
+    b.pos = new Float32Array(b.rings * SIDES * 3);
+    b.nor = new Float32Array(b.rings * SIDES * 3);
+    writeRings(b.pos, b.nor, 0, ins, (i, m) => (i === 0 || i === m - 1 ? R_TIP : R), SIDES);
     // the pins: from inside the terminal to inside the insulation
-    const tipPos = new Float32Array(2 * TIP_RINGS * TIP_SIDES * 3), tipNor = new Float32Array(2 * TIP_RINGS * TIP_SIDES * 3);
+    b.tipPos = new Float32Array(2 * TIP_RINGS * TIP_SIDES * 3);
+    b.tipNor = new Float32Array(2 * TIP_RINGS * TIP_SIDES * 3);
     const pin = new Float32Array(TIP_RINGS * 3);
     [w.a, w.b].forEach((e, k) => {
       [-TIP_IN, -TIP_IN + 0.35, TIP_OUT + 0.6].forEach((d, i) => {
@@ -745,11 +821,8 @@ export class Wires {
         pin[i * 3 + 1] = e.pos.y + e.out.y * d;
         pin[i * 3 + 2] = e.pos.z + e.out.z * d;
       });
-      writeRings(tipPos, tipNor, k * TIP_RINGS * TIP_SIDES, pin, (i) => (i === 0 ? 0.04 : R_TIP), TIP_SIDES);
+      writeRings(b.tipPos, b.tipNor, k * TIP_RINGS * TIP_SIDES, pin, (i) => (i === 0 ? 0.04 : R_TIP), TIP_SIDES);
     });
-    const made: Built = { key, sig: '', x0: x0 - room, x1: x1 + room, z0: z0 - room, z1: z1 + room, line, length, pos, nor, rings, tipPos, tipNor };
-    made.sig = this.near(made.x0, made.x1, made.z0, made.z1);
-    return made;
   }
 
   // ---- drawing -------------------------------------------------------------------------------------------------
@@ -817,6 +890,7 @@ export class Wires {
     // each wire's tube: kept when its ends and the bodies near its line are what they were
     this.remade = 0;
     const live = new Set<string>();
+    const done: Built[] = [];
     let verts = 0, tris = 0;
     for (const w of list) {
       live.add(w.id);
@@ -824,10 +898,18 @@ export class Wires {
       const k = `${e(w.a)}|${e(w.b)}|${w.fan.toFixed(2)}|${w.wide ? 1 : 0}`;
       let b = this.built.get(w.id);
       if (!b || b.key !== k || b.sig !== this.near(b.x0, b.x1, b.z0, b.z1)) {
-        b = this.make(w, k);
+        b = this.route(w, k);
         this.built.set(w.id, b);
+      }
+      // it passes over the wires made before it where it would go through them (the later wire is the upper one)
+      const over = this.crossings(b, done);
+      let ok = '';
+      for (const c of over) ok += `${c.x.toFixed(1)},${c.z.toFixed(1)},${c.y.toFixed(1)};`;
+      if (ok !== b.overKey) {
+        this.tube(b, w, over, ok);
         this.remade++;
       }
+      done.push(b);
       verts += b.rings * SIDES;
       tris += (b.rings - 1) * SIDES * 2;
     }

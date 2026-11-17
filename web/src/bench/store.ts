@@ -1,6 +1,6 @@
 import { AREAS, getArea, type AreaId, type BenchObject, type FieldValue, type KindDef } from './model';
 import { getKind } from './kinds';
-import { SD_ID, dropSpot, freeSpot, hasBody, isNear, obstacles, placeMissing, settle, spotFor, zoneOf, type Placed, type Pos, type Rot } from '../workbench/layout';
+import { DOT_RECT, SD_ID, applyDotPose, dropSpot, freeSpot, hasBody, isDotPose, isNear, obstacles, overlaps, placeMissing, rectOf, settle, spotFor, zoneOf, type DotPose, type Placed, type Pos, type Rot } from '../workbench/layout';
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -31,6 +31,8 @@ interface Snap {
   mounts: Readonly<Record<string, MountSide>>;
   /** Sketches by board instance. */
   code: Readonly<Record<string, Sketch>>;
+  /** How the Dot is put down on the table (lying, standing, on its side). */
+  dotPose: DotPose;
 }
 
 export interface BenchState extends Snap {
@@ -107,6 +109,11 @@ function validateRest(raw: unknown, objects: readonly BenchObject[]): Pick<Snap,
   return { wires, mounts, code };
 }
 
+const poseOf = (raw: unknown): DotPose => {
+  const p = (raw as { dotPose?: unknown } | null)?.dotPose;
+  return isDotPose(p) ? p : 'lying';
+};
+
 function validateFixtures(raw: unknown, objects: readonly BenchObject[]): Fixtures {
   const f = (raw as { fixtures?: Record<string, { pos?: unknown; rot?: unknown }> } | null)?.fixtures;
   const sd = f && typeof f === 'object' ? f[SD_ID] : undefined;
@@ -154,19 +161,27 @@ export class BenchStore {
     let parsed: unknown = null;
     try {
       const raw = storage?.getItem(BENCH_STORAGE_KEY);
-      if (raw) objects = validate((parsed = JSON.parse(raw)));
+      if (raw) parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+    // the table's numbers (the Dot's footprint, every range) are for the way the Dot is put down: set before anything is placed
+    const pose = poseOf(parsed);
+    applyDotPose(pose);
+    try {
+      if (parsed) objects = validate(parsed);
     } catch {
       objects = [];
     }
-    this.state = { objects, fixtures: validateFixtures(parsed, objects), ...validateRest(parsed, objects), undo: 0, redo: 0 };
+    this.state = { objects, fixtures: validateFixtures(parsed, objects), ...validateRest(parsed, objects), dotPose: pose, undo: 0, redo: 0 };
   }
   private snap(): Snap {
-    const { objects, fixtures, wires, mounts, code } = this.state;
-    return { objects, fixtures, wires, mounts, code };
+    const { objects, fixtures, wires, mounts, code, dotPose } = this.state;
+    return { objects, fixtures, wires, mounts, code, dotPose };
   }
   private same(s: Snap | undefined): boolean {
     const t = this.state;
-    return !!s && s.objects === t.objects && s.fixtures === t.fixtures && s.wires === t.wires && s.mounts === t.mounts && s.code === t.code;
+    return !!s && s.objects === t.objects && s.fixtures === t.fixtures && s.wires === t.wires && s.mounts === t.mounts && s.code === t.code && s.dotPose === t.dotPose;
   }
 
   // ---- the whole bench as one file -----------------------------------------------------------------------------
@@ -177,10 +192,42 @@ export class BenchStore {
   /** Replaces the bench by a saved one; undoable. Returns false when the data is not a bench. */
   importData(raw: unknown): boolean {
     if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { objects?: unknown }).objects)) return false;
-    const objects = validate(raw);
     this.checkpoint();
-    this.commit({ objects, fixtures: validateFixtures(raw, objects), ...validateRest(raw, objects) }, true);
+    const pose = poseOf(raw);
+    applyDotPose(pose);
+    const objects = validate(raw);
+    this.commit({ objects, fixtures: validateFixtures(raw, objects), ...validateRest(raw, objects), dotPose: pose }, true);
     return true;
+  }
+
+  // ---- how the Dot is put down ----------------------------------------------------------------------------------
+  /**
+   * Puts the Dot down another way (lying, standing, on its side). Things on the table stay where they are, unless the
+   * Dot now lies on them (they move aside); whether each is in range is measured again from where the Dot's coils, beam
+   * and port now are. The card in the slot stays in the slot: it is in the Dot.
+   */
+  setDotPose(pose: DotPose): void {
+    if (pose === this.state.dotPose) return;
+    const sd = this.state.fixtures[SD_ID];
+    const cardIn = !!sd && isNear(SD_ID, sd.pos, sd.rot);
+    applyDotPose(pose);
+    const placed: Placed[] = [];
+    const objects = this.state.objects.map((o) => {
+      if (!hasBody(o.kind)) return o;
+      let pos = o.pos;
+      // a module on the header goes with the Dot (parts/service.ts puts it where the header now is)
+      if (!this.state.mounts[o.id] && overlaps(rectOf(o.kind, pos, o.rot), DOT_RECT)) pos = settle(o.kind, pos, o.rot, obstacles(placed, ''), true) ?? freeSpot(o.kind, pos, o.rot, obstacles(placed, ''));
+      placed.push({ id: o.id, kind: o.kind, pos, rot: o.rot });
+      const near = zoneOf(o.kind) ? isNear(o.kind, pos, o.rot) : o.near;
+      return pos === o.pos && near === o.near ? o : { ...o, pos, near };
+    });
+    let fixtures = this.state.fixtures;
+    if (sd) {
+      const obs = obstacles(placed, '');
+      const pos = cardIn ? spotFor(SD_ID, true, sd.rot, obs, sd.pos) : overlaps(rectOf(SD_ID, sd.pos, sd.rot), DOT_RECT) ? spotFor(SD_ID, false, sd.rot, obs, sd.pos) : sd.pos;
+      if (pos !== sd.pos) fixtures = { ...fixtures, [SD_ID]: { ...sd, pos } };
+    }
+    this.commit({ dotPose: pose, objects, fixtures }, true);
   }
 
   // ---- wires, modules on the header, sketches ------------------------------------------------------------------
@@ -478,6 +525,8 @@ export class BenchStore {
   }
 
   private commit(next: Partial<Snap>, persist: boolean): void {
+    // an undo, a redo or an opened file may put the Dot down another way: the table's numbers follow before anything is measured
+    applyDotPose(next.dotPose ?? this.state.dotPose);
     if (next.objects && next.objects !== this.state.objects) next = { ...next, objects: this.onePort(next.objects) };
     this.state = { ...this.snap(), ...next, undo: this.past.length, redo: this.future.length };
     if (persist) this.save();

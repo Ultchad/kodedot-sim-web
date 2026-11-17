@@ -457,6 +457,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
       input,
       painter,
       model,
+      applyPose,
       // lets the layout audit walk every theme and language on one page load
       ui: {
         // stands in for the 3D code's store, so every state of the "3D model" entry can be shown and audited

@@ -15,7 +15,8 @@
  * Interaction (all drags use window listeners, so leaving the canvas is safe):
  *   glass pointerdown  -> touch input (point on the glass -> 410x502), no orbit
  *   button / d-pad     -> setButton, released on pointerup/cancel
- *   body / background  -> rotate the model (orbit); two pointers -> pinch zoom
+ *   body / background  -> rotate the model (orbit; Shift: spin it in the plane of the screen; the turn catches on the
+ *                         straight views, Alt turns that off); two pointers -> pinch zoom
  * The model's orientation IS the pose (pitch/roll/heading). When "tilt link"
  * is on it is mirrored to the bench's Movimento object, and the sliders move it.
  */
@@ -63,6 +64,7 @@ import {
   screenToGlassMm,
 } from '../lib/bodyModel';
 import { SPEC, metrics } from '../lib/geometry';
+import { WEAK, magnet, magnetRelease, magnetStart, quarterMarks, type MagnetState, type Mark } from '../lib/magnet';
 import { ORBIT_LIMITS, ZERO_POSE, clampPose, poseToEuler, samePose } from '../lib/pose';
 import type { ScreenPainter } from '../lib/screen';
 import { buildBodyMesh } from '../device3d/bodyMesh';
@@ -76,6 +78,7 @@ import { makeGrainNormalMap, makeOcclusionTexture, makeShadowTexture } from '../
 import type { PreparedModel } from '../device3d/prepare';
 import { backlightFactor } from './Device2D';
 import type { WorldApi, WorldDeps } from '../workbench/World';
+import type { DotModule } from '../workbench/dotModule';
 
 /** The Workbench scene: its code is fetched the first time that mode is shown. */
 const World = lazy(() => import('../workbench/World'));
@@ -123,6 +126,10 @@ const GROUND_GAP_MM = 9;
  * once. "Recentre" (and the tilt link) still mean exactly face-on.
  */
 const OPENING_VIEW: MotionPose = { pitch: 0, roll: 17, heading: 0 };
+/** Where the turning catches: the straight views and the diagonals between, and the opening three-quarter view. */
+const ROLL_MARKS: Mark[] = [...quarterMarks(-180, 180), { at: OPENING_VIEW.roll, pull: WEAK }, { at: -OPENING_VIEW.roll, pull: WEAK }];
+const PITCH_MARKS: Mark[] = quarterMarks(-90, 90);
+const TURN_MARKS: Mark[] = quarterMarks();
 
 export interface Device3DProps {
   device: KodeDevice;
@@ -224,6 +231,34 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
     },
     [invalidate],
   );
+  // ---- the module on the Dot's header: a child of the Dot's own model in both views (workbench/dotModule.ts). Its
+  // code (with the part models) is fetched the first time a module is mounted.
+  const dotModule = useRef<DotModule | null>(null);
+  /** What the camera of the Device view frames: the Dot alone, or the Dot and its module (centre and half extents in the Dot's frame). */
+  const fit = useRef({ c: new Vector3(), e: new Vector3(M.bodyMm.w / 2, M.bodyMm.h / 2, D.depth / 2), reach: 0, set: false });
+  useEffect(() => {
+    if (!world) return;
+    let alive = true, asked = false;
+    const check = () => {
+      if (!asked && Object.keys(world.bench.getState().mounts).length) {
+        asked = true;
+        void import('../workbench/dotModule').then((m) => {
+          if (!alive) return;
+          dotModule.current = new m.DotModule(world.bench, world.parts);
+          invalidate();
+        });
+      }
+      invalidate();
+    };
+    const offs = [world.bench.subscribe(check), world.parts.subscribe(check)];
+    check();
+    return () => {
+      alive = false;
+      offs.forEach((o) => o());
+      dotModule.current?.dispose();
+      dotModule.current = null;
+    };
+  }, [world, invalidate]);
   /** 0 = the device alone, 1 = lying on the table; in between while the mode changes. */
   const mix = useRef(workbench ? 1 : 0);
   const worldGrp = useRef<Group>(null);
@@ -567,21 +602,44 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
     if (ne.pointerType === 'mouse' && ne.button !== 0) return;
     const start = { x: ne.clientX, y: ne.clientY, pose: { ...(live.current.tiltLink ? storePose : target.current) } };
     dragging.current = true;
+    // the turn catches on the straight views (front, back, the sides, top, bottom), more weakly on the diagonals and
+    // on the three-quarter view the page opens with; Alt turns the magnet off (lib/magnet.ts)
+    const mag: Record<'pitch' | 'roll' | 'heading', MagnetState> = { pitch: magnetStart(start.pose.pitch, PITCH_MARKS), roll: magnetStart(start.pose.roll, ROLL_MARKS), heading: magnetStart(start.pose.heading, TURN_MARKS, 360) };
+    let raw: MotionPose = { ...start.pose }, spin = false, off = false;
+    const shown = (): MotionPose => {
+      const o = { off, reduced: live.current.reducedMotion };
+      return clampPose(
+        spin ? { ...start.pose, heading: magnet(raw.heading, TURN_MARKS, mag.heading, { ...o, period: 360 }) } : { ...start.pose, roll: magnet(raw.roll, ROLL_MARKS, mag.roll, o), pitch: magnet(raw.pitch, PITCH_MARKS, mag.pitch, o) },
+        ORBIT_LIMITS,
+      );
+    };
     watch(
       ne.pointerId,
       (ev) => {
         const dx = ev.clientX - start.x;
         const dy = ev.clientY - start.y;
-        const next: MotionPose = ev.shiftKey || ev.altKey
-          ? { ...start.pose, heading: start.pose.heading + dx * DRAG_DEG_PER_PX }
-          : { ...start.pose, roll: start.pose.roll + dx * DRAG_DEG_PER_PX, pitch: start.pose.pitch - dy * DRAG_DEG_PER_PX };
-        const c = clampPose(next, ORBIT_LIMITS);
+        spin = ev.shiftKey;
+        off = ev.altKey;
+        const lim = (v: number, m: number) => Math.min(m, Math.max(-m, v));
+        raw = spin ? { ...start.pose, heading: start.pose.heading + dx * DRAG_DEG_PER_PX } : { ...start.pose, roll: lim(start.pose.roll + dx * DRAG_DEG_PER_PX, ORBIT_LIMITS.roll), pitch: lim(start.pose.pitch - dy * DRAG_DEG_PER_PX, ORBIT_LIMITS.pitch) };
+        const c = shown();
         target.current = c;
         if (live.current.tiltLink) live.current.onPose(c);
         invalidate();
       },
       () => {
         dragging.current = false;
+        // let go inside a mark's window: what is kept is the mark itself
+        const o = { off };
+        const c = clampPose(
+          spin ? { ...start.pose, heading: magnetRelease(raw.heading, mag.heading, { ...o, period: 360 }) } : { ...start.pose, roll: magnetRelease(raw.roll, mag.roll, o), pitch: magnetRelease(raw.pitch, mag.pitch, o) },
+          ORBIT_LIMITS,
+        );
+        if (!samePose(c, target.current, 1e-9)) {
+          target.current = c;
+          if (live.current.tiltLink) live.current.onPose(c);
+          invalidate();
+        }
       },
     );
   };
@@ -740,25 +798,51 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
       }
     }
 
-    // camera fit
+    // the module on the header: made equal to the bench, carried by the Dot's model, showing its live state
+    const dm = dotModule.current;
+    if (dm && g) {
+      if (dm.group.parent !== g) g.add(dm.group);
+      dm.sync();
+      if (dm.step(dt)) busy = true;
+    }
+
+    // camera fit: the Dot, widened to hold the module on its header (its centre is looked at, wherever the Dot is turned)
     const cam = camera as PerspectiveCamera;
     if (cam.fov !== view.current.fov) {
       cam.fov = view.current.fov;
       cam.updateProjectionMatrix();
     }
+    const f = fit.current;
+    tmp.box.min.set(-M.bodyMm.w / 2, -M.bodyMm.h / 2, D.zb);
+    tmp.box.max.set(M.bodyMm.w / 2, M.bodyMm.h / 2, D.zf);
+    if (dm && !dm.box.isEmpty()) tmp.box.union(dm.box);
+    tmp.box.getCenter(tmp.v);
+    tmp.box.getSize(tmp.n).multiplyScalar(0.5);
+    const kf = rm || !f.set ? 1 : 1 - Math.exp(-dt * 9);
+    f.set = true;
+    if (f.c.distanceToSquared(tmp.v) + f.e.distanceToSquared(tmp.n) > 1e-4) {
+      f.c.lerp(tmp.v, kf);
+      f.e.lerp(tmp.n, kf);
+      busy = true;
+    }
+    // how much further than the Dot's own corner anything drawn is (for the depth range)
+    f.reach = Math.max(0, f.c.length() + f.e.length() - 46);
     const aspect = size.width / Math.max(1, size.height);
-    const halfH = Math.max((M.bodyMm.h / 2) * 1.16, ((M.bodyMm.w / 2) * 1.32) / aspect);
+    const halfH = Math.max(f.e.y * 1.16, (f.e.x * 1.32) / aspect);
     baseDist.current = halfH / Math.tan((view.current.fov * Math.PI) / 360);
     const z = zoom.current;
     z.display += (z.target - z.display) * (rm ? 1 : 1 - Math.exp(-dt * 12));
     if (Math.abs(z.target - z.display) > 0.001) busy = true;
     else z.display = z.target;
     const dist = (view.current.distance ?? baseDist.current) / z.display;
-    const lookY = -view.current.offsetY * M.bodyMm.h;
-    camera.position.set(0, lookY + dist * Math.sin(view.current.elevation), dist * Math.cos(view.current.elevation));
-    camera.lookAt(0, lookY, 0);
-    let near = view.current.near ?? Math.max(dist * 0.15, dist - DEPTH_REACH_MM);
-    let far = view.current.far ?? dist + DEPTH_REACH_MM + 30;
+    // the middle of what is framed, as the Dot is turned now
+    if (g) tmp.v.copy(f.c).applyQuaternion(g.quaternion);
+    else tmp.v.set(0, 0, 0);
+    const lookX = tmp.v.x, lookY = tmp.v.y - view.current.offsetY * M.bodyMm.h, lookZ = tmp.v.z;
+    camera.position.set(lookX, lookY + dist * Math.sin(view.current.elevation), lookZ + dist * Math.cos(view.current.elevation));
+    camera.lookAt(lookX, lookY, lookZ);
+    let near = view.current.near ?? Math.max(dist * 0.15, dist - DEPTH_REACH_MM - f.reach);
+    let far = view.current.far ?? dist + DEPTH_REACH_MM + 30 + f.reach;
 
     // the Workbench: the Dot lies on the table and the camera is the table's; while the mode changes, both travel
     const w = worldApi.current;
@@ -783,7 +867,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
         g.quaternion.slerpQuaternions(tmp.q, w.dotQuat, e);
         g.position.lerp(w.dotPos, e);
         camera.position.lerp(w.camPos, e);
-        camera.lookAt(tmp.v.set(0, lookY, 0).lerp(w.camLook, e));
+        camera.lookAt(tmp.v.set(lookX, lookY, lookZ).lerp(w.camLook, e));
       }
       const wd = camera.position.distanceTo(w.camLook);
       near += (Math.max(wd * 0.1, wd - 520) - near) * e;

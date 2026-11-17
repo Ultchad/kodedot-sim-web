@@ -795,3 +795,96 @@ Found in the product while writing (not fixed here; each is something the guide 
 7. `tools/dotbench build` needs Pillow for an app with a PNG icon (Kode's template has one) and does not say so; its other path
    defaults point at the maker's machine when `.dotbench-env` was not sourced.
 8. The repository has no LICENSE file at its root (the README states GPL-3.0-or-later).
+
+## Dot poses, the module in the Device view, wire polish, the parts generator, magnetic angles (2026-11-17, fix/wires-mount, second batch)
+
+Run: `cd web && npm test` (438 passed, 32 files), `npm run build`,
+`UX_PORT=4398 node scripts/wires-mount-shots.mjs --only <scenes>` (scenes: `wires,legs,cross,crossing,modules,poses,device,magnet`;
+pictures in `web/screenshots/workbench2/`), and for the parts `tests/node/parts/run.sh`.
+
+### 1. Ways of putting the Dot down
+- Three: **lying** (as before), **standing** (upright on its bottom edge, screen toward the viewer), **on its side** (resting on its
+  right wall, screen toward the viewer, top edge to the right: landscape; the right wall was chosen because the card slot is in the
+  left one and stays reachable on top). No leaning pose: nothing would hold it. With a radio module the lying Dot already rests at
+  14.8 degrees.
+- Where: right click on the Dot on the table (a right click that was not a drag: a right drag still slides the table), a finger held
+  550 ms on it, and the same three pills in the Dot's card in the Bench panel (keyboard). The menu (`components/WorkbenchMenu.tsx`,
+  a cream card with pills beside the pointer, closed by a choice, Escape or a press elsewhere) also opens on any other thing with
+  Turn a quarter, Duplicate, Delete (the store's own actions). Not on the microSD card (it has its panel), not while the wire tool is on.
+- One source for the numbers: `workbench/layout.ts` `POSE_AXES` (where the Dot's own axes point). `applyDotPose` makes the footprint,
+  the places of the coils, the infrared window, the port and the slot, every range and the "bring near" spots from it; the scene's
+  rotation is made from the same axes (`rest.ts poseFrame`; a test compares the two). The hand's tilt (amber ball) and turn apply on
+  top, about the table's own lines, in every pose.
+- Ranges from where the Dot really is: the coils are on the back cover (under the lying Dot, behind the standing one); the infrared
+  beam leaves the top edge (away from the viewer lying, to the right on its side; standing it points at the ceiling and only what is
+  within 130 mm is reached: a choice, for the light that comes back down); standing, the USB-C port is against the table: nothing
+  can be plugged in, a plugged charger or computer comes unplugged (no text says why yet). Wi-Fi and Bluetooth are measured from the
+  Dot's middle, which does not move.
+- The bench: `dotPose` is in the bench store with the rest (saved, in the bench file, undo and redo). On a change
+  (`PartsService.setDotPose`, one undo step) things stay where they are unless the Dot would now lie on them (they move aside), who
+  is in range is measured again, the card in the slot stays in the slot, the module on the header goes with the Dot.
+- Everything of the first batch in every pose: `rest.test.ts` now has the Dot alone and with each of the five modules in each
+  orientation for each of the three poses (24 assemblies), resting and tipped by the hand three ways: no vertex under the table.
+  On its side a module wider than the Dot props the far end up (Maker: 4.2 degrees). Wires leave the header's opening wherever it is
+  (standing: upward from the top, then down in an arc) and keep out of the Dot's box as it stands; the module is the Dot's child.
+
+### 2. The module in the Device view
+- `workbench/dotModule.ts`: the mounted module is ONE object, a child of the Dot's own model, in both views, placed by the one mount
+  matrix (`parts.mountOf` -> `mountMatrix`). It follows the Dot orbited in the Device view, on the table in any pose, and while the
+  view changes. The Workbench's bodies no longer draw a mounted module; they keep its place (picking, the shadow and the outline
+  where the Dot carries it, resting the assembly). Its code and the part models are fetched the first time a module is mounted.
+- Device view framing: the camera looks at the middle of the Dot and its module and fits both (it eases there when a module is
+  mounted or taken off); the depth range grows with it. Taking the module off (either view) removes it in both.
+- The black screen in the owner's picture: not reproduced. Workbench, hacking module mounted, switch to Device, three runs: the
+  device stayed `running` (kodeOS), panel on, backlight 60, and the picture is on the glass in both views (`device-hacking.png`).
+  Mounting and switching do not stop the device or blank the panel. kodeOS by itself dims to its line-drawing idle face after a
+  while without input (visible in these pictures); a fully black glass is the panel off or a stopped device. Which of the two it was
+  in his session cannot be told from the picture.
+
+### 3. Wires
+- A wire between two raised places arcs between them: from every raised place (an end, a body's top) the wire comes away level and
+  falls off as a parabola (1 mm in the first 12 mm of run), so two raised places within about 70 mm are joined by an arc that does
+  not touch the table, and further apart it lies on the table between. The dip and step before a board (the S in
+  `wire-header-from-behind.png`) is gone.
+- A wire that would pass through one made before it is lifted over it at the crossing (a hump of one wire's thickness, same
+  parabola); the lower wire's move remakes the upper one. Not handled: two wires along the same line (they lie in each other),
+  crossings inside the first centimetre from a terminal.
+
+### 4. Parts generator and the connector pins
+- `parts/gen/modules.mjs`: `flatMount` writes `upright { +X, -Y, +Z }`, `turned { -X, -Y, -Z }`, `source: "documented"`;
+  `flatPlace` puts connector column 1 at the right seen from the component side and the odd pins in the higher row
+  (`x0 + 2.54 * (10 - c)`, `ROW_Z[1 - r]`); `connector.odd_row` is left out for flat modules (the schema's enum has no "high_z").
+- Regenerated (`node parts/gen/gen-parts.mjs`): only `kode-maker`, `kode-robotics`, `kode-camera-shape` changed: the `pos` and `mm`
+  of their 20 connector pins, `mount.connector` (no `odd_row`), and the pin dots of `picture.svg`. `parts:regen`, `parts:check` up to date.
+- Web test (`parts/geometry.test.ts`): each connector pin of the five modules through the mount matrix lies in the hole of the
+  header pin that carries its GPIO or rail, upright and turned (turned: position p becomes 15 - p).
+- `tests/node/parts/run.sh` on a freshly seeded build dir: schema, library (39 parts), bench 47, geometry 257, circuit 43, boards 60,
+  starter, e2e 32 all passed; modules 65 of 66 on that run because `run.sh` runs the modules test before it builds
+  `parts_robotics` (a cold build dir only); run again with the package built: modules PASSED (69 checks).
+
+### 5. Magnetic angles (`lib/magnet.ts`, one helper)
+- Feel: free far from a mark; entering a mark's window the angle is tugged (about a degree) and eases onto the mark; in the inner
+  45% of the window it IS the mark; leaving takes 1.35 times the window, so nothing chatters at the edge; let go inside the window
+  and the mark itself is what is kept; a drag that begins on a mark leaves it freely; Alt turns the magnet off; with reduced motion
+  there is no easing (inside the window: the mark).
+- Windows: 7 degrees for the straight angles, 3.5 for the diagonals. Seven is 16 pixels of hand travel at the 0.45 degrees a pixel
+  the views turn by: wide enough to be found without aiming, narrow enough that a slow turn is not sticky; half for the diagonals,
+  so they are found when looked for and passed when not.
+- Device view: turning catches on front, back, both sides, top and bottom (the turn limit went from 80 to 90 degrees so that top
+  and bottom exist), the diagonals, and the opening three-quarter view (roll 17, weak); Shift spins in the screen's plane with the
+  quarter marks (Alt used to do that too: Alt is the magnet's switch now).
+- Workbench: the camera's turn catches on the four straight directions and on straight down; the Dot's tilt on level and 45, its
+  turn on the table (Shift on the amber ball) on the quarter turns and the diagonals; Alt+arrows step by 5 degrees onto the marks.
+  Parts only turn by quarter turns (R, the button, the menu): they are always exact, there is nothing to catch.
+- Checked in the page by script, mouse and emulated touch (not by a hand): camera 29 -> stopped 2 short of the front: 0 (mouse),
+  0 (touch), 2.13 (Alt); the Dot's turn 60 -> 3 short of 90: 90, Alt 87; Device view 17 -> 3 short of the side: 90 (mouse), 90
+  (touch), 87.2 (Alt).
+
+### Weak or not done (second batch)
+- The motion sensors still report only the hand's tilt, relative to how the Dot is put down (as before, when lying was zero).
+- A mounted module keeps its lying footprint as the rectangle other things stay clear of; wires use its true box.
+- In the Device view the module has no shadow and cannot be pressed.
+- The pose pills are in the Bench panel's Dot card; the menu is pointer only (keyboard users have the card).
+- Standing with a cable plugged: the cable comes out and nothing tells why.
+- Not tried: a real phone, a real GPU; the magnet's feel was judged from numbers, not from a hand.
+

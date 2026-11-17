@@ -11,7 +11,7 @@ import { fromB64, kvAll, kvDel, kvGet, kvSet, toB64 } from './idb';
 import { findPlug, hostOf, legsOf, localTerms, mountMatrix, type Host, type LocalTerm, type MountGeo, type Plug } from './geometry';
 import type { PartState } from '../bench3d/contract';
 import type { KodeDevice } from '../device/types';
-import { obstacles, registerSize, settle, type Placed, type Pos, type Rot } from '../workbench/layout';
+import { dotToTable, obstacles, registerSize, settle, type DotPose, type Placed, type Pos, type Rot } from '../workbench/layout';
 
 export type Text3 = { en: string; 'pt-BR'?: string; es?: string };
 export interface PartField {
@@ -400,9 +400,23 @@ export class PartsService {
     this.bench.setMount(instance, side);
     const all: Placed[] = this.bench.getState().objects.map((x) => ({ id: x.id, kind: x.kind, pos: x.pos, rot: x.rot }));
     const mat = side ? mountMatrix(m.body, m.mount, side) : null;
-    // lying flat, the Dot's X is the table's X and its top edge (+Y) points away from the viewer (-Z)
-    const pos = mat ? { x: mat[12], z: -mat[13] } : settle(o.kind, o.pos, o.rot as Rot, obstacles(all, instance), true);
+    // on the table the module's place is where its model's origin is, the Dot put down the way it is
+    const pos = mat ? this.mountSpot(mat) : settle(o.kind, o.pos, o.rot as Rot, obstacles(all, instance), true);
     if (pos) this.bench.move(instance, pos);
+  }
+  private mountSpot(mat: number[]): { x: number; z: number } {
+    const p = dotToTable(this.bench.getState().dotPose, mat[12], mat[13], mat[14]);
+    return { x: p.x, z: p.z };
+  }
+  /** Puts the Dot down another way (lying, standing, on its side); the module on its header goes with it. One undo step. */
+  setDotPose(pose: DotPose): void {
+    if (pose === this.bench.getState().dotPose) return;
+    this.bench.checkpoint();
+    this.bench.setDotPose(pose);
+    for (const id of Object.keys(this.bench.getState().mounts)) {
+      const mat = this.mountOf(id);
+      if (mat) this.bench.move(id, this.mountSpot(mat));
+    }
   }
 
   private syncLinks(engine: Engine): void {

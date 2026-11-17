@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANCHORS, DOT, DOT_RECT, GRID, MAT, SD_ID, freeSpot, isFree, isNear, obstacles, overlaps, placeMissing, rectOf, settle, signalAt, signalLoss, sizeOf, spotFor, zoneOf, type Placed } from './layout';
+import { ANCHORS, DOT, DOT_POSES, DOT_RECT, GRID, MAT, SD_ID, applyDotPose, dotCentreHeight, freeSpot, isFree, isNear, obstacles, overlaps, placeMissing, rectOf, settle, signalAt, signalLoss, sizeOf, spotFor, zoneOf, type DotPose, type Placed } from './layout';
 
 describe('workbench layout', () => {
   it('rotation swaps the footprint', () => {
@@ -82,5 +82,59 @@ describe('workbench layout', () => {
     expect(signalAt(-45, { x: 290, z: 0 })).toBeLessThan(-55);
     expect(signalAt(-90, { x: 290, z: 0 })).toBe(-95);
     expect(signalAt(-45, undefined)).toBe(-45);
+  });
+});
+
+describe('the Dot put down another way', () => {
+  const each = (fn: (pose: DotPose) => void) => {
+    try {
+      for (const pose of DOT_POSES) {
+        applyDotPose(pose);
+        fn(pose);
+      }
+    } finally {
+      applyDotPose('lying');
+    }
+  };
+  it('has its footprint, its coils, its beam and its port where the Dot really is', () => {
+    each((pose) => {
+      const w = DOT_RECT.x1 - DOT_RECT.x0, d = DOT_RECT.z1 - DOT_RECT.z0;
+      if (pose === 'lying') expect([w, d]).toEqual([DOT.hw * 2, DOT.hd * 2]);
+      if (pose === 'standing') expect([w, d]).toEqual([DOT.hw * 2, DOT.h]);
+      if (pose === 'side') expect([w, d]).toEqual([DOT.hd * 2, DOT.h]);
+      expect(dotCentreHeight(pose)).toBeCloseTo(pose === 'lying' ? DOT.h / 2 : pose === 'standing' ? DOT.hd : DOT.hw);
+      // the coils are on the back cover: under the lying Dot, behind the one that stands
+      const nfc = zoneOf('nfc.tag')!;
+      expect(nfc.shape).toBe('circle');
+      if (pose !== 'lying') expect(nfc.z).toBeCloseTo(-DOT.h / 2);
+      else expect([nfc.x, nfc.z]).toEqual([0, -14]);
+    });
+  });
+  it('measures every range from there', () => {
+    each((pose) => {
+      // a tag right behind the Dot's back is in range standing and on its side, a tag 60 mm to the left of the lying Dot is not in range standing
+      const behind = { x: 0, z: -DOT.h / 2 - 20 };
+      expect(isNear('nfc.tag', behind, 0)).toBe(true);
+      expect(isNear('nfc.tag', { x: -DOT.hw - 70, z: 60 }, 0)).toBe(false);
+      // the infrared beam leaves the top edge: away from the viewer lying, to the right on its side, upward standing
+      const tvAhead = isNear('ir.tv', { x: 0, z: -200 }, 0), tvRight = isNear('ir.tv', { x: 220, z: 0 }, 1);
+      if (pose === 'lying') expect([tvAhead, tvRight]).toEqual([true, false]);
+      if (pose === 'side') expect([tvAhead, tvRight]).toEqual([false, true]);
+      if (pose === 'standing') {
+        expect([tvAhead, tvRight]).toEqual([false, false]);
+        expect(isNear('ir.tv', { x: 0, z: -90 }, 0)).toBe(true); // only what is close gets the light that comes back down
+      }
+      // standing on its bottom edge the USB-C port is against the table: nothing can be plugged in
+      const plugged = isNear('power.charger', spotFor('power.charger', true, 0, [DOT_RECT]), 0);
+      expect(plugged).toBe(pose !== 'standing');
+      // the card slot stays reachable every way
+      expect(isNear(SD_ID, spotFor(SD_ID, true, 0, [DOT_RECT]), 0)).toBe(true);
+      // and whatever is brought near ends up beside the Dot, not on it
+      for (const kind of ['nfc.tag', 'rfid.card', 'ir.remote', 'wifi.router']) {
+        const p = spotFor(kind, true, 0, [DOT_RECT]);
+        expect(isNear(kind, p, 0), `${pose} ${kind}`).toBe(true);
+        expect(isFree(kind, p, 0, [DOT_RECT]), `${pose} ${kind}`).toBe(true);
+      }
+    });
   });
 });

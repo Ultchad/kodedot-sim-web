@@ -14,7 +14,7 @@ const arg = (n) => {
   return i < 0 ? null : process.argv[i + 1];
 };
 const out = arg('--out') ?? shots;
-const only = arg('--only')?.split(',') ?? ['wires', 'legs', 'cross', 'modules'];
+const only = arg('--only')?.split(',') ?? ['wires', 'legs', 'cross', 'modules', 'poses', 'crossing', 'device', 'magnet'];
 mkdirSync(out, { recursive: true });
 
 const MODULES = [
@@ -30,13 +30,21 @@ async function run() {
   const { page, D } = b;
   try {
     await b.ready();
-    const box = await page.$eval('canvas', (c) => {
-      const r = c.getBoundingClientRect();
-      return { x: r.x, y: r.y, width: r.width, height: r.height };
-    });
+    // the canvas's place on the page (it changes when a banner comes or goes: read again for every picture)
+    const box = { x: 0, y: 0, width: 0, height: 0 };
+    const readBox = async () =>
+      Object.assign(
+        box,
+        await page.$eval('canvas', (c) => {
+          const r = c.getBoundingClientRect();
+          return { x: r.x, y: r.y, width: r.width, height: r.height };
+        }),
+      );
+    await readBox();
     const shot = async (name) => {
       await b.settled();
       await sleep(700);
+      await readBox();
       await page.screenshot({ path: join(out, `${name}.png`), clip: box });
       console.log(`shot  ${name}`);
       if (b.problems.length) console.log('  page problems:', b.problems.splice(0).join('\n  '));
@@ -133,6 +141,184 @@ async function run() {
           await b.settled();
         }
       }
+    }
+
+    if (only.includes('poses')) {
+      // the Dot put down the other ways: alone, with a board module, with a radio module; the menu that offers them
+      await clear();
+      const pose = (p) => D((x) => window.__dotbench.parts.setDotPose(x), p);
+      const mountOn = async (id, side = 'upright') => {
+        const m = await place(id, 120, 40);
+        await D((i, sd) => window.__dotbench.parts.mount(i, sd), m, side);
+        await until(() => D((i) => !!window.__dotbenchWb.world.bodies.items.get(i)?.mounted, m), 8000, 100);
+        await D(() => window.__dotbench.select.clear());
+        return m;
+      };
+      for (const p of ['standing', 'side']) {
+        await pose(p);
+        await view(0, 0, 330, 1.05, 0.45);
+        await shot(`dot-${p}`);
+        await view(0, 0, 330, 1.545, Math.PI / 2);
+        await shot(`dot-${p}-from-the-side`);
+      }
+      // the menu: a right click on the Dot
+      await pose('lying');
+      await view(0, 0, 420, 0.6, 0);
+      const c = await D(() => window.__dotbenchWb.table(0, 0, 20));
+      await page.mouse.click(c.x, c.y, { button: 'right' });
+      await page.waitForSelector('[data-testid=wb-menu]', { timeout: 5000 });
+      await sleep(300);
+      await readBox();
+      await page.screenshot({ path: join(out, 'dot-menu.png'), clip: box });
+      console.log('shot  dot-menu');
+      await page.click('[data-testid=dot-pose-standing]');
+      await until(() => D(() => window.__dotbench.bench.getState().dotPose === 'standing'), 4000, 100);
+      for (const [name, id] of [['maker', 'dotbench.kode-maker'], ['hacking', 'dotbench.kode-hacking-shape']]) {
+        await clear();
+        const m = await mountOn(id);
+        // a wire from the header's neighbour is not possible with a module on it: a wire from a module's own socket instead
+        if (name === 'maker') {
+          const bb = await place('dotbench.breadboard-half', 110, 60);
+          await wire(`${m}.S3`, `${bb}.e6`, '#2f6fdb');
+          await D(() => window.__dotbench.select.clear());
+        }
+        for (const p of ['standing', 'side']) {
+          await pose(p);
+          await view(20, 0, 400, 1.0, 0.5);
+          await shot(`dot-${p}-with-${name}`);
+          await view(0, 0, 400, 1.545, Math.PI / 2);
+          await shot(`dot-${p}-with-${name}-from-the-side`);
+        }
+      }
+      // a wire out of the header of the standing Dot, and a part on the table in front
+      await clear();
+      await pose('standing');
+      const bb = await place('dotbench.breadboard-half', 90, 70);
+      await wire('device.EXP1', `${bb}.c5`, '#d9632b');
+      await wire('device.GND', `${bb}.T2_3`, '#1d1d1d');
+      await view(40, 30, 380, 1.1, 0.35);
+      await shot('dot-standing-wired');
+      await pose('lying');
+    }
+
+    if (only.includes('crossing')) {
+      await clear();
+      const a = await place('dotbench.breadboard-half', -120, -150);
+      const b2 = await place('dotbench.breadboard-half', 120, -150);
+      const c = await place('dotbench.uno-r3', 0, -230);
+      const d = await place('dotbench.breadboard-half', 0, -60);
+      await wire(`${a}.j28`, `${b2}.j3`, '#d9412b');
+      await wire(`${c}.A2`, `${d}.a15`, '#2f6fdb');
+      await wire(`${c}.A4`, `${d}.a22`, '#e3b21a');
+      await view(8, -150, 260, 0.85, 0.3);
+      await shot('wires-crossing-each-other');
+      await view(30, -150, 150, 1.25, 0.9);
+      await shot('wires-crossing-each-other-close');
+    }
+
+    if (only.includes('device')) {
+      // the Device view (the Dot alone on the stage) with each module on the header: three-quarter and from the side
+      const screen = () => D(() => {
+        const d = window.__dotbench.device();
+        return { program: d.program.get()?.name ?? null, status: d.status.get(), panelOn: d.panelOn.get(), backlight: d.backlight.get() };
+      });
+      console.log('screen, workbench, nothing mounted:', JSON.stringify(await screen()));
+      for (const [name, id] of MODULES) {
+        if ((await page.$eval('[data-testid=stage-3d]', (e) => e.dataset.mode)) !== 'workbench') await page.click('[data-testid=mode-workbench]');
+        await sleep(600);
+        await clear();
+        const m = await place(id, 120, 40);
+        await D((i) => window.__dotbench.parts.mount(i, 'upright'), m);
+        await until(() => D((i) => !!window.__dotbenchWb.world.bodies.items.get(i)?.mounted, m), 8000, 100);
+        if (name === 'hacking') console.log('screen, workbench, hacking module mounted:', JSON.stringify(await screen()));
+        await page.click('[data-testid=mode-device]');
+        await sleep(1500);
+        if (name === 'hacking') console.log('screen, Device view, hacking module mounted:', JSON.stringify(await screen()));
+        await D(() => window.__dotbench3d.setPoseDebug({ pitch: 6, roll: 28, heading: 0 }));
+        await sleep(900);
+        await readBox();
+        await page.screenshot({ path: join(out, `device-${name}.png`), clip: box });
+        console.log(`shot  device-${name}`);
+        await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 90, heading: 0 }));
+        await sleep(900);
+        await page.screenshot({ path: join(out, `device-${name}-side.png`), clip: box });
+        console.log(`shot  device-${name}-side`);
+        if (name === 'hacking') {
+          // taken off in the Device view: gone there; back in the Workbench: on the table, not on the Dot
+          await D((i) => window.__dotbench.parts.mount(i, null), m);
+          await D(() => window.__dotbench3d.setPoseDebug({ pitch: 6, roll: 28, heading: 0 }));
+          await sleep(900);
+          await page.screenshot({ path: join(out, 'device-module-taken-off.png'), clip: box });
+          console.log('shot  device-module-taken-off');
+        }
+        await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 17, heading: 0 }));
+      }
+      await page.click('[data-testid=mode-workbench]');
+      await sleep(800);
+    }
+
+    if (only.includes('magnet')) {
+      // the magnet on angles, by pointer: a drag that ends near a straight angle ends exactly on it; Alt does not catch
+      await clear();
+      const drag = async (x0, y0, dx, dy, { alt = false, shift = false, touch = false } = {}) => {
+        if (touch) {
+          await page.touchscreen.touchStart(x0, y0);
+          for (let i = 1; i <= 12; i++) {
+            await page.touchscreen.touchMove(x0 + (dx * i) / 12, y0 + (dy * i) / 12);
+            await sleep(25);
+          }
+          await page.touchscreen.touchEnd();
+        } else {
+          if (alt) await page.keyboard.down('Alt');
+          if (shift) await page.keyboard.down('Shift');
+          await page.mouse.move(x0, y0);
+          await page.mouse.down();
+          for (let i = 1; i <= 12; i++) {
+            await page.mouse.move(x0 + (dx * i) / 12, y0 + (dy * i) / 12);
+            await sleep(25);
+          }
+          await page.mouse.up();
+          if (alt) await page.keyboard.up('Alt');
+          if (shift) await page.keyboard.up('Shift');
+        }
+        await sleep(500);
+      };
+      // Workbench camera: from 29 degrees toward the front, stopping 2 degrees short
+      const deg = (r) => Math.round((r * 180) / Math.PI * 100) / 100;
+      const turnPx = (d) => Math.round(((d * Math.PI) / 180) / 0.0052);
+      const empty = { x: box.x + 90, y: box.y + box.height - 60 };
+      for (const how of [{}, { alt: true }, { touch: true }]) {
+        await D(() => window.__dotbenchWb.setView({ x: 0, z: 0, az: 0.5, pol: 0.6, dist: 500 }));
+        await sleep(300);
+        await drag(empty.x, empty.y, turnPx(26.6), 0, how);
+        const v = await D(() => window.__dotbenchWb.view());
+        console.log(`magnet  camera turned to within 2 degrees of the front, ${how.alt ? 'Alt held' : how.touch ? 'by touch' : 'by mouse'}: azimuth ${deg(v.az)} degrees`);
+      }
+      // the Dot's turn on the table: Shift-drag of the amber ball, from 60 degrees to within 3 of 90
+      await D(() => window.__dotbench.select.only('dot'));
+      for (const how of [{ shift: true }, { shift: true, alt: true }]) {
+        await D(() => window.__dotbenchWb.setView({ x: 0, z: 0, az: 0, pol: 0.6, dist: 420 }));
+        await D(() => window.__dotbench.applyPose({ pitch: 0, roll: 0, heading: 60 }));
+        await sleep(600);
+        const h = await D(() => window.__dotbenchWb.handle());
+        await drag(h.x, h.y, Math.round(27 / 0.45), 0, how);
+        const p = await D(() => window.__dotbenchWb.world.shownPose());
+        console.log(`magnet  Dot turned on the table from 60 to within 3 degrees of 90, ${how.alt ? 'Alt held' : 'by mouse'}: heading ${Math.round(p.heading * 100) / 100}, tilt ${p.pitch}/${p.roll}`);
+      }
+      await D(() => window.__dotbench.applyPose({ pitch: 0, roll: 0, heading: 0 }));
+      // Device view: from the opening three-quarter view (roll 17) to within 3 degrees of the side view
+      await page.click('[data-testid=mode-device]');
+      await sleep(1200);
+      for (const how of [{}, { alt: true }, { touch: true }]) {
+        await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 17, heading: 0 }));
+        await sleep(700);
+        await drag(box.x + 80, box.y + 80, Math.round((90 - 17 - 3) / 0.45), 0, how);
+        const p = await D(() => window.__dotbench3d.pose());
+        console.log(`magnet  Device view turned from 17 to within 3 degrees of the side, ${how.alt ? 'Alt held' : how.touch ? 'by touch' : 'by mouse'}: roll ${Math.round(p.roll * 1000) / 1000}, pitch ${Math.round(p.pitch * 1000) / 1000}`);
+      }
+      await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 17, heading: 0 }));
+      await page.click('[data-testid=mode-workbench]');
+      await sleep(800);
     }
 
     if (process.argv.includes('--cost')) {

@@ -3,6 +3,7 @@
  * towards them (no allocations per frame). The camera never goes under the table and never loses the table from sight.
  */
 import { Vector3 } from 'three';
+import { STRONG, magnet, magnetRelease, magnetStart, quarterMarks, type MagnetState, type Mark } from '../lib/magnet';
 import { DESK, DOT, type Rect } from './layout';
 
 const DEG = Math.PI / 180;
@@ -11,6 +12,9 @@ export const POLAR_MAX = 78 * DEG; // never level with, or under, the table
 export const DIST_MIN = 120;
 export const DIST_MAX = 2100;
 export const WB_FOV = 30;
+/** Where the view's turn catches: the four straight directions, and straight down (as far down as the camera goes). */
+const AZ_MARKS: Mark[] = quarterMarks(0, 359.999, false);
+const POL_MARKS: Mark[] = [{ at: POLAR_MIN / DEG, pull: STRONG }];
 
 export interface View {
   x: number;
@@ -39,10 +43,33 @@ export class OrbitRig {
     g.z = Math.min(DESK.z1, Math.max(DESK.z0, g.z));
   }
 
-  /** Drag by pixels: a full turn is about two widths of the view. */
-  orbit(dxPx: number, dyPx: number): void {
-    this.goal.az -= dxPx * 0.0052;
-    this.goal.pol -= dyPx * 0.0045;
+  /** The hand's own angles during a drag (the goal is what the magnet makes of them), and what the drag is caught on. */
+  private raw: { az: number; pol: number; magAz: MagnetState; magPol: MagnetState } | null = null;
+  /** A drag that turns the view begins: from here the turn catches on the four straight directions and on straight down. */
+  orbitBegin(): void {
+    this.raw = { az: this.goal.az, pol: this.goal.pol, magAz: magnetStart(this.goal.az / DEG, AZ_MARKS, 360), magPol: magnetStart(this.goal.pol / DEG, POL_MARKS) };
+  }
+  /**
+   * Drag by pixels: a full turn is about two widths of the view. The view catches when it looks along the table's own
+   * lines (from the front, the back, either side) and when it looks straight down (lib/magnet.ts); `off` (Alt) turns
+   * that off, `reduced` leaves out the easing.
+   */
+  orbit(dxPx: number, dyPx: number, o: { off?: boolean; reduced?: boolean } = {}): void {
+    if (!this.raw) this.orbitBegin();
+    const r = this.raw!;
+    r.az -= dxPx * 0.0052;
+    r.pol = Math.min(POLAR_MAX, Math.max(POLAR_MIN, r.pol - dyPx * 0.0045));
+    this.goal.az = magnet(r.az / DEG, AZ_MARKS, r.magAz, { ...o, period: 360 }) * DEG;
+    this.goal.pol = magnet(r.pol / DEG, POL_MARKS, r.magPol, o) * DEG;
+    this.clamp();
+  }
+  /** The drag ends: let go inside a mark's window, the view is exactly on the mark. */
+  orbitEnd(o: { off?: boolean } = {}): void {
+    const r = this.raw;
+    this.raw = null;
+    if (!r) return;
+    this.goal.az = magnetRelease(r.az / DEG, r.magAz, { ...o, period: 360 }) * DEG;
+    this.goal.pol = magnetRelease(r.pol / DEG, r.magPol, o) * DEG;
     this.clamp();
   }
   /** Slide the table under the pointer by pixels (the point under the pointer stays under it, to first order). */

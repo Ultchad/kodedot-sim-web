@@ -10,8 +10,8 @@ import { makeShadowTexture } from '../device3d/textures';
 import { Wires, type WireParts } from './wires';
 import { Bodies, type BodiesDeps } from './bodies';
 import { OrbitRig } from './camera';
-import { DOT, type Rect } from './layout';
-import { LYING, dotCorners, lowestY, lyingQuat, restTilt } from './rest';
+import { DOT, DOT_RECT, dotCentreHeight, type DotPose, type Rect } from './layout';
+import { LYING, dotCorners, lowestY, poseFrame, restTilt, restingQuat, type PoseFrame } from './rest';
 import { TABLE_DARK, TABLE_LIGHT, buildTable, type Table } from './table';
 
 const D = bodyDims();
@@ -37,9 +37,12 @@ export class BenchWorld {
   /** The Dot's own corners, and the module on its header (points in the Dot's frame): what the assembly rests on. */
   private corners = dotCorners(D.hw, D.hh, D.zf, D.zb);
   private mounted: Float32Array | null = null;
-  /** How the assembly lies by itself (radians about the Dot's X: a module deeper than the Dot's back props its top end up). */
+  /** How the assembly lies by itself (radians about the pose's rocking axis: a module deeper than the Dot props one end up). */
   private rest = 0;
   private restGoal = 0;
+  /** The way the Dot is put down, and the rotation shown while it is being put down another way. */
+  private frame: PoseFrame = poseFrame('lying');
+  private shown: PoseFrame = { ...this.frame, base: this.frame.base.clone() };
   /** What stands on the table. */
   readonly bodies: Bodies;
   /** Where the tilt handle floats: off the Dot's top edge, level with its face (it moves with the Dot). */
@@ -76,6 +79,41 @@ export class BenchWorld {
     this.poseGoal.roll = p.roll;
     this.poseGoal.heading = p.heading;
   }
+  /** Puts the Dot down another way (the bench's `dotPose`); it turns over in a moment. */
+  setDotPose(pose: DotPose): void {
+    if (pose === this.frame.pose) return;
+    this.frame = poseFrame(pose);
+    this.shown.pose = pose;
+    this.shown.up = this.frame.up;
+    this.shown.along = this.frame.along;
+    this.shown.axis = this.frame.axis;
+    this.rest = 0;
+    this.restGoal = this.mounted ? restTilt([this.corners, this.mounted], this.frame.up, this.frame.along) : 0;
+  }
+  get dotPoseShown(): DotPose {
+    return this.frame.pose;
+  }
+  /** How far along a ray the Dot's box is hit, as it is put down and tipped now, or null. */
+  dotHit(ray: { origin: Vector3; direction: Vector3 }): number | null {
+    // the ray in the Dot's own frame, against its box
+    this.q.copy(this.dotQuat).invert();
+    const o = this.hitO.copy(ray.origin).sub(this.dotPos).applyQuaternion(this.q), d = this.hitD.copy(ray.direction).applyQuaternion(this.q);
+    let t0 = 0, t1 = Infinity;
+    const half = [D.hw, D.hh, D.depth / 2], oo = [o.x, o.y, o.z], dd = [d.x, d.y, d.z];
+    for (let k = 0; k < 3; k++) {
+      if (Math.abs(dd[k]) < 1e-9) {
+        if (Math.abs(oo[k]) > half[k]) return null;
+        continue;
+      }
+      const a = (-half[k] - oo[k]) / dd[k], b = (half[k] - oo[k]) / dd[k];
+      t0 = Math.max(t0, Math.min(a, b));
+      t1 = Math.min(t1, Math.max(a, b));
+      if (t0 > t1) return null;
+    }
+    return t0;
+  }
+  private hitO = new Vector3();
+  private hitD = new Vector3();
   /** A short rattle of the Dot on the table (what "shake" looks like). */
   rattle(): void {
     this.shake = 1;
@@ -95,20 +133,21 @@ export class BenchWorld {
   private placeDot(): void {
     const p = this.pose;
     // the heading is taken the short way round (359 and 1 are two degrees apart)
-    this.euler.set(p.pitch * DEG, p.roll * DEG, -p.heading * DEG, 'YXZ');
+    this.euler.set(p.pitch * DEG, p.roll * DEG, 0, 'YXZ');
     this.q.setFromEuler(this.euler);
-    // the way the Dot and its module lie by themselves comes first (about the Dot's own X), the hand's tilt on top;
-    // then the whole assembly rests on its lowest point: the Dot's corners or the module's
-    lyingQuat(this.q, this.rest, this.dotQuat);
+    // put down the way the bench says (lying, standing, on its side), turned on the table, tipped by the hand, and
+    // rocked the way the Dot and its module lie by themselves; then the whole assembly rests on its lowest point: the
+    // Dot's corners or the module's
+    restingQuat(this.shown, this.q, p.heading, this.rest, this.dotQuat);
     const low = Math.min(lowestY(this.corners, this.dotQuat), this.mounted ? lowestY(this.mounted, this.dotQuat) : Infinity);
     const wobble = this.shake > 0.01 ? Math.sin(this.shake * 60) * this.shake * 2.2 : 0;
     this.dotPos.set(wobble, -low + Math.abs(wobble) * 0.4, wobble * 0.3);
-    const lift = -low - D.depth / 2; // how far the middle rose above lying flat
+    const lift = Math.max(0, -low - dotCentreHeight(this.frame.pose)); // how far the middle rose above resting flat
     const soft = 1.55 + lift * 0.03;
     this.dotShadow.position.x = this.dotPos.x;
     this.dotShadow.position.z = this.dotPos.z;
     this.dotShadow.rotation.z = p.heading * DEG;
-    this.dotShadow.scale.set(D.hw * 2 * soft * 1.25, D.hh * 2 * soft * 1.12, 1);
+    this.dotShadow.scale.set((DOT_RECT.x1 - DOT_RECT.x0) * soft * 1.25, (DOT_RECT.z1 - DOT_RECT.z0) * soft * 1.12, 1);
     this.shadowMat.opacity = 0.62 / (1 + lift * 0.05);
     this.handlePos.set(0, D.hh + 15, D.zf).applyQuaternion(this.dotQuat).add(this.dotPos);
   }
@@ -144,7 +183,15 @@ export class BenchWorld {
     const mounted = this.bodies.mountedPoints();
     if (mounted !== this.mounted) {
       this.mounted = mounted;
-      this.restGoal = mounted ? restTilt([this.corners, mounted]) : 0;
+      this.restGoal = mounted ? restTilt([this.corners, mounted], this.frame.up, this.frame.along) : 0;
+    }
+    // being put down another way: the Dot turns over to it
+    if (!this.shown.base.equals(this.frame.base)) {
+      if (reduced || this.shown.base.angleTo(this.frame.base) < 0.004) this.shown.base.copy(this.frame.base);
+      else {
+        this.shown.base.slerp(this.frame.base, 1 - Math.exp(-dt * 11));
+        busy = true;
+      }
     }
     if (this.rest !== this.restGoal) {
       this.rest += (this.restGoal - this.rest) * (reduced ? 1 : 1 - Math.exp(-dt * 12));

@@ -234,5 +234,9 @@ A host stands a model with legs (`plugMm`) on them when it is not in a board's h
 (`workbench/rest.ts`, `standLift`), as the stand does. `workbench/rest.test.ts` places every library part alone and the
 Dot with each Kode module in every orientation and fails when a vertex is under the table.
 
+The Dot can be put down three ways (`workbench/layout.ts` `DotPose`: lying, standing, on its side) and carries its
+module as a child of its own model (`workbench/dotModule.ts`) in the Workbench and in the Device view: a module's model
+is seen from every side and upside down, so close its underside (`cap`) where it shows.
+
 Tubes (`Shape.tube`, `writeTube` with `tubeIndices`) are wound outward since 2026-11-17 (they were inside out: the near
 wall was culled and the far wall's inside showed, which read as glass). A model that worked round that must drop it.
