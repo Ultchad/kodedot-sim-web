@@ -165,7 +165,8 @@ function trough(t: Trough, top: number, fine: boolean, white: MeshBuilder, dark:
   const h = fine ? HOLE : 0.42, cd = fine ? CHAMFER : 0.85, floor = fine ? DEEP : cd;
   const e = OPEN - h, len = Math.hypot(e, cd);
   const ny = e / len, nk = cd / len;
-  const s0 = 0.97, s1 = fine ? 0.8 : 0.42, s2 = 0.2;
+  // shades: the rim, the foot of the chamfer, the foot of the wall (coarse: the countersink goes dark by itself)
+  const s0 = fine ? 0.97 : 0.78, s1 = fine ? 0.8 : 0.1, s2 = 0.2;
   const u0 = t.u[0] - OPEN, u1 = t.u[t.u.length - 1] + OPEN;
   for (const sg of [-1, 1]) {
     face(white, P(u0, sg * OPEN, 0), P(u1, sg * OPEN, 0), P(u1 - e, sg * h, cd), P(u0 + e, sg * h, cd), N(0, ny, -sg * nk), s0, s1);
