@@ -118,13 +118,42 @@ const KEY_W = (346 - 36) / 7, KEY_H = (262 - 24) / 5;
 const keyX = (c) => 32 + c * (KEY_W + 6) + KEY_W / 2;
 const keyY = (r) => 130 + r * (KEY_H + 6) + KEY_H / 2;
 export const KEYS = { del: [331, keyY(3)], space: [306, keyY(4)], lower: [keyX(0) + 22, keyY(4)], symbols: [keyX(2) + 22, keyY(4)] };
-/** Tap the keys of a text made of letters (a-z, either case, the page decides) and spaces; `clear` first deletes `clear` characters. */
+const fieldHash = (app) => { const fb = app.fb(); let h = 0; for (let y = 66; y < 118; y++) for (let x = 40; x < 370; x += 2) { const i = (y * 410 + x) * 4; h = (Math.imul(h, 31) + fb[i] + fb[i + 1] * 3 + fb[i + 2] * 7) | 0; } return h; };
+/** Tap a key that changes the field and wait for the field to change (a tap lost under load is made again). */
+async function tapKey(app, x, y) {
+  for (let k = 0; k < 3; k++) {
+    const before = fieldHash(app);
+    await app.tap(x, y, 90);
+    for (let w = 0; w < 25; w++) { if (fieldHash(app) !== before) return; await sleep(40); }
+  }
+  throw new Error("a key did not reach the field");
+}
+/** Tap the keys of a text made of letters (a-z, either case, the page decides), spaces and trailing digits; `clear` first deletes `clear` characters. */
 export async function typeText(app, text, clear = 0) {
   for (let i = 0; i < clear; i++) await app.tap(...KEYS.del, 90);
+  if (clear) await app.settle(300);
+  let sym = false;   // digits come after the letters: the symbols page is entered once and stays
   for (const ch of text) {
-    if (ch === " ") { await app.tap(...KEYS.space, 90); continue; }
+    if (ch === " ") { await tapKey(app, ...KEYS.space); continue; }
+    if (/[0-9]/.test(ch)) {
+      if (!sym) { await app.tap(...KEYS.symbols, 90); sym = true; await app.settle(250); }
+      const d = ch === "0" ? 9 : Number(ch) - 1;
+      await tapKey(app, keyX(d % 7), keyY(Math.floor(d / 7)));
+      continue;
+    }
     const i = ch.toLowerCase().charCodeAt(0) - 97;
-    await app.tap(keyX(i % 7), keyY(Math.floor(i / 7)), 90);
+    await tapKey(app, keyX(i % 7), keyY(Math.floor(i / 7)));
   }
   await app.settle(300);
+}
+
+const frameHash = (app) => { const fb = app.fb(); let h = 0; for (let i = 0; i < fb.length; i += 4 * 7) h = (Math.imul(h, 31) + fb[i] + fb[i + 1] * 3 + fb[i + 2] * 7) | 0; return h; };
+/** Tap and wait for the screen to change (a tap lost under load is made again); for taps that always change the page. */
+export async function tapPage(app, x, y) {
+  for (let k = 0; k < 3; k++) {
+    const before = frameHash(app);
+    await app.tap(x, y, 90);
+    for (let w = 0; w < 30; w++) { if (frameHash(app) !== before) { await app.settle(500); return; } await sleep(40); }
+  }
+  throw new Error("a tap did not change the screen");
 }

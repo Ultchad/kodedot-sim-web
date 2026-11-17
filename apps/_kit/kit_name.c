@@ -23,7 +23,8 @@
 enum {
     KIT_NAME_UPPER = 0,   /**< Capital letters. */
     KIT_NAME_LOWER,       /**< Small letters. */
-    KIT_NAME_SYMBOLS      /**< Digits and marks. */
+    KIT_NAME_SYMBOLS,     /**< Digits and marks. */
+    KIT_NAME_MORE         /**< The rest of the marks. */
 };
 
 static const char * const s_map_upper[] = {
@@ -47,8 +48,16 @@ static const char * const s_map_symbols[] = {
     "8", "9", "0", "-", ".", "_", "+", "\n",
     "#", "&", "'", "!", "?", "(", ")", "\n",
     "/", ":", ",", "@", "%", "Del", "\n",
-    "ABC", "abc", "Space", ""
+    "ABC", "more", "Space", ""
 };   /**< Digits and marks. */
+
+static const char * const s_map_more[] = {
+    "~", "$", "^", "*", "=", ";", "|", "\n",
+    "<", ">", "[", "]", "{", "}", "\\", "\n",
+    "\"", "`", "(", ")", "?", "!", "'", "\n",
+    "#", "&", "%", "@", "/", "Del", "\n",
+    "ABC", "123", "Space", ""
+};   /**< The rest of the marks. */
 
 static const lv_buttonmatrix_ctrl_t s_ctrl_letters[] = {
     1, 1, 1, 1, 1, 1, 1,
@@ -64,21 +73,49 @@ static const lv_buttonmatrix_ctrl_t s_ctrl_letters[] = {
  */
 static void name_show(kit_name_t *n)
 {
-    char shown[40];
+    char         shown[40];
+    size_t const len  = strlen(n->text);
+    size_t const keep = 18U;   /* What fits the field; a longer text shows its end. */
+    size_t       at   = 0U;
 
     if ( '\0' == n->text[0] )
     {
-        lv_label_set_text(n->field, "Type a name");
+        if ( NULL != n->hint )
+        {
+            lv_label_set_text(n->field, n->hint);
+        }
+        else
+        {
+            lv_label_set_text(n->field, "Type a name");
+        }
         lv_obj_set_style_text_color(n->field, KUI_COLOR_TEXT_MUTED, 0);
+        return;
+    }
+    if ( len > keep )
+    {
+        at = len - keep;
+        shown[0] = '.';
+        shown[1] = '.';
+        shown[2] = '\0';
     }
     else
     {
-        (void)strncpy(shown, n->text, sizeof(shown) - 2U);
-        shown[sizeof(shown) - 2U] = '\0';
-        (void)strcat(shown, "_");
-        lv_label_set_text(n->field, shown);
-        lv_obj_set_style_text_color(n->field, KUI_COLOR_TEXT_ON_BG, 0);
+        shown[0] = '\0';
     }
+    for ( size_t i = at; i < len; ++i )
+    {
+        size_t const k = strlen(shown);
+
+        shown[k] = n->text[i];
+        if ( n->secret && !n->reveal )
+        {
+            shown[k] = '*';
+        }
+        shown[k + 1U] = '\0';
+    }
+    (void)strcat(shown, "_");
+    lv_label_set_text(n->field, shown);
+    lv_obj_set_style_text_color(n->field, KUI_COLOR_TEXT_ON_BG, 0);
 }
 
 /**
@@ -96,9 +133,13 @@ static void name_keys(lv_obj_t *keys, uint8_t mode)
     {
         lv_buttonmatrix_set_map(keys, s_map_lower);
     }
-    else
+    else if ( KIT_NAME_SYMBOLS == mode )
     {
         lv_buttonmatrix_set_map(keys, s_map_symbols);
+    }
+    else
+    {
+        lv_buttonmatrix_set_map(keys, s_map_more);
     }
     lv_buttonmatrix_set_ctrl_map(keys, s_ctrl_letters);
 }
@@ -125,7 +166,7 @@ static void name_key_cb(lv_event_t *e)
         {
             n->text[len - 1U] = '\0';
             /* An empty field starts a name again, with a capital. */
-            if ( 1U == len )
+            if ( (1U == len) && !n->secret )
             {
                 n->mode = KIT_NAME_UPPER;
                 name_keys(keys, n->mode);
@@ -155,12 +196,17 @@ static void name_key_cb(lv_event_t *e)
         n->mode = KIT_NAME_SYMBOLS;
         name_keys(keys, n->mode);
     }
+    else if ( 0 == strcmp(txt, "more") )
+    {
+        n->mode = KIT_NAME_MORE;
+        name_keys(keys, n->mode);
+    }
     else if ( (size_t)n->max > len )
     {
         n->text[len]      = txt[0];
         n->text[len + 1U] = '\0';
         /* A name begins with a capital and goes on in small letters. */
-        if ( (KIT_NAME_UPPER == n->mode) && (0U == len) )
+        if ( (KIT_NAME_UPPER == n->mode) && (0U == len) && !n->secret )
         {
             n->mode = KIT_NAME_LOWER;
             name_keys(keys, n->mode);
@@ -171,6 +217,21 @@ static void name_key_cb(lv_event_t *e)
         /* Full. */
     }
     name_show(n);
+}
+
+/**
+ * @brief A tap on the field of a password lifts the stars, or puts them back.
+ * @param e The event.
+ */
+static void name_field_cb(lv_event_t *e)
+{
+    kit_name_t * const n = (kit_name_t *)lv_event_get_user_data(e);
+
+    if ( n->secret )
+    {
+        n->reveal = !n->reveal;
+        name_show(n);
+    }
 }
 
 /**
@@ -203,6 +264,9 @@ void kit_name_page(kit_t *kit, void *arg)
     lv_obj_set_style_bg_opa(field, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(field, KUI_RADIUS_GLASS, 0);
     lv_obj_set_scrollable(field, false);
+    lv_obj_add_flag(field, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(field, &name_field_cb, LV_EVENT_CLICKED, n);
+    n->reveal = false;
     n->field = lv_label_create(field);
     lv_obj_set_style_text_font(n->field, &kui_font_name, 0);
     lv_label_set_long_mode(n->field, LV_LABEL_LONG_MODE_DOTS);
