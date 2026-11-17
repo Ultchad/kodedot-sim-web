@@ -3,21 +3,23 @@
  * the cup on the cathode's anvil; the lens mixes their light, so its colour is the sum of the three channels `r`, `g`
  * and `b` and its brightness that of the strongest.
  *
- * Dimensions: the T-1 3/4 body of led5.ts. The real part's leads are about 1.27 mm apart under the flange; the
- * manifest puts the terminals on a 2.54 mm grid (a breadboard), so the leads fan out flat under the flange and then
- * go down. The common cathode is the long lead; the flange's flat is on the red lead's side.
+ * Dimensions: the T-1 3/4 body of led5.ts. The four leads leave the flange 1.27 mm apart and are fanned out to the
+ * terminals' 2.54 mm grid (a breadboard) in the room the manifest gives under the body, then go straight down. The
+ * common cathode is the long lead; the flange's flat is on the red lead's side.
  */
 import type { Mesh, MeshStandardMaterial } from 'three';
 import manifest from '../../../../../parts/rgb-led/manifest.json';
 import { PAL, Shape, defineModel, footprintOf, glowing, part, partState, setLamp, terminalsFromManifest, type PartState, type V2 } from '../../index';
-import { asManifest, num, plate, squareLead, terminalOf, tint, visualColour } from './common';
-import { LEG_LONG, LEG_SHORT, lampLevel, lensShape } from './led5';
+import { asManifest, halo, num, plate, setHalo, squareLead, terminalOf, tint, visualColour } from './common';
+import { LED_H, LEG_LONG, LEG_SHORT, lampLevel, lensShape } from './led5';
 
 const m = asManifest(manifest);
 const terminals = terminalsFromManifest(m);
 const PINS = ['R', 'COM', 'G', 'B'].map((id) => terminalOf(terminals, id));
-/** The flange's underside: the leads fan out under it. */
-const Y0 = 0.5;
+/** The flange's underside: the body stands as high as the manifest allows, the leads fan out under it. */
+const Y0 = m.body.h_mm - LED_H - 0.1;
+/** Where the fan starts above the seating plane, and where it ends under the flange. */
+const FAN_0 = 1.0, FAN_1 = Y0 - 0.9;
 /** Where each lead enters the resin, 1.27 mm apart, in the order of the terminals. */
 const sense = Math.sign(PINS[3][0] - PINS[0][0]) || 1;
 const ENTRY = [-1.905, -0.635, 0.635, 1.905].map((x) => x * sense);
@@ -35,9 +37,9 @@ export default defineModel<PartState>({
     PINS.forEach((p, i) => {
       const xi = ENTRY[i], common = i === 1;
       // down into the board, flat along the seating plane to under the flange, up into the resin
-      squareLead(s, p[0], p[2], common ? -LEG_LONG : -LEG_SHORT, Y0);
-      const x0 = Math.min(p[0], xi) - 0.25, x1 = Math.max(p[0], xi) + 0.25;
-      s.prism(...PAL.tin, [[x0, p[2] - 0.25], [x1, p[2] - 0.25], [x1, p[2] + 0.25], [x0, p[2] + 0.25]], 0, Y0, 0.06, { cap: true, ao: 0.95 });
+      squareLead(s, p[0], p[2], common ? -LEG_LONG : -LEG_SHORT, FAN_0 + 0.05);
+      plate(s, PAL.tin, [[p[0] - 0.25, FAN_0], [p[0] + 0.25, FAN_0], [xi + 0.25, FAN_1], [xi - 0.25, FAN_1]], p[2] - 0.25, p[2] + 0.25);
+      squareLead(s, xi, p[2], FAN_1 - 0.05, Y0 + 0.2);
       if (common) {
         // the anvil: it carries the cup with the three dies on the lens's axis
         const a = Math.sign(xi) || -1;
@@ -59,7 +61,7 @@ export default defineModel<PartState>({
       const mat = (c as Mesh).material as MeshStandardMaterial;
       if (mat.transparent) mat.opacity = 0.86;
     }
-    root.add(dome);
+    root.add(dome, halo('halo', [0, Y0 + 4.9, 0]));
     return root;
   },
   animate(st, obj) {
@@ -72,6 +74,7 @@ export default defineModel<PartState>({
     if (peak < 0.004) {
       tint(dome, 0xffffff);
       setLamp(obj, 'dome', 0, 0);
+      setHalo(obj, 'halo', 0, 0, 1);
       return;
     }
     // the lens adds the three lights; the hue is kept pure and the strongest channel sets the level
@@ -85,6 +88,7 @@ export default defineModel<PartState>({
     const w = 255 * Math.max(0, 1 - level * 1.25), q = 1 - w / 255;
     tint(dome, (Math.round(w + R * k * q) << 16) | (Math.round(w + G * k * q) << 8) | Math.round(w + B * k * q));
     setLamp(obj, 'dome', hex, level);
+    setHalo(obj, 'halo', hex, level * 0.5, 9 + 6 * level);
   },
   states: {
     off: partState({ outputs: { r: 0, g: 0, b: 0 } }),

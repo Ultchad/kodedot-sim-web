@@ -4,20 +4,21 @@
  * value can be read off the model as off the real part.
  * Dimensions (the usual CF-1/4 drawing): body 6.3 x 2.5 mm with the two swollen end caps, leads 0.55 mm.
  *
- * The body and leads are the static body (instanced). The bands are one small mesh per copy whose geometry is shared
- * by every resistor of the same value (colours in the vertices, the kit's matte material): no material per copy.
- * Above its rated power (from `current_ma` and `ohms`) the body glows: the bench's "overpower" hazard.
+ * The body, the leads and the gold tolerance band are the static body (instanced). The value is two small meshes per
+ * copy, the pair of digit bands and the multiplier band, which only point at geometries made once with the model
+ * (90 digit pairs, 12 multipliers; colours in the vertices, the kit's matte material): no material and no geometry
+ * per copy, nothing allocated when a value changes.
+ * Above its rated power (the part's `overpower` output) the body glows.
  */
 import { Mesh, type BufferGeometry } from 'three';
 import manifest from '../../../../../parts/resistor/manifest.json';
 import { Shape, defineModel, familyMaterial, footprintOf, part, partState, terminalsFromManifest, type Finish, type PartState, type V2 } from '../../index';
-import { BAND_COLOURS, bandsOf, resistorBands } from './codes';
+import { BAND_COLOURS, GOLD, resistorBands } from './codes';
 import { PLUG, asManifest, asSeen, axial, axialLeadsTo, axialShell, fieldDefault, hotShell, num, setHot, terminalOf } from './common';
 
 const m = asManifest(manifest);
 const terminals = terminalsFromManifest(m);
 const OHMS = fieldDefault(m, 'ohms', 330);
-const RATED_W = Number(m.behaviour?.elements?.[0]?.rated_mw ?? 250) / 1000;
 /** The lacquer of a carbon film resistor (a candidate for PAL: resistorTan). */
 const TAN: Finish = ['gloss', '#e8d6b2'];
 const AXIS_Y = 1.35;
@@ -28,19 +29,26 @@ const BODY: V2[] = [[0, -3.15], [0.62, -3.15], [1.08, -2.98], [R_CAP, -2.62], [R
 const BANDS: V2[] = [[-2.28, R_CAP], [-1.02, R_WAIST], [0.06, R_WAIST], [2.28, R_CAP]];
 const BAND_W = 0.52;
 
-const cache = new Map<number, BufferGeometry>();
-/** The four bands of a value as one geometry, built once per value and shared by every copy that has it. */
-function bandGeometry(code: number): BufferGeometry {
-  let g = cache.get(code);
-  if (!g) {
-    const s = new Shape();
-    const colours = bandsOf(code);
-    s.with(axial(AXIS_Y), () => BANDS.forEach(([x, r], i) => s.band('matte', asSeen(BAND_COLOURS[colours[i]]), 0, 0, r, x - BAND_W / 2, x + BAND_W / 2, 0, Math.PI * 2, 14)));
-    g = s.build().matte!;
-    cache.set(code, g);
-  }
-  return g;
+/** One band (or several) as a geometry: [index of the band's place, colour index]. */
+function bandGeometry(bands: [number, number][]): BufferGeometry {
+  const s = new Shape();
+  s.with(axial(AXIS_Y), () => bands.forEach(([at, colour]) => s.band('matte', asSeen(BAND_COLOURS[colour]), 0, 0, BANDS[at][1], BANDS[at][0] - BAND_W / 2, BANDS[at][0] + BAND_W / 2, 0, Math.PI * 2, 14)));
+  return s.build().matte!;
 }
+/** Every digit pair (index d1 + 16 * d2) and every multiplier, made once: `animate` only picks among them. */
+let DIGITS: BufferGeometry[] | null = null, MULTIPLIERS: BufferGeometry[] | null = null;
+function bandTables(): void {
+  if (DIGITS) return;
+  DIGITS = [];
+  for (let d1 = 1; d1 <= 9; d1++) for (let d2 = 0; d2 <= 9; d2++) DIGITS[d1 + 16 * d2] = bandGeometry([[0, d1], [1, d2]]);
+  MULTIPLIERS = BAND_COLOURS.map((_, c) => bandGeometry([[2, c]]));
+}
+const dynamicMesh = (name: string, geometry: BufferGeometry): Mesh => {
+  const m = new Mesh(geometry, familyMaterial('matte'));
+  m.name = name;
+  m.userData.bench3d = 'bands';
+  return m;
+};
 
 export default defineModel<PartState>({
   id: m.id,
@@ -52,26 +60,27 @@ export default defineModel<PartState>({
     const s = new Shape();
     s.with(axial(AXIS_Y), () => s.lathe(...TAN, 0, 0, BODY, ctx.seg(14)));
     axialLeadsTo(s, terminalOf(terminals, 'A'), terminalOf(terminals, 'B'), AXIS_Y, -3.05, 3.05);
+    // the tolerance band: always gold
+    s.with(axial(AXIS_Y), () => s.band('matte', asSeen(BAND_COLOURS[GOLD]), 0, 0, BANDS[3][1], BANDS[3][0] - BAND_W / 2, BANDS[3][0] + BAND_W / 2, 0, Math.PI * 2, 14));
     const root = s.toObject();
+    bandTables();
     const code = resistorBands(OHMS);
-    const bands = new Mesh(bandGeometry(code), familyMaterial('matte'));
-    bands.name = 'bands';
-    bands.userData.bench3d = 'bands';
-    bands.userData.ohms = OHMS;
-    root.add(bands, hotShell('hot', axialShell(AXIS_Y, BODY.filter((_, i) => i !== 2 && i !== 9), ctx.seg(14))));
+    const digits = dynamicMesh('digits', DIGITS![code & 255]), multiplier = dynamicMesh('multiplier', MULTIPLIERS![(code >> 8) & 15]);
+    digits.userData.ohms = OHMS;
+    root.add(digits, multiplier, hotShell('hot', axialShell(AXIS_Y, BODY.filter((_, i) => i !== 2 && i !== 9), ctx.seg(14))));
     return root;
   },
   animate(st, obj, env) {
     const ohms = num(st.fields.ohms, OHMS);
-    const bands = part(obj, 'bands') as Mesh;
-    if (bands.userData.ohms !== ohms) {
-      // a new value: its bands (a geometry is built the first time a value is seen, then shared)
-      bands.userData.ohms = ohms;
-      bands.geometry = bandGeometry(resistorBands(ohms));
+    const digits = part(obj, 'digits') as Mesh;
+    if (digits.userData.ohms !== ohms) {
+      digits.userData.ohms = ohms;
+      const code = resistorBands(ohms);
+      digits.geometry = DIGITS![code & 255];
+      (part(obj, 'multiplier') as Mesh).geometry = MULTIPLIERS![(code >> 8) & 15];
     }
-    // P = I^2 R against the rating: the body glows while it is overloaded
-    const amps = num(st.outputs.current_ma, 0) / 1000;
-    const hot = st.power.on && amps * amps * ohms > RATED_W;
+    // over its rated power the body glows
+    const hot = st.power.on && st.outputs.overpower === true;
     setHot(obj, 'hot', hot, env.time);
     return hot;
   },
@@ -82,6 +91,6 @@ export default defineModel<PartState>({
     r1M: partState({ fields: { ohms: 1000000 } }),
     r0R47: partState({ fields: { ohms: 0.47 }, outputs: { current_ma: 120 } }),
     r68: partState({ fields: { ohms: 68 }, outputs: { current_ma: 20 } }),
-    overpower: partState({ fields: { ohms: 10 }, outputs: { current_ma: 500 } }),
+    overpower: partState({ fields: { ohms: 10 }, outputs: { current_ma: 500, overpower: true } }),
   },
 });

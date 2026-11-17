@@ -1,9 +1,9 @@
 /**
  * Shared builders of the passives family (resistor, capacitors, diode, LEDs). Several of them are candidates for the
  * kit (parts.ts / nodes.ts / print.ts): `axial`, `plate`, `ribbon`, `bentLead`, `cylinderStrip` with `printOnCylinder` and
- * `screenOnCylinder`, `hotShell`, `tint`.
+ * `screenOnCylinder`, `hotShell`, `halo`, `tint`.
  */
-import { BufferAttribute, BufferGeometry, type Mesh, type MeshStandardMaterial } from 'three';
+import { BufferAttribute, BufferGeometry, CanvasTexture, SRGBColorSpace, Sprite, SpriteMaterial, type Mesh, type MeshStandardMaterial } from 'three';
 import { MeshBuilder } from '../../../device3d/meshBuilder';
 import {
   Matrix4, PAL, Shape, glowing, part, print, roundCorners, screen, setLamp,
@@ -189,6 +189,52 @@ export function setHot(obj: Object3D, name: string, hot: boolean, time: number, 
   if (!n) return;
   n.visible = hot;
   if (hot) setLamp(obj, name, colour, 0.42 + 0.26 * Math.sin(time * 7));
+}
+
+let glowMap: CanvasTexture | null = null;
+/** One soft round glow for every halo, drawn in code (none in node: unit tests have no canvas). */
+function glowTexture(): CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  if (!glowMap) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.22, 'rgba(255,255,255,0.62)');
+    grad.addColorStop(0.55, 'rgba(255,255,255,0.2)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    glowMap = new CanvasTexture(c);
+    glowMap.colorSpace = SRGBColorSpace;
+  }
+  return glowMap;
+}
+/**
+ * The bloom round a light: a soft glow that always faces the viewer, centred on `pos`. It is light, not body: hidden
+ * and a point in the template (so it adds nothing to the model's box), sized and coloured per copy with `setHalo`.
+ */
+export function halo(name: string, pos: V3): Sprite {
+  const s = new Sprite(new SpriteMaterial({ map: glowTexture(), transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+  s.name = name;
+  s.position.set(...pos);
+  s.scale.setScalar(0.01);
+  s.visible = false;
+  s.renderOrder = 4;
+  s.userData.bench3d = 'halo';
+  s.userData.perInstance = true;
+  return s;
+}
+/** Lights a halo of one copy: its colour (0xRRGGBB), how strong (0 hides it) and how wide in millimetres. No allocation. */
+export function setHalo(obj: Object3D, name: string, colour: number, strength: number, size: number): void {
+  const s = part(obj, name) as Sprite | undefined;
+  if (!s) return;
+  s.visible = strength > 0.004;
+  if (!s.visible) return;
+  s.material.color.setHex(colour);
+  s.material.opacity = Math.min(1, strength);
+  s.scale.set(size, size, 1);
 }
 
 /** Multiplies the colours of a `glowing` part of one copy (its materials are its own): 0xffffff is as built. */
