@@ -51,5 +51,35 @@ export async function bootBle(pkg, opts = {}) {
       await sleep(20);
     }
   };
+  // ---- console (for the ble_api app) ----
+  a.type = (line) => {
+    const b = Buffer.from(line + "\n"), p = M._malloc(b.length + 1);
+    M.HEAPU8.set(b, p);
+    M._kweb_console_input(p, b.length);
+    M._free(p);
+  };
+  a.res = () => a.logText().split("\n").map((l) => l.trim()).filter((l) => l.includes("RES "));
+  a.cmd = async (line, re, ms = 8000) => {
+    const before = a.res().length;
+    a.type(line);
+    const t0 = Date.now();
+    for (;;) {
+      const lines = a.res().slice(before);
+      const hit = lines.find((l) => re.test(l.slice(l.indexOf("RES ") + 4)));
+      if (hit) { ble.poll(); return hit.slice(hit.indexOf("RES ") + 4); }
+      if (Date.now() - t0 > ms) throw new Error(`no RES line matching ${re} after '${line}' in ${ms} ms; got ${JSON.stringify(lines)}\n${a.logText().slice(-1500)}`);
+      await sleep(25);
+    }
+  };
+  a.fn = (name, arg, ms) => a.cmd(`function name="${name}"` + (arg === undefined ? "" : " arg=" + (typeof arg === "string" ? JSON.stringify(arg) : arg)), new RegExp("^(" + name + "|busy)\\b"), ms);
+  /** Run kode_ble_scan(ms) in ble_api and return { n, devs:[{name, addr, rssi}] }. */
+  a.scan = async (ms = 1000) => {
+    const before = a.res().length;
+    const head = await a.fn("scan", ms, ms + 15000);
+    await sleep(100);
+    const lines = a.res().slice(before).map((l) => l.slice(l.indexOf("RES ") + 4));
+    const devs = lines.filter((l) => l.startsWith("dev ")).map((l) => { const m = /^dev name=(.*) addr=(\S+) rssi=(-?\d+)$/.exec(l); return m && { name: m[1], addr: m[2], rssi: +m[3] }; }).filter(Boolean);
+    return { head, n: +(/n=(-?\d+)/.exec(head)?.[1] ?? NaN), devs };
+  };
   return a;
 }
