@@ -14,7 +14,7 @@ const arg = (n) => {
   return i < 0 ? null : process.argv[i + 1];
 };
 const out = arg('--out') ?? shots;
-const only = arg('--only')?.split(',') ?? ['wires', 'legs', 'cross', 'modules'];
+const only = arg('--only')?.split(',') ?? ['wires', 'legs', 'cross', 'modules', 'poses', 'crossing', 'device'];
 mkdirSync(out, { recursive: true });
 
 const MODULES = [
@@ -133,6 +133,118 @@ async function run() {
           await b.settled();
         }
       }
+    }
+
+    if (only.includes('poses')) {
+      // the Dot put down the other ways: alone, with a board module, with a radio module; the menu that offers them
+      await clear();
+      const pose = (p) => D((x) => window.__dotbench.parts.setDotPose(x), p);
+      const mountOn = async (id, side = 'upright') => {
+        const m = await place(id, 120, 40);
+        await D((i, sd) => window.__dotbench.parts.mount(i, sd), m, side);
+        await until(() => D((i) => !!window.__dotbenchWb.world.bodies.items.get(i)?.mounted, m), 8000, 100);
+        await D(() => window.__dotbench.select.clear());
+        return m;
+      };
+      for (const p of ['standing', 'side']) {
+        await pose(p);
+        await view(0, 0, 330, 1.05, 0.45);
+        await shot(`dot-${p}`);
+        await view(0, 0, 330, 1.545, Math.PI / 2);
+        await shot(`dot-${p}-from-the-side`);
+      }
+      // the menu: a right click on the Dot
+      await pose('lying');
+      await view(0, 0, 420, 0.6, 0);
+      const c = await D(() => window.__dotbenchWb.table(0, 0, 20));
+      await page.mouse.click(c.x, c.y, { button: 'right' });
+      await page.waitForSelector('[data-testid=wb-menu]', { timeout: 5000 });
+      await sleep(300);
+      await page.screenshot({ path: join(out, 'dot-menu.png'), clip: box });
+      console.log('shot  dot-menu');
+      await page.click('[data-testid=dot-pose-standing]');
+      await until(() => D(() => window.__dotbench.bench.getState().dotPose === 'standing'), 4000, 100);
+      for (const [name, id] of [['maker', 'dotbench.kode-maker'], ['hacking', 'dotbench.kode-hacking-shape']]) {
+        await clear();
+        const m = await mountOn(id);
+        // a wire from the header's neighbour is not possible with a module on it: a wire from a module's own socket instead
+        if (name === 'maker') {
+          const bb = await place('dotbench.breadboard-half', 110, 60);
+          await wire(`${m}.S3`, `${bb}.e6`, '#2f6fdb');
+          await D(() => window.__dotbench.select.clear());
+        }
+        for (const p of ['standing', 'side']) {
+          await pose(p);
+          await view(20, 0, 400, 1.0, 0.5);
+          await shot(`dot-${p}-with-${name}`);
+          await view(0, 0, 400, 1.545, Math.PI / 2);
+          await shot(`dot-${p}-with-${name}-from-the-side`);
+        }
+      }
+      // a wire out of the header of the standing Dot, and a part on the table in front
+      await clear();
+      await pose('standing');
+      const bb = await place('dotbench.breadboard-half', 90, 70);
+      await wire('device.EXP1', `${bb}.c5`, '#d9632b');
+      await wire('device.GND', `${bb}.T2_3`, '#1d1d1d');
+      await view(40, 30, 380, 1.1, 0.35);
+      await shot('dot-standing-wired');
+      await pose('lying');
+    }
+
+    if (only.includes('crossing')) {
+      await clear();
+      const a = await place('dotbench.breadboard-half', -120, -150);
+      const b2 = await place('dotbench.breadboard-half', 120, -150);
+      const c = await place('dotbench.uno-r3', 0, -230);
+      const d = await place('dotbench.breadboard-half', 0, -60);
+      await wire(`${a}.j28`, `${b2}.j3`, '#d9412b');
+      await wire(`${c}.A2`, `${d}.a15`, '#2f6fdb');
+      await wire(`${c}.A4`, `${d}.a22`, '#e3b21a');
+      await view(8, -150, 260, 0.85, 0.3);
+      await shot('wires-crossing-each-other');
+      await view(30, -150, 150, 1.25, 0.9);
+      await shot('wires-crossing-each-other-close');
+    }
+
+    if (only.includes('device')) {
+      // the Device view (the Dot alone on the stage) with each module on the header: three-quarter and from the side
+      const screen = () => D(() => {
+        const d = window.__dotbench.device();
+        return { program: d.program.get()?.name ?? null, status: d.status.get(), panelOn: d.panelOn.get(), backlight: d.backlight.get() };
+      });
+      console.log('screen, workbench, nothing mounted:', JSON.stringify(await screen()));
+      for (const [name, id] of MODULES) {
+        if ((await page.$eval('[data-testid=stage-3d]', (e) => e.dataset.mode)) !== 'workbench') await page.click('[data-testid=mode-workbench]');
+        await sleep(600);
+        await clear();
+        const m = await place(id, 120, 40);
+        await D((i) => window.__dotbench.parts.mount(i, 'upright'), m);
+        await until(() => D((i) => !!window.__dotbenchWb.world.bodies.items.get(i)?.mounted, m), 8000, 100);
+        if (name === 'hacking') console.log('screen, workbench, hacking module mounted:', JSON.stringify(await screen()));
+        await page.click('[data-testid=mode-device]');
+        await sleep(1500);
+        if (name === 'hacking') console.log('screen, Device view, hacking module mounted:', JSON.stringify(await screen()));
+        await D(() => window.__dotbench3d.setPoseDebug({ pitch: 6, roll: 28, heading: 0 }));
+        await sleep(900);
+        await page.screenshot({ path: join(out, `device-${name}.png`), clip: box });
+        console.log(`shot  device-${name}`);
+        await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 90, heading: 0 }));
+        await sleep(900);
+        await page.screenshot({ path: join(out, `device-${name}-side.png`), clip: box });
+        console.log(`shot  device-${name}-side`);
+        if (name === 'hacking') {
+          // taken off in the Device view: gone there; back in the Workbench: on the table, not on the Dot
+          await D((i) => window.__dotbench.parts.mount(i, null), m);
+          await D(() => window.__dotbench3d.setPoseDebug({ pitch: 6, roll: 28, heading: 0 }));
+          await sleep(900);
+          await page.screenshot({ path: join(out, 'device-module-taken-off.png'), clip: box });
+          console.log('shot  device-module-taken-off');
+        }
+        await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 17, heading: 0 }));
+      }
+      await page.click('[data-testid=mode-workbench]');
+      await sleep(800);
     }
 
     if (process.argv.includes('--cost')) {

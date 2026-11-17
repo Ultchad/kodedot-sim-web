@@ -75,6 +75,8 @@ export interface Body {
   ry: number;
   lift: number;
   mounted?: number[] | null;
+  /** While mounted: the middle (x, z) and the size (along x, along z) of what it covers of the table. */
+  over?: [number, number, number, number];
   /** 0 on the table, 1 in the Dot (the microSD card in its slot). */
   dock: number;
   dockGoal: number;
@@ -258,6 +260,7 @@ export class Bodies {
   private v2 = new Vector3();
   private v3 = new Vector3();
   private one = new Vector3(1, 1, 1);
+  private gone = new Matrix4().makeScale(0, 0, 0);
   private caster = new Raycaster();
   private hits: Intersection[] = [];
   private liveOff: () => void;
@@ -669,9 +672,16 @@ export class Bodies {
     const addDecor = (it: Body, type: number, t: number, rgb: readonly number[], alpha: number) => {
       if (decor >= 512) return;
       const s = SIZES[it.kind];
-      this.q.setFromAxisAngle(UP, it.ry);
-      this.v.set(it.x, 0.02, it.z);
-      this.v2.set(s.w + PAD * 2, 1, s.d + PAD * 2);
+      if (it.mounted && it.over) {
+        // on the Dot's header: what it covers of the table where the Dot carries it
+        this.q.identity();
+        this.v.set(it.over[0], 0.02, it.over[1]);
+        this.v2.set(it.over[2] + PAD * 2, 1, it.over[3] + PAD * 2);
+      } else {
+        this.q.setFromAxisAngle(UP, it.ry);
+        this.v.set(it.x, 0.02, it.z);
+        this.v2.set(s.w + PAD * 2, 1, s.d + PAD * 2);
+      }
       this.m.compose(this.v, this.q, this.v2);
       this.decor.setMatrixAt(decor, this.m);
       pc[decor * 4] = rgb[0];
@@ -717,6 +727,20 @@ export class Bodies {
           // on the Dot's header: it goes where the Dot goes
           this.m.compose(this.deps.dotPos, this.deps.dotQuat, this.one);
           it.matrix.fromArray(mount).premultiply(this.m);
+          const sz = SIZES[it.kind];
+          let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+          for (let i = 0; i < 8; i++) {
+            this.v3.set(i & 1 ? sz.w / 2 : -sz.w / 2, i & 2 ? sz.h : 0, i & 4 ? sz.d / 2 : -sz.d / 2).applyMatrix4(it.matrix);
+            x0 = Math.min(x0, this.v3.x);
+            x1 = Math.max(x1, this.v3.x);
+            z0 = Math.min(z0, this.v3.z);
+            z1 = Math.max(z1, this.v3.z);
+          }
+          it.over ??= [0, 0, 0, 0];
+          it.over[0] = (x0 + x1) / 2;
+          it.over[1] = (z0 + z1) / 2;
+          it.over[2] = x1 - x0;
+          it.over[3] = z1 - z0;
         }
         if (it.dock > 0) {
           // on its way into (or out of) the slot: between the table and the slot, on a small arc
@@ -729,11 +753,14 @@ export class Bodies {
           this.q.slerp(this.q2, e);
           it.matrix.compose(this.v, this.q, this.one);
         }
+        // a module on the header is drawn by the Dot itself (dotModule.ts: one object for both views); here it only
+        // keeps its place for picking and for resting the assembly
         for (const m of it.batch.meshes) {
-          m.setMatrixAt(it.slot, it.matrix);
+          m.setMatrixAt(it.slot, mount ? this.gone : it.matrix);
           m.instanceMatrix.needsUpdate = true;
         }
         if (it.dyn) {
+          it.dyn.visible = !mount;
           it.dyn.matrix.copy(it.matrix);
           it.dyn.matrixWorldNeedsUpdate = true;
         }
