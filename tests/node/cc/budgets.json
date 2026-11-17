@@ -1,0 +1,13 @@
+{
+  "note": "Fail on a bad regression, not on noise: limits are about 3x the values measured on the shared 2-core machine (see docs/STATUS-cc.md).",
+  "trivialCompileMs": 8000,
+  "stlCompileMs": 25000,
+  "readyMs": 15000,
+  "wasmBytesTrivial": 40000,
+  "bundleRawBytes": 190000000,
+  "workerBytes": 400000,
+  "toolchainRawBytes": 110000000,
+  "maxChunkBytes": 20000000,
+  "boardPackBytes": 2500000,
+  "stlPackBytes": 16000000
+}
