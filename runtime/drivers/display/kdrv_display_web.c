@@ -223,5 +223,9 @@ void kdrv_display_link(kdrv_display_link_t *out)
 {
     if (!out) return;
     memset(out, 0, sizeof *out);
-    out->frames = kweb_state()->frame_seq;
+    /* The real link counts scanned VIDEO frames (on_frame_done), 60 a second whether or not anything was flushed; AO_Display's
+     * health check takes a lit panel whose count stands still for a lost glass and restarts the board. So a still screen (an
+     * app with nothing to animate) needs a count that keeps moving: the free-running 60 Hz grid, the same one flips are paced on.
+     * kweb_state.frame_seq stays the page's "something was flushed" counter. */
+    out->frames = (uint32_t)(mono_ns() / VSYNC_NS);
 }

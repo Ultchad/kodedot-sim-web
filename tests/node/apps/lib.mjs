@@ -36,12 +36,6 @@ const rgbaHash = (fb) => { let h = 2166136261; for (let i = 0; i < fb.length; i 
  */
 export async function launch(bench, pkg, { name, glue = {}, reason = RESET.POWERON } = {}) {
   const run = await bench.boot(pkg, { reason });
-  // The display fake counts flushes where the real link counts video frames, so AO_Display's health check takes a still
-  // screen for a lost glass after a few seconds (docs/STATUS-apps.md). The host stands in for the 60 Hz counter.
-  const dv = () => new DataView(run.M.HEAPU8.buffer, 0, run.M.HEAPU8.buffer.byteLength);
-  const vsync = setInterval(() => { try { dv().setUint32(run.statePtr + OFF.frameSeq, (run.u32(OFF.frameSeq) + 1) >>> 0, true); } catch { /* gone */ } }, 30);
-  const stop0 = run.stop;
-  run.stop = async (o) => { clearInterval(vsync); return stop0(o); };
   const emitted = [];
   const ctx = glueCtx(run.M, emitted);
   const api = {};
