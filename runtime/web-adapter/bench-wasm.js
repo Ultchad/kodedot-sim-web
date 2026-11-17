@@ -127,6 +127,10 @@ export class WasmPart {
       else if (st.pull === "up") out.push({ term, mv: vhigh, ohms: 45000, kind: "pull" });
       else if (st.pull === "down") out.push({ term, mv: 0, ohms: 45000, kind: "pull" });
     }
+    for (const c of this.m.controls ?? []) {                   // a BOOT button: while pressed it ties its pin to ground
+      if (c.action !== "pull_low" || !this.part.fields[c.field]) continue;
+      const def = this.byName.get(c.pin); if (def) out.push({ term: `${this.part.instance}.${def.name}`, mv: 0, ohms: 10, kind: "pull" });
+    }
     return out;
   }
   joins() { return []; }

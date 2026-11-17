@@ -13,6 +13,27 @@ const UNO_W = 68.58, UNO_D = 53.34, TOP_Y = 2.54, BOT_Y = 50.8;
 let OVER = 6.4; const CONTACT_Z = 11.4;   // CONTACT_Z: height of a female header socket's mouth above the table (1.6 mm board + 8.5 mm socket + ~1.3 mm of mouth), where a wire or a shield pin meets the header
 // stepped board outline and the four 3.2 mm mounting holes, mm from the board's left edge and top edge (the modeller's measurement of the Uno R3 drawing)
 const UNO_OUTLINE = [[0, 0], [64.516, 0], [66.04, 1.524], [66.04, 12.954], [68.58, 15.494], [68.58, 48.26], [66.04, 50.8], [66.04, 53.34], [0, 53.34]], UNO_HOLES = [[13.97, 50.8], [15.24, 2.54], [66.04, 17.78], [66.04, 45.72]];
+// 1 mm corner radii of the R3 board (the three outer corners that are not chamfered), as short polyline arcs; the R4 keeps the plain outline.
+function roundCorners(pts, corners, r) {
+  const out = [];
+  pts.forEach((c, i) => {
+    if (!corners.some(([x, y]) => x === c[0] && y === c[1])) { out.push(c); return; }
+    const a = pts[(i + pts.length - 1) % pts.length], b = pts[(i + 1) % pts.length], u = (q) => { const dx = q[0] - c[0], dy = q[1] - c[1], l = Math.hypot(dx, dy); return [dx / l, dy / l]; };
+    const ua = u(a), ub = u(b), cx = c[0] + r * (ua[0] + ub[0]), cy = c[1] + r * (ua[1] + ub[1]), a0 = Math.atan2(c[1] + r * ua[1] - cy, c[0] + r * ua[0] - cx), a1 = Math.atan2(c[1] + r * ub[1] - cy, c[0] + r * ub[0] - cx);
+    let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    for (let k = 0; k <= 4; k++) { const t = a0 + d * k / 4; out.push([Math.round((cx + r * Math.cos(t)) * 1000) / 1000, Math.round((cy + r * Math.sin(t)) * 1000) / 1000]); }
+  });
+  return out;
+}
+const unoOutline = (core) => core === "uno-r3" ? roundCorners(UNO_OUTLINE, [[0, 0], [0, 53.34], [66.04, 53.34]], 1) : UNO_OUTLINE;
+// A push button on a board: a momentary boolean field the page presses, the control that places it (millimetres and picture region) and what it does
+// (restart: the sketch restarts, as a reset or EN button; pull_low: it ties a pin to ground, as BOOT does on GPIO0). Positions are estimated.
+const BTN_NAME = { reset: L("Reset", "Reiniciar", "Reiniciar"), en: L("EN (reset)", "EN (reiniciar)", "EN (reiniciar)"), boot: L("BOOT (GPIO0)", "BOOT (GPIO0)", "BOOT (GPIO0)") };
+const button = (name, mm, scale, action, extra = {}) => ({
+  field: { name, type: "boolean", label: BTN_NAME[name], default: false },
+  control: { field: name, region: { x: Math.round((mm.x - 3) * scale * 10) / 10, y: Math.round((mm.y - 3) * scale * 10) / 10, w: 6 * scale, h: 6 * scale }, mode: "momentary", label: BTN_NAME[name], mm, action, estimate: true, ...extra },
+});
+const buttonSvg = (mm, px, label) => `<rect x="${px(mm.x - 1.5)}" y="${px(mm.y - 1.5)}" width="${px(3)}" height="${px(3)}" rx="1" fill="#b0302a" stroke="#4a1210" stroke-width="2"/><text x="${px(mm.x)}" y="${px(mm.y + 4.6)}" text-anchor="middle" font-family="monospace" font-size="8" fill="#ccc">${label}</text>`;
 const inch = (i) => Math.round(i * 25.4 * 100) / 100;
 const X = (i) => Math.round((OVER + i * 25.4) * 100) / 100;   // x of a header position given in inches from the board's left edge (Arduino Uno R3 drawing: D0 and A5 at 2.5 in = 63.5 mm)
 function unoPins(v) {
@@ -104,22 +125,23 @@ export function boards() {
         "Arduino Uno R4 WiFi: todo lo del R4 Minima más una matriz de LED de 12 x 8 (ArduinoLEDMatrix, loadFrame y renderBitmap; los 96 píxeles son las tres salidas de 32 bits matrix0, matrix1, matrix2, el bit 31 de matrix0 es el LED superior izquierdo, fila a fila, para que la página lo dibuje) y una radio WiFi que NO conecta: WiFi.begin() deja la placa desconectada y lo avisa en la consola de la pieza. Las secuencias y el texto de ArduinoGraphics en la matriz no están implementados.") },
   ];
   for (const v of UNO) {
-    OVER = v.core === "uno-r3" ? 6.4 : 1.9;   // USB-B sticks out 6.4 mm, the R4's USB-C 1.9 mm
+    OVER = v.core === "uno-r3" ? 6.4 : 2.04;   // USB-B sticks out 6.4 mm, the R4's barrel jack 2.04 mm (w_mm 70.62)
+    const LED = { x: v.id === "uno-r4-wifi" ? 26.42 : 27.94, y: 11.18 }, RST = button("reset", { x: OVER + 10, y: 4.5 }, 8, "restart");
     const pins = unoPins(v.core);
     const outputs = [...(v.matrix ? [0, 1, 2].map((i) => ({ name: "matrix" + i, type: "number", label: L(`LED matrix word ${i}`, `Matriz de LED, palavra ${i}`, `Matriz de LED, palabra ${i}`) })) : []), ...LIFE];
     out.push(writePart({ id: "dotbench." + v.id, dir: v.id, w: UNO_W + OVER, d: UNO_D, h: 15, scale: 8, category: "mcu", tags: v.tags, keywords: v.kw, name: v.name, desc: cat(v.desc, NOEMU),
-      extra: { logic_mv: 5000, ...(v.core === "uno-r3" ? { vih_pct: 60 } : {}), outline: UNO_OUTLINE.map(([x, y]) => ({ x: Math.round((OVER + x) * 1000) / 1000, y })), refs: UNO_HOLES.map(([x, y], i) => ({ name: "hole" + (i + 1), kind: "hole", diameter_mm: 3.2, mm: { x: Math.round((OVER + x) * 100) / 100, y, z: 0 } })) }, pins, groups: unoGroups(),
-      fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }],
+      extra: { logic_mv: 5000, ...(v.core === "uno-r3" ? { vih_pct: 60 } : {}), outline: unoOutline(v.core).map(([x, y]) => ({ x: Math.round((OVER + x) * 1000) / 1000, y })), refs: UNO_HOLES.map(([x, y], i) => ({ name: "hole" + (i + 1), kind: "hole", diameter_mm: 3.2, mm: { x: Math.round((OVER + x) * 100) / 100, y, z: 0 } })) }, pins, groups: unoGroups(),
+      fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }, RST.field], controls: [RST.control],
       ...(outputs ? { outputs } : {}),
-      visuals: [{ id: "led", effect: "glow", x: Math.round((OVER + 31) * 8), y: 64, r: 7, color: "#f5c518", source: { gpio: 13 } }],
+      visuals: [{ id: "led", effect: "glow", x: Math.round((OVER + LED.x) * 8), y: Math.round(LED.y * 8), r: 7, color: "#f5c518", source: { gpio: 13 }, mm: { x: Math.round((OVER + LED.x) * 100) / 100, y: LED.y } }],
       behaviour: { type: "wasm", entry: "behaviour.wasm", abi: 1, core: v.core, memory_kb: 1024, stack_kb: 64, sources: ["src/main.ino"] },
-      svg: ({ px }) => { const o = px(OVER), B = UNO_OUTLINE.map(([x, y]) => `${(o + px(x)).toFixed(1)},${px(y).toFixed(1)}`).join(" ");
+      svg: ({ px }) => { const o = px(OVER), B = unoOutline(v.core).map(([x, y]) => `${(o + px(x)).toFixed(1)},${px(y).toFixed(1)}`).join(" ");
         return `<polygon points="${B}" fill="${v.core === "uno-r3" ? "#00878f" : "#0b6e7a"}" stroke="#034a52" stroke-width="3"/>`
         + `<rect x="0" y="${px(8)}" width="${px(OVER + 10)}" height="${px(12)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><text x="${px(OVER / 2 + 3)}" y="${px(14.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#333">${v.core === "uno-r3" ? "USB-B" : "USB-C"}</text>`
         + `<rect x="0" y="${px(36)}" width="${px(OVER + 8)}" height="${px(10)}" fill="#222" stroke="#000" stroke-width="2"/><text x="${px(OVER / 2 + 2)}" y="${px(41.5)}" text-anchor="middle" font-family="monospace" font-size="10" fill="#aaa">DC</text>`
         + `<rect x="${px(OVER + 30)}" y="${px(18)}" width="${px(16)}" height="${px(16)}" fill="#1b1b1b"/><text x="${px(OVER + 38)}" y="${px(27.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#bbb">${v.core === "uno-r3" ? "ATmega328P" : "RA4M1"}</text>`
         + (v.matrix ? `<rect x="${px(OVER + 44)}" y="${px(22)}" width="${px(21)}" height="${px(14)}" fill="#101010" stroke="#444" stroke-width="2"/>` : "")
-        + `<text x="${px(OVER + 2)}" y="${px(30)}" font-family="sans-serif" font-size="15" font-weight="bold" fill="#fff">${v.title.replace("Arduino ", "")}</text><circle id="led" cx="${px(OVER + 31)}" cy="64" r="7" fill="#f5c518" opacity="0.25"/>` + UNO_HOLES.map(([x, y]) => `<circle cx="${(o + px(x)).toFixed(1)}" cy="${px(y)}" r="${px(1.6)}" fill="#0a0a0a" stroke="#c9a227" stroke-width="1.5"/>`).join("") + pinDots(pins, px, 4); },
+        + `<text x="${px(OVER + 2)}" y="${px(30)}" font-family="sans-serif" font-size="15" font-weight="bold" fill="#fff">${v.title.replace("Arduino ", "")}</text><circle id="led" cx="${px(OVER + LED.x)}" cy="${px(LED.y)}" r="7" fill="#f5c518" opacity="0.25"/>` + buttonSvg({ x: OVER + 10, y: 4.5 }, px, "RST") + UNO_HOLES.map(([x, y]) => `<circle cx="${(o + px(x)).toFixed(1)}" cy="${px(y)}" r="${px(1.6)}" fill="#0a0a0a" stroke="#c9a227" stroke-width="1.5"/>`).join("") + pinDots(pins, px, 4); },
       files: { "src/main.ino": blinkIno(v) },
       tests: { "blink.test.json": blinkTest(v.matrix ? [{ comment: "the heart is on the matrix while the LED is on", expect_output: { name: "matrix0", value: 0x3184a444 } }, { expect_output: { name: "matrix2", value: 0x100a0040 } }] : []) } }));
   }
@@ -137,6 +159,7 @@ export function boards() {
     // the picture is the top view with the 3V3 end (antenna) on the left and the USB end on the right: J1 (3V3 ... 5V, GND) is the front row (y = 24.13 mm), J3 (GND ... GND) the back row (y = 1.27 mm), 22.86 mm (0.9 in) apart
     const pins = [...left.map((n, i) => mk(n, 4.7 + 2.54 * i, 24.13)), ...right.map((n, i) => mk(n, 4.7 + 2.54 * i, 1.27))];
     const W = 62.74, D = 25.4;   // 62.74 x 25.40 mm are the two overall sizes in Espressif's PCB drawing PDF (PCB_ESP32-S3-DevKitC-1_V1_20210312CB); the drawing text does not say which is the length, so the length is UNVERIFIED (body.estimate)
+    const ENB = button("en", { x: W - 5.5, y: 3.5 }, 10, "restart"), BOOTB = button("boot", { x: W - 5.5, y: D - 3.5 }, 10, "pull_low", { pin: "IO0" });   // the two buttons flank the USB sockets at the right end (estimated)
     out.push(writePart({ id: "dotbench.esp32-s3-devkitc", dir: "esp32-s3-devkitc", w: W, d: D, h: 14, scale: 10, estimate: true, category: "mcu", tags: ["esp32", "esp32-s3", "espressif", "devkitc", "3v3", "wifi", "ble"],
       keywords: KW(["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontroller", "board", "3.3v", "wifi", "ble"], ["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontrolador", "placa", "3,3v", "wifi", "ble"], ["esp32-s3", "esp32s3", "devkitc", "espressif", "xtensa", "microcontrolador", "placa", "3,3v", "wifi", "ble"]),
       name: L("ESP32-S3 DevKitC-1", "ESP32-S3 DevKitC-1", "ESP32-S3 DevKitC-1"),
@@ -144,11 +167,11 @@ export function boards() {
         "ESP32-S3-DevKitC-1: lógica de 3,3 V, dois cabeçotes de 22 pinos a 0,9 polegada (cabe na protoboard, pinos para baixo), PWM (LEDC) em qualquer GPIO, ADC de 12 bits nos GPIO1 a 20 (analogReadResolution até 14 bits), toque nos GPIO1 a 14, I2C nos GPIO8 e 9, SPI nos GPIO10 a 13, UART0 nos GPIO43 e 44, LED RGB da placa no GPIO48 (mostrado como um LED), BOOT no GPIO0. Alimente com o campo usb ou 5 V no pino 5V; 3V3 é uma saída de 3,3 V com a placa ligada. GPIO19 e 20 são os pinos USB e não são modelados como tal; GPIO35 a 37 ficam livres (sem PSRAM). WiFi e Bluetooth não são simulados.",
         "ESP32-S3-DevKitC-1: lógica de 3,3 V, dos cabezales de 22 pines a 0,9 pulgadas (apta para protoboard, pines hacia abajo), PWM (LEDC) en cualquier GPIO, ADC de 12 bits en GPIO1 a 20 (analogReadResolution hasta 14 bits), táctil en GPIO1 a 14, I2C en GPIO8 y 9, SPI en GPIO10 a 13, UART0 en GPIO43 y 44, LED RGB de la placa en GPIO48 (mostrado como un LED), BOOT en GPIO0. Aliméntala con el campo usb o 5 V en el pin 5V; 3V3 es una salida de 3,3 V con la placa encendida. GPIO19 y 20 son los pines USB y no se modelan como tal; GPIO35 a 37 quedan libres (sin PSRAM). WiFi y Bluetooth no se simulan."), NOEMU),
       extra: { logic_mv: 3300 }, pins, groups: [{ pins: ["V33_1", "V33_2"] }, { pins: ["GND_1", "GND_2", "GND_3", "GND_4"] }],
-      fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }],
+      fields: [{ name: "usb", type: "boolean", label: L("Powered over USB", "Alimentada por USB", "Alimentada por USB"), default: true }, { name: "blink_ms", type: "integer", label: L("Blink half-period", "Meio período do pisca", "Medio período del parpadeo"), min: 20, max: 2000, step: 10, unit: "ms", default: 500, ui: "slider" }, ENB.field, BOOTB.field], controls: [ENB.control, BOOTB.control],
       outputs: [...["r", "g", "b"].map((c) => ({ name: "rgb_" + c, type: "number", min: 0, max: 255, label: L("RGB LED " + c.toUpperCase() + " (0 to 255)", "LED RGB " + c.toUpperCase() + " (0 a 255)", "LED RGB " + c.toUpperCase() + " (0 a 255)") })), ...LIFE],
       visuals: [{ id: "led", effect: "glow", x: 500, y: 127, r: 8, color: "#ffffff", source: { gpio: 48 } }],
       behaviour: { type: "wasm", entry: "behaviour.wasm", abi: 1, core: "esp32-s3", memory_kb: 1024, stack_kb: 64, sources: ["src/main.ino"] },
-      svg: ({ px }) => `<rect x="2" y="2" width="${px(W) - 4}" height="${px(D) - 4}" rx="4" fill="#1b1b1b" stroke="#000" stroke-width="3"/><rect x="${px(4)}" y="${px(6)}" width="${px(18)}" height="${px(13)}" fill="#8a8f98" stroke="#555" stroke-width="2"/><text x="${px(13)}" y="${px(13.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#222">ESP32-S3</text><rect x="${px(W - 8)}" y="${px(8)}" width="${px(8)}" height="${px(9)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><circle id="led" cx="500" cy="127" r="8" fill="#ffffff" opacity="0.25"/>` + pinDots(pins, px, 4),
+      svg: ({ px }) => `<rect x="2" y="2" width="${px(W) - 4}" height="${px(D) - 4}" rx="4" fill="#1b1b1b" stroke="#000" stroke-width="3"/><rect x="${px(4)}" y="${px(6)}" width="${px(18)}" height="${px(13)}" fill="#8a8f98" stroke="#555" stroke-width="2"/><text x="${px(13)}" y="${px(13.5)}" text-anchor="middle" font-family="monospace" font-size="11" fill="#222">ESP32-S3</text><rect x="${px(W - 8)}" y="${px(8)}" width="${px(8)}" height="${px(9)}" fill="#c0c4c8" stroke="#555" stroke-width="2"/><circle id="led" cx="500" cy="127" r="8" fill="#ffffff" opacity="0.25"/>` + buttonSvg({ x: W - 5.5, y: 3.5 }, px, "EN") + buttonSvg({ x: W - 5.5, y: D - 3.5 }, px, "BOOT") + pinDots(pins, px, 4),
       files: { "src/main.ino": blinkIno({ title: "ESP32-S3 DevKitC-1", core: "esp32-s3", rgb: true }) },
       tests: { "blink.test.json": blinkTest() } })); }
   return out;

@@ -466,7 +466,11 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
         "field": {"$ref": "#/$defs/fieldName"},
         "region": {"$ref": "#/$defs/region"},
         "mode": {"enum": ["toggle", "momentary", "drag_x", "drag_y", "rotate"]},
-        "label": {"$ref": "#/$defs/localizedShort"}
+        "label": {"$ref": "#/$defs/localizedShort"},
+        "mm": {"type": "object", "required": ["x", "y"], "additionalProperties": false, "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}, "description": "Where the control sits on the part, in millimetres from the body's top-left corner (the same frame as pins[].mm), for a 3D model. The region is the same place in picture pixels."},
+        "action": {"enum": ["restart", "pull_low"], "description": "What the board does while the control's field is true. restart: the sketch restarts when the field goes true (a reset or EN button). pull_low: the terminal named by pin is held at 0 V through the switch (a BOOT button wired to GPIO0). A field with no action is only read by the firmware."},
+        "pin": {"$ref": "#/$defs/pinName", "description": "For pull_low: the terminal the button pulls to ground."},
+        "estimate": {"type": "boolean", "default": false, "description": "True when the position is estimated, not measured on the real part."}
       }
     },
     "output": {
@@ -494,6 +498,7 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
         "w": {"type": "number"},
         "h": {"type": "number"},
         "r": {"type": "number"},
+        "mm": {"type": "object", "required": ["x", "y"], "additionalProperties": false, "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}, "description": "The visual's place on the part in millimetres from the body's top-left corner, for a 3D model (x and y stay the picture position in pixels)."},
         "color": {"$ref": "#/$defs/color"},
         "source": {
           "oneOf": [
@@ -830,6 +835,13 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
             "anode": {"$ref": "#/$defs/pinName"}, "cathode": {"$ref": "#/$defs/pinName"},
             "vf_mv": {"type": "number", "minimum": 0, "maximum": 5000, "default": 700},
             "rs_ohms": {"type": "number", "minimum": 0.001, "default": 10, "description": "Dynamic resistance above the knee."},
+            "series_ohms": {
+              "oneOf": [
+                {"type": "number", "minimum": 0},
+                {"type": "object", "required": ["field"], "additionalProperties": false, "properties": {"field": {"$ref": "#/$defs/fieldName"}}}
+              ],
+              "description": "A resistor built into the part, in series with the diode (an LED with its resistor inside): a number, or the name of a number field. Added to rs_ohms; the solver sees the sum."
+            },
             "max_ma": {"type": "number", "exclusiveMinimum": 0, "description": "Above 105 % of it: overcurrent hazard; for burn_ms (default 60) of virtual time: the part burns out (open circuit until repaired)."},
             "burn_ms": {"type": "number", "minimum": 0},
             "full_ma": {"type": "number", "exclusiveMinimum": 0, "default": 10, "description": "Current at which brightness is 1."},
