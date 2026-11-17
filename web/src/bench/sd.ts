@@ -7,6 +7,8 @@ export interface SdAreaApi {
   swap(mb: number, o?: { format?: boolean }): void;
   setWriteProtect(wp: boolean): void;
   mount(): void;
+  /** What the card really occupies and the most real data it can hold (sparse store). */
+  stats?(): { storedBytes: number; boundBytes: number; poolBytes: number; layout: 'dense' | 'sparse'; known: boolean };
 }
 export interface StorageApi {
   list(path: string): { name: string; type: 'file' | 'dir'; size: number }[];
@@ -19,7 +21,10 @@ export interface StorageApi {
 }
 
 export const SD_ROOT = '/sdcard';
-export const SD_SIZES_MB = [4, 8, 16, 32] as const;
+/** Nominal card sizes the bench offers. Sparse: only written blocks are stored (runtime/drivers/sd/sdcard.c), so 128 GB costs what is on it. */
+export const SD_SIZES_MB = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072] as const;
+/** "512 MB", "1 GB", "128 GB": the unit people read on a card. */
+export const sizeLabel = (mb: number): string => (mb >= 1024 ? `${mb / 1024} GB` : `${mb} MB`);
 /** The card's FAT keeps names to 255 characters; the Dot's own paths to 160. */
 export const MAX_PATH = 150;
 

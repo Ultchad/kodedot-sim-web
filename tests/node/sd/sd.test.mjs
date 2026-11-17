@@ -71,7 +71,7 @@ await check("idle: mount, files, pull the card, I/O fails and the card is not mo
   await run.stop();
 });
 
-await check("capacity is selectable (2..32 MB), a new card is blank or FAT formatted, and the card has its own region", async () => {
+await check("capacity is selectable (2 MB..256 GB; small cards here), a new card is blank or FAT formatted, and the card has its own region", async () => {
   const bench = await new Bench().open();
   const run = await bench.boot(pkgPath("storage"));
   await run.waitFor(() => /kode>/.test(run.logText()) && /is there/.test(run.logText()), 20000, "console");
@@ -86,7 +86,7 @@ await check("capacity is selectable (2..32 MB), a new card is blank or FAT forma
     fs.write("/sdcard/c.bin", new Uint8Array(100000).fill(mb));
     await cli(run, "sd_unmount"); await sleep(200);
   }
-  assert.throws(() => sd.swap(1)); assert.throws(() => sd.swap(33));
+  assert.throws(() => sd.swap(1)); assert.throws(() => sd.swap(262145));   // the range is 2 MB .. 256 GB since the sparse card (sd/bigsd.test.mjs)
   sd.swap(4, { format: false });                             // a blank card: no FAT
   assert.equal((await mountCard(run, sd, 3000)).mounted, false);
   assert.match(run.logText(), /card has no FAT volume/);

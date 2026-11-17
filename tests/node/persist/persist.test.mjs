@@ -21,8 +21,8 @@ await check("C regions: nvs 64 KiB, flash-fs 2 MiB, sd-card 32 MiB, dev-state 4 
   assert.equal(got["sd-card"].size, 32 << 20);
   assert.equal(got["dev-state"].size, 4096);
   for (const r of Object.values(got)) { assert.equal(r.size % CHUNK, 0); assert.equal(r.ptr % 8, 0); }
-  // nine regions now: nvs, dev-state, apps, app-pending, nfc, ir, flash-fs, sd-card and "ble" (the BLE area's bonds and bench objects); the service holds 16
-  assert.deepEqual(Object.keys(got).sort(), ["app-pending", "apps", "ble", "dev-state", "flash-fs", "ir", "nfc", "nvs", "sd-card"], "the regions of the app role");
+  // eleven regions now: nvs, dev-state, apps, app-pending, nfc, ir, flash-fs, sd-card, "ble" (the BLE area's bonds and bench objects) and the sparse microSD's "sd-map" (page table) and "sd-pool2" (second pool); the service holds 16
+  assert.deepEqual(Object.keys(got).sort(), ["app-pending", "apps", "ble", "dev-state", "flash-fs", "ir", "nfc", "nvs", "sd-card", "sd-map", "sd-pool2"], "the regions of the app role");
   assert.ok(Object.keys(got).length <= 16, "the 16-region limit (DBP_MAX_REGIONS)");
   await run.stop();
 });

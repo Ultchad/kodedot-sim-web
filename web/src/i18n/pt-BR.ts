@@ -396,7 +396,7 @@ export const ptBR: Messages = {
   'power.unplugged': 'Fora da tomada',
   'bench.copy': 'cópia',
   'sd.off': 'Ligue o Dot para ver o cartão dele.',
-  'sd.size': 'Cartão de {mb} MB',
+  'sd.size': 'Cartão de {size}',
   'sd.used': '{used} usados de {total}',
   'sd.writeProtect': 'Proteger contra gravação',
   'sd.newCard': 'Cartão novo',

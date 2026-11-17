@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
  * dotbench volume layer: FatFs on two persistent regions.
  *   volume 0  "flash-fs"  2 MiB, 4096-byte sectors, mounted at /storage  (partitions.csv: storage 0x200000)
- *   volume 1  "sd-card"   virtual card, 2..32 MiB (dev-state), 512-byte sectors, mounted at /sdcard
+ *   volume 1  "sd-card"   virtual card, 2 MB..256 GB nominal, sparse (dev-state), 512-byte sectors, mounted at /sdcard
  * Internal header shared by the storage and sd drivers. Page-side API: runtime/drivers/storage/storage.js. */
 #ifndef DOTBENCH_VFS_H
 #define DOTBENCH_VFS_H
@@ -15,7 +15,8 @@ extern "C" {
 #define DBV_SD    1
 #define DBV_COUNT 2
 #define DBV_FLASH_BYTES (2u << 20)
-#define DBV_SD_MAX_MB   32u
+#define DBV_SD_MAX_MB   262144u    /* 256 GB nominal; sparse above DBV_SD_DENSE_MB (runtime/drivers/sd/sdcard.c) */
+#define DBV_SD_DENSE_MB 32u
 #define DBV_SD_MIN_MB   2u
 
 int      dbv_vol_of(const char *vpath);                 /* 0, 1, or -1 when the path names no volume */
@@ -38,6 +39,8 @@ int      dbd_sd_write(uint32_t first, uint32_t count, const void *src);
 int      dbsd_set_inserted(int inserted);
 int      dbsd_new_card(int capacity_mb, int format);    /* swaps in a new card: blank or FAT formatted */
 int      dbsd_set_write_protect(int wp);
+void     dbsd_card_changed(void);                       /* page: a new card was put in (the table is reset by the firmware side) */
+void     dbsd_stats(uint32_t *out8);                    /* lock-free: stored bytes, bound, layout (sdcard.c) */
 
 #ifdef __cplusplus
 }
