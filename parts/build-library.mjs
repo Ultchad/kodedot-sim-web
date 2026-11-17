@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Build every part folder in this directory into dist/<id>.dotpart with `dotbench part build --builtin`, then write dist/library.json
-// (the index the page loads). usage: node parts/build-library.mjs [--test]   (--test also runs each part's scenarios)
+// (the index the page loads). usage: node parts/build-library.mjs [--test] [--out <dir>]   (--test also runs each part's scenarios; --out: default parts/dist)
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const here = path.dirname(fileURLToPath(import.meta.url)), cli = path.join(here, "../tools/dblib/part/cli.mjs"), dist = path.join(here, "dist");
+const here = path.dirname(fileURLToPath(import.meta.url)), cli = path.join(here, "../tools/dblib/part/cli.mjs"), argv = process.argv.slice(2), oi = argv.indexOf("--out"), dist = oi >= 0 ? path.resolve(argv[oi + 1]) : path.join(here, "dist");
 fs.mkdirSync(dist, { recursive: true });
 const index = [];
 for (const d of fs.readdirSync(here, { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== "dist" && fs.existsSync(path.join(here, e.name, "manifest.json"))).map((e) => e.name).sort()) {

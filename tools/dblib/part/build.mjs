@@ -15,9 +15,13 @@ export const CORE_DIR = path.join(ROOT, "runtime/parts/core");
 const sh = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
 const readIf = (p) => (fs.existsSync(p) ? fs.readFileSync(p) : null);
 
+let warnedApi = false;
 export function env() {
   const emsdk = process.env.DOTBENCH_EMSDK || "/home/claude/tools/emsdk";
-  const api = process.env.DOTBENCH_ARDUINO_API || "/home/claude/src/third/ArduinoCore-API";
+  // ArduinoCore-API: the vendored, pinned copy (third_party/ArduinoCore-API/VERSION) unless DOTBENCH_ARDUINO_API names a checkout that exists
+  const vendored = path.join(ROOT, "third_party/ArduinoCore-API"), over = process.env.DOTBENCH_ARDUINO_API;
+  if (over && !fs.existsSync(path.join(over, "api/Print.cpp")) && !warnedApi) { warnedApi = true; console.warn(`DOTBENCH_ARDUINO_API=${over} has no api/Print.cpp; using the vendored third_party/ArduinoCore-API`); }
+  const api = over && fs.existsSync(path.join(over, "api/Print.cpp")) ? over : vendored;
   const cache = process.env.DOTBENCH_CACHE || path.join(os.homedir(), ".cache", "dotbench");
   return { emsdk, api, cache };
 }
