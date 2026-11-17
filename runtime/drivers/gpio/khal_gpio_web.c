@@ -9,6 +9,7 @@
 #include <string.h>
 #include "khal_gpio.h"
 #include "dotbench_board.h"
+#include "dotbench_exp.h"   /* J3 positions publish their drive state to the bench model (runtime/drivers/exp) */
 
 #define NPINS 64
 typedef struct {
@@ -76,6 +77,7 @@ kode_status_t khal_gpio_input(uint8_t pin, khal_gpio_pull_t pull)
     g_pin[pin].is_output = false;
     g_pin[pin].pull = pull;
     UNLOCK();
+    dbx_pin_set(pin, DBX_IN, pull == KHAL_GPIO_PULL_UP ? DBX_PULL_UP : pull == KHAL_GPIO_PULL_DOWN ? DBX_PULL_DOWN : DBX_PULL_NONE, 0, 0, 0);
     return KODE_OK;
 }
 kode_status_t khal_gpio_output(uint8_t pin, bool level)
@@ -85,6 +87,7 @@ kode_status_t khal_gpio_output(uint8_t pin, bool level)
     g_pin[pin].is_output = true;
     g_pin[pin].out = level;
     UNLOCK();
+    dbx_pin_set(pin, DBX_OUT, DBX_PULL_NONE, level, 0, 0);
     return KODE_OK;
 }
 kode_status_t khal_gpio_write(uint8_t pin, bool level)
@@ -92,7 +95,9 @@ kode_status_t khal_gpio_write(uint8_t pin, bool level)
     if (pin >= NPINS) return KODE_DENIED;
     LOCK();
     g_pin[pin].out = level;
+    bool outp = g_pin[pin].is_output;
     UNLOCK();
+    if (outp) dbx_pin_set(pin, DBX_OUT, DBX_PULL_NONE, level, 0, 0);
     return KODE_OK;
 }
 void khal_gpio_release(uint8_t pin)
@@ -102,6 +107,7 @@ void khal_gpio_release(uint8_t pin)
     g_pin[pin].is_output = false;
     g_pin[pin].pull = KHAL_GPIO_PULL_NONE;
     UNLOCK();
+    dbx_pin_set(pin, DBX_Z, DBX_PULL_NONE, 0, 0, 0);
 }
 bool khal_gpio_level(uint8_t pin)
 {
