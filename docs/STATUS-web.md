@@ -571,7 +571,7 @@ Not done
 
 ## Wires, modules on the Dot, nothing under the table (2026-11-17, branch fix/wires-mount)
 
-Run: `cd web && npm test` (378 passed, 31 files; 302 before), `npm run build`, and for the pictures
+Run: `cd web && npm test` (363 passed, 30 files; 302 in 29 before), `npm run build`, and for the pictures
 `UX_PORT=4398 node scripts/wires-mount-shots.mjs [--only wires,legs,cross,modules] [--cost]` (headless Chrome on the built site;
 every picture named below is in `web/screenshots/workbench2/`). The owner reported three defects; each was reproduced in a
 picture first (same script, same views), fixed, and looked at again.
@@ -593,7 +593,8 @@ picture first (same script, same views), fixed, and looked at again.
   faces away from the run turns aside by 9 mm instead of folding back. Only the two stubs may be inside a box: their own
   terminal's. Bodies are boxes (`WireBox`): every thing on the table with its height (a part in a board's holes or on its legs
   included), the Dot as it lies (tilted too) and the module on its header.
-- A leg under a body (`face: bottom`) is left sideways and a little up, past the nearest side, not up through the body. The 20
+- A pin under a body (`face: bottom`) is left sideways past the nearest side, not up through the body; a bare leg a part stands
+  on is held half way down. The 20
   pins of a mounted module's own connector are in the Dot's header: they are no longer offered as terminals while it is mounted.
 - Wires between the same two things are a bundle: they bow to the same side (2 to 7 mm of slack on a free run) and are pushed
   apart in the middle only where they would lie on each other (2.6 mm), in the order they already lie in, so they do not cross.
@@ -665,6 +666,21 @@ picture first (same script, same views), fixed, and looked at again.
   these pins are hidden now; on a loose module the names are right and the places are mirrored.
 - `anchor_dot_mm` (header centred in the wall's thickness and across the Dot) is read off a render, not a drawing.
 
+### What was run to the end, and what was not
+- `npm test`: 363 passed (30 files) on the code before the last small change (a wire holds a bare leg half way down:
+  `wires.ts` refresh, `World.tsx` adapter); after it `npx vitest run src/workbench` (the four workbench files) passed and
+  `npm run build` (with `tsc --noEmit`) passed. The whole `npm test` was not repeated after it.
+- `wires-mount-shots.mjs`: all 26 pictures taken and looked at; `legged-parts-stand.png` retaken after the last change, the
+  others are from the build just before it (it only moves wires on pins under a body).
+- `workbench-proof.mjs`, one full run on the final build with the machine's load above 40: 36 passed, 1 failed. The failure is
+  (g) "the AI prompt is there with a copy button, and the manual opens": the button still read "Copy the prompt" 300 ms after the
+  click (the manual opened, 6311 characters). That is the Make tab, which this branch does not touch; not repeated. Sections that
+  bear on this work passed: (a) wires drawn by mouse from the header and the LED lit, (c) the servo wired, (d) a wire clicked and
+  deleted, (e) the Robotics module mounted both ways and driving a motor, (f) save, reload and open. Its frame time (746 ms) was
+  taken at that load and says nothing; the before and after above were measured back to back on a quieter machine.
+- To confirm alone on a quiet machine: `cd web && npm test`; `npm run build && UX_PORT=4398 node scripts/workbench-proof.mjs --only g`;
+  `UX_PORT=4398 node scripts/wires-mount-shots.mjs --only none --cost` for the frame cost.
+
 ### Weak or not done
 - Bodies are bounding boxes: a wire to a socket that is lower than its board's tallest part first rises to clear that height,
   and the radio modules' box includes the whips, so a wire climbs over empty air beside an antenna.
@@ -673,7 +689,8 @@ picture first (same script, same views), fixed, and looked at again.
   hang in the air; a terminal that faces down (a socket of a module mounted turned) gets a wire that starts into the table's side.
 - The Dot's shell is rested as its box: its real bottom-back edge is chamfered, so a propped Dot hovers about a millimetre there.
 - A module mounted while the Dot's header already carries wires: those wires still end in the header, inside the module's connector.
-- `tests/node/parts`: schema copies, `geometry.test.mjs` (257 checks) and `modules.test.mjs` were run for the manifest change; the
-  whole `run.sh` (the firmware end-to-end part needs apps built with the SDK) was not.
+- `tests/node/parts`, run for the manifest change: schema copies current, `geometry.test.mjs` 257 checks passed, the library built
+  (39 parts), `modules.test.mjs` 65 of 66 (the one left needs `build/apps/parts_robotics`, a firmware package this worktree has
+  no SDK build for). The rest of `run.sh` (boards, circuits, the firmware end to end) was not run: nothing they read changed.
 - Not tried: touch, a real GPU, a phone.
 
