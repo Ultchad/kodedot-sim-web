@@ -1,10 +1,10 @@
 {
   "format": 1,
-  "comment": "The apps kodeOS has on a fresh device, in list order. `source` is relative to the repo (apps/<name>), or absolute, or sdk:examples/<name>. build with tools/build-factory.sh",
+  "comment": "The apps kodeOS has on a fresh device, in list order. `source` is relative to the repo (apps/<name>), or absolute, or sdk:examples/<name>, or dep:<folder> (a folder fetched by tools/setup.sh under $DOTBENCH_DEPS). build with tools/build-factory.sh",
   "apps": [
     {
       "name": "kody_kart",
-      "source": "/home/claude/src/kode-app/kody_kart"
+      "source": "dep:kode-app-kody_kart"
     },
     {
       "name": "light",
