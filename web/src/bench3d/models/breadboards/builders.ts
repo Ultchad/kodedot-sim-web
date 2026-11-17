@@ -151,6 +151,8 @@ interface At {
  * slot, solder lugs. The knob moves, so the model builds it with `slideKnob` as a named part and slides it along X by
  * the `travel` this returns (positions -travel, 0, +travel for a three-way switch).
  */
+/** How far the knob of a `slideSwitch` of width `w` moves from its middle to an end stop. */
+export const slideTravel = (w = 8.6): number => (w - 3) / 2 - 1.05;
 export function slideSwitch(s: Shape, o: At & { w?: number; d?: number; h?: number }): { travel: number; top: number } {
   const w = o.w ?? 8.6, d = o.d ?? 3.7, h = o.h ?? 3.5;
   s.with(place(o.x, o.y, o.z, o.turn), () => {
@@ -160,7 +162,7 @@ export function slideSwitch(s: Shape, o: At & { w?: number; d?: number; h?: numb
     s.box('matte', '#0d0d0f', 0, 0, w - 3, 1.5, h, h + 0.02, 0.2, 0, { ao: 1 });
     for (const sx of [-1, 1]) s.box(...PAL.tin, sx * (w / 2 + 0.35), 0, 0.9, 1.5, 0, 1.3, 0.1, 0.15, { ao: 0.9 });
   });
-  return { travel: (w - 3) / 2 - 1.05, top: o.y + h };
+  return { travel: slideTravel(w), top: o.y + h };
 }
 /** The knob of `slideSwitch`, standing at the switch's centre; add it with `toObject(name)` and move it along the slot. */
 export function slideKnob(o: At & { h?: number; finish?: Finish }): Shape {
@@ -186,12 +188,9 @@ export function sot223(s: Shape, o: At & { into?: Shape }): void {
     body.disc('matte', '#3a3a3f', -2.4, 0.9, 0.3, 1.7, 1.72, 0, 8, { ao: 1 });
   });
   s.with(m, () => {
-    for (const i of [-1, 0, 1]) {
-      s.box(...PAL.tin, i * 2.3, 2.25, 0.75, 1.0, 0.75, 0.95, 0.05, 0.05, { cap: true, ao: 1 });
-      s.box(...PAL.tin, i * 2.3, 3.05, 0.75, 0.9, 0, 0.95, 0.05, 0.12, { ao: 0.9 });
-    }
-    s.box(...PAL.tin, 0, -2.25, 3.1, 1.0, 0.75, 0.95, 0.05, 0.05, { cap: true, ao: 1 });
-    s.box(...PAL.tin, 0, -3.05, 3.1, 0.9, 0, 0.95, 0.05, 0.12, { ao: 0.9 });
+    // gull-wing leads, each one bevelled block from the body down to its pad
+    for (const i of [-1, 0, 1]) s.box(...PAL.tin, i * 2.3, 2.6, 0.75, 1.8, 0, 0.95, 0.05, 0.3, { ao: 0.9 });
+    s.box(...PAL.tin, 0, -2.6, 3.1, 1.8, 0, 0.95, 0.05, 0.3, { ao: 0.9 });
   });
 }
 
@@ -201,7 +200,7 @@ export function chip(s: Shape, o: At & { l?: number; w?: number; h?: number; fin
   const cap = Math.min(0.45, l * 0.22);
   s.with(place(o.x, o.y, o.z, o.turn), () => {
     s.box(...(o.finish ?? PAL.epoxyBlack), 0, 0, l - cap, w, 0.02, h, 0.08, 0.06, { ao: 0.95 });
-    for (const sx of [-1, 1]) s.box(...PAL.tin, sx * (l / 2 - cap / 2), 0, cap, w + 0.04, 0, h + 0.02, 0.06, 0.06, { ao: 0.95 });
+    for (const sx of [-1, 1]) s.box(...PAL.tin, sx * (l / 2 - cap / 2), 0, cap, w + 0.04, 0, h + 0.02, 0.06, 0, { ao: 0.95 });
     if (o.bar) s.box('matte', '#7a4a12', -(l / 2 - cap - 0.35), 0, 0.45, w, h, h + 0.02, 0.02, 0, { ao: 1 });
   });
 }
