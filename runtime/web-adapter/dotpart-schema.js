@@ -98,7 +98,9 @@ export default {
       },
       "description": "width/height define the coordinate space used by every pos, region and visual in this manifest."
     },
-    "refs": {"type": "array", "maxItems": 32, "items": {"type": "object", "required": ["name", "kind", "mm"], "additionalProperties": false, "properties": {"name": {"type": "string", "maxLength": 24}, "kind": {"enum": ["antenna_sma", "hole", "other"]}, "mm": {"$ref": "#/$defs/pin/properties/mm"}, "length_mm": {"type": "number", "minimum": 0, "description": "antenna_sma: length of the antenna standing on this base, base included, along +z."}, "note": {"type": "string", "maxLength": 200}}}, "description": "Non-electrical reference points of the body (antenna bases, mounting holes), same millimetre frame as the pins. A model may place geometry on them; estimates when body.estimate is true."},
+    "outline": {"type": "array", "minItems": 3, "maxItems": 64, "items": {"type": "object", "required": ["x", "y"], "additionalProperties": false, "properties": {"x": {"type": "number"}, "y": {"type": "number"}}}, "description": "Non-electrical: the board outline as a polygon in millimetres (same frame as the pins), for the picture and for 3D models. Absent: the body rectangle."},
+    "refs": {"type": "array", "maxItems": 32, "items": {"type": "object", "required": ["name", "kind", "mm"], "additionalProperties": false, "properties": {"name": {"type": "string", "maxLength": 24}, "kind": {"enum": ["antenna_sma", "hole", "other"]}, "mm": {"$ref": "#/$defs/pin/properties/mm"}, "diameter_mm": {"type": "number", "exclusiveMinimum": 0, "description": "hole: diameter."},
+        "length_mm": {"type": "number", "minimum": 0, "description": "antenna_sma: length of the antenna standing on this base, base included, along +z."}, "note": {"type": "string", "maxLength": 200}}}, "description": "Non-electrical reference points of the body (antenna bases, mounting holes), same millimetre frame as the pins. A model may place geometry on them; estimates when body.estimate is true."},
     "model": {
       "type": "object",
       "required": ["file"],

@@ -23,6 +23,8 @@ await test(`geometry of every part (${dirs.length})`, async () => {
     // a terminal on a side face is at that face: within 2 mm of its edge
     const edge = m.pins.filter((p) => p.kind !== "nc" && ((p.face === "left" && p.mm.x > 2) || (p.face === "right" && p.mm.x < b.w_mm - 2) || (p.face === "back" && p.mm.y > 2) || (p.face === "front" && p.mm.y < b.d_mm - 2))).map((p) => p.name);
     check(edge.length === 0, `${d}: terminals on a left, right, front or back face sit at that edge`, edge.slice(0, 4));
+    const ref = [...(m.outline ?? []), ...(m.refs ?? []).map((r) => r.mm)].filter((q) => q.x < -0.001 || q.x > b.w_mm + 0.001 || q.y < -0.001 || q.y > b.d_mm + 0.001);
+    check(ref.length === 0, `${d}: outline points and reference points are inside the body`, ref.slice(0, 3));
     const noz = m.pins.filter((p) => typeof p.mm.z !== "number").map((p) => p.name);
     check(noz.length === 0, `${d}: every pin has an explicit contact height mm.z (no terminal above the body: z <= ${b.h_mm})`, noz.slice(0, 4));
     check(bad.length === 0, `${d}: every pin's picture position is its mm times the scale and lies inside the body`, bad.slice(0, 4));
