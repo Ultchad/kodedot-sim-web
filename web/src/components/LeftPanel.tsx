@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n';
+import { loadPref, savePref } from '../lib/prefs';
 import { BenchPanel } from './BenchPanel';
 import { ComponentsPanel } from './ComponentsPanel';
 import { Icon } from './Glyphs';
@@ -11,7 +12,12 @@ const LEFT_TABS: readonly LeftTab[] = ['bench', 'components'];
 /** The left card: Bench and Components behind one tab row, with the collapse button of the card. */
 export function LeftPanel({ onClose, closeLabel, bare = false }: { onClose?: () => void; closeLabel?: string; bare?: boolean }) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<LeftTab>('bench');
+  // remembered between visits, like the other choices of the page
+  const [tab, setTabState] = useState<LeftTab>(() => (loadPref<string>('dotbench.left', 'bench') === 'components' ? 'components' : 'bench'));
+  const setTab = (id: LeftTab) => {
+    setTabState(id);
+    savePref('dotbench.left', id);
+  };
   const tabs = useTabs(LEFT_TABS, tab, setTab);
   return (
     <section className={`flex min-h-0 min-w-0 flex-1 flex-col ${bare ? 'gap-3' : 'card gap-4'}`} aria-label={t('nav.bench')} data-testid="left-panel">

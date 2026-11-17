@@ -207,3 +207,23 @@ Fix (`web/src/device3d/decal.ts`, used by `prepare.ts` for every model file and 
 - the only printed part in Kode's model is this label (the mark on the back is geometry); the rule is generic, so a user's own model gets the same treatment.
 Check (permanent): `node scripts/model-shots.mjs --kode --labels` (also `--custom <file> --labels`, and without `--kode` for the simple model). 11 views of the labels (straight, 30, 60, 80 degrees, turned, near and far zoom): each is compared with a reference drawn without a depth test and must match within 1 % of the print's pixels, at the real depth precision and with a 256 times coarser one (near plane 256 times closer: what a 16-bit buffer gives where this machine has 24 bits); plus 6 general views that must not change with the coarse depth. All pass for the Kode model, the original file loaded as "My own…" and the simple model; with the fix switched off the 60-degree views lose 1,400 to 5,200 of 8,700 print pixels. Screenshots: `web/screenshots/model-labels-*.png`, `model-kode-depth-*.png`.
 
+## What is kept between visits (2026-11-17)
+
+Checked end to end by `npm run build && node scripts/settings-check.mjs` (headless Chrome, a fresh profile, the real page, settings changed by touch in kodeOS and read back with kodeOS's console command `config`; screenshots `web/screenshots/settings-*.png`). All pass:
+fresh profile has nothing stored and the lock screen asks for a time zone; brightness and time zone changed, reload after 2 s: kept; vibration changed, reload after 2 s: all three kept, the lock screen no longer asks, the page shows the stored brightness; tab closed right after a change; Stop right after a change, then Start; Restart right after a change (and a reload after it); tab crashed 1.5 s after a change; page hidden right after a change and then killed: the change is there every time, and the time zone question never comes back.
+
+Found on the way: nothing was lost on reload, close, Stop/Start or Restart (the system layer saves on page-hide and when a program stops), but a tab that crashed or was killed within about 5 s of a change lost it. Cause: `PersistManager.tick` (runtime/web-adapter/persist.js) saves once the firmware has been quiet for 0.8 s, and kodeOS never is: its dirty-generation counter moves about 1,750 times a second while it idles on the lock screen, so only the 5 s upper limit ever fires (measured: one commit every 5.0 s, most of them empty). Fixed in the page, not in the runtime: `SystemDevice` (web/src/device/wasm.ts) calls the system's `flushPersist()` 150 and 700 ms after every release of the screen or a button, and once a second while the Dot runs (it writes only what changed). Nothing was changed outside `web/`. For the runtime's owner: either that counter should not move for writes that change nothing (or for the retained `keep` region), or `tick` should not wait for quiet.
+
+kodeOS has no language setting in this build (Settings: Wi-Fi, Bluetooth, Battery, Time, Sleep after, Turn off after, Kody's scene, Vibration, While charging, Header 3.3 V, Header 5 V, Self-test, About), so the three settings checked are time zone, brightness and vibration.
+
+| What | Where it is kept | Kept |
+|---|---|---|
+| kodeOS settings (time zone, brightness, vibration, sleep, volume, Wi-Fi list ...), its files and clock | IndexedDB `kodedot-system`, through the system layer | yes (checked) |
+| Installed apps and their packages | same | yes (system-check) |
+| Page language, theme, 3D/2D (desktop and phone apart), 2D zoom | localStorage `dotbench.*` | yes (checked) |
+| Collapsed bench/console cards and their widths, bench area tab, bench objects | localStorage | yes (collapsed card checked) |
+| Bench/Components side tab | localStorage `dotbench.left` | yes, new in this pass (checked) |
+| Chosen 3D model (Kode/Simple), lighter materials; the user's own model file | localStorage; IndexedDB `dotbench-custom-model` | yes (choice checked) |
+| Dismissed first-run hint, test device switch, keep-screen-awake | localStorage | yes (hint checked) |
+| 3D view angle and zoom, tilt link, phone sheet position, phone sensors switch | not kept, on purpose (sensors need a fresh permission tap) | no |
+

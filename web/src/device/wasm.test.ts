@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AdapterLogLine, AdapterOutputs, AdapterStatus, AdapterStatusDetail, AdapterSystem, InstalledApp, Program } from './adapter-types';
 import { checkRuntime, isRealDevice, parseFactory, SystemDevice, UnsupportedRuntimeError } from './wasm';
 
@@ -120,7 +120,10 @@ class FakeSystem {
   exportDeviceFile() {
     return new Uint8Array([1, 2, 3]);
   }
-  async flushPersist() {}
+  flushes = 0;
+  async flushPersist() {
+    this.flushes++;
+  }
 }
 
 const okEnv = { crossOriginIsolated: true, SharedArrayBuffer: class {}, WebAssembly: { Memory: class {} }, DecompressionStream: class {} };
@@ -276,6 +279,35 @@ describe('SystemDevice', () => {
     expect(dev.log.get().filter((l) => l.level === 'input').map((l) => l.text)).toEqual(['help']);
     expect(dev.time()).toBe(12345);
     expect(dev.stats()).toEqual({ workers: 3, memoryBytes: 100 * 1024 * 1024 });
+  });
+
+  it('saves what the firmware stored soon after an input is released and once a second while running, not when off', async () => {
+    vi.useFakeTimers();
+    try {
+      const { dev, sys } = await started();
+      dev.setTouch(10, 20, true);
+      vi.advanceTimersByTime(140);
+      expect(sys.flushes).toBe(0); // a finger down changes nothing yet
+      dev.setTouch(10, 20, false);
+      vi.advanceTimersByTime(160);
+      expect(sys.flushes).toBe(1);
+      vi.advanceTimersByTime(600);
+      expect(sys.flushes).toBe(2);
+      dev.setButton('top', true);
+      dev.setButton('top', false);
+      vi.advanceTimersByTime(200);
+      expect(sys.flushes).toBeGreaterThanOrEqual(3);
+      const n = sys.flushes;
+      vi.advanceTimersByTime(3000);
+      expect(sys.flushes).toBeGreaterThanOrEqual(n + 3); // the once-a-second save
+      dev.stop();
+      const off = sys.flushes;
+      dev.setTouch(1, 1, false);
+      vi.advanceTimersByTime(5000);
+      expect(sys.flushes).toBe(off);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('exposes area glue of the running program through areas', async () => {

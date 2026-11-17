@@ -119,6 +119,11 @@ export const OS_PACKAGE = 'kodeos.dotbench';
 /** The Dot's own database in this browser (settings, files, installed apps). Not shared with anything else. */
 export const SYSTEM_STORE = 'kodedot-system';
 
+/** After the screen or a button is released, what the firmware stored is saved this long afterwards (twice: once quickly, once after slower writes). */
+export const SAVE_AFTER_INPUT_MS = [150, 700] as const;
+/** While the Dot runs, what changed is saved at least this often. */
+export const SAVE_EVERY_MS = 1000;
+
 /** factory.json: `{"format":1,"apps":["a.dotbench", ...]}`. Anything else counts as "no factory apps". */
 export function parseFactory(json: unknown): string[] {
   const j = json as { format?: unknown; apps?: unknown } | null;
@@ -182,6 +187,8 @@ export class SystemDevice implements RealDevice {
   private frame: Frame;
   private sysSeq = -1;
   private outSeq = 0;
+  private saveTimers: ReturnType<typeof setTimeout>[] = [];
+  private saveTicker: ReturnType<typeof setInterval> | null = null;
 
   constructor(private opts: SystemDeviceOptions = {}) {
     this.unsupported = checkRuntime(opts.env);
@@ -267,6 +274,33 @@ export class SystemDevice implements RealDevice {
     this._panelOn.set(o.panelOn);
   }
 
+  // saving ------------------------------------------------------------------
+  // What the firmware stores (kodeOS's settings, files, the clock) lives in persistent regions that the system layer
+  // mirrors to IndexedDB. Its own timing waits for the firmware to stop writing for 0.8 s, and kodeOS never stops
+  // (it marks a region dirty well over a thousand times a second while idle), so by itself the mirror is only
+  // brought up to date every 5 s, or when the page is hidden or closed. A setting changed and then lost to a crashed
+  // or killed tab a second later would be the result. So the page asks for the cheap "save what changed" itself:
+  // shortly after every release of the screen or a button (that is when settings change), and once a second while
+  // the Dot runs. Nothing is written when nothing changed.
+  private save = (): void => {
+    if (!this.on || !this.sys) return;
+    void this.sys.flushPersist().catch(() => {
+      /* the system reports storage errors itself */
+    });
+  };
+  private saveSoon(): void {
+    for (const t of this.saveTimers) clearTimeout(t);
+    this.saveTimers = SAVE_AFTER_INPUT_MS.map((ms) => setTimeout(this.save, ms));
+  }
+  private saving(on: boolean): void {
+    if (this.saveTicker) clearInterval(this.saveTicker);
+    this.saveTicker = on ? setInterval(this.save, SAVE_EVERY_MS) : null;
+    if (!on) {
+      for (const t of this.saveTimers) clearTimeout(t);
+      this.saveTimers = [];
+    }
+  }
+
   // lifecycle ---------------------------------------------------------------
   /** KodeDevice's "hand over a bundle": for the Dot that is installing it. `start()` powers the Dot on. */
   async load(bundle: ArrayBuffer, _options: LoadOptions): Promise<void> {
@@ -276,6 +310,7 @@ export class SystemDevice implements RealDevice {
   async start(): Promise<void> {
     const s = await this.ensureSystem();
     this.on = true;
+    this.saving(true);
     this._status.set('booting');
     this._detail.set({ status: 'booting' });
     try {
@@ -298,11 +333,13 @@ export class SystemDevice implements RealDevice {
   }
   stop(): void {
     this.on = false;
-    this.sys?.stop();
+    this.saving(false);
+    this.sys?.stop(); // the system saves everything as it stops the program
   }
   dispose(): void {
     this.disposed = true;
     this.on = false;
+    this.saving(false);
     for (const o of this.offs) o();
     this.offs = [];
     this.sys?.dispose();
@@ -357,9 +394,11 @@ export class SystemDevice implements RealDevice {
   // inputs ------------------------------------------------------------------
   setButton(id: ButtonId, pressed: boolean): void {
     this.sys?.button(id, pressed);
+    if (!pressed) this.saveSoon();
   }
   setTouch(x: number, y: number, down: boolean): void {
     this.sys?.touch(x, y, down);
+    if (!down) this.saveSoon();
   }
   releaseAll(): void {
     this.sys?.releaseAll();
