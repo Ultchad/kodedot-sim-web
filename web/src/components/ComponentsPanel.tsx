@@ -177,18 +177,19 @@ function WireCard({ wire }: { wire: Wire }) {
         <li data-testid="wire-from">{end(wire.from)}</li>
         <li data-testid="wire-to">{end(wire.to)}</li>
       </ul>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('wb.wire.color')}>
+      <div className="-m-2 flex flex-wrap" role="group" aria-label={t('wb.wire.color')}>
         {WIRE_COLORS.map((c, i) => (
           <button
             key={c}
             type="button"
-            className={`size-7 rounded-full border border-line ${wire.color === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`}
-            style={{ background: c }}
+            className="grid size-11 place-items-center rounded-full border-0 bg-transparent p-0"
             aria-label={`${t('wb.wire.color')} ${i + 1}`}
             aria-pressed={wire.color === c}
             onClick={() => (bench.checkpoint(), bench.setWireColor(wire.id, c))}
             data-testid={`wire-color-${i}`}
-          />
+          >
+            <span className={`block size-7 rounded-full border border-line ${wire.color === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`} style={{ background: c }} />
+          </button>
         ))}
       </div>
       {parts.refused.has(wire.id) && <p className="m-0 text-[13.5px] text-[var(--red-text)]">{t('parts.wire.refused')}</p>}

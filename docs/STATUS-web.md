@@ -452,6 +452,32 @@ The bench as one file (Bench tab, "Bench file")
   imported parts (base64). Open replaces the bench (undoable). The same data is what the browser keeps between visits
   (localStorage for the store, IndexedDB for binaries and imported parts).
 
+Proof, last runs (2026-11-17, headless Chrome with software GL on a 2-core machine that other jobs were loading)
+- `workbench-proof.mjs`, full run: sections a to g, 43 checks passed (third start: the page froze twice before, see below);
+  sections h and p run on their own: 5 checks passed. What each proves:
+  (a) breadboard, red LED and resistor placed from the library, the two legged parts dragged into the board's holes, two wires
+  drawn by mouse from header pin EXP1 and to GND, the GPIO app opened from the installed apps and worked by touch on the 3D screen
+  (Pins, Pin 1, Output, High): LED brightness 0 -> 0.40 (4.0 mA), Low: 0. (b) Uno, editor, Blink compiled and uploaded, LED 0/1
+  and "on"/"off" in the monitor; a broken line 16 is reported on line 16 in the list and in the text, nothing uploaded; keys do
+  not reach the table while the editor is open. (c) servo wired by mouse to D9, 5 V, GND; the sweep sketch moves it 0..180.
+  (d) green LED across the 9 V battery burns, the card says so, a wire is clicked and deleted, repair restores the LED.
+  (e) Robotics module mounted (body at the Dot's top edge), a motor on its output turns one way and the other, the three inputs
+  driven through the engine's test hook; mounted turned over too. (f) Save writes one file (14.7 KB with the sketch's binary);
+  after a reload 9 parts, 9 wires, 13 engine links, the legs in their holes, the module on the header and the uploaded sketch are
+  back and the board runs it without compiling; the file opens into the same bench on an emptied table. (g) a `.dotpart` imported,
+  listed, placed, kept over a reload, removed; a wrong file refused with the reason; the starter zip, the prompt with Copy, the
+  manual. (h) sensor, phone and computer with bodies, "Coming soon" gone; the phone finds the Dot ("Found KODE... (-50 dBm)");
+  the computer's terminal answers `ping` with `pong`; charger and computer take the port from each other.
+- Numbers: first Compile and upload 14.6 to 21.5 s (about 21 MB fetched from the local server, compile, upload); a compile with
+  everything cached 6.3 to 8.2 s. Frame time with 60 mixed parts and 40 wires, whole table in view, 1440x900: 480 and 593 ms
+  (185 draw calls, 195,000 triangles, the wires 12,480 of them); phase 1 measured 185 to 332 ms for 60 wireless objects on the
+  same software renderer when the machine was quieter. Not measured on a real GPU.
+- Others: unit tests 273 passed; `workbench-check` 29 passed, `bench-check` 20 passed (each after one run lost to the freeze),
+  `workbench2-check` 15 passed. Layout audit with the new scenes (part card, wire tool, code editor, Make tab): 820x1180 ran
+  clean in English light and Spanish dark except the wire colour buttons (24 px on touch), which are 44 px now; the runs at
+  390x844 and 1280x720 and the re-run at 820x1180 died with the browser (machine overloaded), so phone and desktop are NOT
+  audited for the new panels, and the code editor was not looked at on a phone.
+
 Weak or not done
 - The page can freeze: the page's thread is seen stuck inside the firmware's `ble_out_pop` (called by `runtime/drivers/ble/ble.js`
   `poll -> drain`), most often right after a program starts, more often when the machine is loaded. It is not bench code; the

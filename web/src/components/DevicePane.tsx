@@ -270,18 +270,19 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
           </Suspense>
         )}
         {workbench && tool.tool === 'wire' && !codeFor && (
-          <div className="card absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-1.5 !rounded-full px-3 py-2" role="group" aria-label={t('wb.wire.color')} data-testid="wb-wire-colors">
+          <div className="card absolute left-1/2 top-3 z-10 flex max-w-[94%] -translate-x-1/2 flex-wrap items-center justify-center !rounded-[28px] !px-2 !py-1" role="group" aria-label={t('wb.wire.color')} data-testid="wb-wire-colors">
             {WIRE_COLORS.map((c, i) => (
               <button
                 key={c}
                 type="button"
-                className={`size-6 rounded-full border border-line ${tool.wireColor === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`}
-                style={{ background: c }}
+                className="grid size-11 place-items-center rounded-full border-0 bg-transparent p-0"
                 aria-label={`${t('wb.wire.color')} ${i + 1}`}
                 aria-pressed={tool.wireColor === c}
                 onClick={() => host.bus.setTool('wire', c)}
                 data-testid={`wire-pick-${i}`}
-              />
+              >
+                <span className={`block size-6 rounded-full border border-line ${tool.wireColor === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`} style={{ background: c }} />
+              </button>
             ))}
           </div>
         )}
