@@ -30,7 +30,7 @@ export function writePart(d) {
   const m = {
     $schema: "../../templates/component-starter/manifest.schema.json", schemaVersion: 1, id: d.id, name: d.name, version: d.version ?? "1.0.0",
     author: { name: "dotbench", url: "https://dotbench.app" }, license: "GPL-3.0-or-later", description: d.desc, category: d.category, tags: d.tags, keywords: d.keywords,
-    body: { w_mm: d.w, d_mm: d.d, h_mm: d.h }, picture: { file: "picture.svg", width: W, height: H }, ...(d.extra ?? {}),
+    body: { w_mm: d.w, d_mm: d.d, h_mm: d.h, ...(d.estimate ? { estimate: true } : {}) }, picture: { file: "picture.svg", width: W, height: H }, ...(d.extra ?? {}),
     pins, ...(d.groups ? { groups: d.groups } : {}), ...(d.fields ? { fields: d.fields } : {}), ...(d.controls ? { controls: d.controls } : {}), ...(d.outputs ? { outputs: d.outputs } : {}),
     ...(d.visuals ? { visuals: d.visuals } : {}), behaviour: d.behaviour,
   };

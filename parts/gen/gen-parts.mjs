@@ -4,7 +4,8 @@
 import { passive } from "./passive.mjs";
 import { actuators } from "./actuators.mjs";
 import { boards } from "./boards.mjs";
+import { modules } from "./modules.mjs";
 import { legacy } from "./legacy.mjs";
-const all = [...passive(), ...actuators(), ...boards()];
+const all = [...passive(), ...actuators(), ...boards(), ...modules()];
 console.log(`generated ${all.length} parts: ${all.map((m) => m.id.replace("dotbench.", "")).join(", ")}`);
 console.log(`added body, terminal millimetres and keywords to ${legacy().length} hand-written parts`);
