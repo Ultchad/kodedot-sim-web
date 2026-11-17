@@ -26,7 +26,7 @@
  * board's and the module's designation and revision; where the real parts carry a maker's name or logo it is blank.
  */
 import {
-  FONT, FONT_MONO, INK, PAL, Shape, controlFromManifest, defineModel, footprintOf, fromManifestMm, glowing, halo, markControl, microUsb, part, partState, pcb, print, qfn,
+  FONT, FONT_MONO, INK, PAL, Shape, controlFromManifest, defineModel, footprintOf, fromManifestMm, glowing, halo, hitPad, markControl, microUsb, part, partState, pcb, print, qfn,
   setLamp, silkBox, terminalsFromManifest, text, topQuad, usbC, type BuildCtx, type ControlManifest, type ManifestBody, type ManifestPin, type PartModel, type PartState,
   type PrintDef, type Terminal, type V3,
 } from '../../index';
@@ -418,7 +418,9 @@ export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState
         if (!sw.field) continue;
         const cap = new Shape();
         smdPlunger(cap, { x: sw.x, z: sw.z, y: TOP, seg: ctx.seg(10), cap: CAP });
-        root.add(markControl(cap.toObject(sw.name), controlFromManifest(m as ControlManifest, sw.field)), halo(pressOf(sw.name), [sw.x, TOP + 1.66, sw.z], Math.min(4.2, m.body.w_mm / 2 - Math.abs(sw.x), m.body.d_mm / 2 - Math.abs(sw.z))));
+        // the whole top of the switch answers the pointer, not only its 2 mm plunger
+        const node = hitPad(markControl(cap.toObject(sw.name), controlFromManifest(m as ControlManifest, sw.field)), { x: sw.x, y: TOP + 1.9, z: sw.z, w: 4.2, d: 3.2, h: 0.8 });
+        root.add(node, halo(pressOf(sw.name), [sw.x, TOP + 1.66, sw.z], Math.min(4.2, m.body.w_mm / 2 - Math.abs(sw.x), m.body.d_mm / 2 - Math.abs(sw.z))));
       }
       return root;
     },

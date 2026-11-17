@@ -592,4 +592,8 @@ export const en = {
   'usb.ok': 'Done: {what}',
   'usb.fail': 'It did not work: {reason}',
   'usb.needPlug': 'Plug the cable into the Dot first.',
+  'parts.buttons': 'Buttons on the board',
+  'parts.button.restart': 'Restarts the sketch',
+  'parts.button.pull_low': 'Holds {pin} at 0 V while pressed',
+  'parts.button.plain': 'The sketch reads it while pressed',
 } as const satisfies Record<string, string>;

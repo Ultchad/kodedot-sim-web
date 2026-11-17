@@ -18,7 +18,7 @@
  * above. The legends follow the maker's pictures of the boards; the maker's name and logo are left out.
  */
 import {
-  FONT_MONO, INK, Matrix4, PAL, PITCH, Shape, circleLoop, controlFromManifest, flatLamp, glowing, halo, markControl, part, pinHeader, place, roundedRectLoop, setLamp, tactButton, text,
+  FONT_MONO, INK, Matrix4, PAL, PITCH, Shape, circleLoop, controlFromManifest, flatLamp, glowing, halo, hitPad, markControl, part, pinHeader, place, roundedRectLoop, setLamp, tactButton, text,
   topQuad,
   type AnimEnv, type ControlManifest, type Finish, type ManifestBody, type ManifestPin, type Object3D, type PartState, type Pt, type Quad, type V3,
 } from '../../index';
@@ -530,7 +530,8 @@ export function resetCap(g: UnoGeo, m: UnoManifest, finish: Finish, seg: (n: num
   const [x, y] = g.control(RESET_FIELD);
   const cap = new Shape();
   cap.disc(finish[0], finish[1], 0, 0, 1.6, -0.3, 0.75, 0.22, seg(18), { ao: 0.9 });
-  const node = markControl(cap.toObject(RESET_FIELD), controlFromManifest(m, RESET_FIELD));
+  // the whole top of the switch answers the pointer, not only its 3 mm plunger
+  const node = hitPad(markControl(cap.toObject(RESET_FIELD), controlFromManifest(m, RESET_FIELD)), { w: 6, d: 6, y: 0.2, h: 1.1 });
   node.position.set(...g.at(x, y, TOP + BUTTON_TOP));
   node.userData.restY = node.position.y;
   return node;
