@@ -495,3 +495,77 @@ Weak or not done
   light highlight colours in the dark theme.
 - The part names shown in the library ("Arduino Uno R3" ...) are the parts library's data; the models carry no marks.
 
+## Parts batch 5 on the models, and the boards' buttons (2026-11-17, branch fix/refit-batch5)
+
+Run: `cd web && npm test` (302 passed, 29 files; 279 before, one of them failing), `npm run build`, and
+`UX_PORT=4397 node scripts/controls-check.mjs` (headless Chrome on the built site, a port of its own; 19 checks passed, then
+`--only modules` for the picture: 2 passed). Model shots: `node scripts/model-shot.mjs --model <id>` for each model named below.
+
+Models refitted (`web/src/bench3d/models/`)
+- Robotics: `contract.test.ts` failed because the batch moved the screws of the two blocks to y = 2 mm and a 3.81 mm block (5.7 mm
+  deep, screws in the middle) then passes the far edge by 0.86 mm. The model was already reading the pins; it now also reads what
+  the manifest lets it overhang (`overhangOf(body)`, nothing today) and ends the blocks at the footprint's edge (`screwBlock`'s
+  `back`): 4.86 mm deep, the near face where it was. The day the manifest has `overhang_mm.back` the blocks get their whole depth
+  with no change here. Their outline runs down the right side as in the picture, the names keep off the mounting holes, nothing is
+  printed across a hole.
+- Maker: nothing was typed in the model: strips, legends and corner marks moved with the manifest (GND upper right, 3V3 lower right).
+- Both modules (and the Camera, same builder): the mounting holes are plain drilled holes with a pale edge. Looked at closely, the
+  store picture has no gilded ring round them; the rings were the model's.
+- Uno R3, R4 Minima, R4 WiFi: L lights at `visuals.led.mm` and the reset switch stands at `controls[reset].mm`
+  (`unoGeo.visual`, `unoGeo.control`: body millimetres less the overhang; the outline's arcs and the 2.04 mm overhang came through
+  the manifest's `outline` by themselves). The word RESET follows the switch; on the Minima the grid is rubbed out under it.
+- ESP32 boards: the two switches are the manifest's controls (`switchesOf` in `esp32/board.ts`): at `controls[].mm` when the board
+  has room for a switch there, otherwise where the board's drawing has them. The three DevKitC V4 parts take the manifest's places;
+  the S3 does not (see the data notes). Names of pins that would lie under a switch are not printed.
+- LED with resistor: the model reads `fields.ohms` and `outputs.brightness`, both unchanged: no change.
+
+Buttons (C)
+- On the model: each control is the switch's plunger, marked with `controlFromManifest`, with an unseen hit area the size of the
+  switch's top (`hitPad`, new in `bench3d/controls.ts`). The Workbench's existing momentary path does the rest: pointer down sets the
+  part's field true in the bench store, up sets it false, no drag starts. A press shows as the plunger going down (0.5 mm on the
+  Unos, 0.45 on the ESP32s) and an amber glow over the switch.
+- In the card: "Buttons on the board" with one press-and-hold button per control (`parts/controls.ts`, `HoldButton` in
+  `ComponentsPanel.tsx`): pointer, Space or Enter; it is shown held while the model's button is held too; it lets go when the card
+  goes away. The hint under each ("Restarts the sketch", "Holds IO0 at 0 V while pressed") is typed i18n in en, pt-BR and es; the
+  button's name is the manifest's label. A momentary field of a plain part (the push button's `pressed`) stays the switch it was.
+- The engine: nothing was missing. The store's field reaches `bench.setField(instance, field, value)` through `PartsService.sync`;
+  the engine restarts the sketch when a field with `action: "restart"` goes true and holds `pin` at 0 V through 10 ohm while a
+  field with `action: "pull_low"` is true (runtime/web-adapter/bench.js and bench-wasm.js, batch 5).
+- Checked in the page: reset held on the Uno's model and then in its card empties the serial log and the sketch prints its first
+  line again; the plunger is 0.50 mm down while held; letting go leaves the board where it was. BOOT held on the S3: IO0 goes from
+  floating to 0 V and back, the sketch keeps running. EN held: the S3's sketch starts again. Screenshots:
+  `web/screenshots/workbench2/controls-uno-reset.png`, `controls-s3-boot.png`, `controls-modules.png`.
+
+The modules beside the store picture (looked at as pairs, the model turned to the picture's angle; the pairs are not in the repository)
+- Robotics, same: outline, four holes, the three-pin and five-socket strips down the left, six sockets down the right, every legend,
+  the driver with its two sense resistors and small parts, the header, "robotics rev1.0". Different: the picture's blocks hang over
+  the far edge and stand clear of the two far holes; the model's end at the edge and each stands over a hole (data, below). The
+  maker's logo and web address are left blank on purpose.
+- Maker, same: breadboard with its channel, the fourteen sockets with turned legends, two strips a side, GND above 3V3 on the right,
+  the header, "maker rev1.0". Different: the picture's strips stand against the breadboard with the legend outside them; the model's
+  stand at the board's edge with the legend inside (data, below). The picture prints "3V3-2A" (a prototype, says the written spec);
+  the model prints the documented "3V3-1A". The band between breadboard and header is wider than in the picture (board size, an estimate).
+
+Data that looks wrong (for the parts engineer; nothing was changed under parts/)
+- kode-robotics body: `d_mm` 48.5 and no `overhang_mm.back`, with MOTA/MOTB at y = 2 mm. A block centred on those screws reaches
+  y = -0.86 mm; the picture shows more.
+- kode-robotics MOTB x 7.5 / 11.31 and MOTA x 33.4 / 37.21: the blocks (x 5.6 to 13.2 and 31.5 to 39.1) cover the holes at (5, 4.75)
+  and (40, 4.75). Measured on the picture in the frame of the four holes (the stepper pins come out within 0.3 mm of the manifest
+  in that frame): block B spans about x 9.0 to 16.0, block A about 28.1 to 35.4, so the screws are near 10.6 / 14.4 and 29.8 / 33.6.
+- kode-maker strips x 1.8 / 56.2 (half a millimetre from the edges): the picture has them beside the breadboard, about x 5.0 / 53.0.
+- Uno reset (`estimate`): body (16.4, 4.5) on the R3 and (12.04, 4.5) on the R4s, that is board (10.0, 4.5). The maker's board
+  files have (6.35, 3.94): body (12.75, 3.94) and (8.39, 3.94). At the estimate the switch touches the mounting hole beside it and
+  lies over a diode (R3) or a resistor (R4s).
+- ESP32-S3 EN (57.24, 3.5) and BOOT (57.24, 21.9): that is where the two USB-C sockets are (from x 55.3; y 3.1 to 12.1 and 13.3 to
+  22.3). The model keeps RST at (50.0, 5.6) and BOOT at (50.0, 19.8), from the user guide's component map, and takes the manifest's
+  place as soon as it is one the board has room at (tested).
+- DevKitC V4 parts: EN (48.6, 4) and BOOT (48.6, 23.94) are 2.2 mm nearer the header rows than the model had them and cover the
+  last pin names; as I know the board, EN is on the side of the row that carries EN (the front row here) and BOOT on IO0's, the
+  other way round. Not checked against a drawing in this pass.
+- The DevKitC V4 parts' `visuals.led` (GPIO2) has no `mm`; that board has no such LED and the model shows none (as before).
+
+Not done
+- The page run was at 1440x900 with the mouse; touch and a phone were not tried. The card's buttons were pressed with the mouse,
+  not with the keyboard, in the page (the handlers are there).
+- `_gallery.png` of the model shots was not redrawn.
+

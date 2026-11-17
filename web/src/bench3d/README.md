@@ -140,6 +140,13 @@ the pointer is down (`momentary`), steps it on a click (`toggle`, `nextValue`) o
 knob's axis (`rotate`, `turnValueAt`); a press on a control never drags the part. The model only shows the state it
 is given. See `controls.ts`; the infrared remote's caps are the example.
 
+A board's own buttons (reset, EN, BOOT) are controls of its manifest too, and since parts batch 5 the manifest says
+where each is (`controls[].mm`, the frame of the pins; `visuals[].mm` does the same for the on-board LED): build the
+switch there and mark its plunger with `controlFromManifest`. A plunger is a 2 mm target: give the marked node a
+`hitPad` the size of the switch's top (an unseen box that answers the ray), and show the press so that it reads from
+the table's camera (the boards lower the plunger and light a small `halo` over the switch). What a press does is the
+parts engine's, from the control's `action`: the model only shows the field it is given.
+
 `animate(state, obj, env)` is called when the state changes and then every frame for as long as it returns `true`
 (blink, spin). It runs for every copy: **no `new`, no array or object literals, no closures** in it. `part()` caches
 its look-ups; `setLamp` and `drawScreen` do nothing when nothing changed. Do not touch the shared family materials.
