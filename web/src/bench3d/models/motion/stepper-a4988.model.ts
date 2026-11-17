@@ -146,16 +146,6 @@ export default defineModel<PartState>({
           text(g, '1.8°  ·  200 steps / rev', -11.6, 0.1, 1.55, { weight: 600, align: 'left' });
           text(g, '12 V   1.0 A   2 phase', -11.6, 2.7, 1.55, { weight: 600, align: 'left' });
           text(g, '42 × 42 × 20', -11.6, 5.2, 1.3, { weight: 500, align: 'left' });
-          // an invented maker's mark: a rotor in a ring
-          g.strokeStyle = INK.amber;
-          g.lineWidth = 0.55;
-          g.beginPath();
-          g.arc(9.4, -3.7, 2.1, 0.5, TAU - 0.5);
-          g.stroke();
-          g.fillStyle = INK.amber;
-          g.beginPath();
-          g.arc(9.4, -3.7, 0.85, 0, TAU);
-          g.fill();
         },
       }),
     );

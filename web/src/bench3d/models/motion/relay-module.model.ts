@@ -83,11 +83,8 @@ export default defineModel<PartState>({
           text(g, 'H', JUMPER.x + PITCH, JUMPER.z + 2.5, 1.3, { weight: 800 });
           text(g, 'TRIG', JUMPER.x, JUMPER.z + 2.5, 0.95, { weight: 600 });
           silkBox(g, RELAY.x - RELAY.w / 2 - 0.4, RELAY.z - RELAY.d / 2 - 0.4, RELAY.w + 0.8, RELAY.d + 0.8, 0.6, 0.2);
-          text(g, '1 CH RELAY  5 V', 6.5, 8.4, 1.6, { weight: 800, spacing: 0.25 });
-          text(g, 'opto-isolated · rev B', 6.5, 11.0, 1.0, { weight: 600 });
-          // an invented maker's mark: three bars
-          g.fillStyle = INK.amber;
-          for (let i = 0; i < 3; i++) g.fillRect(-6.4 + i * 0.95, 7.5 + (2 - i) * 0.5, 0.6, 2.0 - (2 - i) * 0.5);
+          text(g, '1 CH RELAY  5 V', 5.5, 8.6, 1.6, { weight: 800, spacing: 0.25 });
+          text(g, 'OPTO-ISOLATED', 5.5, 11.0, 0.95, { weight: 600, spacing: 0.15 });
         },
       }),
       print({
@@ -96,8 +93,8 @@ export default defineModel<PartState>({
         ppm: 16,
         draw(g) {
           g.fillStyle = '#f4f6fb';
-          text(g, 'JQC-3F', -8.2, -4.9, 2.05, { weight: 800, align: 'left', spacing: 0.1 });
-          text(g, '05 VDC', -8.2, -2.2, 1.6, { weight: 700, align: 'left' });
+          text(g, 'RELAY', -8.2, -4.4, 1.9, { weight: 800, align: 'left', spacing: 0.1 });
+          text(g, '5 VDC  SPDT', -8.2, -1.9, 1.4, { weight: 700, align: 'left' });
           text(g, '10A 250VAC', -8.2, 1.3, 1.2, { weight: 600, align: 'left' });
           text(g, '10A 30VDC', -8.2, 3.2, 1.2, { weight: 600, align: 'left' });
           // the contact diagram: COM's pivot, the two fixed contacts, their names

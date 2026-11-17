@@ -104,24 +104,10 @@ export default defineModel<PartState>({
           text(g, 'GND', GND[0] + 0.2, GND[2] + 2.3, 0.85, { weight: 700 });
           silkBox(g, V5[0] - 1.5, V5[2] - 1.5, GND[0] - V5[0] + 3, 3, 0.3, 0.16);
           LEDS.forEach(([x, z], i) => text(g, 'ABCD'[i], x, z - 2.9, 1.25, { weight: 800 }));
-          text(g, 'ULN2003', -19.6, 12.6, 1.5, { weight: 800, spacing: 0.15 });
-          text(g, 'STEPPER DRIVER', -19.6, 14.3, 0.85, { weight: 600, spacing: 0.1 });
+          text(g, 'ULN2003', -17.5, 12.6, 1.5, { weight: 800, spacing: 0.15 });
+          text(g, 'STEPPER DRIVER', -17.5, 14.3, 0.85, { weight: 600, spacing: 0.1 });
           text(g, 'U1', -27.9, -3.6, 0.9);
           text(g, 'MOTOR', SOCKET.x - 4.4, SOCKET.z, 0.85, { weight: 700, angle: -Math.PI / 2 });
-          // an invented maker's mark: a stepped wave
-          g.strokeStyle = INK.amber;
-          g.lineWidth = 0.35;
-          g.lineJoin = 'round';
-          g.beginPath();
-          g.moveTo(-28.4, 13.9);
-          g.lineTo(-27.6, 13.9);
-          g.lineTo(-27.6, 12.2);
-          g.lineTo(-26.6, 12.2);
-          g.lineTo(-26.6, 13.9);
-          g.lineTo(-25.6, 13.9);
-          g.lineTo(-25.6, 12.2);
-          g.lineTo(-24.8, 12.2);
-          g.stroke();
         },
       }),
       print({

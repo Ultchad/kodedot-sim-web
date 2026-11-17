@@ -98,16 +98,9 @@ export default defineModel<PartState>({
           g.beginPath();
           g.roundRect(lx, -4.9, lw, 9.8, 0.7);
           g.fill();
-          g.fillStyle = INK.amber;
-          g.beginPath();
-          g.moveTo(lx + 1.2, -3.7);
-          g.lineTo(lx + 3.6, -2.3);
-          g.lineTo(lx + 1.2, -0.9);
-          g.closePath();
-          g.fill();
           g.fillStyle = INK.silkDark;
-          text(g, 'RM-130', lx + 4.3, -2.25, 2.3, { weight: 800, align: 'left', spacing: 0.12 });
-          text(g, 'DC 3–6 V', lx + 1.2, 0.95, 1.8, { weight: 700, align: 'left' });
+          text(g, 'DC MOTOR 130', lx + 1.2, -2.7, 1.5, { weight: 800, align: 'left', spacing: 0.04 });
+          text(g, '3–6 V', lx + 1.2, 0.75, 2.1, { weight: 700, align: 'left' });
           text(g, '6000 rpm', lx + 1.2, 3.3, 1.4, { weight: 600, align: 'left' });
           // which way it turns for + on M1
           g.strokeStyle = INK.red;

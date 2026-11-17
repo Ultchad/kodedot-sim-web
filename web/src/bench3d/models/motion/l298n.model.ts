@@ -114,19 +114,8 @@ export default defineModel<PartState>({
         ppm: 16,
         draw(g) {
           g.fillStyle = '#c9c9c4';
-          text(g, 'L298N', 0.6, -1.4, 3.3, { weight: 700, spacing: 0.25 });
-          text(g, 'MW15  2431', 0.6, 2.5, 1.5, { weight: 600, spacing: 0.15 });
-          // an invented mark: two chevrons
-          g.strokeStyle = '#c9c9c4';
-          g.lineWidth = 0.4;
-          g.lineJoin = 'round';
-          for (const dx of [0, 1.3]) {
-            g.beginPath();
-            g.moveTo(-8.4 + dx, -2.6);
-            g.lineTo(-7.3 + dx, -1.4);
-            g.lineTo(-8.4 + dx, -0.2);
-            g.stroke();
-          }
+          text(g, 'L298N', 0, -1.2, 3.4, { weight: 700, spacing: 0.25 });
+          text(g, '2431', 0, 2.6, 1.5, { weight: 600, spacing: 0.15 });
         },
       }),
       smdLedLens('pwr', { x: PWR[0], z: PWR[1], y: top }),
