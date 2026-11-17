@@ -441,6 +441,41 @@ kode_status_t khal_nvs_namespace(uint16_t idx, char *out, size_t cap)
     return st;
 }
 
+/* khal_nvs_erased(): the real driver erases a partition of another NVS version or one out of pages at init and says so. This
+ * store has no versions to mismatch and compacts instead of running out of pages, and a blank region is simply formatted
+ * (init_locked), exactly as a blank flash partition is initialised without an erase: nothing erases a store here. */
+bool khal_nvs_erased(void) { return false; }
+
+/* khal_nvs_set_str_within(): NVS counts a namespace's space in 32-byte entries (a string: its header plus its bytes, NUL
+ * included, in whole entries; a number: one; a blob: its index plus a header and the bytes of each chunk). */
+#define ENTRY_BYTES 32u
+static size_t str_entries(size_t size) { return 1u + (size + ENTRY_BYTES - 1u) / ENTRY_BYTES; }
+typedef struct { const char *key; size_t used, held; } within_t;
+static bool within_cb(const char *ns, const char *key, uint8_t t, uint32_t sz, void *c)
+{
+    (void)ns; within_t *w = c; size_t e;
+    if (t == T_STR) e = str_entries(sz);
+    else if (t == T_BLOB_IDX) { size_t chunks = (sz + BLOB_CHUNK - 1u) / BLOB_CHUNK; e = 1u + chunks + (sz + ENTRY_BYTES - 1u) / ENTRY_BYTES; }
+    else e = 1u;
+    w->used += e;
+    if (t == T_STR && !strcmp(key, w->key)) w->held = e;
+    return true;
+}
+kode_status_t khal_nvs_set_str_within(const char *ns, const char *key, const char *value, size_t share)
+{
+    if (!value || !name_ok(ns) || !name_ok(key)) return KODE_ERROR;
+    size_t n = strlen(value) + 1;
+    if (n > STR_MAX) return KODE_ERROR;
+    LOCK_OR(KODE_ERROR);
+    within_t w = { key, 0, 0 };
+    visit_live(ns, within_cb, &w);
+    size_t after = (w.used - (w.held <= w.used ? w.held : 0) + str_entries(n)) * ENTRY_BYTES;
+    if (after > share) { UNLOCK(); return KODE_NO_RESOURCES; }
+    kode_status_t st = append(T_STR, ns, key, value, (uint32_t)n, ++g_serial, 0);
+    UNLOCK();
+    return st;
+}
+
 /* ---- page-side entry points (runtime/drivers/nvs/nvs.js): the same code the firmware runs, under the same lock ---- */
 typedef struct { char *buf; size_t cap, n; } dump_t;
 static bool dump_cb(const char *ns, const char *key, uint8_t t, uint32_t sz, void *c)

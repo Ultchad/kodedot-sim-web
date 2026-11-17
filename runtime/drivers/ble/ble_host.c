@@ -302,6 +302,7 @@ static struct {
     int cfg[CFG_COUNT];
     /* pairing */
     bool pair_live;                  /* s_pair_live: a code is on the screen and the pairing is in flight */
+    bool pair_refused;               /* s_pair_refused: the pairing on this link was refused and the peer is not hung up on yet */
     bool sm_wait;                    /* waiting for the peer's passkey */
     uint32_t sm_passkey;
     int64_t last_passkey;
@@ -558,8 +559,14 @@ static void pair_refuse(uint16_t conn, bool forget)
 {
 #if CONFIG_KODEOS_BOOT_ROLE_APP
     KLOG_N(TAG, "pairing refused: a new phone pairs in kodeOS; this app serves bonded phones");
+#if CONFIG_KODEOS_BLE_PAIRING_PASSKEY
+    pair_note(KDRV_BLE_PAIR_REFUSED, KDRV_BLE_PAIR_APP_CLOSED, 0u);
+#endif
 #else
     KLOG_N(TAG, "pairing refused: the board is hidden; Pair new device makes it visible");
+#if CONFIG_KODEOS_BLE_PAIRING_PASSKEY
+    pair_note(KDRV_BLE_PAIR_REFUSED, KDRV_BLE_PAIR_HIDDEN, 0u);
+#endif
 #endif
     if (forget && conn == g.conn) bond_del(g.c.addr, g.c.type);
     g.sm_wait = false;
@@ -603,6 +610,7 @@ static void gap_disconnect_event(uint8_t reason)
     g.conn = CONN_NONE;
     g.sm_wait = false;
     co_stop(CO_SM);
+    g.pair_refused = false;                         /* the link's end: nobody left to hang up on */
     if (g.pair_live) {
         g.pair_live = false;
         pair_note(KDRV_BLE_PAIR_DONE, KDRV_BLE_PAIR_GONE, 0u);
@@ -839,6 +847,7 @@ static void sm_pair(uint8_t io)
         g.sm_passkey = pk;
         g.sm_wait = true;
         g.pair_live = true;
+        g.pair_refused = false;                     /* a new code replaces the refused one */
         g.last_passkey = pk;
         KLOG_N(TAG, "pairing: a code is on the screen");
         wbuf_t w = { .n = 0 };
@@ -1448,15 +1457,39 @@ kode_status_t kdrv_ble_pair_reject(void)
 {
     api_lock();
     if (!g.pair_live) { unlock(); return KODE_DENIED; }
+    g.pair_refused = true;                          /* refused before the flag clears, as on the board; the hang-up is kdrv_ble_pair_hang_up()'s */
     g.pair_live = false;
     g.sm_wait = false;
     co_stop(CO_SM);
     KLOG_N(TAG, "pairing refused here");
     sm_result(false, 0x401u, false, false, NULL);
     pair_note(KDRV_BLE_PAIR_DONE, KDRV_BLE_PAIR_REJECTED, 0u);
-    if (CONN_NONE != g.conn) gap_terminate(g.conn, ERR_REM_USER_CONN_TERM);
     unlock();
     return KODE_OK;
+}
+/* HID (the board as a Bluetooth mouse and keyboard, kdrv_ble_hid.h): the SDK's kdrv_ble_hid.c (kinds, report map, claim/push ring) is real;
+ * this host never registers the HID service, so no kind is "served", no report can be claimed and a caller of kode_ble_hid_* is told there
+ * is no host. kdrv_ble_hid_kick() is the drain's wake-up: if a report did reach the ring it is taken out and counted as dropped (never
+ * as sent: nobody received it), so the slots are free again. Serving HID to the Phone bench object is not modelled (docs/STATUS-upstream.md). */
+void kdrv_ble_hid_kick(void)
+{
+    uint8_t kind = 0u, report[KDRV_BLE_HID_REPORT_MAX];
+    uint16_t len = 0u;
+    while (kdrv_ble_hid_queued() && kdrv_ble_hid_peek(&kind, report, &len)) kdrv_ble_hid_pop(false);
+}
+/* The hang-up on the peer whose pairing kdrv_ble_pair_reject() refused: a job of the radio's worker (KDRV_RADIO_JOB_BLE_PAIR_REJECT).
+ * DENIED when there is nobody to hang up on: the link ended or a new code replaced the refused one. */
+kode_status_t kdrv_ble_pair_hang_up(void)
+{
+    kode_status_t rc = KODE_DENIED;
+    api_lock();
+    if (g.pair_refused) {
+        g.pair_refused = false;
+        if (CONN_NONE != g.conn) gap_terminate(g.conn, ERR_REM_USER_CONN_TERM);
+        rc = KODE_OK;
+    }
+    unlock();
+    return rc;
 }
 
 kode_status_t kdrv_ble_console_set_rx_cb(kdrv_ble_console_rx_t cb) { api_lock(); g.rx_cb = cb; unlock(); return KODE_OK; }
@@ -1579,6 +1612,7 @@ static kode_status_t start_locked(void)
     g.tx_drop = 0u;
     g.pair.phase = KDRV_BLE_PAIR_NONE;
     g.pair_live = false;
+    g.pair_refused = false;
     kdrv_ble_app_link_reset();
     g.app_live = g.app_count > 0u;
     g.batt_live = g.batt_val != 0u;
@@ -1653,7 +1687,7 @@ void kdrv_ble_forget(void)
     g.mirror_on = false;
 #endif
     g.tx_drop = 0u;
-    g.pair_live = false; g.sm_wait = false;
+    g.pair_live = false; g.sm_wait = false; g.pair_refused = false;
     app_quiet();
     kdrv_ble_app_link_reset();
     wbuf_t w = { .n = 0 }; w8(&w, 0); w8(&w, 0);
@@ -2057,7 +2091,12 @@ EMSCRIPTEN_KEEPALIVE void ble_test_orphan_lock(void)
 {
     pthread_t th; pthread_create(&th, NULL, orphan_main, NULL); pthread_join(th, NULL);
 }
-EMSCRIPTEN_KEEPALIVE int ble_test_pair_reject(void) { return (int)kdrv_ble_pair_reject(); }
+EMSCRIPTEN_KEEPALIVE int ble_test_pair_reject(void)
+{
+    kode_status_t const rc = kdrv_ble_pair_reject();
+    if (KODE_OK == rc) (void)kdrv_ble_pair_hang_up();   /* the job AO_Radio posts to its worker right after */
+    return (int)rc;
+}
 /* A hook for tests: forget everything this module keeps in memory (not the persisted region). */
 EMSCRIPTEN_KEEPALIVE void ble_reset_counters(void)
 {

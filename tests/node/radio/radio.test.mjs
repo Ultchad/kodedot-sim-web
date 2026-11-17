@@ -23,7 +23,7 @@ import { bootRadio, check, done, sleep } from "./bench.mjs";
 const a = await bootRadio("network");
 let m = a.mark();
 await a.cmd("radio_up");
-await a.waitLog(/link up; C5 slave firmware v2\.12\.9/, 8000, m);
+await a.waitLog(/link up; esp-hosted v2\.12\.9/, 8000, m);
 await a.waitLog(/KODE services v3, 0 networks, 0 BLE keys, identity 0x00/, 8000, m);
 check(a.radio.state().link === "up" && a.radio.state().usable, "the world reports the link up");
 check(/esp32c5, esp-hosted 2\.12\.9, project kode_c5, SDIO 4-bit @40000kHz/.test(a.logText()), "kdrv_c5 reads chip, version, project and the SDIO description");
@@ -38,7 +38,7 @@ a.radio.setFirmware(2, 13, 1);
 await a.cmd("radio_down"); await sleep(600);
 m = a.mark();
 await a.cmd("radio_up");
-await a.waitLog(/link up; C5 slave firmware v2\.13\.1/, 8000, m);
+await a.waitLog(/link up; esp-hosted v2\.13\.1/, 8000, m);
 check(true, "a firmware version set on the bench is what the SDK reports after the next link-up");
 a.radio.setFirmware(2, 12, 9);
 
@@ -113,7 +113,7 @@ check(a.radio.identity.locked && /identity 0x07/.test((await (async () => { awai
   a.radio.setPower(true);
   m = a.mark();
   await a.cmd("radio_up");
-  await a.waitLog(/link up; C5 slave firmware/, 8000, m);
+  await a.waitLog(/link up; esp-hosted/, 8000, m);
   check(a.radio.state().usable, "switched back on, the radio comes back");
 
   a.radio.setPower(false);
@@ -130,14 +130,14 @@ check(a.radio.identity.locked && /identity 0x07/.test((await (async () => { awai
 
   m = a.mark();
   await a.cmd("radio_up");
-  await a.waitLog(/link up; C5 slave firmware/, 8000, m);
+  await a.waitLog(/link up; esp-hosted/, 8000, m);
   a.radio.setFault("mute");
   m = a.mark();
   await a.cmd("wifi_scan");
   await a.waitLog(/the C5 has stopped answering; the link is lost/, 15000, m);
   check(true, "fault 'mute': RPCs time out and the SDK declares the link lost");
   a.radio.setFault(null);
-  await a.waitLog(/link up; C5 slave firmware/, 15000, m).catch(() => {});
+  await a.waitLog(/link up; esp-hosted/, 15000, m).catch(() => {});
 
   m = a.mark();
   a.radio.dropLink();
