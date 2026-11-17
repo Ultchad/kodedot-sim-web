@@ -252,6 +252,18 @@ try {
   await page.click('[data-testid=lay-flat]');
   await sleep(600);
 
+  // ---- a palette tile dropped on the table lands where it was dropped (a real drop event with the tile's data)
+  const dropAt = await tableAt(180, 110);
+  await D((pt) => {
+    const el = document.querySelector('[data-testid=webgl-canvas]');
+    const dt = new DataTransfer();
+    dt.setData('application/x-dotbench-kind', 'rfid.tag');
+    for (const type of ['dragover', 'drop']) el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, clientX: pt.x, clientY: pt.y, dataTransfer: dt }));
+  }, dropAt);
+  await sleep(500);
+  const fob = (await objects()).find((o) => o.kind === 'rfid.tag');
+  check('Palette: a tile dropped on the table puts the object there (away from the Dot: out of range) and selects it', !!fob && Math.abs(fob.pos.x - 180) <= 5 && Math.abs(fob.pos.z - 110) <= 5 && !fob.near && (await D((i) => window.__dotbench.select.has(i), fob?.id)), JSON.stringify(fob?.pos));
+
   // ---- 9. a reload keeps the table
   const saved = JSON.stringify((await objects()).map((o) => [o.id, o.pos, o.rot, o.near]));
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -337,6 +349,11 @@ try {
     await D(() => window.__dotbenchWb.setView({ az: -0.6, pol: 1.0 }));
     await sleep(1500);
     await shot('table-dozen-low-angle');
+    await D(() => window.__dotbench.ui.setTheme('dark'));
+    await sleep(1200);
+    await shot('table-dozen-dark');
+    await D(() => window.__dotbench.ui.setTheme('light'));
+    await sleep(600);
     await D(() => window.__dotbenchWb.frameAll());
     for (const kind of ['nfc.tag', 'rfid.tag', 'wifi.router', 'ir.tv', 'power.charger']) {
       await D((k) => window.__dotbenchWb.showRange(k), kind);
