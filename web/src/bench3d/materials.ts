@@ -42,6 +42,7 @@ export const PAL = {
   pcbBlack: f('pcb', '#1b1c1f'),
   pcbRed: f('pcb', '#a8262f'),
   pcbWhite: f('pcb', '#e9e6df'),
+  pcbPurple: f('pcb', '#4b2a78'),
   pcbCore: f('matte', '#b9a878'), // the FR4 edge of a board
   // metals
   tin: f('metal', '#c8cbd0'), // tinned leads, shields, connector shells
@@ -65,6 +66,8 @@ export const PAL = {
   glossRed: f('gloss', '#c9303d'),
   epoxyBlack: f('matte', '#1a1a1d'), // chip packages
   ceramic: f('matte', '#d8cdb4'), // resistor and capacitor bodies
+  dipOchre: f('matte', '#c98f2e'), // dipped ceramic and film capacitors
+  sleeveBlue: f('gloss', '#1d2a55'), // an electrolytic's sleeve
   rubber: f('soft', '#29292c'),
   silicone: f('soft', '#dedad2'),
   paper: f('matte', '#ece8df'),
@@ -76,6 +79,7 @@ export const PAL = {
   resinBlue: f('glass', '#3f8fe0'),
   resinAmber: f('glass', '#f2a51e'),
   resinWhite: f('glass', '#f4f4ef'),
+  resinYellow: f('glass', '#f4d21e'),
 } as const;
 
 /** Colours for print (decals): silkscreen and inks. */

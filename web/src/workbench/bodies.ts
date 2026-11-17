@@ -9,8 +9,9 @@
  */
 import {
   BufferAttribute, BufferGeometry, Color, DoubleSide, DynamicDrawUsage, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, Mesh, MeshStandardMaterial, PlaneGeometry, Quaternion,
-  ShaderMaterial, Vector3, type Material, type Object3D, type Ray,
+  Raycaster, ShaderMaterial, Vector3, type Intersection, type Material, type Object3D, type Ray,
 } from 'three';
+import { controlOf, controlsIn } from '../bench3d/controls';
 import type { LiveStore } from '../bench/live';
 import type { BenchStore } from '../bench/store';
 import type { KodeDevice } from '../device/types';
@@ -22,7 +23,6 @@ import { getModel } from '../bench3d/registry';
 import { Shape, tubeIndices, writeTube } from '../bench3d/shape';
 import { PAL } from '../bench3d/materials';
 import { CHARGER_EXIT } from '../bench3d/models/wireless/power-charger.model';
-import { REMOTE_BUTTONS, REMOTE_FACE_Y } from '../bench3d/models/wireless/ir-remote.model';
 import type { WirelessState } from '../bench3d/models/wireless/state';
 import { MAT, SD_ID, SIZES, hasBody, isNear, modelIdOf, zoneOf, type Rot, type Zone } from './layout';
 
@@ -76,6 +76,8 @@ export interface Body {
   dock: number;
   dockGoal: number;
   dyn: Object3D | null;
+  /** The children of `dyn` that the pointer can work (bench3d/controls.ts). */
+  controls: Object3D[];
   state: WirelessState;
   animating: boolean;
   /** Seconds (scene clock) of the last thing the Dot did with it; -1 never. */
@@ -235,6 +237,8 @@ export class Bodies {
   private v2 = new Vector3();
   private v3 = new Vector3();
   private one = new Vector3(1, 1, 1);
+  private caster = new Raycaster();
+  private hits: Intersection[] = [];
   private liveOff: () => void;
   /** Set when something changed that needs a frame (the host invalidates). */
   onWake: () => void = () => {};
@@ -371,11 +375,15 @@ export class Bodies {
           id, kind, batch, slot: -1, tx: x, tz: z, trot: rot, x, z, ry: -rot * HALF_PI, lift: 0, dock: 0, dockGoal: 0,
           dyn: batch.hasDynamic ? instantiate(batch.template, { dynamicOnly: true }) : null,
           state: { near, fields, live: this.deps.live.get(id).data, area: this.deps.live.get(`area:${kind.split('.')[0]}`).data, sinceEvent: Infinity, tone: 'info', pressed: null },
-          animating: true, eventAt: -1, seenStamp: 0, seenCount: 0, matrix: new Matrix4(), fresh: true,
+          animating: true, eventAt: -1, seenStamp: 0, seenCount: 0, matrix: new Matrix4(), fresh: true, controls: [],
         };
         if (it.dyn) {
           it.dyn.matrixAutoUpdate = false;
-          it.dyn.traverse((o) => (o.raycast = () => {}));
+          it.controls = controlsIn(it.dyn).map((c) => c.node);
+          // only the controls answer a ray (a cap, a lever, a knob); the rest of the body is picked as a box
+          it.dyn.traverse((o) => {
+            if (!controlOf(o)) o.raycast = () => {};
+          });
           this.group.add(it.dyn);
         }
         // what the Dot did before this body existed is not news
@@ -524,15 +532,13 @@ export class Bodies {
     }
     if (!best) return null;
     let part: string | null = null;
-    if (best.kind === 'ir.remote') {
-      // a point on the remote's face, in its own frame
-      const t = (REMOTE_FACE_Y + 1.5 + best.lift - o.y) / d.y;
-      if (t > 0) {
-        const px = o.x + d.x * t - best.x, pz = o.z + d.z * t - best.z;
-        const c = Math.cos(-best.ry), s = Math.sin(-best.ry);
-        const lx = px * c + pz * s, lz = -px * s + pz * c;
-        for (const [id, b] of Object.entries(REMOTE_BUTTONS)) if (Math.hypot(lx - b.x, lz - b.z) <= b.r + 0.8) part = id;
-      }
+    if (best.dyn && best.controls.length) {
+      // a control under the pointer (a remote's button): the model marked it, the ray finds it
+      best.dyn.updateMatrixWorld(true);
+      this.caster.ray.copy(ray);
+      this.hits.length = 0;
+      this.caster.intersectObjects(best.controls, true, this.hits);
+      if (this.hits.length) part = controlOf(this.hits[0].object)?.mark.field ?? null;
     }
     return { id: best.id, kind: best.kind, distance: bestT, part };
   }

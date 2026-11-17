@@ -126,6 +126,17 @@ model, whatever the number of copies). What changes goes in a **named child**:
 | a display, a picture that changes | `screen(name, quad, ppm, { lit })` | `drawScreen(obj, name, key, (g, w, h) => ...)` |
 | something that moves (horn, shaft, button cap) | `otherShape.toObject('name')`, added to the root | `part(obj, 'name')!.rotation.y = ...` |
 
+Lean variants: `flatLamp(name, quad)` is a lit patch of two triangles (an SMD LED's top, a pixel); `lamp` is an
+80-triangle lens; `halo(name, pos, r)` is the soft light a lamp throws on the board round it (a flat additive disc,
+shown by `setLamp`). A part that heats up or burns: a `glowing` shell hidden until the hazard.
+
+**Controls** (what the pointer works in 3D: a button cap, a switch lever, a knob): mark the moving child with
+`markControl(node, mark)`; for a wired part `markControl(node, controlFromManifest(manifest, field))`. The Workbench
+ray-casts the marked children of the copy under the pointer and, by `mark.mode`, holds the field at `values[1]` while
+the pointer is down (`momentary`), steps it on a click (`toggle`, `nextValue`) or follows the pointer round the
+knob's axis (`rotate`, `turnValueAt`); a press on a control never drags the part. The model only shows the state it
+is given. See `controls.ts`; the infrared remote's caps are the example.
+
 `animate(state, obj, env)` is called when the state changes and then every frame for as long as it returns `true`
 (blink, spin). It runs for every copy: **no `new`, no array or object literals, no closures** in it. `part()` caches
 its look-ups; `setLamp` and `drawScreen` do nothing when nothing changed. Do not touch the shared family materials.
@@ -181,6 +192,21 @@ Don't:
 - No textures from files, no fetches: everything is built in code.
 - No new shared materials: if a finish is missing, ask for it in `PAL` (additive changes to the kit are welcome).
 - Do not edit `contract.ts`, `registry.ts` or another model to make yours work.
+
+## Colours
+
+Give colours as sRGB hex, the way they should look (`'#1d6a45'`); the kit converts them once. (Until the commit that
+fixed it, `Shape.add` converted twice and everything came out darker and redder: a model that compensated for that,
+for instance with an `asSeen()` helper, must drop the compensation.)
+
+## Planned for the kit (do not wait for it: keep your own copy in your family folder until it lands)
+
+Builders written by the model families that belong here and will be moved in, names kept where possible: pins-down
+header (`legRow`), radio module with antenna, SMD switch, chip passives, SOT-23/223, SOD-123, DPAK, DIP in a socket,
+crystal, DC jack, JST-SH, shrouded header, finned heatsink, crimp housing, jumper cap, wire and ribbon, slide
+switch, PP3 snaps, 3.81 mm screw terminal, right-angle header, socket strip, SMA jack, FPC connector, `outlineBoard`,
+`printOnCylinder`, `extrude` and `roundLoop`. Changes to the kit are additive: what a model imports today keeps
+working.
 
 ## For hosts (the Workbench, the stand)
 

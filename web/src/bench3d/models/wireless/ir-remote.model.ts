@@ -2,7 +2,7 @@
  * Infrared remote: a slim six-button remote (40 x 118 x 12 mm). Its emitter end is its front (+Z): aimed at the Dot it
  * points at it. The buttons are separate caps that go down when pressed; a small lamp shows it is sending.
  */
-import { Shape, defineModel, lamp, part, powerSign, print, rr, setLamp, text, topQuad } from '../../index';
+import { Shape, defineModel, lamp, markControl, part, powerSign, print, rr, setLamp, text, topQuad } from '../../index';
 import { state, type WirelessState } from './state';
 
 /** Where the buttons sit on the face (x, z) and how big they are. The ids are the bench's button names. */
@@ -111,7 +111,8 @@ export default defineModel<WirelessState>({
       const b = REMOTE_BUTTONS[id];
       const cap = new Shape();
       cap.disc('soft', b.colour, 0, 0, b.r, 0, CAP_H, 0.55, ctx.seg(22), { ao: 0.85 });
-      const node = cap.toObject(`cap:${id}`);
+      // each cap is a control: held down, it sends its button
+      const node = markControl(cap.toObject(`cap:${id}`), { field: id, mode: 'momentary', values: [false, true] });
       node.position.set(b.x, REMOTE_FACE_Y, b.z);
       root.add(node);
     }
