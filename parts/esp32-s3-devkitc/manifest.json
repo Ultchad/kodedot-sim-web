@@ -153,6 +153,71 @@
       "unit": "ms",
       "default": 500,
       "ui": "slider"
+    },
+    {
+      "name": "en",
+      "type": "boolean",
+      "label": {
+        "en": "EN (reset)",
+        "pt-BR": "EN (reiniciar)",
+        "es": "EN (reiniciar)"
+      },
+      "default": false
+    },
+    {
+      "name": "boot",
+      "type": "boolean",
+      "label": {
+        "en": "BOOT (GPIO0)",
+        "pt-BR": "BOOT (GPIO0)",
+        "es": "BOOT (GPIO0)"
+      },
+      "default": false
+    }
+  ],
+  "controls": [
+    {
+      "field": "en",
+      "region": {
+        "x": 542.4,
+        "y": 5,
+        "w": 60,
+        "h": 60
+      },
+      "mode": "momentary",
+      "label": {
+        "en": "EN (reset)",
+        "pt-BR": "EN (reiniciar)",
+        "es": "EN (reiniciar)"
+      },
+      "mm": {
+        "x": 57.24,
+        "y": 3.5
+      },
+      "action": "restart",
+      "estimate": true
+    },
+    {
+      "field": "boot",
+      "region": {
+        "x": 542.4,
+        "y": 189,
+        "w": 60,
+        "h": 60
+      },
+      "mode": "momentary",
+      "label": {
+        "en": "BOOT (GPIO0)",
+        "pt-BR": "BOOT (GPIO0)",
+        "es": "BOOT (GPIO0)"
+      },
+      "mm": {
+        "x": 57.24,
+        "y": 21.9
+      },
+      "action": "pull_low",
+      "estimate": true,
+      "pin": "IO0"
     }
   ],
   "outputs": [

@@ -34,6 +34,8 @@ import { bodyDims } from '../lib/bodyModel';
 import type { Pick } from './bodies';
 import { DOT_ID, GRID, SD_ID, SIZES, clampToMat, hasBody, isFree, isNear, obstacles, settle, snap, zoneOf, type Placed, type Pos } from './layout';
 import { KIND_MIME, type Selection, type WorkbenchBus } from './state';
+import { getModel } from '../bench3d/registry';
+import { standLift } from './rest';
 import { BenchWorld, TILT_LIMIT } from './world';
 
 /** What the scene needs from the page. */
@@ -88,10 +90,21 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
         return made.get(id)!;
       },
       stateOf: (instance: string) => deps.parts.stateOf(instance),
-      liftOf: (instance: string) => deps.parts.liftOf(instance),
+      // in a board's holes a part stands at the holes' height; anywhere else on the table it stands on its own legs
+      liftOf: (instance: string) => deps.parts.liftOf(instance) || standLift(getModel(deps.bench.get(instance)?.kind ?? '')?.plugMm),
       mountOf: (instance: string) => deps.parts.mountOf(instance),
     };
-    return new BenchWorld(dark, { bench: deps.bench, live: deps.live, device: deps.device, parts, wireParts: deps.parts });
+    // the pins of a module's own connector (the manifest's mount lists them): in the Dot's header once it is mounted
+    const connectors = new Map<string, ReadonlySet<string> | null>();
+    const connector = (kind: string) => {
+      if (!connectors.has(kind)) {
+        const mt = deps.parts.manifest(kind)?.mount as { pins?: { pin: string }[]; rails?: { pin: string }[] } | undefined;
+        connectors.set(kind, mt ? new Set([...(mt.pins ?? []), ...(mt.rails ?? [])].map((p) => p.pin)) : null);
+      }
+      return connectors.get(kind) ?? null;
+    };
+    const wireParts = { terms: (kind: string) => deps.parts.terms(kind), liftOf: parts.liftOf, mountOf: parts.mountOf, getVersion: () => deps.parts.getVersion(), connector, inHoles: (instance: string) => deps.parts.liftOf(instance) > 0 };
+    return new BenchWorld(dark, { bench: deps.bench, live: deps.live, device: deps.device, parts, wireParts });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const mats = useMemo(
     () => ({

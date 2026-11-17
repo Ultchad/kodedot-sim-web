@@ -13,9 +13,9 @@
  *   rotate     drag -> the field takes `turnValueAt(mark, dx, dz)`, with (dx, dz) the pointer's point on the table
  *              plane minus the node's place, in the model frame (x right, z towards the viewer)
  * A press on a control never starts a drag of the part; anywhere else on the part it does. `controlsIn(copy)` gives
- * the same controls to the keyboard and to the side panel.
+ * the same controls to the keyboard and to the side panel. A control that is small on the screen gets a `hitPad`.
  */
-import type { Object3D } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, type Object3D } from 'three';
 
 export type ControlMode = 'momentary' | 'toggle' | 'rotate';
 type FieldValue = string | number | boolean;
@@ -47,6 +47,23 @@ export interface ControlManifest {
 /** Marks `node` (a named child of the model's root) as the control of a field. Returns the node. */
 export function markControl<T extends Object3D>(node: T, mark: ControlMark): T {
   node.userData.control = mark;
+  return node;
+}
+let padMaterial: MeshBasicMaterial | null = null;
+/**
+ * A hit area for a control too small for the pointer (the 2 mm plunger of a board's switch): an unseen box, `w` by
+ * `d` and `h` high, centred on (x, y, z) in the node's own frame, added to the marked node. It is never drawn; the
+ * Workbench's ray finds it as it finds the node's own meshes, and it moves with the node. Give it the size of the
+ * switch's top, not more: a press beside the switch must still take hold of the part.
+ */
+export function hitPad<T extends Object3D>(node: T, o: { x?: number; y?: number; z?: number; w: number; d: number; h?: number }): T {
+  padMaterial ??= new MeshBasicMaterial();
+  const pad = new Mesh(new BoxGeometry(o.w, o.h ?? 0.5, o.d), padMaterial);
+  pad.name = 'hit';
+  pad.position.set(o.x ?? 0, o.y ?? 0, o.z ?? 0);
+  pad.visible = false;
+  pad.userData.bench3d = 'hit';
+  node.add(pad);
   return node;
 }
 /** The control a ray-cast hit belongs to: the hit object or the nearest parent that carries a mark. */

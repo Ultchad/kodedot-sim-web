@@ -16,6 +16,7 @@ import { DeviceStatusCard } from './DeviceStatusCard';
 import { Icon } from './Glyphs';
 import { ModelOffer } from './ModelControls';
 import { NoticeBanner } from './Notice';
+import { GuideLink } from '../guide/entry';
 
 const Device3D = lazy(() => import('./Device3D'));
 const CodeEditor = lazy(() => import('./CodeEditor'));
@@ -270,18 +271,19 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
           </Suspense>
         )}
         {workbench && tool.tool === 'wire' && !codeFor && (
-          <div className="card absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-1.5 !rounded-full px-3 py-2" role="group" aria-label={t('wb.wire.color')} data-testid="wb-wire-colors">
+          <div className="card absolute left-1/2 top-3 z-10 flex max-w-[94%] -translate-x-1/2 flex-wrap items-center justify-center !rounded-[28px] !px-2 !py-1" role="group" aria-label={t('wb.wire.color')} data-testid="wb-wire-colors">
             {WIRE_COLORS.map((c, i) => (
               <button
                 key={c}
                 type="button"
-                className={`size-6 rounded-full border border-line ${tool.wireColor === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`}
-                style={{ background: c }}
+                className="grid size-11 place-items-center rounded-full border-0 bg-transparent p-0"
                 aria-label={`${t('wb.wire.color')} ${i + 1}`}
                 aria-pressed={tool.wireColor === c}
                 onClick={() => host.bus.setTool('wire', c)}
                 data-testid={`wire-pick-${i}`}
-              />
+              >
+                <span className={`block size-6 rounded-full border border-line ${tool.wireColor === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`} style={{ background: c }} />
+              </button>
             ))}
           </div>
         )}
@@ -348,7 +350,7 @@ export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | '
     <aside className="anim-rise shrink-0 pb-1 pt-2" aria-label={t('welcome.title')} data-testid="welcome">
       <div className="inner mx-auto flex max-w-[44rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <p className="m-0 min-w-[14rem] flex-1 text-[14px] leading-snug">
-          <strong className="font-semibold">{t('welcome.title')}</strong> {t('welcome.body')}
+          <strong className="font-semibold">{t('welcome.title')}</strong> {t('welcome.body')} <GuideLink to="your-own-app" />
         </p>
         <div className="flex shrink-0 gap-2">
           <button type="button" className="btn btn-sm" onClick={requestApps} data-testid="welcome-open">

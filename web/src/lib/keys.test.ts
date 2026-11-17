@@ -28,6 +28,12 @@ describe('isEditableTarget', () => {
     expect(isEditableTarget({ tagName: 'BUTTON' })).toBe(false);
     expect(isEditableTarget(null)).toBe(false);
   });
+  it('lets a layer keep the keyboard for itself (the guide)', () => {
+    const inGuide = { tagName: 'A', closest: (sel: string) => (sel === '[data-own-keys]' ? {} : null) };
+    const onPage = { tagName: 'BUTTON', closest: () => null };
+    expect(isEditableTarget(inGuide)).toBe(true);
+    expect(isEditableTarget(onPage)).toBe(false);
+  });
 });
 
 describe('ownsArrowKeys', () => {

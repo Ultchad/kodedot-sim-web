@@ -6,7 +6,7 @@
  * research/06-official-modules-spec.md section 4 (what is on the board: an OV5640 autofocus camera in an FD5640
  * module on a 24-way 0.5 mm flat flex J501, a 24 MHz oscillator, the 1.5 V and 2.8 V regulators U501 and U502, the
  * solder jumper JP501, four 3.2 mm holes, the 2x10 right-angle J401). No picture of this module exists among the
- * references: the family's look (black rounded-square board with a gold-ringed hole in each corner, gold print,
+ * references: the family's look (black rounded-square board with a plain drilled hole in each corner, gold print,
  * bright header pins) is taken from the Maker and Robotics pictures, and where the holes (4.4 mm from the edges), the
  * lens, the flex and the small parts sit is a GUESS. The print is only the documented reference designators: what the real board prints is not known. Sizes of
  * the parts are their usual ones (camera head 8.5 x 8.5 x 5.5 mm, oscillator 3.2 x 2.5 mm, SOT-23-5 regulators).

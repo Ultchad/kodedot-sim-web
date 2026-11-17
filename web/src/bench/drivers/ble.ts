@@ -73,6 +73,8 @@ interface BleApi {
   addSensor(o: object): Sensor;
   addPhone(o: object): BlePhone;
   clear(): void;
+  sensors?(): unknown[];
+  phones?(): unknown[];
   state(): { passkey?: number | string | null; stack?: string; adv?: unknown };
   lastPasskey(): number | string | null;
   remove?(id: unknown): void;
@@ -87,7 +89,9 @@ export const bleDriver: AreaDriver<BleApi, Sensor | BlePhone> = {
   events: [],
   sig: (o) => JSON.stringify([o.kind, o.fields]),
   wipe(api) {
-    api.clear();
+    // the glue keeps its objects across restarts; the bench is the truth here. Asked only when something is left:
+    // every call into the Bluetooth host from the page's thread is one more chance to wait on the firmware.
+    if ((api.sensors?.().length ?? 0) + (api.phones?.().length ?? 0) > 0) api.clear();
   },
   create(api, o, ctx) {
     try {
@@ -113,9 +117,10 @@ export const bleDriver: AreaDriver<BleApi, Sensor | BlePhone> = {
     }
   },
   poll(api, objects, ctx, st) {
+    if (!objects.some((o) => o.kind === BLE_PHONE)) return;
     let passkey: number | string | null = null;
     try {
-      passkey = api.state().passkey ?? api.lastPasskey() ?? null;
+      passkey = api.lastPasskey() ?? null;
     } catch {
       /* not up yet */
     }

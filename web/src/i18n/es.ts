@@ -6,6 +6,8 @@ export const es: Messages = {
   'nav.console': 'Consola',
   'nav.apps': 'Apps',
   'nav.settings': 'Ajustes',
+  'nav.guide': 'Guía',
+  'guide.how': '¿Cómo?',
 
   'top.restart': 'Reiniciar',
   'top.stop': 'Detener',
@@ -593,4 +595,8 @@ export const es: Messages = {
   'usb.ok': 'Hecho: {what}',
   'usb.fail': 'No funcionó: {reason}',
   'usb.needPlug': 'Conecta primero el cable al Dot.',
+  'parts.buttons': 'Botones de la placa',
+  'parts.button.restart': 'Reinicia el sketch',
+  'parts.button.pull_low': 'Mantiene {pin} a 0 V mientras está pulsado',
+  'parts.button.plain': 'El sketch lo lee mientras está pulsado',
 };

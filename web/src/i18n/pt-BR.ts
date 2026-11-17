@@ -6,6 +6,8 @@ export const ptBR: Messages = {
   'nav.console': 'Console',
   'nav.apps': 'Apps',
   'nav.settings': 'Ajustes',
+  'nav.guide': 'Guia',
+  'guide.how': 'Como?',
 
   'top.restart': 'Reiniciar',
   'top.stop': 'Parar',
@@ -593,4 +595,8 @@ export const ptBR: Messages = {
   'usb.ok': 'Pronto: {what}',
   'usb.fail': 'Não funcionou: {reason}',
   'usb.needPlug': 'Ligue primeiro o cabo no Dot.',
+  'parts.buttons': 'Botões da placa',
+  'parts.button.restart': 'Reinicia o sketch',
+  'parts.button.pull_low': 'Mantém {pin} em 0 V enquanto pressionado',
+  'parts.button.plain': 'O sketch lê enquanto está pressionado',
 };

@@ -6,6 +6,7 @@ import { useObservable } from '../state/hooks';
 import { Icon } from './Glyphs';
 import { ScrollArea } from './ui';
 import { useCurrentAppName } from './TopBar';
+import { GuideLink } from '../guide/entry';
 
 const IDLE = new Atom<StatusDetail>({ status: 'idle' });
 
@@ -37,7 +38,9 @@ export function DeviceStatusCard() {
                 <li key={p}>{t(`runtime.problem.${p}` as TKey)}</li>
               ))}
             </ul>
-            <p className="m-0 text-[13.5px] leading-snug text-ink2">{t('overlay.unsupported.hint')}</p>
+            <p className="m-0 text-[13.5px] leading-snug text-ink2">
+              {t('overlay.unsupported.hint')} <GuideLink to="help" />
+            </p>
             <button type="button" className="btn btn-primary mt-3" onClick={() => setUseMock(true)} data-testid="unsupported-mock">
               {t('overlay.unsupported.action')}
             </button>
@@ -55,7 +58,9 @@ export function DeviceStatusCard() {
             <p className="mb-0 mt-1 text-[13.5px] leading-snug text-ink2 [overflow-wrap:anywhere]" data-testid="crash-reason">
               {t('overlay.crash.reason', { reason: detail.reason ?? '?' })}
             </p>
-            <p className="mb-3 mt-1 text-[13.5px] leading-snug text-ink2">{t('overlay.crash.hint')}</p>
+            <p className="mb-3 mt-1 text-[13.5px] leading-snug text-ink2">
+              {t('overlay.crash.hint')} <GuideLink to="help" />
+            </p>
             <button type="button" className="btn btn-primary" onClick={() => void restart()} data-testid="crash-restart">
               <Icon name="restart" />
               {t('overlay.restart')}

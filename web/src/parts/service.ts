@@ -25,6 +25,18 @@ export interface PartField {
   default: FieldValue;
   values?: { value: FieldValue; label?: Text3 }[];
 }
+/** A control of a part (manifest `controls[]`): the field it works, how, and for a board's button what it does and where it is. */
+export interface PartControl {
+  field: string;
+  mode: string;
+  label?: Text3;
+  /** Where the control is on the part, millimetres from the body's top-left corner (the frame of `pins[].mm`). */
+  mm?: { x: number; y: number };
+  /** `restart`: the sketch restarts when the field goes true. `pull_low`: `pin` is held at 0 V while it is true. */
+  action?: 'restart' | 'pull_low';
+  pin?: string;
+  estimate?: boolean;
+}
 export interface PartManifest {
   id: string;
   name: Text3;
@@ -32,7 +44,7 @@ export interface PartManifest {
   body: { w_mm: number; d_mm: number; h_mm: number };
   pins: { name: string; kind: string; mm?: { x: number; y: number; z?: number }; face?: 'top' | 'bottom' | 'left' | 'right' | 'front' | 'back'; label?: Text3 }[];
   fields?: PartField[];
-  controls?: { field: string; mode: string }[];
+  controls?: PartControl[];
   picture?: { file: string; width: number; height: number };
   behaviour: { type: string; core?: string; sources?: string[] };
   mount?: MountGeo & { via?: string; orientations?: MountSide[] };

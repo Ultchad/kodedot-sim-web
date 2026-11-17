@@ -1,0 +1,5 @@
+arduino/ArduinoCore-API @ 0f4e57ea193a00163ae59f0f0ff478feae7eb5db (only the api/ folder and LICENSE; unmodified)
+https://github.com/arduino/ArduinoCore-API
+Licence: LGPL-2.1-or-later (the sources say "version 2.1 of the License, or (at your option) any later version"; text in LICENSE); api/Udp.h and api/deprecated-avr-comp/avr/pgmspace.h carry the MIT licence in their headers. All compatible with GPL-3.0-or-later.
+Why it is vendored: the part build (tools/dblib/part/build.mjs) and the in-browser compiler asset build (runtime/cc/build/build-assets.mjs) compile its api/*.cpp
+and read its headers; vendoring keeps a clean clone (Vercel) building with no network and no machine-specific path. DOTBENCH_ARDUINO_API may still point elsewhere.

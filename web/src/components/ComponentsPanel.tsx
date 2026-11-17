@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { BenchObject, FieldValue } from '../bench/model';
 import { WIRE_COLORS, termOwner, type Wire } from '../bench/store';
 import { useI18n, type TKey } from '../i18n';
+import { buttonHint, buttonsOf, inputFieldsOf } from '../parts/controls';
 import { text3, type LibraryEntry, type PartField, type PartsService } from '../parts/service';
 import { useBenchState } from '../state/bench';
 import { useHost } from '../state/host';
@@ -48,7 +49,7 @@ export function ComponentsPanel({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3" data-testid="components-panel">
-      <SectionTitle title={t('nav.components')} subtitle={t('components.subtitle')} compact={compact} />
+      <SectionTitle title={t('nav.components')} subtitle={t('components.subtitle')} compact={compact} guide="workbench" />
       <ScrollArea className="-mx-2 min-h-0 flex-1 px-2 py-1" label={t('nav.components')}>
         <div className="flex flex-col gap-4">
           {picked && <PartCard obj={picked} />}
@@ -177,23 +178,61 @@ function WireCard({ wire }: { wire: Wire }) {
         <li data-testid="wire-from">{end(wire.from)}</li>
         <li data-testid="wire-to">{end(wire.to)}</li>
       </ul>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('wb.wire.color')}>
+      <div className="-m-2 flex flex-wrap" role="group" aria-label={t('wb.wire.color')}>
         {WIRE_COLORS.map((c, i) => (
           <button
             key={c}
             type="button"
-            className={`size-7 rounded-full border border-line ${wire.color === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`}
-            style={{ background: c }}
+            className="grid size-11 place-items-center rounded-full border-0 bg-transparent p-0"
             aria-label={`${t('wb.wire.color')} ${i + 1}`}
             aria-pressed={wire.color === c}
             onClick={() => (bench.checkpoint(), bench.setWireColor(wire.id, c))}
             data-testid={`wire-color-${i}`}
-          />
+          >
+            <span className={`block size-7 rounded-full border border-line ${wire.color === c ? 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--ink)]' : ''}`} style={{ background: c }} />
+          </button>
         ))}
       </div>
       {parts.refused.has(wire.id) && <p className="m-0 text-[13.5px] text-[var(--red-text)]">{t('parts.wire.refused')}</p>}
       {short && <p className="m-0 text-[13.5px] text-[var(--red-text)]">{t('parts.wire.short')}</p>}
     </section>
+  );
+}
+
+/**
+ * A board's button in the card (reset, EN, BOOT): down for as long as the pointer, Space or Enter holds it. It shows
+ * down too while the same button is held on the model in the scene: both are the part's field.
+ */
+function HoldButton({ label, hint, down, onHold, testId }: { label: string; hint: string; down: boolean; onHold: (down: boolean) => void; testId: string }) {
+  const key = (e: { key: string }) => e.key === ' ' || e.key === 'Enter';
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <button
+        type="button"
+        className={`btn btn-sm touch-none select-none ${down ? 'btn-primary' : ''}`}
+        aria-pressed={down}
+        onPointerDown={(e) => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          onHold(true);
+        }}
+        onPointerUp={() => onHold(false)}
+        onPointerCancel={() => onHold(false)}
+        onLostPointerCapture={() => onHold(false)}
+        onKeyDown={(e) => {
+          if (!key(e)) return;
+          e.preventDefault();
+          if (!e.repeat) onHold(true);
+        }}
+        onKeyUp={(e) => key(e) && onHold(false)}
+        onBlur={() => onHold(false)}
+        onContextMenu={(e) => e.preventDefault()}
+        data-testid={testId}
+      >
+        {label}
+      </button>
+      <span className="min-w-0 flex-1 text-[13px] leading-snug text-ink2">{hint}</span>
+    </div>
   );
 }
 
@@ -211,6 +250,22 @@ function PartCard({ obj }: { obj: BenchObject }) {
     bench.checkpoint(`field:${obj.id}:${f.name}`);
     bench.setField(obj.id, f.name, v);
   };
+  // the board's own buttons: held, not set (a press is no step to undo); let go if the card goes away under the finger
+  const buttons = buttonsOf(m);
+  const fields = inputFieldsOf(m);
+  const holding = useRef(new Set<string>());
+  const hold = (field: string, down: boolean) => {
+    if (down) holding.current.add(field);
+    else if (!holding.current.delete(field)) return;
+    bench.setField(obj.id, field, down);
+  };
+  useEffect(() => {
+    const held = holding.current;
+    return () => {
+      for (const f of held) bench.setField(obj.id, f, false);
+      held.clear();
+    };
+  }, [bench, obj.id]);
   return (
     <section className="inner anim-fade flex flex-col gap-3 p-4" data-testid="part-card" data-id={obj.id} data-kind={obj.kind}>
       <div className="flex items-center gap-3">
@@ -260,9 +315,27 @@ function PartCard({ obj }: { obj: BenchObject }) {
         </div>
       )}
       {plug && <p className="tag m-0" data-testid="part-plugged">{t('parts.plugged', { host: bench.get(plug.host)?.name ?? plug.host })}</p>}
-      {(m?.fields ?? []).length > 0 && (
+      {buttons.length > 0 && (
+        <div className="flex flex-col gap-1.5" data-testid="part-buttons">
+          <span className="tag">{t('parts.buttons')}</span>
+          {buttons.map((b) => {
+            const hint = buttonHint(b.control);
+            return (
+              <HoldButton
+                key={b.field}
+                label={text3(b.control.label ?? m?.fields?.find((f) => f.name === b.field)?.label, locale, b.field)}
+                hint={t(hint.key, hint.vars)}
+                down={obj.fields[b.field] === true}
+                onHold={(down) => hold(b.field, down)}
+                testId={`pbutton-${b.field}`}
+              />
+            );
+          })}
+        </div>
+      )}
+      {fields.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          {m!.fields!.map((f) => {
+          {fields.map((f) => {
             const v = obj.fields[f.name] ?? f.default;
             const label = text3(f.label, locale, f.name);
             if (f.type === 'boolean')

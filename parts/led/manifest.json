@@ -14,9 +14,9 @@
     "es": "LED con resistencia"
   },
   "description": {
-    "en": "A red LED with a series resistor you can change. Anode to a GPIO (or a rail), cathode to GND. It glows by the current the net gives it: about 10 mA is full brightness.",
-    "pt-BR": "Um LED vermelho com resistor em série ajustável. Anodo em um GPIO (ou trilho), catodo no GND. Brilha conforme a corrente que a rede entrega: cerca de 10 mA é brilho total.",
-    "es": "Un LED rojo con resistencia en serie ajustable. Ánodo a un GPIO (o riel), cátodo a GND. Brilla según la corriente de la red: unos 10 mA es brillo máximo."
+    "en": "A red 5 mm LED with its own series resistor (the Resistor field, 330 ohm by default). Anode to a GPIO (or a rail), cathode to GND, no other resistor needed. It conducts above 1.9 V and glows by the current the circuit gives it: 10 mA is full brightness.",
+    "pt-BR": "Um LED vermelho de 5 mm com o próprio resistor em série (campo Resistor, 330 ohm por padrão). Anodo em um GPIO (ou trilho), catodo no GND, sem outro resistor. Conduz acima de 1,9 V e brilha pela corrente que o circuito entrega: 10 mA é brilho total.",
+    "es": "Un LED rojo de 5 mm con su propia resistencia en serie (campo Resistencia, 330 ohm por defecto). Ánodo a un GPIO (o riel), cátodo a GND, sin otra resistencia. Conduce por encima de 1,9 V y brilla según la corriente del circuito: 10 mA es brillo máximo."
   },
   "category": "actuator",
   "tags": [
@@ -114,15 +114,16 @@
     "engine": 1,
     "elements": [
       {
-        "type": "led",
+        "type": "diode",
         "anode": "A",
         "cathode": "K",
-        "output": "brightness",
         "vf_mv": 1900,
+        "rs_ohms": 10,
         "series_ohms": {
           "field": "ohms"
         },
-        "full_ma": 10
+        "full_ma": 10,
+        "output": "brightness"
       }
     ]
   },

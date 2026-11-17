@@ -356,7 +356,7 @@ Estimates and limits
   object; wired parts need their own state source (the parts engine), terminals drawn from `model.terminals`, wires and a library.
 
 
-## Workbench phase 2 (2026-11-17, step 1 of 6 done: parts on the table)
+## Workbench phase 2 (2026-11-17: parts, wires, code, own parts, Bluetooth and USB, bench file)
 
 Run: `npm run build && node scripts/workbench2-check.mjs` (headless Chrome, fresh profile, the real page; last run: all 15 passed).
 
@@ -390,13 +390,408 @@ the inspector is 1000 ohm in the engine and its two pins are listed; the push bu
 it (`pressed` true, false on release); Delete removes it from the table and the engine, Undo brings it back; after a reload the
 same parts, places and fields are in the engine again with bodies; no page errors.
 
-NOT done (phase 2 steps 2 to 6, in the coordinator's order)
-- Wires: no terminals in the scene, no click-to-connect, no wire bodies, no snapping of legs into breadboard holes, no module
-  mounting. The engine side is ready (`connect`, `groups`, `mountPart`); the page needs a `wires` list in the store, terminal
-  positions from `model.terminals` (and the Dot's header from `DEVICE_TERMINALS`), and the plug-in rule.
-- Code: no editor, no compiler wiring (`runtime/cc` is not added to the page's prebuild), no serial monitor.
-- Own parts ("Make your own"), Bluetooth and USB objects, export/import of the whole bench as one file.
-- The phase 2 proof (GPIO app driving an LED, blink compiled in the browser, servo, burnt LED and repair, Robotics module, frame
-  time with 60 parts and 40 wires) is therefore not written beyond what `workbench2-check.mjs` covers.
-- Parts have no undo-safe wiring yet, and a part's hazards are only shown in its card (not in the scene, apart from what its
-  model's `animate` draws).
+### Steps 2 to 6 (same day)
+
+Run: `npm run build && node scripts/workbench-proof.mjs [--only a,b,...] [--no-shots]` (the proof by mouse, sections a to h and p;
+screenshots in `web/screenshots/workbench2/`). Results of the last full run are at the end of this section.
+
+Wires and terminals (`workbench/wires.ts`, `parts/geometry.ts`, store `wires`)
+- A terminal is `"<instance>.<pin>"` or `device.<name>`. Places come from the manifest (`mm`, `face`, the same mapping as the
+  models) through where the part stands, how high (legs in holes) or the mount matrix; the Dot's 20 header pins are terminals in
+  its top wall and follow its pose (2 x 10, 2.54 mm, odd pins toward the screen, pin 1 at the Dot's left seen from the front:
+  read off the pin names the Dot's own shell prints beside the holes; `wires.test.ts` checks every pin against that print).
+- The wire tool (toolbar button or W; eight colours in a strip over the table) shows every terminal as a dot (board holes are not
+  dotted: the board shows them). Picking is done on the screen: the nearest terminal within 13 px, so a 2.54 mm header is hit at
+  any zoom at which it can be told apart; the name and the owner show in a tooltip. Click a terminal, then another (or press on
+  one and let go on the other); Esc lets the wire go; a click on a wire selects it (also from the Wires list), Delete removes it,
+  its card changes the colour. Wires are in the bench store with undo, and one mesh in the scene: tubes that rise from each end
+  and lie on the table (or over the bodies under them), bowed sideways by wire so that neighbours stay apart. The line is made
+  of Bezier pieces (`wirePath`): out of each terminal the way it faces (a header pin out of the Dot's top wall, a side pin
+  sideways), down to the table without dipping under it, round the Dot and tall parts. (Until 2026-11-17 it was one spline
+  through a few points, which sank under the table on long runs: only the middle of a wire from the Dot showed.)
+- Legs in holes: a part whose pins are all `bottom` legs, let go over a part with sockets on top (breadboards, an Uno's headers,
+  the Maker module), is pulled so that every leg is over a hole (2.2 mm reach), stands at the holes' height and is connected: the
+  service keeps one engine wire per leg (`plug_<instance>_<pin>`) for as long as the part stands there. Nothing is stored: it is
+  derived from the positions, so moving it off disconnects, undo and reload restore it. Two parts cannot take the same hole. Parts
+  travel with the board they stand in.
+- Modules: a part with `mount` in its manifest gets "Mount on the Dot" / "Mount turned over" / "Take off". The body is placed by
+  `mount.connector.seat_mm`, `mount.placement.anchor_dot_mm` and the axis table (`mountMatrix`, tested to be a rotation), as a
+  child of the Dot's pose, so it tilts with the Dot. Dragging a mounted module takes it off.
+
+Code (`components/CodeEditor.tsx`, `code/compiler.ts`, `code/examples.ts`, `scripts/prepare-cc.mjs`)
+- A board's card has "Code": an editor over the table (CodeMirror 6, C++ mode, in a shadow root so that its styles are constructed
+  style sheets and the site's CSP stays `style-src 'self'`), a tab per file with add and remove, six examples (blink, button, fade,
+  servo, knob, serial echo in two files), "Compile and upload", "Back to the original sketch", the problems list (click goes to
+  the line) with the same problems underlined in the text, and the board's serial monitor with a line input and "Restart the board".
+- The compiler (`runtime/cc/index.js`, copied to `src/generated/cc/`) is created the first time an editor opens and fetches only
+  its manifest; the first Compile downloads the toolchain with a progress bar (bytes of the compiler's own progress events), later
+  ones come from the Cache API. Upload is `setPartCode`: only that board restarts. Sketch text is kept in the bench store
+  (`code`), the compiled binary in IndexedDB (`dotbench.bench` / `code`) and given back to the engine when the part is added
+  again (reload, undo, an opened bench file).
+- `prepare-cc.mjs` (in `prepare:assets`) copies `<repo>/build/cc-assets` to `public/cc/` (git-ignored). Two things the compile
+  service should know: (1) `runtime/cc/build/build-assets.mjs` is not in `main` (the root `.gitignore` has `build/`, which hides
+  that folder), so a clean checkout cannot build the assets: here they were copied from the compile service's worktree; without
+  them the build still works and the editor says the compiler's files are not on this site. (2) the packs are named `*.pack.gz`;
+  `vite preview` (sirv) answers them with `Content-Encoding: gzip`, the browser inflates them and the compiler fails with
+  "Failed to fetch"; the page therefore serves them as `*.pack.bin` (the manifest is rewritten to match). The assets are 120 MB
+  on disk (five boards); the first compile downloads about 21 MB.
+
+Own parts (`components/MakePanel.tsx`, third tab "Make")
+- Import of `.dotpart` files by picker or drop (the engine's own `loadPart`: its errors are listed), the visitor's parts with
+  "put on the table" and remove, kept in IndexedDB and loaded again with the library. An imported part without a model gets the
+  body made from its manifest. The starter folder as a zip (`scripts/prepare-starter.mjs`, made at build time from
+  `templates/component-starter` with the repository's own zip writer), the AI prompt in the page's language with a copy button,
+  and the manual (the starter's README, rendered) in English, Portuguese and Spanish.
+
+Bluetooth and USB (`bench/drivers/ble.ts`, `usb.ts`, three models in `bench3d/models/wireless/`)
+- `ble.sensor`: name, temperature, battery; a puck whose display shows the value. `ble.phone`: scan, connect, pair (passkey typed
+  on the phone, or read off the Dot), disconnect, forget; the phone's screen shows the link and the passkey box. `usb.computer`:
+  a small laptop whose cable goes into the Dot's USB-C port like the charger's; serial terminal with input, a file to the Dot and
+  from it, "Install an app over USB" (`UsbComputer.installPackage`). The charger on its USB cable and the computer share the port:
+  the one plugged last stays (store rule). The "Coming soon" line has nothing left to list and is gone.
+
+The bench as one file (Bench tab, "Bench file")
+- Save writes `bench.kodedot.json`: the store's data (objects, places, wires, mounts, sketches) plus the compiled sketches and the
+  imported parts (base64). Open replaces the bench (undoable). The same data is what the browser keeps between visits
+  (localStorage for the store, IndexedDB for binaries and imported parts).
+
+Proof, last runs (2026-11-17, headless Chrome with software GL on a 2-core machine that other jobs were loading)
+- `workbench-proof.mjs`, full run: sections a to g, 43 checks passed (third start: the page froze twice before, see below);
+  sections h and p run on their own: 5 checks passed. What each proves:
+  (a) breadboard, red LED and resistor placed from the library, the two legged parts dragged into the board's holes, two wires
+  drawn by mouse from header pin EXP1 and to GND, the GPIO app opened from the installed apps and worked by touch on the 3D screen
+  (Pins, Pin 1, Output, High): LED brightness 0 -> 0.40 (4.0 mA), Low: 0. (b) Uno, editor, Blink compiled and uploaded, LED 0/1
+  and "on"/"off" in the monitor; a broken line 16 is reported on line 16 in the list and in the text, nothing uploaded; keys do
+  not reach the table while the editor is open. (c) servo wired by mouse to D9, 5 V, GND; the sweep sketch moves it 0..180.
+  (d) green LED across the 9 V battery burns, the card says so, a wire is clicked and deleted, repair restores the LED.
+  (e) Robotics module mounted (body at the Dot's top edge), a motor on its output turns one way and the other, the three inputs
+  driven through the engine's test hook; mounted turned over too. (f) Save writes one file (14.7 KB with the sketch's binary);
+  after a reload 9 parts, 9 wires, 13 engine links, the legs in their holes, the module on the header and the uploaded sketch are
+  back and the board runs it without compiling; the file opens into the same bench on an emptied table. (g) a `.dotpart` imported,
+  listed, placed, kept over a reload, removed; a wrong file refused with the reason; the starter zip, the prompt with Copy, the
+  manual. (h) sensor, phone and computer with bodies, "Coming soon" gone; the phone finds the Dot ("Found KODE... (-50 dBm)");
+  the computer's terminal answers `ping` with `pong`; charger and computer take the port from each other.
+- Numbers: first Compile and upload 14.6 to 21.5 s (about 21 MB fetched from the local server, compile, upload); a compile with
+  everything cached 6.3 to 8.2 s. Frame time with 60 mixed parts and 40 wires, whole table in view, 1440x900: 480 and 593 ms
+  (185 draw calls, 195,000 triangles, the wires 12,480 of them); phase 1 measured 185 to 332 ms for 60 wireless objects on the
+  same software renderer when the machine was quieter. Not measured on a real GPU.
+- Others: unit tests 273 passed; `workbench-check` 29 passed, `bench-check` 20 passed (each after one run lost to the freeze),
+  `workbench2-check` 15 passed. Layout audit with the new scenes (part card, wire tool, code editor, Make tab): 820x1180 ran
+  clean in English light and Spanish dark except the wire colour buttons (24 px on touch), which are 44 px now; the runs at
+  390x844 and 1280x720 and the re-run at 820x1180 died with the browser (machine overloaded), so phone and desktop are NOT
+  audited for the new panels, and the code editor was not looked at on a phone.
+
+Weak or not done
+- The page can freeze: the page's thread is seen stuck inside the firmware's `ble_out_pop` (called by `runtime/drivers/ble/ble.js`
+  `poll -> drain`), most often right after a program starts, more often when the machine is loaded. It is not bench code; the
+  proof script starts again when it happens (up to three times) and the older check scripts fail on it now and then.
+- (e) drives the Robotics module's three inputs through the engine's `setDevicePin` (a test hook, `PartsService.drivePin`): the
+  GPIO app drives one pin at a time and its pin list needs scrolling by touch, which the script does not do.
+- Pairing on the phone was not run end to end (scan and the buttons were); file transfer and app install over USB were not run by
+  the script (the terminal was).
+- A board's EEPROM is not kept across reloads (the compiled sketch is). Wires are not yet drawn red when the engine reports a
+  short (the wire's card says so). Hazards show in the part's card, not in the scene.
+- The coil and port anchors are estimates. Touch and a real GPU were not tried. The editor keeps the
+  light highlight colours in the dark theme.
+- The part names shown in the library ("Arduino Uno R3" ...) are the parts library's data; the models carry no marks.
+
+## Parts batch 5 on the models, and the boards' buttons (2026-11-17, branch fix/refit-batch5)
+
+Run: `cd web && npm test` (302 passed, 29 files; 279 before, one of them failing), `npm run build`, and
+`UX_PORT=4397 node scripts/controls-check.mjs` (headless Chrome on the built site, a port of its own; 19 checks passed, then
+`--only modules` for the picture: 2 passed). Model shots: `node scripts/model-shot.mjs --model <id>` for each model named below.
+
+Models refitted (`web/src/bench3d/models/`)
+- Robotics: `contract.test.ts` failed because the batch moved the screws of the two blocks to y = 2 mm and a 3.81 mm block (5.7 mm
+  deep, screws in the middle) then passes the far edge by 0.86 mm. The model was already reading the pins; it now also reads what
+  the manifest lets it overhang (`overhangOf(body)`, nothing today) and ends the blocks at the footprint's edge (`screwBlock`'s
+  `back`): 4.86 mm deep, the near face where it was. The day the manifest has `overhang_mm.back` the blocks get their whole depth
+  with no change here. Their outline runs down the right side as in the picture, the names keep off the mounting holes, nothing is
+  printed across a hole.
+- Maker: nothing was typed in the model: strips, legends and corner marks moved with the manifest (GND upper right, 3V3 lower right).
+- Both modules (and the Camera, same builder): the mounting holes are plain drilled holes with a pale edge. Looked at closely, the
+  store picture has no gilded ring round them; the rings were the model's.
+- Uno R3, R4 Minima, R4 WiFi: L lights at `visuals.led.mm` and the reset switch stands at `controls[reset].mm`
+  (`unoGeo.visual`, `unoGeo.control`: body millimetres less the overhang; the outline's arcs and the 2.04 mm overhang came through
+  the manifest's `outline` by themselves). The word RESET follows the switch; on the Minima the grid is rubbed out under it.
+- ESP32 boards: the two switches are the manifest's controls (`switchesOf` in `esp32/board.ts`): at `controls[].mm` when the board
+  has room for a switch there, otherwise where the board's drawing has them. The three DevKitC V4 parts take the manifest's places;
+  the S3 does not (see the data notes). Names of pins that would lie under a switch are not printed.
+- LED with resistor: the model reads `fields.ohms` and `outputs.brightness`, both unchanged: no change.
+
+Buttons (C)
+- On the model: each control is the switch's plunger, marked with `controlFromManifest`, with an unseen hit area the size of the
+  switch's top (`hitPad`, new in `bench3d/controls.ts`). The Workbench's existing momentary path does the rest: pointer down sets the
+  part's field true in the bench store, up sets it false, no drag starts. A press shows as the plunger going down (0.5 mm on the
+  Unos, 0.45 on the ESP32s) and an amber glow over the switch.
+- In the card: "Buttons on the board" with one press-and-hold button per control (`parts/controls.ts`, `HoldButton` in
+  `ComponentsPanel.tsx`): pointer, Space or Enter; it is shown held while the model's button is held too; it lets go when the card
+  goes away. The hint under each ("Restarts the sketch", "Holds IO0 at 0 V while pressed") is typed i18n in en, pt-BR and es; the
+  button's name is the manifest's label. A momentary field of a plain part (the push button's `pressed`) stays the switch it was.
+- The engine: nothing was missing. The store's field reaches `bench.setField(instance, field, value)` through `PartsService.sync`;
+  the engine restarts the sketch when a field with `action: "restart"` goes true and holds `pin` at 0 V through 10 ohm while a
+  field with `action: "pull_low"` is true (runtime/web-adapter/bench.js and bench-wasm.js, batch 5).
+- Checked in the page: reset held on the Uno's model and then in its card empties the serial log and the sketch prints its first
+  line again; the plunger is 0.50 mm down while held; letting go leaves the board where it was. BOOT held on the S3: IO0 goes from
+  floating to 0 V and back, the sketch keeps running. EN held: the S3's sketch starts again. Screenshots:
+  `web/screenshots/workbench2/controls-uno-reset.png`, `controls-s3-boot.png`, `controls-modules.png`.
+
+The modules beside the store picture (looked at as pairs, the model turned to the picture's angle; the pairs are not in the repository)
+- Robotics, same: outline, four holes, the three-pin and five-socket strips down the left, six sockets down the right, every legend,
+  the driver with its two sense resistors and small parts, the header, "robotics rev1.0". Different: the picture's blocks hang over
+  the far edge and stand clear of the two far holes; the model's end at the edge and each stands over a hole (data, below). The
+  maker's logo and web address are left blank on purpose.
+- Maker, same: breadboard with its channel, the fourteen sockets with turned legends, two strips a side, GND above 3V3 on the right,
+  the header, "maker rev1.0". Different: the picture's strips stand against the breadboard with the legend outside them; the model's
+  stand at the board's edge with the legend inside (data, below). The picture prints "3V3-2A" (a prototype, says the written spec);
+  the model prints the documented "3V3-1A". The band between breadboard and header is wider than in the picture (board size, an estimate).
+
+Data that looks wrong (for the parts engineer; nothing was changed under parts/)
+- kode-robotics body: `d_mm` 48.5 and no `overhang_mm.back`, with MOTA/MOTB at y = 2 mm. A block centred on those screws reaches
+  y = -0.86 mm; the picture shows more.
+- kode-robotics MOTB x 7.5 / 11.31 and MOTA x 33.4 / 37.21: the blocks (x 5.6 to 13.2 and 31.5 to 39.1) cover the holes at (5, 4.75)
+  and (40, 4.75). Measured on the picture in the frame of the four holes (the stepper pins come out within 0.3 mm of the manifest
+  in that frame): block B spans about x 9.0 to 16.0, block A about 28.1 to 35.4, so the screws are near 10.6 / 14.4 and 29.8 / 33.6.
+- kode-maker strips x 1.8 / 56.2 (half a millimetre from the edges): the picture has them beside the breadboard, about x 5.0 / 53.0.
+- Uno reset (`estimate`): body (16.4, 4.5) on the R3 and (12.04, 4.5) on the R4s, that is board (10.0, 4.5). The maker's board
+  files have (6.35, 3.94): body (12.75, 3.94) and (8.39, 3.94). At the estimate the switch touches the mounting hole beside it and
+  lies over a diode (R3) or a resistor (R4s).
+- ESP32-S3 EN (57.24, 3.5) and BOOT (57.24, 21.9): that is where the two USB-C sockets are (from x 55.3; y 3.1 to 12.1 and 13.3 to
+  22.3). The model keeps RST at (50.0, 5.6) and BOOT at (50.0, 19.8), from the user guide's component map, and takes the manifest's
+  place as soon as it is one the board has room at (tested).
+- DevKitC V4 parts: EN (48.6, 4) and BOOT (48.6, 23.94) are 2.2 mm nearer the header rows than the model had them and cover the
+  last pin names; as I know the board, EN is on the side of the row that carries EN (the front row here) and BOOT on IO0's, the
+  other way round. Not checked against a drawing in this pass.
+- The DevKitC V4 parts' `visuals.led` (GPIO2) has no `mm`; that board has no such LED and the model shows none (as before).
+
+Not done
+- The page run was at 1440x900 with the mouse; touch and a phone were not tried. The card's buttons were pressed with the mouse,
+  not with the keyboard, in the page (the handlers are there).
+- `_gallery.png` of the model shots was not redrawn.
+
+## Wires, modules on the Dot, nothing under the table (2026-11-17, branch fix/wires-mount)
+
+Run: `cd web && npm test` (363 passed, 30 files; 302 in 29 before), `npm run build`, and for the pictures
+`UX_PORT=4398 node scripts/wires-mount-shots.mjs [--only wires,legs,cross,modules] [--cost]` (headless Chrome on the built site;
+every picture named below is in `web/screenshots/workbench2/`). The owner reported three defects; each was reproduced in a
+picture first (same script, same views), fixed, and looked at again.
+
+### 1. Wires looked like glass and went through things
+- Root of the look: every triangle of every tube was wound inward (`tubeIndices` in the kit, and the copy of it the wires had).
+  With a front-side material the near wall was culled and what showed was the inside of the far wall, lit from behind: hollow,
+  striped, "see-through". The material itself was always opaque. Fixed where it was wrong, in the kit (`bench3d/shape.ts`), so
+  the models' cables and antennas and the charger's lead are right too; the wires write their own rings (`writeRings`,
+  `writeRingIndices`) and a test checks the winding of both.
+- Root of the passing through: the old line was a curve from terminal to terminal that only knew the height of the table under
+  each point and the Dot's footprint; it rose from a hole toward the other end at once (through the board's own body) and
+  climbed onto a body only when it was already inside it.
+- `workbench/wires.ts`, `wirePath(a, b, boxes, { fan, seed })` (pure, tested): out of each terminal straight along the terminal's
+  own direction for 4.5 mm (up out of a hole or a socket, outward from a side pin, out of the header's opening in the Dot's top
+  wall), a bend of 5.5 mm, then the run: in plan the straight line, or the shortest way round what is gone round (the Dot with
+  its module, and anything taller than 24 mm: corners of their boxes 11 mm out, rounded); in height on the table, rising to each
+  end and over every body under the line (its top + 1.8 mm, reached 5 mm before the body begins), dips rounded. An end that
+  faces away from the run turns aside by 9 mm instead of folding back. Only the two stubs may be inside a box: their own
+  terminal's. Bodies are boxes (`WireBox`): every thing on the table with its height (a part in a board's holes or on its legs
+  included), the Dot as it lies (tilted too) and the module on its header.
+- A pin under a body (`face: bottom`) is left sideways past the nearest side, not up through the body; a bare leg a part stands
+  on is held half way down. The 20
+  pins of a mounted module's own connector are in the Dot's header: they are no longer offered as terminals while it is mounted.
+- Wires between the same two things are a bundle: they bow to the same side (2 to 7 mm of slack on a free run) and are pushed
+  apart in the middle only where they would lie on each other (2.6 mm), in the order they already lie in, so they do not cross.
+- Look: 1.6 mm tube, six sides with smooth normals, satin opaque plastic in the wire's colour (roughness 0.58, no metal, depth
+  written, drawn with the solid bodies), closed down onto a 0.64 mm tinned pin at each end that goes 1.4 mm into the terminal (a
+  second mesh: one more draw call).
+- Cost: each wire's line and tube are kept (`Built`) and made again only when its ends, its place in a bundle, its thickness or a
+  body in or against the rectangle its line was made in change; a colour is only copied. Measured with `--cost` (the proof's
+  scene p: 60 mixed parts, 40 wires, whole table, 1440x900, software GL, 2 cores shared with other jobs), before -> after:
+  frame 502 / 452 / 545 ms -> 463 / 538 / 415 ms (the same within this machine's noise); 181 -> 183 draw calls; 198,654 ->
+  200,208 triangles (the wires 15,360 -> 16,912); all 40 wires made from nothing 2.7 -> 12.6 ms (once); one part moved a step
+  5.3 ms with all 40 wires made again -> 5.1 ms with 2 made again; a frame with nothing changed 0.002 ms both.
+- Pictures: `wire-header-to-breadboard-front.png`, `-side.png`, `wire-header-from-behind.png` (out of the hole printed IO8, down
+  to the table, up over the board's edge, down into the hole), `wire-round-the-dot.png`, `wires-fan.png`,
+  `wires-crossing-a-board.png`, `-low.png` (three wires from the header over a breadboard to an Uno, a fourth from the board).
+
+### 2 and 3. Modules on the Dot
+- Root of "upside down": data. `mount.placement` of the three flat modules (Maker, Robotics, Camera) had `upright` and `turned`
+  the wrong way round (flagged `assumed`, "no mounted photo of them"): upright put the component side on the Dot's back. The
+  two tables are swapped in `parts/kode-{maker,robotics,camera-shape}/manifest.json` (the `mount` block only; `parts/prebuilt`
+  regenerated, `parts:check` up to date) and flagged `documented`.
+- Evidence for which face is up when the Dot lies screen-up:
+  1. The maker's documents (as read in `/home/claude/research/06-official-modules-spec.md`, each marked [DOC]): the Maker's
+     breadboard is "on the screen side when mounted"; the Robotics pin table is headed "Attach (screen-side, upright)"; the
+     Camera's two tables are "lens towards you (lens on the screen side)" and "lens looking away"; turned round "power stays safe,
+     every GPIO moves" and the factory tests Robotics turned, so both ways exist physically.
+  2. The parts library's own definition (`parts/gen/data/modules.json`): `gpio` is what a pin meets "when mounted upright
+     (screen side)". The engine's `upright` is that map; the picture now is that pose.
+  3. The store picture (ref-4) against the Dot's own print: on the Robotics board seen from its component side with the connector
+     toward the viewer the legends GPIO8..11 run down the left edge and GPIO15..18 down the right; the Dot's shell prints IO8..IO14
+     beside the left half of its header (seen from the front) and IO15..IO21 beside the right half. Component side on the screen
+     side, the two agree; the other way every line would have to cross the board.
+  4. ref-5 and ref-8 (the cased radio modules on the Dot): the block's marked face is on the screen side, the tongue on the back.
+- Where the connector meets the header, and how thick the stack is: the header is in the middle of the top wall's thickness (the
+  render of the Dot's top wall, `shots/model-custom-top.png`: the two rows of holes sit midway between the wall's edges, 2.54 mm
+  apart), so its axis is 9.9 mm above the table when the Dot (19.8 mm) lies face up. A flat module's right-angle connector has its
+  two rows 2.87 and 5.41 mm above the board's underside (manifest), axis 4.14 mm. Upright: the board lies in the Dot's plane past
+  its top edge, underside 5.76 mm above the table (it hangs on the header), its tallest part at 19.76 mm, level with the Dot's
+  face. Turned: the same board half a turn about the Dot's long axis, parts hanging down to 3.5 mm (Maker), 3.8 mm (Robotics),
+  6.2 mm (Camera) above the table: nothing touches, the Dot lies flat. The radio modules (one way only): the tongue, 14 mm thick,
+  lies against the back of the Dot's upper 26 mm; the stack is 33.8 mm thick there.
+- Both orientations are kept for the flat modules (both exist and the engine maps the pins for each); the card's "Mount turned
+  over" now is the component side down.
+- Root of "through the table": the Dot was rested on the lowest of its own eight corners only, and a module was drawn as its
+  child wherever that put it. Now (`workbench/rest.ts`, used by `world.ts`) the Dot and the module on its header are one rigid
+  thing that lies on the lowest points of the whole assembly: the corners of the module's model hull (65 to 413 points, kept
+  per kind) through the mount matrix join the Dot's corners. When the module reaches lower than the Dot's back the stack TILTS
+  (chosen over lifting the Dot level, which would leave its bottom end hovering): it rests on the Dot's bottom edge and on the
+  module, on the edge of the side outline that is under the Dot's middle. With a radio module that is 14.8 degrees, top end up,
+  the Dot's middle 19.4 mm above the table. The tilt is a way of lying, under the hand's own tilt (the amber ball), and is not
+  reported to the motion sensors. Wires, terminals, the card slot and the USB plug follow, as they follow any pose of the Dot.
+- Found by the new invariant: 21 library parts with legs (`plugMm`: LEDs, resistor, diode, capacitors, buzzer, potentiometer,
+  push button, slide switch, HDC1080, antenna, the four ESP32 boards) stood with their legs 3.5 to 7 mm under the table when not
+  in a board. They now stand on their legs (`standLift`), as the model stand always showed them; in a board's holes nothing changed.
+- Invariant test (`workbench/rest.test.ts`, 53 tests): every library part alone (39, all with models), and the Dot with each of
+  the five modules in each allowed orientation (8 poses), placed by the same functions the scene uses: no vertex of the model
+  below the table (0.1 mm), something on the table (nothing hovers), and for a propped stack both the Dot and the module touching.
+- Pictures: `module-{maker,robotics,camera,mesh,hacking}-side.png` (the eye at table level), `-above.png`, `-angle.png`,
+  `module-{maker,robotics,camera}-turned-side.png`, `legged-parts-stand.png`.
+
+### Data for the parts engineer (nothing outside the three `mount` blocks was changed under parts/)
+- `parts/gen/modules.mjs` line 36 (`flatMount`) still writes the old tables; the next `gen-parts` run would undo the fix. It must
+  read `upright: { x: "+X", y: "-Y", z: "+Z" }, turned: { x: "-X", y: "-Y", z: "-Z" }, source: "documented"`. `docs/STATUS-parts.md`
+  ("component side facing the back for upright") says the old thing too.
+- The 20 pins of the flat modules' connector have their `mm` laid out for the old pose (and `connector.odd_row: "low_z"`): with the
+  board the right way up, pin J401.17 (GPIO8) is drawn where the Dot's pin 18 (IO16) is, and so on: each connector terminal is on
+  the hole a half turn away from the one it is joined to. To agree with the header's print the pins must be mirrored about the
+  board's centre line and the two rows exchanged (odd row high). Rails are unaffected (the header is symmetric). On a mounted module
+  these pins are hidden now; on a loose module the names are right and the places are mirrored.
+- `anchor_dot_mm` (header centred in the wall's thickness and across the Dot) is read off a render, not a drawing.
+
+### What was run to the end, and what was not
+- `npm test`: 363 passed (30 files) on the code before the last small change (a wire holds a bare leg half way down:
+  `wires.ts` refresh, `World.tsx` adapter); after it `npx vitest run src/workbench` (the four workbench files) passed and
+  `npm run build` (with `tsc --noEmit`) passed. The whole `npm test` was not repeated after it.
+- `wires-mount-shots.mjs`: all 26 pictures taken and looked at; `legged-parts-stand.png` retaken after the last change, the
+  others are from the build just before it (it only moves wires on pins under a body).
+- `workbench-proof.mjs`, one full run on the final build with the machine's load above 40: 36 passed, 1 failed. The failure is
+  (g) "the AI prompt is there with a copy button, and the manual opens": the button still read "Copy the prompt" 300 ms after the
+  click (the manual opened, 6311 characters). That is the Make tab, which this branch does not touch; not repeated. Sections that
+  bear on this work passed: (a) wires drawn by mouse from the header and the LED lit, (c) the servo wired, (d) a wire clicked and
+  deleted, (e) the Robotics module mounted both ways and driving a motor, (f) save, reload and open. Its frame time (746 ms) was
+  taken at that load and says nothing; the before and after above were measured back to back on a quieter machine.
+- To confirm alone on a quiet machine: `cd web && npm test`; `npm run build && UX_PORT=4398 node scripts/workbench-proof.mjs --only g`;
+  `UX_PORT=4398 node scripts/wires-mount-shots.mjs --only none --cost` for the frame cost.
+
+### Weak or not done
+- Bodies are bounding boxes: a wire to a socket that is lower than its board's tallest part first rises to clear that height,
+  and the radio modules' box includes the whips, so a wire climbs over empty air beside an antenna.
+- Wires do not see each other: two that cross lie through each other at the crossing; bundles are only kept apart sideways.
+- A wire on the table still comes down to the table between two raised places close together (a dip) where a real jumper would
+  hang in the air; a terminal that faces down (a socket of a module mounted turned) gets a wire that starts into the table's side.
+- The Dot's shell is rested as its box: its real bottom-back edge is chamfered, so a propped Dot hovers about a millimetre there.
+- A module mounted while the Dot's header already carries wires: those wires still end in the header, inside the module's connector.
+- `tests/node/parts`, run for the manifest change: schema copies current, `geometry.test.mjs` 257 checks passed, the library built
+  (39 parts), `modules.test.mjs` 65 of 66 (the one left needs `build/apps/parts_robotics`, a firmware package this worktree has
+  no SDK build for). The rest of `run.sh` (boards, circuits, the firmware end to end) was not run: nothing they read changed.
+- Not tried: touch, a real GPU, a phone.
+
+
+## The guide (2026-11-17, branch feat/guide)
+
+Run: `cd web && npm test` (333 passed, 30 files; `src/guide/guide.test.ts` is the guide's), `npm run build`, and
+`UX_PORT=<port> node scripts/guide-check.mjs [--only=desk,tablet,phone,land,links,live] [--no-shots]` (headless Chrome on the built
+site; last full run: 61 checks, all passed once the How? check was made to click with the mouse; screenshots `web/screenshots/guide/`).
+
+What it is
+- A dialog over the running page, one section at a time, ten sections: start, using-the-dot, apps, bench, workbench, sketches,
+  your-own-app, your-own-parts, what-is-simulated, help. The URL's hash is the truth (`web/src/guide/route.ts`, `store.ts`):
+  `#guide/<section>` opens that section directly (a pasted link), `#guide` and an unknown section open the first one, old names go
+  through `ALIASES`. Opening pushes one history entry (Back closes), moving between sections replaces it, closing restores a clean
+  address. Section ids are part of links people paste: never rename one, add an alias.
+- Entry: a "Guide" pill in the top bar (`GuideButton`, `web/src/guide/entry.tsx`); on a phone in portrait the same pill rides on the
+  top edge of the panel, in the strip the device already keeps clear for the handle; in phone landscape a round "?" in the stage's
+  bottom-left corner (there is no room beside the Dot for a word; it has the name as its label and tooltip).
+- Quiet "How?" links (`GuideLink`) where the page had dead ends: beside the install hint and the empty list in Apps, in the first-run
+  hint (desk), beside the subtitles of Bench, Components and Make, on the crash card and the unsupported-browser card.
+- The page under it: `#root` is inert while the guide is open (it keeps running; checked: same program, the console still answers),
+  focus goes to the section's title, Tab stays in the dialog, Escape closes, focus returns to the control that opened it (or to the
+  Guide control when it was opened by a link). `data-own-keys` on the dialog makes `isEditableTarget` (lib/keys.ts) true inside it,
+  so B, T, the arrows, Delete, W and the rest do not reach the Dot or the table while reading (the table's handler is on window in
+  the capture phase, so stopping the event in the dialog would not have been enough).
+- Texts: `web/src/guide/content.en.ts` (the keys), `content.pt-BR.ts`, `content.es.ts`, written natively; nothing of the guide is in
+  the shared i18n files except `nav.guide` and `guide.how` (the entry's two labels, placed after `nav.settings`, not at the end).
+  A text names a control of the page as `{t:key}`, filled from the site's own texts, so the guide calls a button what the page calls
+  it in every language. `{ext}` is `APP_PACKAGE_EXT` (`web/src/lib/appPackage.ts`), the ONE constant for the app package's
+  extension: when the extension changes, change it there (or point it at the constant the app-manager code gets), and the guide's
+  texts and its picture follow. The test refuses a typed-out `.dotbench` or `.zip` in any guide text.
+- Structure once for all languages: `sections.ts` (blocks). Data that is rendered, not retyped: the bundled apps (`apps.ts`, checked
+  against `scripts/factory-apps.json` and `public/apps/SOURCES.md`), the compiler's support lists (`sketchData.ts` reads
+  `runtime/cc/boards.mjs`, copied to `src/generated/cc/` by `prepare-cc.mjs`; Portuguese and Spanish sentences carry the fingerprint
+  of the English sentence they were written for and fall back to the compiler's English when it changes; the test then names the new
+  fingerprint), the capability table (`capabilities.ts`, one row per area with the status files it was written from), the keys
+  (`KEY_HINT`), the names of the parts in the worked examples (checked against `parts/prebuilt/library.json` and the manifests).
+- `buildPackage.ts` holds "Build a package" alone: the one place to replace when a package can be built in the browser.
+- Styles: `guide.css` (with the guide's lazy chunk) and `entry.css` (main bundle). Both state the site's layer order first
+  (`@layer theme, base, components, utilities;`): without it a stylesheet bundled before index.css puts `components` under `base`
+  and every `.btn` of the page loses its look (seen, fixed).
+
+Verified by running, in this pass (headless Chrome on `vite preview`, 1440x900, fresh profile each time, by mouse on the 2D screen)
+- kodeOS: a sideways swipe on the lock screen shows the groups (All, Games, Tools, Wireless); a tap on All lists Kody Kart, Light, NFC,
+  RFID ...; a swipe down from the very top edge opens the control centre, on the lock screen and on the app list (a swipe that starts
+  lower scrolls the list instead).
+- Router: added, joined from kodeOS (control centre, gear, Wi-Fi, Wi-Fi on, Home WiFi): the card shows "Dot connected" and
+  192.168.2.101. In the console `http_get url="http://localhost:<port>/apps/SOURCES.md"` printed the file (status=200);
+  `http_get url="https://example.com/"` failed (`kdrv.net ... UNKNOWN ERROR`, the browser's console: blocked by `connect-src 'self'`);
+  `net_ping host="example.com"` got four timeouts.
+- Infrared: Remote and TV added, IR Remote opened from Apps, Learn, Power pressed on the remote's card: "NEC signal, Address 0xFB04,
+  Command 0x0008"; Test: the TV's power went on ("The Dot sent: power").
+- Bluetooth: a bench sensor is found by the Bluetooth app's Nearby ("Sensor 1").
+- App package: from a FRESH CLONE of this repository in an empty folder, on this Linux machine (Ubuntu 24.04, x86-64, Python 3.13 with
+  Pillow): `tools/setup.sh` (1 min 56 s, `.deps` 2.1 GB), `source .dotbench-env`, `tools/dotbench sdk` (9 min 35 s at load 18),
+  `tools/dotbench build <kode-app-template checkout>` (12 s) wrote `build/apps/my_app/my_app.dotbench` (365,826 bytes). That file,
+  given to the Apps menu's install control, opened as "My app" and was listed as the 14th app; holding B for 3.6 s returned to kodeOS
+  on its app list; the same file given to the bench Computer's "Install an app over USB" answered "Done" and ran.
+- Parts: `tools/dotbench part new <dir> --declarative`, `part check`, `part test` (4 steps passed), `part build` (wrote
+  `<dir>/com.example.my-part-1.0.0.dotpart`). Imported in Make, that file was REFUSED ("Cannot read properties of undefined (reading
+  'w_mm')"); after adding `body` and an `mm` to every pin of its manifest and building again it was imported, listed and put on the
+  table. The guide says so.
+- The guide itself: `guide-check.mjs`, as listed in its header.
+
+Taken from status files, not run again here
+- NFC read in the NFC app, files on the microSD card seen by Files, kept settings, factory reset, export and import of the device
+  (this file: bench-check, system-check, settings-check).
+- The LED worked example (breadboard, resistor at 220 ohm, wires EXP1 and GND, GPIO app Pins, Pin 1, Output, High) and the Arduino
+  example (Uno R3, Code, Blink, Compile and upload, serial monitor, an error listed with its line), modules mounted, bench file saved
+  and opened, reset and BOOT buttons (this file: workbench-proof sections a, b, e, f; controls-check). The first compile's 21 MB:
+  STATUS-cc.
+- The capability table: STATUS-nfc, -rfid, -ir, -sensors, -radio, -ble, -usb, -audio, -parts, -cc, -kodeos, as named per row in
+  `capabilities.ts`. Two rows rest on reading code rather than on a run: Sound (nothing under `web/` attaches the audio glue, whose
+  input defaults to silence) and MQTT (STATUS-radio's in-page broker; not tried in the page).
+- Browsers: "tested in Chrome only; Firefox and Safari untested" (STATUS-cc, and every page check here is headless Chrome). Phone:
+  "not tried on a real phone" (this file).
+
+Not done, or not looked at
+- Looked at, of the screenshots: 1440x900 light start, using-the-dot, bench, sketches, what-is-simulated, your-own-app in pt-BR;
+  1440x900 dark workbench; 820x1180 light your-own-app and dark start; 390x844 light closed, first visit, start, dark
+  what-is-simulated; 844x390 light closed and start. NOT looked at: the apps, help and your-own-parts sections at any size, the
+  Spanish pages, 820x1180 and 844x390 in the other theme. The desktop and tablet screenshots in the folder predate the last text
+  changes (your-own-parts steps, the note on the Wi-Fi example) and three small style changes (the controls picture 25rem wide, the
+  labels of the range picture 16 px lower, tighter `code` padding): run `guide-check.mjs` again to refresh them. These last changes
+  were built and unit-tested, not seen in a browser.
+- `layout-audit.mjs` was not run with the guide's control in place (phone: the pill on the panel's edge; top bar: one more pill at
+  820 px). The other check scripts were not run again; `system-check.mjs` reads the first-run hint's text, which now ends in "How?".
+- The guide was not tried with a screen reader, on a real phone, or in Firefox or Safari.
+
+Found in the product while writing (not fixed here; each is something the guide has to talk round)
+1. The site's CSP (`connect-src 'self' blob:`) blocks every address but the site's own, so the router's "Internet" switch promises
+   what the page cannot do: `http_get` and ping reach nothing outside, and MQTT can only reach the in-page broker.
+2. The router's card never listed the request ("What the Dot asked" stayed empty after a successful `http_get`).
+3. kodeOS's console wants string arguments in quotes; `http_get url=http://...` answers only `>err code=3 msg=url`.
+4. A part built from the starter folder (or `part new`) cannot be imported: the page needs `body` and pin `mm`
+   (`web/src/parts/service.ts` reads `m.body.w_mm`), the starter manifest and both no-code examples have neither, the schema marks
+   them optional, and the refusal is a raw JavaScript error. The starter's README also says to drop the file in "Check my part",
+   which the Make tab does not have (it is "Import a part").
+5. Portuguese: the Bench panel and the Workbench mode are both called "Bancada" (`nav.bench`, `mode.workbench`).
+6. Sound is silent: apps record and play inside the Dot, the page connects neither speakers nor microphone.
+7. `tools/dotbench build` needs Pillow for an app with a PNG icon (Kode's template has one) and does not say so; its other path
+   defaults point at the maker's machine when `.dotbench-env` was not sourced.
+8. The repository has no LICENSE file at its root (the README states GPL-3.0-or-later).

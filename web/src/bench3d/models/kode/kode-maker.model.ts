@@ -5,7 +5,7 @@
  * mounting holes; all 220 terminals; the connector's seat: measured from the picture by the parts engineer, an
  * ESTIMATE), the written spec research/06-official-modules-spec.md section 2 (an SYB-170 breadboard, 45.5 x 34.5 mm,
  * glued in the middle; the silkscreen ratings "5V-1A" and "3V3-1A") and the maker's store picture (ref-4, never
- * copied) for everything seen: the black rounded-square board with a gold-ringed hole in each corner, the plain white
+ * copied) for everything seen: the black rounded-square board with a plain drilled hole in each corner, the plain white
  * breadboard with its closed centre channel inside a thin gold outline, the row of fourteen sockets on the far edge
  * with a small turned legend at each, two single-file strips of four power sockets down each side, the 2x10
  * right-angle header with bright pins on the near edge.

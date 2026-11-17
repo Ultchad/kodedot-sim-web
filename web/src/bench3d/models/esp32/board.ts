@@ -16,13 +16,17 @@
  * Both manifests' bodies are the bare boards (the DevKitC's plus 0.7 mm for the micro-USB socket's lip), so the
  * modules lie flush with the board end and the S3's USB-C sockets flush with the other.
  *
+ * The two switches of each board are the manifest's `controls` (EN or RST restarts the sketch, BOOT holds IO0 low):
+ * each stands where its control's `mm` says, as long as the board has room there (`switchesOf`); pressed, its plunger
+ * goes down in a small pool of light.
+ *
  * Nothing is on these models that is not on the boards. The DevKitC V4 has ONE LED, the red power LED: the
  * manifest's `led` output (GPIO2) has no LED on that board and is not shown. Neither board has serial LEDs or a
  * fault light, so `tx`, `rx` and `crashed` are not shown either. Print is functional only: pin and port names, the
  * board's and the module's designation and revision; where the real parts carry a maker's name or logo it is blank.
  */
 import {
-  FONT, FONT_MONO, INK, PAL, Shape, controlFromManifest, defineModel, footprintOf, fromManifestMm, glowing, halo, markControl, microUsb, part, partState, pcb, print, qfn,
+  FONT, FONT_MONO, INK, PAL, Shape, controlFromManifest, defineModel, footprintOf, fromManifestMm, glowing, halo, hitPad, markControl, microUsb, part, partState, pcb, print, qfn,
   setLamp, silkBox, terminalsFromManifest, text, topQuad, usbC, type BuildCtx, type ControlManifest, type ManifestBody, type ManifestPin, type PartModel, type PartState,
   type PrintDef, type Terminal, type V3,
 } from '../../index';
@@ -35,8 +39,9 @@ export interface Esp32Manifest {
   body: ManifestBody;
   picture: { width: number };
   pins: ManifestPin[];
-  visuals?: { id: string; x: number; y: number; color?: string }[];
-  controls?: { field: string; mode: string }[];
+  visuals?: { id: string; x: number; y: number; color?: string; mm?: { x: number; y: number } }[];
+  /** The board's switches: the field each drives and, since batch 5, where it is on the part (`mm`, manifest frame). */
+  controls?: { field: string; mode: string; mm?: { x: number; y: number }; action?: string; pin?: string; estimate?: boolean }[];
 }
 export type Esp32Board = 'classic' | 's3';
 
@@ -51,11 +56,25 @@ interface Spot {
   x: number;
   z: number;
 }
-/** A switch of the board: where its plunger is, and the names a manifest may give the field it drives. */
-interface Switch extends Spot {
+/** A switch as the board's drawing has it: where its plunger is, and the names a manifest may give the field it drives. */
+interface DrawnSwitch extends Spot {
   name: string;
   fields: readonly string[];
 }
+/** A switch of the model: where it stands, the manifest field it drives (none: a static cap), and who said where. */
+export interface Switch extends Spot {
+  name: string;
+  field?: string;
+  /** `manifest`: at the control's `mm`. `drawing`: where the board's drawing has it (no `mm`, or no room there). */
+  from: 'manifest' | 'drawing';
+}
+/** A stretch of the board that is taken, in the model frame: [x0, z0, x1, z1]. */
+type Room = readonly [number, number, number, number];
+const overlap = (a: Room, b: Room): boolean => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+/** Half of what a switch takes of the board: its body and the two solder tabs at its ends (along X). */
+const SWITCH_ROOM = { x: 2.95, z: 1.6 };
+/** The S3's two USB-C sockets stand this far either side of the board's middle line. */
+const USB_C_Z = 5.1;
 interface Built {
   s: Shape;
   pwr: Shape;
@@ -85,13 +104,47 @@ function rowsOf(terminals: readonly Terminal[]): Row[] {
 }
 const points = (r: Row): V3[] => r.pins.map((p) => [p.x, 0, r.z]);
 
-/** Where the manifest's picture shows the board LED, in the model frame. */
-function ledPlace(m: Esp32Manifest): { x: number; z: number; colour: number } {
+/** Where the manifest has the board LED, in the model frame: the visual's `mm`, or its place in the picture. */
+export function ledPlace(m: Esp32Manifest): { x: number; z: number; colour: number } {
   const v = m.visuals?.find((q) => q.id === 'led');
   if (!v) return { x: m.body.w_mm / 2 - 8, z: 0, colour: 0x3ddc84 };
   const k = m.picture.width / m.body.w_mm;
-  const p = fromManifestMm(m.body, { x: v.x / k, y: v.y / k, z: 0 });
+  const p = fromManifestMm(m.body, v.mm ? { ...v.mm, z: 0 } : { x: v.x / k, y: v.y / k, z: 0 });
   return { x: p[0], z: p[2], colour: /^#[0-9a-f]{6}$/i.test(v.color ?? '') ? parseInt(v.color!.slice(1), 16) : 0x3ddc84 };
+}
+
+/** The switches as the boards' drawings have them (the user guides' component maps), in the model frame. */
+function drawnSwitches(m: Esp32Manifest, board: Esp32Board): DrawnSwitch[] {
+  const { w_mm: w, d_mm: d } = m.body;
+  const X = (mm: number) => mm - w / 2, Z = (mm: number) => mm - d / 2;
+  // DevKitC V4: BOOT by the row that carries IO0, EN by the row that carries EN, either side of the socket
+  if (board === 'classic') return [{ name: 'boot', fields: ['boot', 'BOOT'], x: X(50.5), z: Z(6.2) }, { name: 'en', fields: ['en', 'EN', 'reset'], x: X(50.5), z: Z(21.74) }];
+  // S3-DevKitC-1: BOOT, the RGB LED and RST in one line before the sockets (BOOT and the UART socket on the 3V3 row's side)
+  const x = ledPlace(m).x;
+  return [{ name: 'rst', fields: ['rst', 'RST', 'reset', 'en'], x, z: Z(5.6) }, { name: 'boot', fields: ['boot', 'BOOT'], x, z: Z(19.8) }];
+}
+/** What a switch cannot stand in: the sockets at the USB end (shell and lugs) and the solder joints of the header rows. */
+function takenRooms(m: Esp32Manifest, board: Esp32Board, rows: readonly Row[]): Room[] {
+  const w = m.body.w_mm;
+  const sockets: Room[] = board === 's3' ? [-1, 1].map((side) => [w / 2 - 7.4, side * USB_C_Z - 4.47, w / 2, side * USB_C_Z + 4.47] as const) : [[w / 2 - 5.6, -4.9, w / 2, 4.9]];
+  return [...sockets, ...rows.map((r) => [r.pins[0].x - 0.82, r.z - 0.82, r.pins[r.pins.length - 1].x + 0.82, r.z + 0.82] as const)];
+}
+/**
+ * The switches of a board. A switch whose field the manifest declares as a control stands where the control's `mm`
+ * says, unless the board has no room for a switch there (a USB socket or a header row is in that place): then, and
+ * for a manifest without `mm`, it stays where the board's drawing has it. Either way it drives the manifest's field.
+ * (Batch 5: the DevKitC V4's two fit; the S3's are given 5.5 mm from the USB end, where its two USB-C sockets are.)
+ */
+export function switchesOf(raw: unknown, board: Esp32Board): Switch[] {
+  const m = raw as Esp32Manifest;
+  const taken = takenRooms(m, board, rowsOf(terminalsFromManifest(m)));
+  return drawnSwitches(m, board).map((sw) => {
+    const c = m.controls?.find((q) => sw.fields.includes(q.field));
+    if (!c) return { name: sw.name, x: sw.x, z: sw.z, from: 'drawing' as const };
+    const p = c.mm ? fromManifestMm(m.body, { ...c.mm, z: 0 }) : null;
+    const free = p !== null && !taken.some((t) => overlap([p[0] - SWITCH_ROOM.x, p[2] - SWITCH_ROOM.z, p[0] + SWITCH_ROOM.x, p[2] + SWITCH_ROOM.z], t));
+    return free ? { name: sw.name, field: c.field, x: p[0], z: p[2], from: 'manifest' as const } : { name: sw.name, field: c.field, x: sw.x, z: sw.z, from: 'drawing' as const };
+  });
 }
 
 // ------------------------------------------------------------------------------------------------------ print
@@ -141,6 +194,8 @@ function corners(g: G, x: number, z: number, half: number, len = 0.9): void {
   g.stroke();
 }
 const mono = { weight: 700, font: FONT_MONO } as const;
+/** Whether a legend centred on (x, z) would lie under a switch or its outline. */
+const underSwitch = (switches: readonly Switch[], x: number, z: number): boolean => switches.some((sw) => Math.abs(sw.x - x) < 3.6 && Math.abs(sw.z - z) < 2.4);
 
 /**
  * The marking of a module's shield, as the laser leaves it: dull grey on the metal, read with the antenna up (so
@@ -162,7 +217,7 @@ function canMarking(mod: RadioModuleOut, name: string): PrintDef {
 }
 
 // ------------------------------------------------------------------------------------------------------ boards
-function buildClassic(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], split: (sw: Switch) => boolean): Built {
+function buildClassic(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], switches: Switch[]): Built {
   const { w_mm: w, d_mm: d } = m.body;
   const X = (mm: number) => mm - w / 2, Z = (mm: number) => mm - d / 2;
   const s = new Shape();
@@ -193,12 +248,8 @@ function buildClassic(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], split: (sw: 
   chip(s, { x: X(27.6), z: Z(14.4), y: TOP, turn: 1, body: MLCC });
   chip(s, { x: X(27.6), z: Z(18.6), y: TOP, turn: 1 });
 
-  // BOOT by the row that carries IO0, EN by the row that carries EN, either side of the socket
-  const switches: Switch[] = [
-    { name: 'boot', fields: ['boot', 'BOOT'], x: X(50.5), z: Z(6.2) },
-    { name: 'en', fields: ['en', 'EN', 'reset'], x: X(50.5), z: Z(21.74) },
-  ];
-  for (const sw of switches) smdButton(s, { x: sw.x, z: sw.z, y: TOP, seg: ctx.seg(10), noPlunger: split(sw) });
+  // BOOT and EN, either side of the socket: a switch that is a control gets its plunger as a part of its own
+  for (const sw of switches) smdButton(s, { x: sw.x, z: sw.z, y: TOP, seg: ctx.seg(10), noPlunger: sw.field !== undefined });
   // the one LED of this board: power
   const pwrAt = { x: X(46.2), z: Z(18.7) };
   const pwr = ledChip(s, { ...pwrAt, y: TOP, len: 1.8, wid: 1.0, lens: lensOf(RED) });
@@ -225,11 +276,12 @@ function buildClassic(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], split: (sw: 
         [X(26.2), Z(21), X(28.2), Z(21), X(28.8), Z(21.6), X(28.8), Z(22.6)],
       ]);
       g.fillStyle = INK.silk;
-      for (const r of rows) for (const p of r.pins) pinLabel(g, p.label, p.x, r.z - Math.sign(r.z) * 2.2, 1.2);
+      // (a name that would lie under a switch is left out: half a word beside a switch reads as a mistake)
+      for (const r of rows) for (const p of r.pins) if (!underSwitch(switches, p.x, r.z - Math.sign(r.z) * 2.2)) pinLabel(g, p.label, p.x, r.z - Math.sign(r.z) * 2.2, 1.2);
       text(g, 'ESP32-DevKitC', X(33.6), Z(13.95), 1.45, { weight: 700, font: FONT, spacing: 0.03 });
       text(g, 'V4', X(40.1), Z(14), 1.05, mono);
-      text(g, 'BOOT', X(47), Z(6.2), 0.95, { ...mono, align: 'right' });
-      text(g, 'EN', X(47), Z(21.74), 1.05, { ...mono, align: 'right' });
+      // each switch's name on the side of it that looks at the middle of the board
+      for (const sw of switches) text(g, sw.name.toUpperCase(), sw.x, sw.z - Math.sign(sw.z) * 2.75, sw.name === 'en' ? 1.05 : 0.95, mono);
       text(g, 'PWR', pwrAt.x, pwrAt.z - 1.6, 0.9, mono);
       corners(g, X(36.2), Z(9.2), 3.05);
       dot(g, X(32.9), Z(12.5));
@@ -242,7 +294,7 @@ function buildClassic(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], split: (sw: 
   return { s, pwr, pwrAt, switches, prints: [silk, canMarking(mod, 'ESP32-WROOM-32E')] };
 }
 
-function buildS3(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], split: (sw: Switch) => boolean): Built {
+function buildS3(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], switches: Switch[]): Built {
   const { w_mm: w, d_mm: d } = m.body;
   const X = (mm: number) => mm - w / 2, Z = (mm: number) => mm - d / 2;
   const s = new Shape();
@@ -273,18 +325,14 @@ function buildS3(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], split: (sw: Switc
   chip(s, { x: X(57.4), z: Z(12.7), y: TOP, len: 1.3, wid: 0.7, h: 0.45 });
   chip(s, { x: X(59.6), z: Z(12.7), y: TOP, len: 1.3, wid: 0.7, h: 0.45 });
 
-  // BOOT, the RGB LED and RST stand in one line before the sockets (BOOT and the UART socket on the 3V3 row's side)
+  // BOOT, the RGB LED and RST before the sockets (BOOT and the UART socket on the 3V3 row's side)
   const at = ledPlace(m);
-  const switches: Switch[] = [
-    { name: 'rst', fields: ['rst', 'RST', 'reset', 'en'], x: at.x, z: Z(5.6) },
-    { name: 'boot', fields: ['boot', 'BOOT'], x: at.x, z: Z(19.8) },
-  ];
-  for (const sw of switches) smdButton(s, { x: sw.x, z: sw.z, y: TOP, seg: ctx.seg(10), noPlunger: split(sw) });
+  for (const sw of switches) smdButton(s, { x: sw.x, z: sw.z, y: TOP, seg: ctx.seg(10), noPlunger: sw.field !== undefined });
   const led = rgbLed(s, { x: at.x, z: at.z, y: TOP, seg: ctx.seg(14) });
   const pwrAt = { x: X(45), z: Z(15.4) };
   const pwr = ledChip(s, { ...pwrAt, y: TOP, len: 1.8, wid: 1.0, lens: lensOf(RED) });
   // side by side with 1.3 mm between them: the last pins' names stay readable beside the shells
-  for (const side of [-1, 1]) usbC(s, { x: w / 2 - 0.1, z: side * 5.1, y: TOP, turn: 3 });
+  for (const side of [-1, 1]) usbC(s, { x: w / 2 - 0.1, z: side * USB_C_Z, y: TOP, turn: 3 });
 
   const silk: PrintDef = {
     name: 'silk',
@@ -307,11 +355,11 @@ function buildS3(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], split: (sw: Switc
       for (const r of rows) for (const p of r.pins) pinLabel(g, p.label, p.x, r.z - Math.sign(r.z) * 1.52, 1.05);
       text(g, 'ESP32-S3-DevKitC-1', X(34.4), Z(12.5), 1.2, { weight: 700, font: FONT, spacing: 0.03 });
       text(g, 'v1.1', X(43), Z(12.55), 0.9, mono);
-      text(g, 'RST', at.x, Z(8.5), 1.0, mono);
-      text(g, 'BOOT', at.x, Z(16.9), 1.0, mono);
+      // each switch's name on the side of it that looks at the middle of the board
+      for (const sw of switches) text(g, sw.name.toUpperCase(), sw.x, sw.z - Math.sign(sw.z) * 2.9, 1.0, mono);
       text(g, 'RGB', at.x - 3.5, at.z - 0.3, 0.9, mono);
-      text(g, 'USB', X(54.2), -5.1, 1.0, { ...mono, angle: -Math.PI / 2 });
-      text(g, 'UART', X(54.2), 5.1, 1.0, { ...mono, angle: -Math.PI / 2 });
+      text(g, 'USB', X(54.2), -USB_C_Z, 1.0, { ...mono, angle: -Math.PI / 2 });
+      text(g, 'UART', X(54.2), USB_C_Z, 1.0, { ...mono, angle: -Math.PI / 2 });
       text(g, '3V3', X(43.8), Z(15.4), 0.85, { ...mono, align: 'right' });
       corners(g, X(38.6), Z(17.6), 3.05);
       dot(g, X(35.3), Z(20.9));
@@ -328,8 +376,13 @@ function buildS3(ctx: BuildCtx, m: Esp32Manifest, rows: Row[], split: (sw: Switc
 const num = (v: unknown): number => (typeof v === 'number' ? v : v === true ? 1 : 0);
 /** The solder mask of both boards: matte black. */
 const BOARD = PAL.pcbBlack;
-/** How far a plunger goes down when its switch is held. */
-const TRAVEL = 0.3;
+/** The plunger of a switch that can be pressed: a shade lighter than the base, so that it can be found. */
+const CAP = ['matte', '#3a3a40'] as const;
+/** How far a plunger goes down when its switch is held (it stands 0.6 mm proud). */
+const TRAVEL = 0.45;
+/** The light of a press: a small glow over a held switch, round its plunger, so that a press reads from the Workbench's camera. */
+const PRESS = 0xffb238;
+const pressOf = (name: string): string => `press:${name}`;
 
 /**
  * The model of one ESP32 board manifest. Live state, from the part's entry of the bench state:
@@ -337,7 +390,8 @@ const TRAVEL = 0.3;
  *  - the S3's addressable LED: `outputs.rgb_r/g/b` (0..255) in their own colour, and white at `outputs.led` (0..1,
  *    or the manifest's `led` visual with an older engine) when the three are zero: LED_BUILTIN written as a pin;
  *  - BOOT and EN/RST: when the manifest declares a control for the switch's field, its plunger is a control of the
- *    kit (`markControl`) and goes down while the field is held. Today's manifests declare none: the caps are static.
+ *    kit (`markControl`, the mark read from the manifest) and goes down, in a small pool of light, while the field is
+ *    held. What a press does is the engine's: EN restarts the sketch, BOOT holds IO0 low.
  * See the note at the top for what is not shown, and why.
  */
 export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState> {
@@ -346,8 +400,8 @@ export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState
   const rows = rowsOf(terminals);
   const rgb = board === 's3';
   // a switch is a control only if the manifest gives it a field to drive
-  const fieldOf = (sw: Switch): string | undefined => sw.fields.find((f) => m.controls?.some((c) => c.field === f));
-  const held: [string, string][] = [];
+  const switches = switchesOf(m, board);
+  const held = switches.filter((sw) => sw.field !== undefined).map((sw) => [sw.name, sw.field!, pressOf(sw.name)] as const);
   return defineModel<PartState>({
     id: m.id,
     title: m.name.en,
@@ -355,19 +409,18 @@ export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState
     plugMm: LEG,
     terminals,
     build(ctx) {
-      const b = (rgb ? buildS3 : buildClassic)(ctx, m, rows, (sw) => fieldOf(sw) !== undefined);
+      const b = (rgb ? buildS3 : buildClassic)(ctx, m, rows, switches);
       const root = b.s.toObject();
       for (const p of b.prints) root.add(print(p));
       root.add(glowing('pwr', b.pwr), halo('pwr-glow', [b.pwrAt.x, TOP + 0.04, b.pwrAt.z], 3.4));
       if (b.led && b.ledAt) root.add(glowing('led', b.led), halo('led-glow', [b.ledAt.x, TOP + 0.04, b.ledAt.z], 7.5));
-      held.length = 0;
       for (const sw of b.switches) {
-        const field = fieldOf(sw);
-        if (!field) continue;
+        if (!sw.field) continue;
         const cap = new Shape();
-        smdPlunger(cap, { x: sw.x, z: sw.z, y: TOP, seg: ctx.seg(10) });
-        root.add(markControl(cap.toObject(sw.name), controlFromManifest(m as ControlManifest, field)));
-        held.push([sw.name, field]);
+        smdPlunger(cap, { x: sw.x, z: sw.z, y: TOP, seg: ctx.seg(10), cap: CAP });
+        // the whole top of the switch answers the pointer, not only its 2 mm plunger
+        const node = hitPad(markControl(cap.toObject(sw.name), controlFromManifest(m as ControlManifest, sw.field)), { x: sw.x, y: TOP + 1.9, z: sw.z, w: 4.2, d: 3.2, h: 0.8 });
+        root.add(node, halo(pressOf(sw.name), [sw.x, TOP + 1.66, sw.z], Math.min(4.2, m.body.w_mm / 2 - Math.abs(sw.x), m.body.d_mm / 2 - Math.abs(sw.z))));
       }
       return root;
     },
@@ -376,8 +429,10 @@ export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState
       setLamp(obj, 'pwr', RED, on ? 1 : 0);
       setLamp(obj, 'pwr-glow', RED, on ? 0.45 : 0);
       for (let i = 0; i < held.length; i++) {
+        const down = st.fields[held[i][1]] === true;
         const cap = part(obj, held[i][0]);
-        if (cap) cap.position.y = st.fields[held[i][1]] === true ? -TRAVEL : 0;
+        if (cap) cap.position.y = down ? -TRAVEL : 0;
+        setLamp(obj, held[i][2], PRESS, down ? 1.3 : 0);
       }
       if (!rgb) return;
       const o = st.outputs;
@@ -399,10 +454,14 @@ export function esp32Model(raw: unknown, board: Esp32Board): PartModel<PartState
           dim: partState({ outputs: { rgb_r: 10, rgb_g: 10, rgb_b: 40, led: 0 }, visuals: { led: 1 } }),
           white: partState({ outputs: { rgb_r: 0, rgb_g: 0, rgb_b: 0, led: 1 }, visuals: { led: 1 } }),
           idle: partState({ outputs: { led: 0 }, visuals: { led: 0 } }),
+          'boot-held': partState({ fields: { boot: true }, outputs: { rgb_r: 0, rgb_g: 150, rgb_b: 130, led: 0 }, visuals: { led: 1 } }),
+          'reset-held': partState({ fields: { en: true }, outputs: { led: 0 }, visuals: { led: 0 } }),
           unpowered: partState({ power: { on: false, reason: 'no supply' }, outputs: { rgb_r: 0, rgb_g: 150, rgb_b: 130 }, visuals: { led: 1 } }),
         }
       : {
           powered: partState({ outputs: { led: 1 }, visuals: { led: 1 } }),
+          'boot-held': partState({ fields: { boot: true }, outputs: { led: 1 }, visuals: { led: 1 } }),
+          'en-held': partState({ fields: { en: true }, outputs: { led: 0 }, visuals: { led: 0 } }),
           unpowered: partState({ power: { on: false, reason: 'no supply' }, outputs: { led: 1 }, visuals: { led: 1 } }),
         },
   });

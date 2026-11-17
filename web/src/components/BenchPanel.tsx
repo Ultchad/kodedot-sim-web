@@ -14,13 +14,17 @@ import { Icon, IconTile } from './Glyphs';
 import { ScrollArea, useCoarsePointer } from './ui';
 import { ObjectCard } from './bench/ObjectCard';
 import { SdPanel } from './bench/SdPanel';
+import { GuideLink } from '../guide/entry';
+import type { SectionId } from '../guide/route';
 
 /** `compact`: the tab row right above already names the section (phone sheet), so the title is kept for screen readers only. */
-export function SectionTitle({ title, subtitle, compact = false }: { title: string; subtitle: string; compact?: boolean }) {
+export function SectionTitle({ title, subtitle, compact = false, guide }: { title: string; subtitle: string; compact?: boolean; guide?: SectionId }) {
   return (
     <div className="flex flex-col gap-0.5">
       <h2 className={compact ? 'sr-only' : 'text-[24px] leading-tight'}>{title}</h2>
-      <p className="m-0 text-[14px] leading-snug text-ink2">{subtitle}</p>
+      <p className="m-0 text-[14px] leading-snug text-ink2">
+        {subtitle} {guide && <GuideLink to={guide} />}
+      </p>
     </div>
   );
 }
@@ -83,7 +87,7 @@ export function BenchPanel({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3" data-testid="bench-panel">
-      <SectionTitle title={t('nav.bench')} subtitle={t('bench.subtitle')} compact={compact} />
+      <SectionTitle title={t('nav.bench')} subtitle={t('bench.subtitle')} compact={compact} guide="bench" />
       {phone && !host.glFailed && (
         <button type="button" className="btn btn-sm btn-wrap self-start" onClick={() => host.setMode(host.mode === 'workbench' ? 'device' : 'workbench')} data-testid="wb-open">
           <Icon name={host.mode === 'workbench' ? 'device' : 'table'} size={16} />

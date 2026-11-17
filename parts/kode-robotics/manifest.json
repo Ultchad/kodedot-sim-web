@@ -198,16 +198,16 @@
         "z": 0
       },
       "upright": {
-        "x": "-X",
-        "y": "-Y",
-        "z": "-Z"
-      },
-      "turned": {
         "x": "+X",
         "y": "-Y",
         "z": "+Z"
       },
-      "source": "assumed"
+      "turned": {
+        "x": "-X",
+        "y": "-Y",
+        "z": "-Z"
+      },
+      "source": "documented"
     }
   },
   "refs": [
@@ -256,9 +256,9 @@
     {"name":"AIN1","kind":"io","pos":{"x":149.5,"y":356},"mm":{"x":18.69,"y":44.5,"z":5.41},"face":"bottom","label":{"en":"AIN1"},"abs_max_mv":3600,"pulldown_ohms":100000,"ref":"J401.8"},
     {"name":"AIN2","kind":"io","pos":{"x":169.8,"y":356},"mm":{"x":21.23,"y":44.5,"z":5.41},"face":"bottom","label":{"en":"AIN2"},"abs_max_mv":3600,"pulldown_ohms":100000,"ref":"J401.10"},
     {"name":"NSLEEP","kind":"io","pos":{"x":149.5,"y":356},"mm":{"x":18.69,"y":44.5,"z":2.87},"face":"bottom","label":{"en":"NSLEEP"},"abs_max_mv":3600,"ref":"J401.7"},
-    {"name":"MOTA_1","kind":"io","pos":{"x":267.2,"y":40},"mm":{"x":33.4,"y":5,"z":10.1},"face":"top","label":{"en":"MOTA1"},"abs_max_mv":7000},
-    {"name":"MOTA_2","kind":"io","pos":{"x":297.7,"y":40},"mm":{"x":37.21,"y":5,"z":10.1},"face":"top","label":{"en":"MOTA2"},"abs_max_mv":7000},
-    {"name":"STP_2","kind":"io","pos":{"x":169.8,"y":44},"mm":{"x":21.23,"y":5.5,"z":10.1},"face":"top","label":{"en":"STP_2"},"abs_max_mv":7000},
+    {"name":"MOTA_1","kind":"io","pos":{"x":267.2,"y":16},"mm":{"x":33.4,"y":2,"z":10.1},"face":"top","label":{"en":"MOTA1"},"abs_max_mv":7000},
+    {"name":"MOTA_2","kind":"io","pos":{"x":297.7,"y":16},"mm":{"x":37.21,"y":2,"z":10.1},"face":"top","label":{"en":"MOTA2"},"abs_max_mv":7000},
+    {"name":"STP_2","kind":"io","pos":{"x":169.8,"y":20},"mm":{"x":21.23,"y":2.5,"z":10.1},"face":"top","label":{"en":"STP_2"},"abs_max_mv":7000},
     {"name":"V5","kind":"power_in","pos":{"x":271.4,"y":356},"mm":{"x":33.93,"y":44.5,"z":2.87},"face":"bottom","label":{"en":"V5"},"min_mv":4500,"max_mv":5500,"typ_ma":100,"ref":"J401.19"},
     {"name":"V33","kind":"io","pos":{"x":271.4,"y":356},"mm":{"x":33.93,"y":44.5,"z":5.41},"face":"bottom","label":{"en":"V33"},"abs_max_mv":3600,"ref":"J401.20"},
     {"name":"SCL","kind":"io","pos":{"x":251.1,"y":356},"mm":{"x":31.39,"y":44.5,"z":2.87},"face":"bottom","label":{"en":"SCL"},"abs_max_mv":3600,"pullup_ohms":2200,"pull_rail":"V33","ref":"J401.17"},
@@ -276,11 +276,11 @@
     {"name":"S16","kind":"io","pos":{"x":108.9,"y":356},"mm":{"x":13.61,"y":44.5,"z":5.41},"face":"bottom","label":{"en":"S16"},"abs_max_mv":3600,"ref":"J401.4"},
     {"name":"V33_2","kind":"io","pos":{"x":88.6,"y":356},"mm":{"x":11.07,"y":44.5,"z":2.87},"face":"bottom","label":{"en":"V33_2"},"abs_max_mv":3600,"ref":"J401.1"},
     {"name":"V5_2","kind":"io","pos":{"x":88.6,"y":356},"mm":{"x":11.07,"y":44.5,"z":5.41},"face":"bottom","label":{"en":"V5_2"},"abs_max_mv":60000,"ref":"J401.2"},
-    {"name":"MOTB_1","kind":"io","pos":{"x":60,"y":40},"mm":{"x":7.5,"y":5,"z":10.1},"face":"top","label":{"en":"MOTB1"},"abs_max_mv":7000},
-    {"name":"MOTB_2","kind":"io","pos":{"x":90.5,"y":40},"mm":{"x":11.31,"y":5,"z":10.1},"face":"top","label":{"en":"MOTB2"},"abs_max_mv":7000},
-    {"name":"STP_1","kind":"io","pos":{"x":149.5,"y":44},"mm":{"x":18.69,"y":5.5,"z":10.1},"face":"top","label":{"en":"STP_1"},"abs_max_mv":7000},
-    {"name":"STP_3","kind":"io","pos":{"x":190.2,"y":44},"mm":{"x":23.77,"y":5.5,"z":10.1},"face":"top","label":{"en":"STP_3"},"abs_max_mv":7000},
-    {"name":"STP_4","kind":"io","pos":{"x":210.5,"y":44},"mm":{"x":26.31,"y":5.5,"z":10.1},"face":"top","label":{"en":"STP_4"},"abs_max_mv":7000},
+    {"name":"MOTB_1","kind":"io","pos":{"x":60,"y":16},"mm":{"x":7.5,"y":2,"z":10.1},"face":"top","label":{"en":"MOTB1"},"abs_max_mv":7000},
+    {"name":"MOTB_2","kind":"io","pos":{"x":90.5,"y":16},"mm":{"x":11.31,"y":2,"z":10.1},"face":"top","label":{"en":"MOTB2"},"abs_max_mv":7000},
+    {"name":"STP_1","kind":"io","pos":{"x":149.5,"y":20},"mm":{"x":18.69,"y":2.5,"z":10.1},"face":"top","label":{"en":"STP_1"},"abs_max_mv":7000},
+    {"name":"STP_3","kind":"io","pos":{"x":190.2,"y":20},"mm":{"x":23.77,"y":2.5,"z":10.1},"face":"top","label":{"en":"STP_3"},"abs_max_mv":7000},
+    {"name":"STP_4","kind":"io","pos":{"x":210.5,"y":20},"mm":{"x":26.31,"y":2.5,"z":10.1},"face":"top","label":{"en":"STP_4"},"abs_max_mv":7000},
     {"name":"J402_GND","kind":"io","pos":{"x":28,"y":92},"mm":{"x":3.5,"y":11.5,"z":10.1},"face":"top","label":{"en":"J402_GND"},"abs_max_mv":60000},
     {"name":"J402_V5","kind":"io","pos":{"x":28,"y":112.3},"mm":{"x":3.5,"y":14.04,"z":10.1},"face":"top","label":{"en":"J402_V5"},"abs_max_mv":7000},
     {"name":"J402_SIG","kind":"io","pos":{"x":28,"y":132.6},"mm":{"x":3.5,"y":16.58,"z":10.1},"face":"top","label":{"en":"J402_SIG"},"abs_max_mv":3600},

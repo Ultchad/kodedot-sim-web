@@ -82,12 +82,18 @@ export const DEVICE_LIST: readonly { term: string; name: string; pin: number; al
   { term: 'device.V33', name: 'V33', pin: 2, alt: 19, kind: 'power_out' },
   { term: 'device.GND', name: 'GND', pin: 10, alt: 11, kind: 'ground' },
 ];
-/** J3 in the top wall: 2 x 10 at 2.54 mm, odd pins toward the screen, pin 1 on the right seen from the front (as the modules' connector says). */
+/**
+ * J3 in the top wall: 2 x 10 at 2.54 mm. The Dot's own shell prints the pinout beside the holes (seen from behind, the
+ * Dot face up: 3V3 IO15 IO17 IO19 GND IO14 IO12 IO10 IO8 5V in the row toward the screen, 5V IO16 IO18 IO20 IO21 GND IO13
+ * IO11 IO9 3V3 in the row toward the back), which is: odd pins toward the screen, pin 1 (5 V) at the Dot's left seen
+ * from the front (-X), pin 19 (3V3) at its right. A module's connector is numbered the other way round (it faces the
+ * header), so its V5 pin still meets pin 1.
+ */
 export function deviceTerms(list: readonly { term: string; name: string; pin: number; alt?: number; kind: string }[] = DEVICE_LIST, anchorY = 38.5): DeviceTerm[] {
   const out: DeviceTerm[] = [];
   const at = (t: (typeof list)[number], pin: number) => {
     const col = (pin - 1) >> 1;
-    out.push({ term: t.term, name: t.name === 'V5' ? '5V' : t.name === 'V33' ? '3V3' : t.name, pin, kind: t.kind, X: (4.5 - col) * 2.54, Y: anchorY, Z: pin & 1 ? 1.27 : -1.27 });
+    out.push({ term: t.term, name: t.name === 'V5' ? '5V' : t.name === 'V33' ? '3V3' : t.name, pin, kind: t.kind, X: (col - 4.5) * 2.54, Y: anchorY, Z: pin & 1 ? 1.27 : -1.27 });
   };
   for (const t of list) {
     at(t, t.pin);
@@ -206,14 +212,33 @@ export interface MountGeo {
   placement?: { anchor_dot_mm: { x: number; y: number; z: number }; upright?: Record<string, string>; turned?: Record<string, string> };
 }
 const AXIS: Record<string, [number, number, number]> = { '+X': [1, 0, 0], '-X': [-1, 0, 0], '+Y': [0, 1, 0], '-Y': [0, -1, 0], '+Z': [0, 0, 1], '-Z': [0, 0, -1] };
+const mountCache = new WeakMap<object, Map<string, number[] | null>>();
 /**
  * The 4x4 (column-major, as three.js keeps it) that takes a point of the part's MODEL frame to the Dot's own frame for a
- * mounted module, or null when the manifest does not say where it sits.
+ * mounted module, or null when the manifest does not say where it sits. The same array is returned every time for one
+ * manifest and side, so a caller can tell "nothing changed" by identity.
+ *
+ * What the two sides mean (the manifests' `mount.placement`, from the maker's documents; docs/STATUS-web.md has the
+ * evidence): `upright` is the documented way round: a flat module (Maker, Robotics, Camera) lies in the Dot's plane
+ * past its top edge with its component side on the screen's side, so with the Dot face up on the table the breadboard,
+ * the screw terminals or the lens look up; `turned` is the same board half a turn about the Dot's long axis, component
+ * side toward the Dot's back (the header takes it both ways, the rails stay, every GPIO moves). The cased radio modules
+ * only go one way: tongue against the Dot's back, block on its top edge.
  */
 export function mountMatrix(body: BodyGeo, mount: MountGeo | undefined, side: 'upright' | 'turned'): number[] | null {
-  const axes = mount?.placement?.[side];
-  const seat = mount?.connector?.seat_mm;
-  const anchor = mount?.placement?.anchor_dot_mm;
+  if (!mount) return null;
+  let per = mountCache.get(mount);
+  if (!per) mountCache.set(mount, (per = new Map()));
+  const key = `${side}|${body.w_mm}|${body.d_mm}`;
+  if (per.has(key)) return per.get(key)!;
+  const made = makeMountMatrix(body, mount, side);
+  per.set(key, made);
+  return made;
+}
+function makeMountMatrix(body: BodyGeo, mount: MountGeo, side: 'upright' | 'turned'): number[] | null {
+  const axes = mount.placement?.[side];
+  const seat = mount.connector?.seat_mm;
+  const anchor = mount.placement?.anchor_dot_mm;
   if (!axes || !seat || !anchor) return null;
   const ax = AXIS[axes.x], ay = AXIS[axes.y], az = AXIS[axes.z];
   if (!ax || !ay || !az) return null;

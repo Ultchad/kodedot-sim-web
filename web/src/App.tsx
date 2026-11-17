@@ -13,6 +13,7 @@ import { Sheet } from './components/Sheet';
 import { StatusBar } from './components/StatusBar';
 import { PRODUCT_NAME, TopBar, useCurrentAppName } from './components/TopBar';
 import { useCoarsePointer } from './components/ui';
+import { GuideButton, GuideHost } from './guide/entry';
 
 /** Accepts .dotbench files dropped anywhere on the window. */
 function useWindowDrop() {
@@ -293,6 +294,8 @@ function PhoneShell() {
         <DevicePane />
       </div>
       <Sheet landscape={land} onInset={onInset} />
+      {/* portrait: the guide's pill rides on the panel's top edge (Sheet); landscape: the panel can be closed, so it sits in the stage's corner */}
+      {land && <GuideButton variant="corner" />}
     </main>
   );
 }
@@ -308,6 +311,7 @@ export default function App() {
     <>
       {isPhone(layout) ? <PhoneShell /> : <DeskShell />}
       <StatusAnnouncer />
+      <GuideHost />
       {dragging && <DropOverlay />}
     </>
   );

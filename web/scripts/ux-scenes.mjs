@@ -240,6 +240,42 @@ export function scenesFor(vp) {
       await neutral(p, v);
     },
   });
+  // phase 2 of the Workbench: the Components and Make tabs, the wire tool, a part's card with wires, the code editor
+  const leaveWb = async (p, v) => {
+    await p.evaluate(() => {
+      const d = window.__dotbench;
+      d.bus.openCode(null);
+      d.bus.setTool('move');
+      d.ui.setMode('device');
+      d.select.clear();
+      d.bench.removeMany(d.bench.getState().objects.filter((o) => o.area === 'part').map((o) => o.id));
+    });
+    await clickIf(p, '[data-testid=left-tab-bench]');
+    await sleep(400);
+    await neutral(p, v);
+  };
+  const withParts = async (p, { code = false, tool = false, tab = 'components' } = {}) => {
+    await showBench(p, vp);
+    await clickIf(p, `[data-testid=left-tab-${tab}]`);
+    await p.evaluate(async (o) => {
+      const d = window.__dotbench;
+      d.ui.setMode('workbench');
+      const uno = await d.parts.place('dotbench.uno-r3', 'Uno 1');
+      const servo = await d.parts.place('dotbench.servo', 'Servo 1');
+      if (uno && servo) {
+        d.bench.addWire(`${uno.id}.D9`, `${servo.id}.SIG`, '#e8792a');
+        d.bench.addWire(`${uno.id}.V5`, `${servo.id}.V5`, '#d9412b');
+        d.select.only(uno.id);
+        if (o.code) d.bus.openCode(uno.id);
+      }
+      if (o.tool) d.bus.setTool('wire');
+    }, { code, tool });
+    await sleep(code ? 2500 : 1500);
+  };
+  S.push({ id: 'wb-part-card', newUi: true, textHeavy: true, enter: (p) => withParts(p), leave: leaveWb });
+  S.push({ id: 'wb-wire-tool', newUi: true, enter: (p) => withParts(p, { tool: true }), leave: leaveWb });
+  S.push({ id: 'wb-code-editor', newUi: true, textHeavy: true, enter: (p) => withParts(p, { code: true }), leave: leaveWb });
+  S.push({ id: 'wb-make-tab', newUi: true, textHeavy: true, enter: (p) => withParts(p, { tab: 'make' }), leave: leaveWb });
   if (!phone) {
     add('settings-menu', async (p) => clickIf(p, '[data-testid=settings-menu]'), { newUi: true, textHeavy: true });
     add('details', async (p) => clickIf(p, '[data-testid=status-details-toggle]'), { newUi: true, textHeavy: true });

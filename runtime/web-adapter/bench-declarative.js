@@ -122,7 +122,7 @@ export class DeclarativePart {
       if (el.type === "resistor") out.push({ id, kind: "r", a: T(el.a), b: T(el.b), g: 1 / this._ohms(el) });
       else if (el.type === "capacitor") { if (!this.capV.has(id)) this.capV.set(id, 0); out.push({ id, kind: "cap", a: T(el.a), b: T(el.b), c: Math.max(1e-12, num(evalExpr(el.farads, f))), esr: el.esr_ohms ?? 0, v: this.capV.get(id) }); }
       else if (el.type === "motor") out.push({ id, kind: "r", a: T(el.a), b: T(el.b), g: 1 / Math.max(0.1, el.ohms ?? 8) });
-      else if (el.type === "diode") out.push({ id, kind: "diode", a: T(el.anode), b: T(el.cathode), vf: el.vf_mv ?? 700, rs: el.rs_ohms ?? 10 });
+      else if (el.type === "diode") out.push({ id, kind: "diode", a: T(el.anode), b: T(el.cathode), vf: el.vf_mv ?? 700, rs: (el.rs_ohms ?? 10) + (typeof el.series_ohms === "object" ? Math.max(0, num(f[el.series_ohms.field])) : (el.series_ohms ?? 0)) });
       else if (el.type === "cell") out.push({ id, kind: "emf", a: T(el.pos), b: T(el.neg), g: 1 / Math.max(0.001, el.ohms ?? 1.5), e: num(evalExpr(el.mv, f)), refB: true });
     });
     return out;

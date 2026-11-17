@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "prepare:assets": "node scripts/sync-adapter.mjs && node scripts/prepare-apps.mjs && node scripts/prepare-parts.mjs && node scripts/prepare-cc.mjs && node scripts/prepare-starter.mjs",
+    "parts:regen": "node ../tools/parts-prebuilt.mjs regen",
+    "parts:check": "node ../tools/parts-prebuilt.mjs check",
     "predev": "npm run prepare:assets",
     "dev": "vite",
     "prebuild": "npm run prepare:assets",

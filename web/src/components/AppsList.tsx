@@ -6,6 +6,7 @@ import { appLabel, useHost } from '../state/host';
 import { useObservable } from '../state/hooks';
 import { Icon } from './Glyphs';
 import { useConfirm } from './ui';
+import { GuideLink } from '../guide/entry';
 
 /**
  * The Dot's app manager, in the top-bar menu and in the phone sheet. Apps live inside kodeOS: this shows what runs
@@ -57,7 +58,7 @@ export function AppsList({ onRun, compact = false }: { onRun?: () => void; compa
         <span className="tag">{t('apps.installed')}</span>
         {apps.length === 0 ? (
           <p className="m-0 px-1 text-[13.5px] leading-snug text-ink2" data-testid="apps-empty">
-            {t(useMock ? 'apps.mock' : 'apps.empty')}
+            {t(useMock ? 'apps.mock' : 'apps.empty')} {!useMock && <GuideLink to="your-own-app" />}
           </p>
         ) : (
           <ul className="m-0 flex list-none flex-col gap-1.5 p-0" data-testid="app-list">
@@ -95,7 +96,13 @@ export function AppsList({ onRun, compact = false }: { onRun?: () => void; compa
           }}
         />
         <p className="m-0 px-1 text-[13px] leading-snug text-ink2" role="status" data-testid="apps-hint">
-          {appBusy ? t(`apps.busy.${appBusy}` as 'apps.busy.install') : t('apps.install.hint')}
+          {appBusy ? (
+            t(`apps.busy.${appBusy}` as 'apps.busy.install')
+          ) : (
+            <>
+              {t('apps.install.hint')} <GuideLink to="your-own-app" />
+            </>
+          )}
         </p>
       </section>
 

@@ -258,7 +258,7 @@ export default function CodeEditor({ instance, onClose }: { instance: string; on
         </div>
       )}
       <div ref={holder} className="inner min-h-0 flex-[3] overflow-hidden !p-0" data-testid="code-area" />
-      <div className="grid min-h-0 flex-[2] grid-cols-1 gap-2 @[640px]:grid-cols-2">
+      <div className="grid min-h-0 flex-[3] grid-cols-1 grid-rows-[minmax(2.75rem,1fr)_minmax(0,3fr)] gap-2 @[640px]:flex-[2] @[640px]:grid-cols-2 @[640px]:grid-rows-1">
         <div className="inner flex min-h-0 flex-col gap-1 !p-3" data-testid="code-problems">
           <span className="tag">
             {t('code.problems')} · {problems.length}

@@ -23,12 +23,16 @@ export function keyToButton(e: { key: string; ctrlKey?: boolean; metaKey?: boole
   }
 }
 
-/** True when typing should win over device shortcuts (inputs, textareas, selects, contenteditable). */
+/**
+ * True when typing should win over device shortcuts: inputs, textareas, selects, contenteditable, and anything inside
+ * a layer that keeps the keyboard for itself (`data-own-keys`: the guide, which is read while the Dot runs under it).
+ */
 export function isEditableTarget(t: unknown): boolean {
-  const el = t as { tagName?: string; isContentEditable?: boolean } | null;
+  const el = t as { tagName?: string; isContentEditable?: boolean; closest?: (sel: string) => unknown } | null;
   if (!el || typeof el !== 'object') return false;
   const tag = (el.tagName ?? '').toUpperCase();
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true) return true;
+  return typeof el.closest === 'function' && !!el.closest('[data-own-keys]');
 }
 
 /**

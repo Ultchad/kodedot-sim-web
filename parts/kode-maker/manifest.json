@@ -174,16 +174,16 @@
         "z": 0
       },
       "upright": {
-        "x": "-X",
-        "y": "-Y",
-        "z": "-Z"
-      },
-      "turned": {
         "x": "+X",
         "y": "-Y",
         "z": "+Z"
       },
-      "source": "assumed"
+      "turned": {
+        "x": "-X",
+        "y": "-Y",
+        "z": "-Z"
+      },
+      "source": "documented"
     }
   },
   "refs": [
@@ -243,22 +243,22 @@
     {"name":"S12","kind":"io","pos":{"x":311.5,"y":32},"mm":{"x":38.94,"y":4,"z":10.1},"face":"top","label":{"en":"12"},"abs_max_mv":3600},
     {"name":"S13","kind":"io","pos":{"x":331.8,"y":32},"mm":{"x":41.48,"y":4,"z":10.1},"face":"top","label":{"en":"13"},"abs_max_mv":3600},
     {"name":"S14","kind":"io","pos":{"x":352.2,"y":32},"mm":{"x":44.02,"y":4,"z":10.1},"face":"top","label":{"en":"14"},"abs_max_mv":3600},
-    {"name":"V5_1","kind":"io","pos":{"x":14.4,"y":80},"mm":{"x":1.8,"y":10,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"V5_2","kind":"io","pos":{"x":14.4,"y":100.3},"mm":{"x":1.8,"y":12.54,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"V5_3","kind":"io","pos":{"x":14.4,"y":120.6},"mm":{"x":1.8,"y":15.08,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"V5_4","kind":"io","pos":{"x":14.4,"y":141},"mm":{"x":1.8,"y":17.62,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
-    {"name":"GL_1","kind":"io","pos":{"x":14.4,"y":192},"mm":{"x":1.8,"y":24,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GL_2","kind":"io","pos":{"x":14.4,"y":212.3},"mm":{"x":1.8,"y":26.54,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GL_3","kind":"io","pos":{"x":14.4,"y":232.6},"mm":{"x":1.8,"y":29.08,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GL_4","kind":"io","pos":{"x":14.4,"y":253},"mm":{"x":1.8,"y":31.62,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"V33_1","kind":"io","pos":{"x":449.6,"y":80},"mm":{"x":56.2,"y":10,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"V33_2","kind":"io","pos":{"x":449.6,"y":100.3},"mm":{"x":56.2,"y":12.54,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"V33_3","kind":"io","pos":{"x":449.6,"y":120.6},"mm":{"x":56.2,"y":15.08,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"V33_4","kind":"io","pos":{"x":449.6,"y":141},"mm":{"x":56.2,"y":17.62,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
-    {"name":"GR_1","kind":"io","pos":{"x":449.6,"y":192},"mm":{"x":56.2,"y":24,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GR_2","kind":"io","pos":{"x":449.6,"y":212.3},"mm":{"x":56.2,"y":26.54,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GR_3","kind":"io","pos":{"x":449.6,"y":232.6},"mm":{"x":56.2,"y":29.08,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
-    {"name":"GR_4","kind":"io","pos":{"x":449.6,"y":253},"mm":{"x":56.2,"y":31.62,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"V5_1","kind":"io","pos":{"x":14.4,"y":136},"mm":{"x":1.8,"y":17,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"V5_2","kind":"io","pos":{"x":14.4,"y":156.3},"mm":{"x":1.8,"y":19.54,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"V5_3","kind":"io","pos":{"x":14.4,"y":176.6},"mm":{"x":1.8,"y":22.08,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"V5_4","kind":"io","pos":{"x":14.4,"y":197},"mm":{"x":1.8,"y":24.62,"z":10.1},"face":"top","label":{"en":"5V"},"abs_max_mv":60000},
+    {"name":"GL_1","kind":"io","pos":{"x":14.4,"y":248},"mm":{"x":1.8,"y":31,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GL_2","kind":"io","pos":{"x":14.4,"y":268.3},"mm":{"x":1.8,"y":33.54,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GL_3","kind":"io","pos":{"x":14.4,"y":288.6},"mm":{"x":1.8,"y":36.08,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GL_4","kind":"io","pos":{"x":14.4,"y":309},"mm":{"x":1.8,"y":38.62,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GR_1","kind":"io","pos":{"x":449.6,"y":136},"mm":{"x":56.2,"y":17,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GR_2","kind":"io","pos":{"x":449.6,"y":156.3},"mm":{"x":56.2,"y":19.54,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GR_3","kind":"io","pos":{"x":449.6,"y":176.6},"mm":{"x":56.2,"y":22.08,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"GR_4","kind":"io","pos":{"x":449.6,"y":197},"mm":{"x":56.2,"y":24.62,"z":10.1},"face":"top","label":{"en":"GND"},"abs_max_mv":60000},
+    {"name":"V33_1","kind":"io","pos":{"x":449.6,"y":248},"mm":{"x":56.2,"y":31,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"V33_2","kind":"io","pos":{"x":449.6,"y":268.3},"mm":{"x":56.2,"y":33.54,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"V33_3","kind":"io","pos":{"x":449.6,"y":288.6},"mm":{"x":56.2,"y":36.08,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
+    {"name":"V33_4","kind":"io","pos":{"x":449.6,"y":309},"mm":{"x":56.2,"y":38.62,"z":10.1},"face":"top","label":{"en":"3V3"},"abs_max_mv":60000},
     {"name":"a1","kind":"io","pos":{"x":69.4,"y":112},"mm":{"x":8.68,"y":14,"z":10.1},"face":"top","abs_max_mv":60000},
     {"name":"b1","kind":"io","pos":{"x":69.4,"y":132.3},"mm":{"x":8.68,"y":16.54,"z":10.1},"face":"top","abs_max_mv":60000},
     {"name":"c1","kind":"io","pos":{"x":69.4,"y":152.6},"mm":{"x":8.68,"y":19.08,"z":10.1},"face":"top","abs_max_mv":60000},
