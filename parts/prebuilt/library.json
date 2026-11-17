@@ -540,8 +540,8 @@
       "id": "dotbench.esp32-blink-echo",
       "version": "1.0.0",
       "file": "dotbench.esp32-blink-echo.dotpart",
-      "bytes": 6861,
-      "sha256": "953df715fb7251c6b94d8f2285fb967cbc2d4227761178fd387f9ba81df44f69",
+      "bytes": 7122,
+      "sha256": "5ad7c2823bd9d33aad94cb133303e74186885b54cfb92f4b1b7cb6c8719a2e28",
       "name": {
         "en": "ESP32: blink and UART echo",
         "pt-BR": "ESP32: pisca e eco UART",
@@ -599,8 +599,8 @@
       "id": "dotbench.esp32-button-led",
       "version": "1.0.0",
       "file": "dotbench.esp32-button-led.dotpart",
-      "bytes": 11479,
-      "sha256": "c0e79d4d8f9052b5aae905b53a5936cfc297de9affc0d68143742fb761d948f5",
+      "bytes": 11749,
+      "sha256": "3cf11cc0d97fef09b5ea7e698f0e30c4f845c69b7ef168b769c716c77d487ba0",
       "name": {
         "en": "ESP32: button toggles LED",
         "pt-BR": "ESP32: botão alterna LED",
@@ -658,8 +658,8 @@
       "id": "dotbench.esp32-i2c-slave",
       "version": "1.0.0",
       "file": "dotbench.esp32-i2c-slave.dotpart",
-      "bytes": 11880,
-      "sha256": "7029dd3356f90b406f040038d12e2b487d5aaf423a8f12a9eeae11dc747c18a3",
+      "bytes": 12143,
+      "sha256": "24736bd97b1f3c75cec64ea554ead94e878349f7ab964cb259419e7db35d8881",
       "name": {
         "en": "ESP32: I2C slave",
         "pt-BR": "ESP32: escravo I2C",
@@ -717,8 +717,8 @@
       "id": "dotbench.esp32-s3-devkitc",
       "version": "1.0.0",
       "file": "dotbench.esp32-s3-devkitc.dotpart",
-      "bytes": 8072,
-      "sha256": "139a05de53c04472938f91f124d8474479ade3c428315266af8eee78f46dd207",
+      "bytes": 8323,
+      "sha256": "83401606548d4b3629aa4c598ee0f8f4c29a6c52fa5b2906b282c62c6be196ad",
       "name": {
         "en": "ESP32-S3 DevKitC-1",
         "pt-BR": "ESP32-S3 DevKitC-1",
@@ -964,8 +964,8 @@
       "id": "dotbench.kode-maker",
       "version": "1.0.0",
       "file": "dotbench.kode-maker.dotpart",
-      "bytes": 6631,
-      "sha256": "5b36ed83d4ef74621045cbfc9ee3fd947a116d954e957305661e3c1fb038a2f8",
+      "bytes": 6643,
+      "sha256": "f0d496cd942c5091b0afdb012e4015a949bfb653d0f42a2b4c833973d48593eb",
       "name": {
         "en": "Kode Maker module",
         "pt-BR": "Módulo Kode Maker",
@@ -1087,8 +1087,8 @@
       "id": "dotbench.kode-robotics",
       "version": "1.0.0",
       "file": "dotbench.kode-robotics.dotpart",
-      "bytes": 4558,
-      "sha256": "91d6aef4fe0ba273b4729dc3a4bf659f286401337a3468729826121e5d1e68c6",
+      "bytes": 4557,
+      "sha256": "b755d9ee22c0b39d63ba2858208b8fcb4ccb33cc1d7d28bbbb3706fe007852f4",
       "name": {
         "en": "Kode Robotics module",
         "pt-BR": "Módulo Kode Robotics",
@@ -1215,8 +1215,8 @@
       "id": "dotbench.led",
       "version": "1.0.0",
       "file": "dotbench.led.dotpart",
-      "bytes": 1533,
-      "sha256": "15a6c9d153e5668237c610ac06a963bb2c71530068ee262b2598c0f2294f3275",
+      "bytes": 1644,
+      "sha256": "be11b9116ae38f848cfb34c80e4adaa5660a282ea5791b7a10d36c1a7e216471",
       "name": {
         "en": "LED with resistor",
         "pt-BR": "LED com resistor",
@@ -1249,9 +1249,9 @@
         ]
       },
       "description": {
-        "en": "A red LED with a series resistor you can change. Anode to a GPIO (or a rail), cathode to GND. It glows by the current the net gives it: about 10 mA is full brightness.",
-        "pt-BR": "Um LED vermelho com resistor em série ajustável. Anodo em um GPIO (ou trilho), catodo no GND. Brilha conforme a corrente que a rede entrega: cerca de 10 mA é brilho total.",
-        "es": "Un LED rojo con resistencia en serie ajustable. Ánodo a un GPIO (o riel), cátodo a GND. Brilla según la corriente de la red: unos 10 mA es brillo máximo."
+        "en": "A red 5 mm LED with its own series resistor (the Resistor field, 330 ohm by default). Anode to a GPIO (or a rail), cathode to GND, no other resistor needed. It conducts above 1.9 V and glows by the current the circuit gives it: 10 mA is full brightness.",
+        "pt-BR": "Um LED vermelho de 5 mm com o próprio resistor em série (campo Resistor, 330 ohm por padrão). Anodo em um GPIO (ou trilho), catodo no GND, sem outro resistor. Conduz acima de 1,9 V e brilha pela corrente que o circuito entrega: 10 mA é brilho total.",
+        "es": "Un LED rojo de 5 mm con su propia resistencia en serie (campo Resistencia, 330 ohm por defecto). Ánodo a un GPIO (o riel), cátodo a GND, sin otra resistencia. Conduce por encima de 1,9 V y brilla según la corriente del circuito: 10 mA es brillo máximo."
       },
       "body": {
         "w_mm": 5.8,
@@ -2078,8 +2078,8 @@
       "id": "dotbench.uno-r3",
       "version": "1.0.0",
       "file": "dotbench.uno-r3.dotpart",
-      "bytes": 7759,
-      "sha256": "c1b59e0a025065679a493a7f6592531a0a37f3a83e14c84255bb770d46f8296e",
+      "bytes": 8080,
+      "sha256": "3dbce1a395f629737e41e422d92f28090c67f2d1df87559d67900c2f1ca98d0f",
       "name": {
         "en": "Arduino Uno R3",
         "pt-BR": "Arduino Uno R3",
@@ -2142,8 +2142,8 @@
       "id": "dotbench.uno-r4-minima",
       "version": "1.0.0",
       "file": "dotbench.uno-r4-minima.dotpart",
-      "bytes": 7684,
-      "sha256": "e16397c8485df001ec0af3f415ff27262a33cae77f99fe138e090f9fd7bcbb06",
+      "bytes": 7847,
+      "sha256": "8e8295873ea81537cb678186740e495a6bda1674390ae14df246b48a50213af1",
       "name": {
         "en": "Arduino Uno R4 Minima",
         "pt-BR": "Arduino Uno R4 Minima",
@@ -2204,7 +2204,7 @@
         "es": "Arduino Uno R4 Minima (formato del Renesas RA4M1): lógica de 5 V, cabezal del Uno R3 con PWM en 3 5 6 9 10 11, A0-A5 en un ADC de 10 bits que analogReadResolution() sube a 12 o 14 bits, un DAC de 12 bits en A0, I2C en A4 y A5, SPI en D10-D13, Serial por USB (CDC) y Serial1 en D0 y D1, interrupciones en todos los pines digitales, EEPROM de 8 KB. Aliméntala con el campo usb, 5 V en 5V o 6 a 24 V en VIN. Esta pieza NO emula el chip: no hay núcleo AVR/ARM/Xtensa, bootloader ni registros de periféricos. El sketch se compila a WebAssembly contra ArduinoCore-API + dotcore (el núcleo Arduino del banco), así que los pines, tensiones, API Arduino y tiempo en milisegundos son reales, el tiempo de instrucción no. El código que toca registros (PORTB, DDRB, TCCR1A, acceso directo al hardware) no compila."
       },
       "body": {
-        "w_mm": 70.48,
+        "w_mm": 70.62,
         "d_mm": 53.34,
         "h_mm": 15
       },
@@ -2216,8 +2216,8 @@
       "id": "dotbench.uno-r4-wifi",
       "version": "1.0.0",
       "file": "dotbench.uno-r4-wifi.dotpart",
-      "bytes": 8096,
-      "sha256": "0176b75b927a80e98a0b2e782b611f183c0d72b425bc47bc87d288ad78bc6214",
+      "bytes": 8255,
+      "sha256": "90e3b9ab5e8c286e4f00417cdfd661e8c6ebd9e37efea6b667fe832e5bb781c4",
       "name": {
         "en": "Arduino Uno R4 WiFi",
         "pt-BR": "Arduino Uno R4 WiFi",
@@ -2279,7 +2279,7 @@
         "es": "Arduino Uno R4 WiFi: todo lo del R4 Minima más una matriz de LED de 12 x 8 (ArduinoLEDMatrix, loadFrame y renderBitmap; los 96 píxeles son las tres salidas de 32 bits matrix0, matrix1, matrix2, el bit 31 de matrix0 es el LED superior izquierdo, fila a fila, para que la página lo dibuje) y una radio WiFi que NO conecta: WiFi.begin() deja la placa desconectada y lo avisa en la consola de la pieza. Las secuencias y el texto de ArduinoGraphics en la matriz no están implementados. Esta pieza NO emula el chip: no hay núcleo AVR/ARM/Xtensa, bootloader ni registros de periféricos. El sketch se compila a WebAssembly contra ArduinoCore-API + dotcore (el núcleo Arduino del banco), así que los pines, tensiones, API Arduino y tiempo en milisegundos son reales, el tiempo de instrucción no. El código que toca registros (PORTB, DDRB, TCCR1A, acceso directo al hardware) no compila."
       },
       "body": {
-        "w_mm": 70.48,
+        "w_mm": 70.62,
         "d_mm": 53.34,
         "h_mm": 15
       },
