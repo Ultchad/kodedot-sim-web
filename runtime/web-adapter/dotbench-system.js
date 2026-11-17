@@ -350,14 +350,20 @@ export class DotbenchSystem {
   _appdataSoon() {
     if (this._appdataBusy) return;
     this._appdataBusy = (async () => {
+      const inst = this.device._inst;                  // the program this sync belongs to
+      const gone = () => !inst || inst.dead || this.device._inst !== inst;
       try {
         for (let i = 0; i < 100; i++) {
           const fsApi = this.device.area("storage");
-          if (!this.device._inst || !fsApi) return;
+          if (gone() || !fsApi) return;
           if (fsApi.mounted("storage")) { await this._syncAppdata(fsApi); return; }
           await new Promise((r) => setTimeout(r, 100));
         }
-      } catch (e) { console.error("appdata:", e); } finally { this._appdataBusy = null; }
+      } catch (e) {
+        // Stopped or restarted in the middle: calls into a program that is gone answer nothing, which the file API reads as
+        // nonsense (a folder that "is not a directory"). Nothing was written; the next boot syncs again.
+        if (!gone()) console.error("appdata:", e);
+      } finally { this._appdataBusy = null; }
     })();
   }
   async _info(id) {

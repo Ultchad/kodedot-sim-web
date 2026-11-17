@@ -15,12 +15,17 @@ export const READ_EXPORT = /(_get|_pop|_poll|_read|_recv|_info|_state|_stat|_sta
 
 export function makeCaller(M, { dead = () => false, retryMs = 5, maxTries = 400, queueMax = 512, warn = (...a) => console.warn(...a), schedule = (f, ms) => setTimeout(f, ms) } = {}) {
   const live = new Map();            // ptr -> size, every block the glue got from alloc()
-  const queue = [];
+  // One queue per area (the export's prefix: usb_, power_, ble_ ...). Order matters only inside an area, whose exports share a lock;
+  // a write of another area is never held back behind a busy one. That matters for more than speed: glue with its own busy protocol
+  // and implicit state (the storage API puts the path in a scratch buffer, then calls dbfs_page_*) must get its real answer at once.
+  const queues = new Map();
   let timer = null, lastBusy = false;
   const stats = { busy: 0, retried: 0, dropped: 0 };
 
   const take = () => (typeof M._dbpage_busy_take === "function" ? M._dbpage_busy_take() : 0);
   const isRead = (fn) => READ_EXPORT.test(fn);
+  const areaOf = (fn) => { const i = fn.indexOf("_"); return i < 0 ? fn : fn.slice(0, i); };
+  const pendingCount = () => { let n = 0; for (const q of queues.values()) n += q.length; return n; };
 
   function snapshot(args) {
     return args.map((a) => {
@@ -41,20 +46,26 @@ export function makeCaller(M, { dead = () => false, retryMs = 5, maxTries = 400,
   }
   function drain() {
     timer = null;
-    if (dead()) { queue.length = 0; return; }
-    while (queue.length) {
-      const e = queue[0];
-      run(e.fn, e.args);
-      if (take()) {                                   // still busy: keep it at the head (order matters), look again soon
-        if (++e.tries >= maxTries) { queue.shift(); stats.dropped++; warn(`page-call: ${e.fn} stayed busy for ${maxTries} tries and was dropped`); continue; }
-        break;
+    if (dead()) { queues.clear(); return; }
+    for (const [area, queue] of queues) {
+      while (queue.length) {
+        const e = queue[0];
+        run(e.fn, e.args);
+        if (take()) {                                 // still busy: keep it at the head (order matters), look again soon
+          if (++e.tries >= maxTries) { queue.shift(); stats.dropped++; warn(`page-call: ${e.fn} stayed busy for ${maxTries} tries and was dropped`); continue; }
+          break;
+        }
+        queue.shift(); stats.retried++;
       }
-      queue.shift(); stats.retried++;
+      if (!queue.length) queues.delete(area);
     }
-    if (queue.length) timer = schedule(drain, retryMs);
+    if (queues.size) timer = schedule(drain, retryMs);
   }
   function enqueue(fn, args) {
-    if (queue.length >= queueMax) { queue.shift(); stats.dropped++; warn(`page-call: queue full, the oldest write (${queue[0]?.fn}) was dropped`); }
+    const area = areaOf(fn);
+    let queue = queues.get(area);
+    if (!queue) queues.set(area, (queue = []));
+    if (queue.length >= queueMax) { const old = queue.shift(); stats.dropped++; warn(`page-call: queue full, the oldest write (${old?.fn}) was dropped`); }
     queue.push({ fn, args: snapshot(args), tries: 0 });
     if (!timer) timer = schedule(drain, retryMs);
   }
@@ -65,7 +76,7 @@ export function makeCaller(M, { dead = () => false, retryMs = 5, maxTries = 400,
     call(fn, ...args) {
       if (dead()) return 0;
       const write = !isRead(fn);
-      if (write && queue.length) { enqueue(fn, args); return 0; }     // keep the order of writes
+      if (write && queues.get(areaOf(fn))?.length) { enqueue(fn, args); return 0; }     // keep the order of this area's writes
       take();                                                          // forget a refusal that was not ours
       const r = M["_" + fn](...args);
       lastBusy = take() > 0;
@@ -76,7 +87,7 @@ export function makeCaller(M, { dead = () => false, retryMs = 5, maxTries = 400,
     get busy() { return lastBusy; },
     alloc(n) { const p = M._malloc(n); live.set(p, n); return p; },
     free(p) { live.delete(p); M._free(p); },
-    pending: () => queue.length,
-    dispose() { queue.length = 0; if (timer) clearTimeout(timer); timer = null; },
+    pending: () => pendingCount(),
+    dispose() { queues.clear(); if (timer) clearTimeout(timer); timer = null; },
   };
 }

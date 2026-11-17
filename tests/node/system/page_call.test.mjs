@@ -29,13 +29,26 @@ function fake() {
   const r = c.call("usb_send", p, 4);
   check(c.busy && r === 0 && f.log.length === 0 && c.pending() === 1, "a busy write is queued, the call returns at once", `pending ${c.pending()}`);
   f.M.HEAPU8.set([9, 9, 9, 9], p);                       // the glue reuses its scratch buffer
-  c.call("power_set_load", 55);                            // a later write waits behind the first one (order)
-  check(c.pending() === 2 && f.log.length === 0, "a later write queues behind it");
+  const p2 = c.alloc(8); f.M.HEAPU8.set([5, 6], p2);
+  c.call("usb_send", p2, 2);                               // a later write of the same area waits behind the first one (order)
+  check(c.pending() === 2 && f.log.length === 0, "a later write of the same area queues behind it");
   f.run();                                                 // still busy once more
   check(f.log.length === 0 && c.pending() === 2 && f.timers.length === 1, "retried from the scheduler, still busy: nothing lost, next try scheduled");
   f.run();
-  check(JSON.stringify(f.log) === JSON.stringify([["send", [1, 2, 3, 4]], ["load", 55]]), "when the lock is free both go out in order, with the bytes as they were at the call", JSON.stringify(f.log));
+  check(JSON.stringify(f.log) === JSON.stringify([["send", [1, 2, 3, 4]], ["send", [5, 6]]]), "when the lock is free both go out in order, with the bytes as they were at the call", JSON.stringify(f.log));
   check(c.pending() === 0 && f.timers.length === 0 && c.stats.retried === 2, "and the retry timer stops");
+}
+{
+  // a busy area does not hold back another area's write: that one is called at once and gets its real answer
+  const f = fake(); const c = makeCaller(f.M, { dead: f.isDead, schedule: f.schedule, warn: () => {} });
+  f.M._dbfs_page_mkdir = () => { f.log.push(["mkdir"]); return 42; };
+  const p = c.alloc(8);
+  f.setBusy(1);
+  c.call("usb_send", p, 1);
+  const r = c.call("dbfs_page_mkdir");
+  check(r === 42 && JSON.stringify(f.log) === JSON.stringify([["mkdir"]]) && c.pending() === 1, "a write of another area runs at once with its own result while usb waits", `r ${r} pending ${c.pending()} log ${JSON.stringify(f.log)}`);
+  f.run();
+  check(c.pending() === 0 && f.log.length === 2, "and the waiting write still goes out");
 }
 {
   const f = fake(); const c = makeCaller(f.M, { dead: f.isDead, schedule: f.schedule });
