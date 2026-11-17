@@ -238,19 +238,19 @@ export function sot23(s: Shape, o: { x: number; z: number; y: number; turn?: num
  * An SMA jack standing out of a wall: hex flange, threaded barrel, the socket in its mouth. Its axis leaves the point
  * (x, y, z) along -Z (before `m`); `len` is how far it stands out. Gold plated, as on the reference pictures.
  */
-export function smaJack(s: Shape, o: { x: number; y: number; z: number; len?: number; seg?: number; m?: Matrix4 }): void {
-  const len = o.len ?? 6.4, seg = o.seg ?? 16;
+export function smaJack(s: Shape, o: { x: number; y: number; z: number; len?: number; seg?: number; m?: Matrix4; finish?: Finish }): void {
+  const len = o.len ?? 6.4, seg = o.seg ?? 16, fin = o.finish ?? PAL.gold;
   const frame = (o.m ?? new Matrix4()).clone().multiply(new Matrix4().makeTranslation(o.x, o.y, o.z)).multiply(new Matrix4().makeRotationX(-Math.PI / 2));
   // in this frame the jack grows along +y from the wall at y = 0
   s.with(frame, () => {
     const hex: Pt[] = [];
     for (let i = 0; i < 6; i++) hex.push([Math.cos((i * Math.PI) / 3) * 4.5, Math.sin((i * Math.PI) / 3) * 4.5]);
-    s.prism(...PAL.gold, hex, 0, 1.9, 0.25, { ao: 0.9 });
-    s.disc(...PAL.gold, 0, 0, 3.1, 1.9, len, 0.3, seg, { ao: 0.92 });
+    s.prism(...fin, hex, 0, 1.9, 0.25, { ao: 0.9 });
+    s.disc(...fin, 0, 0, 3.1, 1.9, len, 0.3, seg, { ao: 0.92 });
     // the thread: three shallow rings, which is all the eye resolves
-    for (let k = 0; k < 3; k++) s.disc('metal', '#b98a2c', 0, 0, 3.18, 2.7 + k * 1.05, 3.2 + k * 1.05, 0.1, seg, { ao: 1 });
+    for (let k = 0; k < 3; k++) s.disc(fin[0], fin[1], 0, 0, 3.22, 2.7 + k * 1.05, 3.2 + k * 1.05, 0.1, seg, { ao: 1 });
     s.disc('matte', '#f1ede4', 0, 0, 2.05, len, len + 0.03, 0, seg, { ao: 1 });
-    s.disc(...PAL.gold, 0, 0, 0.62, len + 0.03, len + 0.06, 0, 10, { ao: 1 });
+    s.disc(...fin, 0, 0, 0.62, len + 0.03, len + 0.06, 0, 10, { ao: 1 });
     s.disc('matte', '#16130d', 0, 0, 0.3, len + 0.06, len + 0.08, 0, 8, { ao: 1 });
   });
 }
