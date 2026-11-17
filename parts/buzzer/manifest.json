@@ -1,0 +1,92 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "id": "dotbench.buzzer",
+  "name": {
+    "en": "Passive buzzer",
+    "pt-BR": "Buzzer passivo",
+    "es": "Zumbador pasivo"
+  },
+  "description": {
+    "en": "A passive piezo buzzer: drive P with PWM (the frequency is the pitch), N to GND. The bench shows the pitch in Hz; it does not play sound by itself.",
+    "pt-BR": "Um buzzer piezo passivo: acione P com PWM (a frequência é a nota), N no GND. A bancada mostra a nota em Hz; ela não toca som sozinha.",
+    "es": "Un zumbador piezo pasivo: activa P con PWM (la frecuencia es la nota), N a GND. La mesa muestra la nota en Hz; no reproduce sonido por sí sola."
+  },
+  "category": "actuator",
+  "tags": [
+    "buzzer",
+    "pwm",
+    "sound"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 120,
+    "height": 130
+  },
+  "pins": [
+    {
+      "name": "P",
+      "kind": "io",
+      "pos": {
+        "x": 40,
+        "y": 114
+      },
+      "abs_max_mv": 5500
+    },
+    {
+      "name": "N",
+      "kind": "io",
+      "pos": {
+        "x": 80,
+        "y": 114
+      },
+      "abs_max_mv": 5500
+    }
+  ],
+  "outputs": [
+    {
+      "name": "hz",
+      "type": "number",
+      "unit": "Hz",
+      "min": 0,
+      "max": 40000,
+      "label": {
+        "en": "Pitch",
+        "pt-BR": "Nota",
+        "es": "Nota"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "pitch",
+      "effect": "text",
+      "x": 60,
+      "y": 46,
+      "w": 80,
+      "h": 22,
+      "color": "#ffffff",
+      "source": {
+        "output": "hz"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "buzzer",
+        "pin": "P",
+        "ref": "N",
+        "output": "hz"
+      }
+    ]
+  }
+}

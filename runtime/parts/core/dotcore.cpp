@@ -104,8 +104,9 @@ void serialEvent() {}
 DPSerial Serial(0), Serial1(1), Serial2(2);
 void DPSerial::begin(unsigned long baud, uint32_t, int8_t rx, int8_t tx) { dp_uart_begin(port_, (uint32_t)baud, rx, tx); }
 void DPSerial::flushTx() { if (txn_) { dp_uart_write(port_, tx_, txn_); txn_ = 0; } }
-size_t DPSerial::write(uint8_t c) { tx_[txn_++] = c; if (c == '\n' || txn_ == sizeof tx_) flushTx(); return 1; }
-size_t DPSerial::write(const uint8_t *b, size_t n) { for (size_t i = 0; i < n; i++) write(b[i]); return n; }
+// every write goes out at once (a real UART starts sending immediately); the 64 byte buffer only batches one call's bytes
+size_t DPSerial::write(uint8_t c) { tx_[txn_++] = c; flushTx(); return 1; }
+size_t DPSerial::write(const uint8_t *b, size_t n) { for (size_t i = 0; i < n; i++) { tx_[txn_++] = b[i]; if (txn_ == sizeof tx_) flushTx(); } flushTx(); return n; }
 void DPSerial::flush() { flushTx(); }
 int DPSerial::available() { dp_yield(); return (rxt_ - rxh_) & 255; }
 int DPSerial::peek() { dp_yield(); return rxh_ == rxt_ ? -1 : rx_[rxh_]; }

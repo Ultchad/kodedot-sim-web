@@ -11,9 +11,9 @@ const TEMPLATE = path.join(ROOT, "templates/component-starter");
 const dec = new TextDecoder();
 const usage = `usage: dotbench part <command>
   new <dir> [--id com.you.name] [--declarative]   copy the starter into <dir> (a code part; --declarative: the no-code LM75 example)
-  check <dir|file.dotpart>                        manifest, picture, references, translations (errors exit 1)
+  check <dir|file.dotpart> [--builtin]             manifest, picture, references, translations (errors exit 1)
   build <dir> [-o out.dotpart] [--builtin]        compile the sketch (code parts) and write <id>-<version>.dotpart
-  test <dir|file.dotpart>                         build, then run tests/*.test.json headless in virtual time
+  test <dir|file.dotpart> [--builtin]              build, then run tests/*.test.json headless in virtual time
   inspect <file.dotpart> [--json]                 what the import dialog shows
 Environment: DOTBENCH_EMSDK (Emscripten SDK), DOTBENCH_ARDUINO_API (ArduinoCore-API checkout), DOTBENCH_CACHE (compiled-core cache).`;
 
@@ -34,9 +34,9 @@ function readFolder(dir) {
   return { m, files };
 }
 
-function checkFolder(dir) {
+function checkFolder(dir, opt = {}) {
   const { m, files } = readFolder(dir);
-  const { errors, warnings } = validateManifest(m, files);
+  const { errors, warnings } = validateManifest(m, files, { builtin: !!opt.builtin });
   const pic = m.picture?.file && files.get(m.picture.file);
   if (pic && m.picture.file.endsWith(".svg")) for (const why of checkSvg(dec.decode(pic))) errors.push({ path: "/picture/file", message: "picture " + why });
   if (pic && pic.length > (1 << 20)) errors.push({ path: "/picture/file", message: "picture is over 1 MB" });
@@ -51,7 +51,7 @@ function checkFolder(dir) {
 }
 
 async function buildFolder(dir, opt, quiet = false) {
-  const { m, errors, warnings } = checkFolder(dir);
+  const { m, errors, warnings } = checkFolder(dir, opt);
   if (errors.length) die(`${dir}: manifest has errors:\n${fmt(errors, "error")}`);
   let wasm = null;
   if (m.behaviour.type === "wasm") {
@@ -63,7 +63,7 @@ async function buildFolder(dir, opt, quiet = false) {
   const bytes = zipPackage(packageFiles(dir, m, wasm));
   const out = opt.o ?? path.join(dir, `${m.id}-${m.version}.dotpart`);
   fs.writeFileSync(out, bytes);
-  const def = await readDotpart(bytes);
+  const def = await readDotpart(bytes, { builtin: !!opt.builtin });
   if (!def.ok) die("the package does not pass the importer:\n" + fmt(def.errors, "error"));
   if (!quiet) { console.log(`wrote ${out} (${bytes.length} bytes${wasm ? `, wasm ${wasm.length}` : ""})`); if (warnings.length) console.log(fmt(warnings, "warning")); }
   return { out, def, warnings };
@@ -94,12 +94,12 @@ async function cmdNew(pos, opt) {
   console.log(`created ${dir} (id ${m.id}). Next: cd ${dir} && dotbench part check . && dotbench part test .`);
 }
 
-async function cmdCheck(pos) {
+async function cmdCheck(pos, opt) {
   const target = pos[0] ?? "."; let errors, warnings, name;
   if (target.endsWith(".dotpart")) {
-    const def = await readDotpart(new Uint8Array(fs.readFileSync(target)));
+    const def = await readDotpart(new Uint8Array(fs.readFileSync(target)), { builtin: !!opt.builtin });
     errors = def.errors; warnings = def.warnings; name = def.manifest.id;
-  } else ({ errors, warnings, m: { id: name } } = checkFolder(target));
+  } else ({ errors, warnings, m: { id: name } } = checkFolder(target, opt));
   if (warnings.length) console.log(fmt(warnings, "warning"));
   if (errors.length) { console.log(fmt(errors, "error")); console.log(`${name}: ${errors.length} error(s)`); process.exit(1); }
   console.log(`${name}: ok${warnings.length ? ` (${warnings.length} warning(s))` : ""}`);
@@ -108,8 +108,8 @@ async function cmdCheck(pos) {
 async function cmdTest(pos, opt) {
   const target = pos[0] ?? ".";
   let def, dir;
-  if (target.endsWith(".dotpart")) { def = await readDotpart(new Uint8Array(fs.readFileSync(target))); dir = path.dirname(path.resolve(target)); }
-  else { dir = target; ({ def } = await buildFolder(dir, {}, true)); }
+  if (target.endsWith(".dotpart")) { def = await readDotpart(new Uint8Array(fs.readFileSync(target)), { builtin: !!opt.builtin }); dir = path.dirname(path.resolve(target)); }
+  else { dir = target; ({ def } = await buildFolder(dir, { builtin: opt.builtin }, true)); }
   if (!def.ok) die(fmt(def.errors, "error"));
   const td = path.join(dir, "tests");
   const files = fs.existsSync(td) ? fs.readdirSync(td).filter((f) => f.endsWith(".test.json")).sort() : [];

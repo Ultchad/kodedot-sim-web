@@ -1,0 +1,127 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "id": "dotbench.potentiometer",
+  "name": {
+    "en": "Potentiometer 10 kΩ",
+    "pt-BR": "Potenciômetro 10 kΩ",
+    "es": "Potenciómetro 10 kΩ"
+  },
+  "description": {
+    "en": "A 10 kΩ rotary potentiometer. Wire T to 3V3, B to GND and read the wiper W on an analog pin (EXP8 to EXP12, EXP14).",
+    "pt-BR": "Um potenciômetro rotativo de 10 kΩ. Ligue T em 3V3, B no GND e leia o cursor W em um pino analógico (EXP8 a EXP12, EXP14).",
+    "es": "Un potenciómetro rotativo de 10 kΩ. Conecta T a 3V3, B a GND y lee el cursor W en un pin analógico (EXP8 a EXP12, EXP14)."
+  },
+  "category": "input",
+  "tags": [
+    "potentiometer",
+    "analog",
+    "input"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 150,
+    "height": 150
+  },
+  "pins": [
+    {
+      "name": "T",
+      "kind": "analog",
+      "pos": {
+        "x": 30,
+        "y": 134
+      },
+      "abs_max_mv": 5500
+    },
+    {
+      "name": "W",
+      "kind": "analog",
+      "pos": {
+        "x": 75,
+        "y": 134
+      },
+      "abs_max_mv": 5500
+    },
+    {
+      "name": "B",
+      "kind": "analog",
+      "pos": {
+        "x": 120,
+        "y": 134
+      },
+      "abs_max_mv": 5500
+    }
+  ],
+  "fields": [
+    {
+      "name": "position",
+      "type": "number",
+      "label": {
+        "en": "Position",
+        "pt-BR": "Posição",
+        "es": "Posición"
+      },
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5,
+      "ui": "knob"
+    }
+  ],
+  "controls": [
+    {
+      "field": "position",
+      "region": {
+        "x": 25,
+        "y": 15,
+        "w": 100,
+        "h": 90
+      },
+      "mode": "rotate"
+    }
+  ],
+  "visuals": [
+    {
+      "id": "knob",
+      "effect": "rotate",
+      "x": 75,
+      "y": 60,
+      "r": 36,
+      "source": {
+        "field": "position"
+      },
+      "scale": {
+        "in": [
+          0,
+          1
+        ],
+        "out": [
+          -135,
+          135
+        ]
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "divider",
+        "top": "T",
+        "bottom": "B",
+        "wiper": "W",
+        "ohms": 10000,
+        "position": {
+          "field": "position"
+        }
+      }
+    ]
+  }
+}

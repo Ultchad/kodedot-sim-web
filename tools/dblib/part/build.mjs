@@ -85,6 +85,7 @@ export function stripExports(wasm, keep = ABI1_EXPORTS) {
 
 /** Compile the folder's sketch to a wasm. Returns {wasm: Uint8Array, log: string}. */
 export function compileWasm(dir, m, log = () => {}) {
+  dir = path.resolve(dir);
   const { api } = env(), b = m.behaviour, outDir = path.join(dir, "build");
   fs.mkdirSync(path.join(outDir, "gen"), { recursive: true }); fs.mkdirSync(path.join(outDir, "obj"), { recursive: true });
   const lib = ensureCore(log);

@@ -48,6 +48,7 @@ export class PartTester {
   drive(name, level) { const i = this.exp.get(name); this.bench.setDevicePin(i, level === null ? { mode: "z" } : { mode: "out", level: level ? 1 : 0 }); }
   level(name) { return this.bench.net(this.dev(name)).level; }
   mv(name) { const n = this.bench.net(this.dev(name)); return n.floating ? 0 : n.mv; }
+  pwm(name, hz, dutyPct) { this.bench.setDevicePin(this.exp.get(name), { mode: "pwm", hz, duty: Math.round((dutyPct / 100) * 65536) }); }
   pullup(name) { this.bench.setDevicePin(this.exp.get(name), { mode: "in", pull: "up" }); }
   /** I2C transaction as the device would do it: write w, then read rlen (a repeated start). {ok, nack, data, result} */
   async i2c(addr, w = [], rlen = 0, hz = 100000) {
@@ -73,7 +74,7 @@ export class PartTester {
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /**
  * Run one scenario file (tests/*.test.json). Steps: advance_ms, set_field, press {field, ms}, expect_serial, serial_in, i2c {addr, write, read, expect, expect_nack},
- * spi {write, expect}, set_pin {pin, level|null}, expect_pin {pin, level | mv_min/mv_max}, uart_send {text}, uart_listen {}, expect_uart {contains}, expect_output {name, value}.
+ * spi {write, expect}, expect_visual {id, value|min|max}, set_pin {pin, level|null}, pullup "PIN", pwm {pin, hz, duty_pct}, expect_pin {pin, level | mv_min/mv_max}, uart_send {text}, uart_listen {}, expect_uart {contains}, expect_output {name, value}.
  * @returns {Promise<string[]>} one line per step; throws Error on the first failure.
  */
 export async function runScenario(tester, t, log = []) {
@@ -92,15 +93,28 @@ export async function runScenario(tester, t, log = []) {
       else { if (!r.ok) fail(`expected an ACK, got result ${r.result}`); if (s.i2c.expect && !eq(r.data, s.i2c.expect)) fail(`read ${JSON.stringify(r.data)}, expected ${JSON.stringify(s.i2c.expect)}`); }
     } else if (s.spi) { const r = await tester.spi(s.spi.write, s.spi); if (s.spi.expect && !eq(r, s.spi.expect)) fail(`SPI read ${JSON.stringify(r)}, expected ${JSON.stringify(s.spi.expect)}`); }
     else if (s.set_pin) tester.drive(s.set_pin.pin, s.set_pin.level ?? null);
+    else if (s.pullup) tester.pullup(s.pullup);
+    else if (s.pwm) tester.pwm(s.pwm.pin, s.pwm.hz, s.pwm.duty_pct);
     else if (s.expect_pin) {
       const e = s.expect_pin;
       if (e.level !== undefined && tester.level(e.pin) !== e.level) fail(`pin ${e.pin} level is ${tester.level(e.pin)} (${Math.round(tester.mv(e.pin))} mV), expected ${e.level}`);
       if (e.mv_min !== undefined && tester.mv(e.pin) < e.mv_min) fail(`pin ${e.pin} is ${Math.round(tester.mv(e.pin))} mV, expected at least ${e.mv_min}`);
       if (e.mv_max !== undefined && tester.mv(e.pin) > e.mv_max) fail(`pin ${e.pin} is ${Math.round(tester.mv(e.pin))} mV, expected at most ${e.mv_max}`);
+    } else if (s.expect_visual) {
+      const e = s.expect_visual, v = tester.state().parts[0].visuals[e.id];
+      if (v === undefined) fail(`no visual ${e.id}`);
+      if (e.value !== undefined && v !== e.value) fail(`visual ${e.id} is ${v}, expected ${e.value}`);
+      if (e.min !== undefined && !(v >= e.min)) fail(`visual ${e.id} is ${v}, expected at least ${e.min}`);
+      if (e.max !== undefined && !(v <= e.max)) fail(`visual ${e.id} is ${v}, expected at most ${e.max}`);
     } else if (s.uart_listen) tester.uartBaud(s.uart_listen.baud ?? 115200);
     else if (s.uart_send) { tester.uartSend(s.uart_send.text, s.uart_send); await tester.advance(5); }
     else if (s.expect_uart) { await tester.advance(5); const u = tester.uartTake(); if (!u.includes(s.expect_uart.contains)) fail(`UART lacks ${JSON.stringify(s.expect_uart.contains)}; got ${JSON.stringify(u)}`); }
-    else if (s.expect_output) { const v = tester.output(s.expect_output.name); if (v !== s.expect_output.value) fail(`output ${s.expect_output.name} is ${v}, expected ${s.expect_output.value}`); }
+    else if (s.expect_output) {
+      const e = s.expect_output, v = tester.output(e.name);
+      if (e.value !== undefined && v !== e.value) fail(`output ${e.name} is ${v}, expected ${e.value}`);
+      if (e.min !== undefined && !(v >= e.min)) fail(`output ${e.name} is ${v}, expected at least ${e.min}`);
+      if (e.max !== undefined && !(v <= e.max)) fail(`output ${e.name} is ${v}, expected at most ${e.max}`);
+    }
     else fail("unknown step " + JSON.stringify(s));
     log.push(`ok step ${n}: ${s.comment ?? JSON.stringify(s).slice(0, 90)}`);
   }

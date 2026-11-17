@@ -103,7 +103,7 @@ export function checkWasmModule(mod) {
 const ELEM_PIN_KEYS = { switch: ["a", "b"], bridge: ["a", "b"], divider: ["top", "bottom", "wiper"], source: ["pin"], drive: ["pin"], i2c_slave: ["sda", "scl"],
   h_bridge: ["in1", "in2", "enable"], servo: ["pin"], led: ["anode", "cathode"], buzzer: ["pin", "ref"] };
 /** Cross references and bounds. Returns {errors:[{path,message}], warnings:[{path,message}]} (schema errors are NOT repeated here). */
-export function lintManifest(m, files = null) {
+export function lintManifest(m, files = null, opts = {}) {
   const errors = [], warnings = [];
   const E = (path, message) => errors.push({ path, message }), Wn = (path, message) => warnings.push({ path, message });
   const pins = new Map(), fields = new Map(), outputs = new Set();
@@ -147,15 +147,15 @@ export function lintManifest(m, files = null) {
   if (!(m.pins ?? []).some((p) => p.kind === "ground") && (m.pins ?? []).some((p) => p.kind === "power_in")) Wn("/pins", "a part with a power_in pin needs a ground pin or it can never power on");
   for (const key of ["name", "description"]) for (const loc of ["pt-BR", "es"]) if (m[key] && !m[key][loc]) Wn("/" + key, `missing ${loc} translation`);
   if (files && m.picture?.file && !files.has(m.picture.file)) E("/picture/file", `${m.picture.file} is not in the package`);
-  if (m.id?.startsWith("dotbench.") && !m.__builtin) Wn("/id", "the dotbench. prefix is reserved for built-in parts");
+  if (m.id?.startsWith("dotbench.") && !opts.builtin) Wn("/id", "the dotbench. prefix is reserved for built-in parts");
   return { errors, warnings };
 }
 
 /** Schema + lint. */
-export function validateManifest(m, files = null) {
+export function validateManifest(m, files = null, opts = {}) {
   const schemaErrors = validateSchema(m);
   if (schemaErrors.length) return { errors: schemaErrors, warnings: [] };
-  return lintManifest(m, files);
+  return lintManifest(m, files, opts);
 }
 
 // ------------------------------------------------------------------------------ container
@@ -199,7 +199,7 @@ export async function sha256Hex(bytes) {
  * Read a .dotpart. Throws on a package violation (path, size, ratio, missing manifest). Everything else is reported:
  * returns {manifest, files, bytes, sha256, picture:{file,mime,bytes}, wasm:Uint8Array|null, errors, warnings, ok}.
  */
-export async function readDotpart(data) {
+export async function readDotpart(data, opts = {}) {
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
   const entries = scanZip(bytes);
   const files = await readZip(bytes);
@@ -208,7 +208,7 @@ export async function readDotpart(data) {
   if (mf.length > LIMITS.manifest) throw new Error("manifest.json is too big");
   let manifest;
   try { manifest = JSON.parse(dec.decode(mf)); } catch (e) { throw new Error("manifest.json is not valid JSON: " + e.message); }
-  const { errors, warnings } = validateManifest(manifest, files);
+  const { errors, warnings } = validateManifest(manifest, files, opts);
   const picFile = manifest.picture?.file;
   const pic = picFile ? files.get(picFile) : null;
   if (pic) {

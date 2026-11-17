@@ -1,0 +1,115 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "id": "dotbench.push-button",
+  "name": {
+    "en": "Push button",
+    "pt-BR": "Botão",
+    "es": "Pulsador"
+  },
+  "description": {
+    "en": "A momentary switch between A and B with 5 ms of contact bounce. Press it on the picture; hold Shift or use the Latch field to keep it down.",
+    "pt-BR": "Uma chave momentânea entre A e B com 5 ms de repique. Pressione na imagem; use o campo Travar para mantê-la apertada.",
+    "es": "Un pulsador entre A y B con 5 ms de rebote. Púlsalo en la imagen; usa el campo Fijar para mantenerlo."
+  },
+  "category": "input",
+  "tags": [
+    "button",
+    "switch",
+    "input"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 120,
+    "height": 120
+  },
+  "pins": [
+    {
+      "name": "A",
+      "kind": "io",
+      "pos": {
+        "x": 24,
+        "y": 100
+      },
+      "abs_max_mv": 5500
+    },
+    {
+      "name": "B",
+      "kind": "io",
+      "pos": {
+        "x": 96,
+        "y": 100
+      },
+      "abs_max_mv": 5500
+    }
+  ],
+  "fields": [
+    {
+      "name": "pressed",
+      "type": "boolean",
+      "label": {
+        "en": "Pressed",
+        "pt-BR": "Pressionado",
+        "es": "Pulsado"
+      },
+      "default": false
+    },
+    {
+      "name": "latch",
+      "type": "boolean",
+      "label": {
+        "en": "Latch (stay pressed)",
+        "pt-BR": "Travar (fica apertado)",
+        "es": "Fijar (queda pulsado)"
+      },
+      "default": false
+    }
+  ],
+  "controls": [
+    {
+      "field": "pressed",
+      "region": {
+        "x": 30,
+        "y": 15,
+        "w": 60,
+        "h": 60
+      },
+      "mode": "momentary"
+    }
+  ],
+  "visuals": [
+    {
+      "id": "cap",
+      "effect": "fill",
+      "x": 40,
+      "y": 25,
+      "w": 40,
+      "h": 40,
+      "color": "#e03a3a",
+      "source": {
+        "field": "pressed"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "switch",
+        "a": "A",
+        "b": "B",
+        "closed": {
+          "field": "pressed"
+        },
+        "bounce_ms": 5
+      }
+    ]
+  }
+}
