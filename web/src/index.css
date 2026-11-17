@@ -517,6 +517,50 @@
     color: #fff;
   }
 
+  /* a ring that expands once from an icon when the Dot did something with the object (restarted by changing its key) */
+  .pulse-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-tile);
+    pointer-events: none;
+    box-shadow: 0 0 0 0 var(--ring, rgba(255, 172, 0, 0.85));
+    animation: pulse-ring 900ms var(--ease) 1;
+  }
+  @keyframes pulse-ring {
+    from {
+      box-shadow: 0 0 0 0 var(--ring, rgba(255, 172, 0, 0.85));
+    }
+    to {
+      box-shadow: 0 0 0 14px rgba(255, 172, 0, 0);
+    }
+  }
+  /* a well inside a card: where a drawn thing (a TV, a battery) sits */
+  .well {
+    background: var(--raised-soft);
+    border-radius: var(--radius-row);
+  }
+  .live-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 999px;
+    background: var(--ink3);
+    transform: translateY(0.5px);
+  }
+  .live-dot[data-tone='ok'] {
+    background: var(--ok);
+  }
+  .live-dot[data-tone='bad'] {
+    background: var(--red);
+  }
+
   /* ---- scroll regions: always a visible thin bar, plus a fade on the edge that hides more content (ScrollArea sets the data attributes) */
   .scroll-thin,
   .scroll-area {

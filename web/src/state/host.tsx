@@ -1,5 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { applyPoseToBench, syncBench } from '../bench/sync';
+import { applyPoseToBench } from '../bench/sync';
+import { DRIVERS } from '../bench/drivers';
+import { LiveStore } from '../bench/live';
+import { BenchRuntime } from '../bench/runtime';
 import { BenchStore } from '../bench/store';
 import { createDevice, type DeviceKind } from '../device';
 import type { KodeDevice } from '../device/types';
@@ -36,6 +39,10 @@ export interface Host {
   input: InputController;
   painter: ScreenPainter;
   bench: BenchStore;
+  /** What the Dot did with each bench object. */
+  live: LiveStore;
+  /** Keeps the Dot's world equal to the bench (re-applies it to every program that starts). */
+  runtime: BenchRuntime;
 
   /** What runs on the Dot: kodeOS (kind 'os') or one of its apps; null while it is off (and on the test device). */
   program: Program | null;
@@ -118,9 +125,13 @@ export function HostProvider({ children }: { children: ReactNode }) {
   tRef.current = t;
 
   // long-lived services ------------------------------------------------------
-  const services = useRef<{ bench: BenchStore; painter: ScreenPainter; model: ModelController } | null>(null);
-  services.current ??= { bench: new BenchStore(safeLocal()), painter: new ScreenPainter(), model: new ModelController() };
-  const { bench, painter, model } = services.current;
+  const services = useRef<{ bench: BenchStore; live: LiveStore; runtime: BenchRuntime; painter: ScreenPainter; model: ModelController } | null>(null);
+  if (!services.current) {
+    const b = new BenchStore(safeLocal());
+    const l = new LiveStore();
+    services.current = { bench: b, live: l, runtime: new BenchRuntime(b, l, DRIVERS), painter: new ScreenPainter(), model: new ModelController() };
+  }
+  const { bench, live, runtime, painter, model } = services.current;
   // the 3D code's own store; the controller tolerates anything that does not follow the contract
   useEffect(() => {
     if (!model.available && isModelStore(customModel)) model.setStore(customModel);
@@ -148,13 +159,12 @@ export function HostProvider({ children }: { children: ReactNode }) {
   // device lifecycle --------------------------------------------------------
   useEffect(() => {
     painter.attach(device);
-    syncBench(device, bench);
-    const off = bench.subscribe(() => syncBench(device, bench));
+    const off = runtime.attach(device);
     if (device.info.kind === 'mock') void device.start();
     return () => {
       off();
     };
-  }, [device, painter, bench]);
+  }, [device, painter, runtime]);
 
   const setUseMock = useCallback(
     (v: boolean) => {
@@ -407,6 +417,8 @@ export function HostProvider({ children }: { children: ReactNode }) {
     (window as unknown as Record<string, unknown>).__dotbench = {
       device: () => deviceRef.current,
       bench,
+      live,
+      runtime,
       input,
       painter,
       model,
@@ -446,7 +458,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
         notify: (kind: Notice['kind'], key: TKey, vars?: Vars) => say(kind, key, vars),
       },
     };
-  }, [bench, input, painter, setLocale, say, model]);
+  }, [bench, live, runtime, input, painter, setLocale, say, model]);
 
   // input: keyboard, visibility ---------------------------------------------
   useEffect(() => {
@@ -559,6 +571,8 @@ export function HostProvider({ children }: { children: ReactNode }) {
     input,
     painter,
     bench,
+    live,
+    runtime,
     program,
     apps,
     installFile,

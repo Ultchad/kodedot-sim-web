@@ -1,5 +1,4 @@
 import type { TKey } from '../i18n/core';
-import type { AreaKey, KodeDevice } from '../device/types';
 
 /** Every bench area of the design table. */
 export type AreaId = 'nfc' | 'rfid' | 'wifi' | 'ble' | 'ir' | 'sd' | 'usb' | 'power' | 'motion';
@@ -7,30 +6,42 @@ export type AreaId = 'nfc' | 'rfid' | 'wifi' | 'ble' | 'ir' | 'sd' | 'usb' | 'po
 export type FieldValue = string | number | boolean;
 
 export type FieldDef =
-  | { key: string; labelKey: TKey; type: 'text'; placeholder?: string }
-  | { key: string; labelKey: TKey; type: 'range'; min: number; max: number; step: number; unit?: string }
-  | { key: string; labelKey: TKey; type: 'number'; min?: number; max?: number; step?: number }
-  | { key: string; labelKey: TKey; type: 'toggle' }
-  | { key: string; labelKey: TKey; type: 'select'; options: { value: string; label: string }[] };
+  | { key: string; labelKey: TKey; type: 'text'; placeholder?: string; mono?: boolean; /** hidden unless this predicate holds for the object's fields */ when?: (f: Record<string, FieldValue>) => boolean }
+  | { key: string; labelKey: TKey; type: 'range'; min: number; max: number; step: number; unit?: string; when?: (f: Record<string, FieldValue>) => boolean }
+  | { key: string; labelKey: TKey; type: 'number'; min?: number; max?: number; step?: number; when?: (f: Record<string, FieldValue>) => boolean }
+  | { key: string; labelKey: TKey; type: 'toggle'; when?: (f: Record<string, FieldValue>) => boolean }
+  | { key: string; labelKey: TKey; type: 'select'; options: { value: string; label?: string; labelKey?: TKey }[]; when?: (f: Record<string, FieldValue>) => boolean };
 
 export interface ActionDef {
   key: string;
   labelKey: TKey;
 }
 
-/** What the store needs to know about a kind of object; UI and device hooks hang off it too. */
+/** How "near" reads for a kind: the switch shows the current state, in the area's own words. */
+export interface Presence {
+  on: TKey;
+  off: TKey;
+}
+
+/** What the store and the UI need to know about a kind of object. Device behaviour lives in the area's driver (bench/drivers). */
 export interface KindDef {
-  key: string; // e.g. 'motion.pose'
+  key: string; // e.g. 'nfc.tag'
   area: AreaId;
   labelKey: TKey;
   descKey: TKey;
+  /** Label of the "add" button, when "Add: {kind}" does not read well. */
+  addKey?: TKey;
   fields: FieldDef[];
   defaults: Record<string, FieldValue>;
+  /** Fields that must be different on every object (a UID, a network name): given the ordinal of the new object. */
+  unique?(n: number): Record<string, FieldValue>;
   actions?: ActionDef[];
-  /** Push the area's state to the device: `active` is the object in the area's slot, or null. */
-  sync?(device: KodeDevice, active: BenchObject | null): void;
+  /** 'none': the object has no near/away control (it simply exists). Default 'near'. */
+  presence?: 'none' | Presence;
+  /** One object of this kind at most (a battery, a charger). */
+  single?: boolean;
   /** Run a named action (button) on an object. */
-  run?(device: KodeDevice, obj: BenchObject, action: string): void;
+  run?(ctx: { device: import('../device/types').KodeDevice }, obj: BenchObject, action: string): void;
 }
 
 export interface BenchObject {
@@ -39,35 +50,35 @@ export interface BenchObject {
   kind: string;
   name: string;
   fields: Record<string, FieldValue>;
+  /** Near the Dot / in range / pointing at it / plugged in. Kept between visits. */
+  near: boolean;
 }
 
 export interface AreaDef {
   id: AreaId;
   labelKey: TKey;
-  /** Radio-type areas use a "near the device" slot. */
-  radio: boolean;
-  /** Stage of the design (docs/superpowers/specs) that delivers the real objects. */
-  stage: number;
-  /** Planned objects, from the design table. */
+  /** Planned objects, for the "Coming soon" list. */
   plannedKey: TKey;
-  slotKey: TKey;
-  verbs: { on: TKey; off: TKey };
-  /** Key in HardwareAreas when the device implements it. */
-  deviceArea?: AreaKey;
+  /** Default wording of the near/away switch. */
+  presence: Presence;
+  /** Only one object of the area can be near at a time (the Dot has one body to tilt). */
+  exclusive?: boolean;
+  /** The area draws its own panel instead of a list of objects (the microSD card belongs to the Dot, not to the bench). */
+  custom?: boolean;
 }
 
-const NEAR = { on: 'verb.near', off: 'verb.away' } as const;
+const NEAR: Presence = { on: 'presence.near', off: 'presence.away' };
 
 export const AREAS: AreaDef[] = [
-  { id: 'nfc', labelKey: 'area.nfc', radio: true, stage: 2, plannedKey: 'area.nfc.planned', slotKey: 'slot.near', verbs: NEAR },
-  { id: 'rfid', labelKey: 'area.rfid', radio: true, stage: 2, plannedKey: 'area.rfid.planned', slotKey: 'slot.near', verbs: NEAR },
-  { id: 'wifi', labelKey: 'area.wifi', radio: true, stage: 3, plannedKey: 'area.wifi.planned', slotKey: 'slot.range', verbs: NEAR },
-  { id: 'ble', labelKey: 'area.ble', radio: true, stage: 3, plannedKey: 'area.ble.planned', slotKey: 'slot.range', verbs: NEAR },
-  { id: 'ir', labelKey: 'area.ir', radio: true, stage: 4, plannedKey: 'area.ir.planned', slotKey: 'slot.sightline', verbs: NEAR },
-  { id: 'sd', labelKey: 'area.sd', radio: false, stage: 4, plannedKey: 'area.sd.planned', slotKey: 'slot.inSlot', verbs: { on: 'verb.insert', off: 'verb.remove' } },
-  { id: 'usb', labelKey: 'area.usb', radio: false, stage: 4, plannedKey: 'area.usb.planned', slotKey: 'slot.connected', verbs: { on: 'verb.connect', off: 'verb.disconnect' } },
-  { id: 'power', labelKey: 'area.power', radio: false, stage: 4, plannedKey: 'area.power.planned', slotKey: 'slot.connected', verbs: { on: 'verb.connect', off: 'verb.disconnect' } },
-  { id: 'motion', labelKey: 'area.motion', radio: false, stage: 4, plannedKey: 'area.motion.planned', slotKey: 'slot.inUse', verbs: { on: 'verb.activate', off: 'verb.deactivate' }, deviceArea: 'motion' },
+  { id: 'nfc', labelKey: 'area.nfc', plannedKey: 'area.nfc.planned', presence: NEAR },
+  { id: 'rfid', labelKey: 'area.rfid', plannedKey: 'area.rfid.planned', presence: NEAR },
+  { id: 'wifi', labelKey: 'area.wifi', plannedKey: 'area.wifi.planned', presence: { on: 'presence.inRange', off: 'presence.outOfRange' } },
+  { id: 'ble', labelKey: 'area.ble', plannedKey: 'area.ble.planned', presence: { on: 'presence.inRange', off: 'presence.outOfRange' } },
+  { id: 'ir', labelKey: 'area.ir', plannedKey: 'area.ir.planned', presence: { on: 'presence.aimed', off: 'presence.notAimed' } },
+  { id: 'sd', labelKey: 'area.sd', plannedKey: 'area.sd.planned', presence: { on: 'presence.inSlot', off: 'presence.ejected' }, custom: true },
+  { id: 'usb', labelKey: 'area.usb', plannedKey: 'area.usb.planned', presence: { on: 'presence.connected', off: 'presence.disconnected' } },
+  { id: 'power', labelKey: 'area.power', plannedKey: 'area.power.planned', presence: { on: 'presence.plugged', off: 'presence.unplugged' } },
+  { id: 'motion', labelKey: 'area.motion', plannedKey: 'area.motion.planned', presence: { on: 'presence.inUse', off: 'presence.notInUse' }, exclusive: true },
 ];
 
 export const getArea = (id: AreaId): AreaDef => AREAS.find((a) => a.id === id)!;

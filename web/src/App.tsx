@@ -26,8 +26,11 @@ function useWindowDrop() {
       depth++;
       setDragging(true);
     };
+    const inZone = (e: DragEvent) => !!(e.target as Element | null)?.closest?.('[data-drop-files]');
     const over = (e: DragEvent) => {
-      if (isFiles(e)) e.preventDefault();
+      if (!isFiles(e)) return;
+      e.preventDefault();
+      if (inZone(e)) setDragging(false); // a drop zone of the bench (the microSD card) takes the file itself
     };
     const leave = (e: DragEvent) => {
       if (!isFiles(e)) return;
@@ -39,6 +42,7 @@ function useWindowDrop() {
       e.preventDefault();
       depth = 0;
       setDragging(false);
+      if (inZone(e)) return;
       const f = e.dataTransfer?.files[0];
       if (f) openFile(f);
     };

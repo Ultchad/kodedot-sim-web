@@ -1,4 +1,4 @@
-import { AREAS, type AreaId, type BenchObject, type FieldValue, type KindDef } from './model';
+import { AREAS, getArea, type AreaId, type BenchObject, type FieldValue, type KindDef } from './model';
 import { getKind } from './kinds';
 
 export interface StorageLike {
@@ -8,8 +8,6 @@ export interface StorageLike {
 
 export interface BenchState {
   objects: readonly BenchObject[];
-  /** Per area: id of the object that is near / connected / in use. Not persisted. */
-  slots: Readonly<Partial<Record<AreaId, string>>>;
 }
 
 export const BENCH_STORAGE_KEY = 'dotbench.bench.v1';
@@ -43,7 +41,7 @@ function validate(raw: unknown): BenchObject[] {
   const seen = new Set<string>();
   for (const o of objs) {
     if (!o || typeof o !== 'object') continue;
-    const { id, area, kind, name, fields } = o as Record<string, unknown>;
+    const { id, area, kind, name, fields, near } = o as Record<string, unknown>;
     if (typeof id !== 'string' || seen.has(id) || typeof kind !== 'string' || typeof name !== 'string') continue;
     if (typeof area !== 'string' || !AREA_IDS.has(area)) continue;
     if (!fields || typeof fields !== 'object') continue;
@@ -52,7 +50,7 @@ function validate(raw: unknown): BenchObject[] {
       if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') clean[k] = v;
     }
     seen.add(id);
-    out.push({ id, area: area as AreaId, kind, name, fields: clean });
+    out.push({ id, area: area as AreaId, kind, name, fields: clean, near: near === true });
   }
   return out;
 }
@@ -73,7 +71,7 @@ export class BenchStore {
     } catch {
       objects = [];
     }
-    this.state = { objects, slots: {} };
+    this.state = { objects };
   }
 
   getState = (): BenchState => this.state;
@@ -87,31 +85,34 @@ export class BenchStore {
     return this.state.objects.find((o) => o.id === id);
   }
 
+  /** The first object of an area that is near (for areas where only one can be: motion). */
   activeIn(area: AreaId): BenchObject | null {
-    const id = this.state.slots[area];
-    return (id && this.get(id)) || null;
+    return this.state.objects.find((o) => o.area === area && o.near) ?? null;
   }
-
+  nearIn(area: AreaId): BenchObject[] {
+    return this.state.objects.filter((o) => o.area === area && o.near);
+  }
   /** How many objects of a kind exist (UI uses it to number default names). */
   countOf(kindKey: string): number {
     return this.state.objects.filter((o) => o.kind === kindKey).length;
   }
-
+  /** Adds an object. It starts near the Dot (if its kind has a near/away control and the area has room), so one click gives a result. */
   add(kindKey: string, name?: string): BenchObject | null {
     const def = this.kindOf(kindKey);
     if (!def) return null;
-    const n = this.state.objects.filter((o) => o.kind === kindKey).length + 1;
-    const obj: BenchObject = { id: newId(), area: def.area, kind: kindKey, name: name?.trim() || `${def.key} ${n}`, fields: { ...def.defaults } };
-    this.commit({ ...this.state, objects: [...this.state.objects, obj] }, true);
+    if (def.single && this.countOf(kindKey) > 0) return null;
+    const n = this.countOf(kindKey) + 1;
+    const exclusive = getArea(def.area)?.exclusive;
+    const near = def.presence !== 'none' && !(exclusive && this.activeIn(def.area));
+    const obj: BenchObject = { id: newId(), area: def.area, kind: kindKey, name: name?.trim() || `${def.key} ${n}`, fields: { ...def.defaults, ...(def.unique?.(n) ?? {}) }, near };
+    this.commit({ objects: [...this.state.objects, obj] }, true);
     return obj;
   }
-
   rename(id: string, name: string): void {
     const clean = name.trim();
     if (!clean) return;
     this.update(id, (o) => ({ ...o, name: clean }));
   }
-
   setField(id: string, key: string, value: FieldValue): void {
     const cur = this.get(id);
     if (!cur) return;
@@ -119,7 +120,6 @@ export class BenchStore {
     if (cur.fields[key] === v) return;
     this.update(id, (o) => ({ ...o, fields: { ...o.fields, [key]: v } }));
   }
-
   setFields(id: string, values: Record<string, FieldValue>): void {
     const cur = this.get(id);
     if (!cur) return;
@@ -135,45 +135,47 @@ export class BenchStore {
     }
     if (changed) this.update(id, (o) => ({ ...o, fields: next }));
   }
-
-  duplicate(id: string): BenchObject | null {
+  duplicate(id: string, suffix = 'copy'): BenchObject | null {
     const src = this.get(id);
     if (!src) return null;
-    const copy: BenchObject = { ...src, id: newId(), name: `${src.name} (cópia)`, fields: { ...src.fields } };
+    const def = this.kindOf(src.kind);
+    if (def?.single) return null;
+    const n = this.countOf(src.kind) + 1;
+    const copy: BenchObject = { ...src, id: newId(), name: `${src.name} (${suffix})`, fields: { ...src.fields, ...(def?.unique?.(n) ?? {}) }, near: false };
     const idx = this.state.objects.findIndex((o) => o.id === id);
     const objects = [...this.state.objects];
     objects.splice(idx + 1, 0, copy);
-    this.commit({ ...this.state, objects }, true);
+    this.commit({ objects }, true);
     return copy;
   }
-
   remove(id: string): void {
-    const cur = this.get(id);
-    if (!cur) return;
-    const slots = { ...this.state.slots };
-    if (slots[cur.area] === id) delete slots[cur.area];
-    this.commit({ objects: this.state.objects.filter((o) => o.id !== id), slots }, true);
+    if (!this.get(id)) return;
+    this.commit({ objects: this.state.objects.filter((o) => o.id !== id) }, true);
   }
-
-  /** "Aproximar": puts the object in its area's slot, replacing whatever was there. */
+  /** Near / in range / pointing at the Dot / plugged in. In an exclusive area (motion) the others leave. */
+  setNear(id: string, near: boolean): void {
+    const cur = this.get(id);
+    if (!cur || cur.near === near) return;
+    const exclusive = getArea(cur.area)?.exclusive;
+    this.commit(
+      { objects: this.state.objects.map((o) => (o.id === id ? { ...o, near } : near && exclusive && o.area === cur.area ? { ...o, near: false } : o)) },
+      true,
+    );
+  }
   bringNear(id: string): void {
-    const cur = this.get(id);
-    if (!cur || this.state.slots[cur.area] === id) return;
-    this.commit({ ...this.state, slots: { ...this.state.slots, [cur.area]: id } }, false);
+    this.setNear(id, true);
   }
-
-  /** "Afastar": by object id or by area id. */
+  /** By object id or by area id. */
   takeAway(idOrArea: string): void {
-    const slots = { ...this.state.slots };
-    const area = (AREA_IDS.has(idOrArea) ? idOrArea : this.get(idOrArea)?.area) as AreaId | undefined;
-    if (!area || !slots[area]) return;
-    if (!AREA_IDS.has(idOrArea) && slots[area] !== idOrArea) return;
-    delete slots[area];
-    this.commit({ ...this.state, slots }, false);
+    if (AREA_IDS.has(idOrArea)) {
+      const objs = this.nearIn(idOrArea as AreaId);
+      if (objs.length) this.commit({ objects: this.state.objects.map((o) => (o.area === idOrArea ? { ...o, near: false } : o)) }, true);
+      return;
+    }
+    this.setNear(idOrArea, false);
   }
-
   private update(id: string, fn: (o: BenchObject) => BenchObject): void {
-    this.commit({ ...this.state, objects: this.state.objects.map((o) => (o.id === id ? fn(o) : o)) }, true);
+    this.commit({ objects: this.state.objects.map((o) => (o.id === id ? fn(o) : o)) }, true);
   }
 
   private commit(next: BenchState, persist: boolean): void {
@@ -184,7 +186,7 @@ export class BenchStore {
 
   private save(): void {
     try {
-      this.storage?.setItem(BENCH_STORAGE_KEY, JSON.stringify({ v: 1, objects: this.state.objects }));
+      this.storage?.setItem(BENCH_STORAGE_KEY, JSON.stringify({ v: 2, objects: this.state.objects }));
     } catch {
       /* quota or disabled storage: keep working in memory */
     }

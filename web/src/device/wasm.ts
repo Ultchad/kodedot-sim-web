@@ -102,6 +102,11 @@ export interface RealDevice extends KodeDevice {
   /** Erase the whole Dot (settings, files, apps): the next start is a first boot with the factory apps. */
   factoryReset(): Promise<void>;
   stats(): { workers: number; memoryBytes: number };
+  /**
+   * Events of the hardware areas (`area:<name>:<type>`) and the log-level ones the system layer re-emits. The subscription
+   * outlives programs: it is the same device underneath, whichever program runs, and may be made before the system is open.
+   */
+  onEvent(name: string, cb: (data: unknown) => void): () => void;
   releaseAll(): void;
   exportDevice(): Promise<{ data: Uint8Array; extension: string }>;
   importDevice(data: Uint8Array): Promise<void>;
@@ -179,6 +184,7 @@ export class SystemDevice implements RealDevice {
   private sys: AdapterSystem | null = null;
   private sysPromise: Promise<AdapterSystem> | null = null;
   private offs: (() => void)[] = [];
+  private evSubs = new Set<{ name: string; cb: (d: unknown) => void; off?: () => void }>();
   private disposed = false;
   /** true once the Dot was powered on and not stopped since */
   private on = false;
@@ -213,6 +219,7 @@ export class SystemDevice implements RealDevice {
           throw new Error('device disposed');
         }
         this.sys = s;
+        for (const sub of this.evSubs) sub.off ??= s.on(sub.name, sub.cb as never);
         this.offs.push(
           s.on('status', (d: AdapterStatusDetail) => this.onStatus(d)),
           s.on('program', (p: Program) => this.onProgram(p)),
@@ -228,6 +235,16 @@ export class SystemDevice implements RealDevice {
       },
     );
     return this.sysPromise;
+  }
+
+  onEvent(name: string, cb: (data: unknown) => void): () => void {
+    const sub: { name: string; cb: (d: unknown) => void; off?: () => void } = { name, cb };
+    this.evSubs.add(sub);
+    if (this.sys) sub.off = this.sys.on(name, cb as never);
+    return () => {
+      sub.off?.();
+      this.evSubs.delete(sub);
+    };
   }
 
   private onStatus(s: AdapterStatusDetail): void {
@@ -342,6 +359,8 @@ export class SystemDevice implements RealDevice {
     this.saving(false);
     for (const o of this.offs) o();
     this.offs = [];
+    for (const sub of this.evSubs) sub.off?.();
+    this.evSubs.clear();
     this.sys?.dispose();
     this.sys = null;
   }

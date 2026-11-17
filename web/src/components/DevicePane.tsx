@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
-import { poseOf, MOTION_KIND } from '../bench/motion';
+import { poseOf, MOTION_KIND } from '../bench/drivers/motion';
 import { customModel } from '../device3d/customModel';
 import { useBenchState } from '../state/bench';
 import { useI18n } from '../i18n';
@@ -117,7 +117,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
   }, [viewMode, host]);
 
   const benchState = useBenchState(host.bench);
-  const active = benchState.slots.motion ? benchState.objects.find((o) => o.id === benchState.slots.motion && o.kind === MOTION_KIND) : undefined;
+  const active = benchState.objects.find((o) => o.near && o.kind === MOTION_KIND);
   const storePose = active ? poseOf(active) : ZERO_POSE;
 
   const pickZoom = (z: Zoom2D) => {
