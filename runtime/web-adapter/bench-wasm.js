@@ -60,7 +60,7 @@ export class WasmPart {
       const t = setTimeout(() => rej(new Error("the part did not start within 10 s")), 10000); t.unref?.();
       this.worker.on((m) => {
         if (m.type === "ready") { clearTimeout(t); res(); } else if (m.type === "bell") this.drain();
-        else if (m.type === "error") { clearTimeout(t); if (!this.dead) this.host.warn("part", `crashed: ${m.message.split("\n")[0]}`); rej(new Error(m.message.split("\n")[0])); }
+        else if (m.type === "error") { clearTimeout(t); if (!this.dead) { this.crashed = true; this.host.warn("crashed", `the part stopped: ${m.message.split("\n")[0]}`); this.host.changed(); } rej(new Error(m.message.split("\n")[0])); }
       });
     });
     this.worker.post({ type: "init", module: def._module, bytes: undefined, clockSab: this.host.clock().sab, mbSab: this.sab, ringSab: this.ringSab, L });

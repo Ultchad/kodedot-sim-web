@@ -590,7 +590,7 @@ export class Bench {
       device: { pins: this.devicePins.map((d, i) => ({ ...d, term: posTerm(i), ...pinState(posTerm(i)) })) },
       parts: [...this.parts.values()].map((p) => ({
         instance: p.instance, id: p.id, label: p.label, pos: { ...p.pos }, fields: { ...p.fields }, outputs: { ...p.outputs }, kind: p.def.manifest.behaviour.type,
-        power: { on: !!this._power.get(p.instance), reason: p.powerWhy ?? null }, visuals: this._visuals(p), console: p.console.slice(-50), busy: !!p.impl?.busy,
+        power: { on: !!this._power.get(p.instance), reason: p.powerWhy ?? null }, visuals: this._visuals(p), console: p.console.slice(-50), busy: !!p.impl?.busy, crashed: !!p.impl?.crashed,
         pins: Object.fromEntries(p.def.manifest.pins.filter((x) => x.kind !== "nc").map((x) => [x.name, pinState(`${p.instance}.${x.name}`)])),
       })),
       wires: [...this.wires.values()].map((w) => ({ ...w, short: bad.has(this._netInfo(w.from).id) })),
