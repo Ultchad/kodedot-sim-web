@@ -19,12 +19,12 @@ import { createRequire } from "node:module"; import { fileURLToPath, pathToFileU
 import { packFiles } from "../engine/pack.js";
 import { compileCpp, runTool, getFile, cc1Args, PCH_LIGHT, PCH_STL_EXTRA, pchPath, pchHeader } from "../engine/driver.js";
 import { BOARDS, SUPPORTED, UNSUPPORTED, FAMILY_NOTES } from "../boards.mjs";
-import { CORES, CORE_DIR } from "../../../tools/dblib/part/build.mjs";
+import { CORES, CORE_DIR, env as partEnv } from "../../../tools/dblib/part/build.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(HERE, "../../..");
 const argv = process.argv.slice(2), opt = (n, d) => { const i = argv.indexOf("--" + n); return i < 0 ? d : argv[i + 1]; }, flag = (n) => argv.includes("--" + n);
 const OUT = path.resolve(opt("out", path.join(ROOT, "build/cc-assets"))), WORK = path.resolve(opt("work", path.join(ROOT, "build/cc-work")));
-const CHUNK = Number(opt("chunk-bytes", 20_000_000)), API = process.env.DOTBENCH_ARDUINO_API || path.join(ROOT, "third_party/ArduinoCore-API");
+const CHUNK = Number(opt("chunk-bytes", 20_000_000)), API = partEnv().api;
 const want = (opt("boards", "") || Object.keys(BOARDS).join(",")).split(",").filter(Boolean);
 const TC = JSON.parse(fs.readFileSync(path.join(HERE, "../toolchain.json"), "utf8"));
 const t0 = performance.now(), laps = {}, lap = (m, k) => { const s = ((performance.now() - t0) / 1000); if (k) laps[k] = +s.toFixed(1); console.log(`[${s.toFixed(1)}s] ${m}`); };
