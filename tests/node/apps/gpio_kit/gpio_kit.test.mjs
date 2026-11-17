@@ -1,6 +1,6 @@
 // GPIO: the expansion header J3 through kode_pin_*: the pin map, output high/low, live inputs, PWM with frequency and duty, analog, an I2C scan
-// and a UART monitor. The exp/gpio fakes model digital pins and PWM bookkeeping only: ADC, I2C and UART answer "not implemented", and the app
-// must say so plainly; those states are what the last checks hold it to.
+// and a UART monitor, with nothing wired to J3: the analog, I2C and UART pages must show an honest empty state (gpio_kit_parts.test.mjs covers
+// the same pages with parts wired).
 import assert from "node:assert/strict";
 import { Bench, launch, build, runner, sleep, BTN, storeShots } from "../lib.mjs";
 
@@ -128,37 +128,34 @@ await T.check("The first and the last pin can be driven", async () => {
   await back(); await back(); await back();
 });
 
-await T.check("Analog says plainly that the Dot cannot read it here (the ADC is not faked)", async () => {
+await T.check("Analog with nothing wired reads 0 mV and says so", async () => {
   await pickPin(8);
   await app.tap(205, ROW[3]);               // Analog
-  await app.settle(1200);
-  await app.shot("analog-unavailable");
-  assert.ok(/khal_exp_port_adc_open not implemented/.test(logs()), "the fake's gap is what answers");
-  assert.ok(app.px(158, 135) !== 0, "a disc, in the danger colour");
+  await app.settle(1500);
+  await app.shot("analog-nothing");
+  assert.ok(!/not implemented/.test(logs()), "the ADC now answers");
+  assert.ok(app.px(158, 135) !== 0, "the disc is drawn");
   await back(); await back(); await back();
 });
 
-await T.check("I2C scan says plainly that the bus cannot be opened, and Try again asks again", async () => {
+await T.check("I2C scan with nothing on the bus says 'No devices found' (and that the 3.3 V is off), and Scan again asks again", async () => {
   await app.tap(205, ROW[1]);
-  await app.waitFor(() => /i2c scan ended: 0 devices, ok 0/.test(logs()), 15000, "the scan to end");
+  await app.waitFor(() => /i2c scan ended: 0 devices, ok 1/.test(logs()), 15000, "the scan to end");
   await app.settle(700);
-  await app.shot("i2c-unavailable");
+  await app.shot("i2c-nothing");
   const n = count(/i2c scan ended/g);
   await app.tap(205, BTN_Y);
   await app.waitFor(() => count(/i2c scan ended/g) > n, 15000, "a second scan");
   await app.settle(600);
-  assert.ok(lit(205, BTN_Y), "Try again is still offered");
+  assert.ok(lit(205, BTN_Y), "Scan again is still offered");
   await back();
 });
 
-await T.check("The UART monitor says plainly that it cannot listen, and Try again asks again", async () => {
+await T.check("The UART monitor opens and waits for data with 0 in and 0 out", async () => {
   await app.tap(205, ROW[2]);
-  await app.waitFor(() => /uart open ok 0/.test(logs()), 15000, "the UART to be refused");
+  await app.waitFor(() => /uart open ok 1/.test(logs()), 15000, "the UART to open");
   await app.settle(700);
-  await app.shot("uart-unavailable");
-  const n = count(/uart open ok 0/g);
-  await app.tap(205, BTN_Y);
-  await app.waitFor(() => count(/uart open ok 0/g) > n, 15000, "a second try");
+  await app.shot("uart-nothing");
   await back();
   assert.ok(lit(100, ROW[0]) && lit(100, ROW[2]), "back on the first page");
 });

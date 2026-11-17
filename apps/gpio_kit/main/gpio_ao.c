@@ -97,6 +97,9 @@ typedef struct {
     char            rx[GP_UART_TEXT + 1U];       /**< What came in, printable. */
     uint32_t        rx_count;                    /**< Bytes received since the page opened. */
     uint32_t        tx_count;                    /**< Bytes sent. */
+    bool            v33;                         /**< J3's 3.3 V is on (as the app switched it). */
+    bool            v33_wait;                    /**< A switch of the 3.3 V is out; EXP_POWER_SIG ends it. */
+    char            perr[GP_ERR_MAX];            /**< Why the supply would not switch, empty when it did. */
 } GpioKitAo;
 
 static QEvtPtr     s_queue[KQP_AO_QUEUE_LEN];                          /**< Its event queue. */
@@ -120,6 +123,7 @@ static void page_pwm(kit_t *kit, void *arg);
 static void page_analog(kit_t *kit, void *arg);
 static void page_i2c(kit_t *kit, void *arg);
 static void page_uart(kit_t *kit, void *arg);
+static void page_power(kit_t *kit, void *arg);
 
 /* ---- Facts about the header ---- */
 
@@ -326,8 +330,16 @@ static void home_uart_cb(lv_event_t *e)
     kit_push(&me->kit, &page_uart, me);
 }
 
+/** @brief A tap on Power. @param e The event. */
+static void home_power_cb(lv_event_t *e)
+{
+    (void)e;
+    s_ao.perr[0] = '\0';
+    kit_push(&s_ao.kit, &page_power, &s_ao);
+}
+
 /**
- * @brief The first page: the pins, the I2C scan and the UART monitor.
+ * @brief The first page: the pins, the I2C scan, the UART monitor and the supply.
  * @param kit The kit.
  * @param arg The Active Object.
  */
@@ -343,6 +355,8 @@ static void page_home(kit_t *kit, void *arg)
     (void)kit_row(kit, body, "I2C scan", sub, &app_glyph_chip_40, NULL, KUI_COLOR_ACCENT, &home_i2c_cb, &s_ao);
     (void)snprintf(sub, sizeof(sub), "TX %u, RX %u", (unsigned)GP_UART_TX, (unsigned)GP_UART_RX);
     (void)kit_row(kit, body, "UART monitor", sub, &app_glyph_term_40, NULL, KUI_COLOR_ACCENT, &home_uart_cb, &s_ao);
+    (void)kit_row(kit, body, "Power", "Switch the 3.3 V on J3", &app_glyph_bolt_40, NULL, KUI_COLOR_ACTION, &home_power_cb,
+                  &s_ao);
 }
 
 /* ---- The pin map ---- */
@@ -781,6 +795,10 @@ static const char *i2c_guess(uint8_t addr)
     {
         s = "Small display";
     }
+    else if ( (addr >= 0x40U) && (addr <= 0x47U) )
+    {
+        s = "Sensor or driver";
+    }
     else if ( (addr >= 0x48U) && (addr <= 0x4FU) )
     {
         s = "Sensor or converter";
@@ -868,8 +886,8 @@ static void page_i2c(kit_t *kit, void *arg)
     {
         case GP_I2C_NONE:
         {
-            (void)snprintf(line, sizeof(line), "Nothing on SDA %u and SCL %u", (unsigned)GP_I2C_SDA,
-                           (unsigned)GP_I2C_SCL);
+            (void)snprintf(line, sizeof(line), "Nothing on SDA %u and SCL %u%s", (unsigned)GP_I2C_SDA,
+                           (unsigned)GP_I2C_SCL, me->v33 ? "" : ". 3.3 V is off");
             (void)kit_stage(kit, page, KUI_COLOR_TEXT_MUTED, &app_glyph_chip_96, "No devices found", line);
             foot_one(kit, page, "Scan again", KIT_BTN_ACTION, &i2c_again_cb);
             break;
@@ -1048,6 +1066,68 @@ static void page_uart(kit_t *kit, void *arg)
     lv_obj_set_pos(b, KBSP_LCD_H_RES - KIT_SIDE - GP_THIRD_W, GP_FOOT_Y);
     kit_bar(kit, page, "UART monitor");
     poll_set(me, true);
+}
+
+/* ---- Power ---- */
+
+/**
+ * @brief A tap on 3.3 V: ask AO_Radio to switch J3's supply. The app draws its own screen, so its Active Object holds the level the
+ *        standard layer's kode_pin_power_3v3() needs (KODE_PRIO_USER_GUI): the extended call kode_sys_exp_power() is the one open to
+ *        it, and the end of the switch comes as EXP_POWER_SIG.
+ * @param e The event.
+ */
+static void power_v33_cb(lv_event_t *e)
+{
+    GpioKitAo * const me = &s_ao;
+    kode_status_t     rc;
+
+    (void)e;
+    if ( me->v33_wait )
+    {
+        return;
+    }
+    me->perr[0] = '\0';
+    rc = kode_sys_exp_power(!me->v33);
+    if ( KODE_OK == rc )
+    {
+        me->v33_wait = true;
+    }
+    else
+    {
+        (void)snprintf(me->perr, sizeof(me->perr), "The radio would not take it (status %d)", (int)rc);
+    }
+    kit_refresh(&me->kit);
+}
+
+/**
+ * @brief J3's supply: a part wired to the connector gets nothing until the app switches 3.3 V on.
+ * @param kit The kit.
+ * @param arg The Active Object.
+ */
+static void page_power(kit_t *kit, void *arg)
+{
+    GpioKitAo * const me   = (GpioKitAo *)arg;
+    lv_obj_t * const  page = kit_page_bare(kit);
+
+    kit_no_swipe(kit);
+    if ( '\0' != me->perr[0] )
+    {
+        (void)kit_stage(kit, page, KUI_COLOR_DANGER, &app_glyph_bolt_96, "Cannot switch it", me->perr);
+    }
+    else if ( me->v33_wait )
+    {
+        (void)kit_stage(kit, page, KUI_COLOR_ACCENT, &app_glyph_bolt_96, "Switching", "Asking the radio");
+    }
+    else if ( me->v33 )
+    {
+        (void)kit_stage(kit, page, KUI_COLOR_OK, &app_glyph_bolt_96, "3.3 V is on", "Pins 2 and 19 of J3");
+    }
+    else
+    {
+        (void)kit_stage(kit, page, KUI_COLOR_TEXT_MUTED, &app_glyph_bolt_96, "3.3 V is off", "Pins 2 and 19 of J3");
+    }
+    foot_one(kit, page, me->v33 ? "Switch off" : "Switch on", me->v33 ? KIT_BTN_QUIET : KIT_BTN_ACTION, &power_v33_cb);
+    kit_bar(kit, page, "Power");
 }
 
 /* ---- The worker's answers ---- */
@@ -1306,6 +1386,7 @@ static QState GpioKitAo_initial(GpioKitAo * const me, void const * const par)
         KLOG_E(TAG, "the worker did not start (status %d)", (int)rc);
     }
     kit_start(&me->kit);
+    QActive_subscribe(&me->super, EXP_POWER_SIG);
     KLOG_I(TAG, "up");
     return Q_TRAN(&GpioKitAo_running);
 }
@@ -1338,6 +1419,24 @@ static QState GpioKitAo_running(GpioKitAo * const me, QEvt const * const e)
         case GPIOKIT_DONE_SIG:
         {
             job_done(me, Q_EVT_CAST(kode_worker_done_t));
+            break;
+        }
+        case EXP_POWER_SIG:
+        {
+            kode_sys_exp_power_done_t const * const d = Q_EVT_CAST(kode_sys_exp_power_done_t);
+
+            me->v33_wait = false;
+            if ( (uint8_t)KODE_OK == d->rc )
+            {
+                me->v33 = d->on;
+                KLOG_I(TAG, "J3 3.3 V %s", d->on ? "on" : "off");
+            }
+            else
+            {
+                (void)snprintf(me->perr, sizeof(me->perr), "The C5 would not switch it (status %u)", (unsigned)d->rc);
+                KLOG_W(TAG, "J3 3.3 V refused: %s", me->perr);
+            }
+            kit_refresh(&me->kit);
             break;
         }
         default:
