@@ -162,8 +162,8 @@ S3
 - Link preview: `node scripts/og/make-og.mjs` writes `web/screenshots/og-device.png` (the Kode model with kodeOS's lock screen, 2x, on #C2BAB3) and `web/public/og.png` from `scripts/og/og.html`.
 
 ### Review fixes in this pass
-- The system reads "kodeOS" everywhere (App menu, status bar, cards); it has its own "System" section at the top of the App menu, apart from "Your apps" and "Built-in apps" (room for "install into the Dot").
-- First run speaks about an operating system: "This Dot is live. It runs kodeOS: swipe sideways on the screen to unlock…"; idle, crash, console-empty, mock and unsupported-browser texts no longer assume a demo app (en, pt-BR, es; typed, tested for equal keys and variables). The hint hides while the Dot is stopped or crashed.
+- The system reads "kodeOS" everywhere (Apps menu, status bar, cards).
+- First run speaks about an operating system (the wording was replaced again when apps moved inside kodeOS, see the next section); idle, crash, console-empty, mock and unsupported-browser texts no longer assume a demo app (en, pt-BR, es; typed, tested for equal keys and variables). The hint hides while the Dot is stopped or crashed.
 - 2D <-> 3D: the 3D view stays mounted (hidden, drawing nothing) once shown on desktop and tablet, so going back is one frame instead of a new WebGL context; the view fades in.
 - A selected chip under the pointer was white text on white (hover overrode the selected look): fixed; hover looks now apply only to pointers that can hover, so nothing stays "hovered" after a tap on a phone.
 - Cut off: the Spanish "add to the bench" button ran out of its card at 1024 px (label shortened, the button now wraps inside the card); the 3D device touched both edges of a phone screen (more side margin); the ground shadow ended in a hard line at the stage edge (it fades).
@@ -176,7 +176,6 @@ S3
 - No real phone or GPU: frame rate, iOS sensor permission, vibration, wake lock, safe areas remain unverified.
 - A user who loads Kode's ORIGINAL file as "My own…" sees the bezel round the glass grey: its colours come from a palette texture, which the page's "glossy black" detection cannot read (the bundled file has plain materials and is right).
 - kodeOS prints many "dotbench: kdrv_… not implemented" lines at boot: they fill the console on first run (runtime side, not the page).
-- The before/after set in `web/screenshots/ux/`: `before-*` (earlier reviewer, 370 shots), `after-*` (this pass).
 
 ## Apps inside kodeOS (2026-11-16, after the system layer was merged)
 
@@ -188,6 +187,8 @@ The page no longer runs one program at a time. It holds one `DotbenchSystem` (ru
 - Removed: the "default built-in app" (`lib/builtins.ts`, `pickStartApp`), the page's own store of saved bundles (`lib/bundles.ts`; packages saved by the old page are not migrated: install them again), the legacy region export (`lib/devicefile.ts`; Export/Import device now uses the system's whole-device file, apps included).
 - First-run hint: unlock by swiping sideways, open the app list, tap an app, hold the bottom button to come back, drop a .dotbench to install (en, pt-BR, es).
 - Checked by `npm run build && node scripts/system-check.mjs` (headless Chrome, a fresh profile, the real page; screenshots `web/screenshots/system-*.png`): kodeOS boots with Kody Kart, Display and Buttons + LED; a tap on Kody Kart in kodeOS's own list opens it and its title screen shows; holding the bottom button returns to kodeOS; a package installed from the page appears and opens; a reload keeps the four apps; open from the manager, Home, remove, factory reset, Stop/Start and the 3D view work; no page errors.
+
+Last runs with the app manager in place: unit tests 156/156; `scripts/system-check.mjs` all pass; `AUDIT=off node scripts/headless-check.mjs` 169/169; layout audit at 1280x720, 820x1180, 390x844 and 844x390 in both themes and three languages: 386 scene audits, 25/25 combinations clean (the other four viewports were audited before the app manager: 796 audits, clean after the audit learned to wait for the theme). Whole-device export, remove an app, import: the app is back, also after a reload. Review screenshots: `web/screenshots/ux/before-*` (370, earlier state) and `after-*` (100: light, English, those four viewports).
 
 Rough edges (known, not the page's to fix):
 - kodeOS's own details card shows a tiny size for an app (the image in the apps region is synthesised).

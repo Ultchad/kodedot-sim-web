@@ -66,7 +66,8 @@ export function DeviceStatusCard() {
     );
   }
   if (status === 'booting' || (status === 'idle' && launching)) {
-    const text = status === 'idle' ? t('overlay.loading') : detail.restarting ? t('overlay.booting.restart', { reason: detail.reason ?? '' }) : t('overlay.booting', { app: name ?? '' });
+    // which program comes up is the Dot's business (kodeOS, or the app it was asked to open): the pill only says it is starting
+    const text = status === 'booting' && detail.restarting ? t('overlay.booting.restart', { reason: detail.reason ?? '' }) : t('overlay.loading');
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center px-3" data-testid="device-booting">
         <span className="pill anim-rise max-w-full !bg-[#191919]/85 !text-white" role="status">
