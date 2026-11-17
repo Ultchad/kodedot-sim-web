@@ -59,6 +59,7 @@ export function createCompiler({ assetsBaseUrl, onProgress = () => {}, cacheName
     onProgress({ phase: "worker", state: "starting" });
     const w = await makeWorker(); worker = w;
     w.on((msg) => {
+      if (w.dead) return;       // a worker we killed (cancel): its last words (exit event) must not touch the next worker's requests
       if (msg.type === "progress") { onProgress(msg); return; }
       if (msg.type === "fatal") { for (const [id, p] of waiters) { waiters.delete(id); p.reject(new Error(msg.message)); } if (worker === w) { worker = null; workerReady = null; } return; }
       if (msg.type === "manifest") { waiters.get("init")?.resolve(msg); waiters.delete("init"); return; }
@@ -67,6 +68,7 @@ export function createCompiler({ assetsBaseUrl, onProgress = () => {}, cacheName
       if (msg.type === "error") p.reject(new Error(msg.message)); else p.resolve(msg);
     });
     workerReady = new Promise((resolve, reject) => { waiters.set("init", { resolve, reject }); w.post({ type: "init", base, cacheName, manifest: m }); });
+    workerReady.catch(() => {});
     await workerReady;
     return workerReady;
   }
@@ -91,7 +93,7 @@ export function createCompiler({ assetsBaseUrl, onProgress = () => {}, cacheName
     });
     p.cancel = cancel; return p;
   }
-  function killWorker() { const w = worker; worker = null; workerReady = null; for (const [id, p] of waiters) { waiters.delete(id); p.reject(new Error("cancelled")); } w?.kill(); }
+  function killWorker() { const w = worker; if (w) w.dead = true; worker = null; workerReady = null; for (const [id, p] of waiters) { waiters.delete(id); p.reject(new Error("cancelled")); } w?.kill(); }
 
   const cancelledResult = (board) => ({ ok: false, cancelled: true, diagnostics: [], timings: {}, log: "", board });
   const key = (req) => JSON.stringify([manifest?.version, req.board, req.files, req.options ?? {}]);
