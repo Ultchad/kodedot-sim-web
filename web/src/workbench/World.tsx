@@ -73,6 +73,8 @@ export interface WorldProps {
 }
 
 const CLICK_SLOP_PX = 5;
+/** A finger held this long on a thing opens its menu. */
+const LONG_PRESS_MS = 550;
 const NONE: ReadonlySet<string> = new Set();
 const D = bodyDims();
 const DEG_PER_PX = 0.45;
@@ -150,6 +152,7 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
   useEffect(() => {
     world.bodies.onWake = invalidate;
     const sync = () => {
+      world.setDotPose(deps.bench.getState().dotPose);
       world.bodies.sync();
       deps.select.keep((id) => id === DOT_ID || world.bodies.items.has(id) || deps.bench.getState().wires.some((w) => w.id === id));
     };
@@ -561,7 +564,53 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       world.rig.zoom(Math.exp(e.deltaY * (e.ctrlKey ? 0.008 : 0.0013)));
       invalidate();
     };
-    const menu = (e: Event) => e.preventDefault();
+    // ---- the menu of a thing: a right click on it that was not a drag, or a finger held on it
+    const thingAt = (clientX: number, clientY: number): string | null => {
+      const r = el.getBoundingClientRect();
+      tools.ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+      tools.ray.setFromCamera(tools.ndc, live.current.camera);
+      const body = world.bodies.pick(tools.ray.ray);
+      const dot = world.dotHit(tools.ray.ray);
+      if (dot !== null && (!body || dot <= body.distance)) return DOT_ID;
+      return body && body.id !== SD_ID ? body.id : null;
+    };
+    const openMenu = (clientX: number, clientY: number): boolean => {
+      const { bus, select } = live.current.deps;
+      if (bus.tool === 'wire') return false;
+      const target = thingAt(clientX, clientY);
+      if (!target) return false;
+      cancel.current?.();
+      select.only(target);
+      bus.openMenu({ x: clientX, y: clientY, target });
+      invalidate();
+      return true;
+    };
+    let rightAt: { x: number; y: number } | null = null;
+    let hold: { id: number; x: number; y: number; timer: ReturnType<typeof setTimeout> } | null = null;
+    const endHold = () => {
+      if (hold) clearTimeout(hold.timer);
+      hold = null;
+    };
+    const pressMenu = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') {
+        if (e.button === 2) rightAt = { x: e.clientX, y: e.clientY };
+        return;
+      }
+      endHold();
+      if (!e.isPrimary) return;
+      const x = e.clientX, y = e.clientY;
+      hold = { id: e.pointerId, x, y, timer: setTimeout(() => (hold = null, openMenu(x, y)), LONG_PRESS_MS) };
+    };
+    const moveMenu = (e: PointerEvent) => {
+      if (hold && e.pointerId === hold.id && Math.abs(e.clientX - hold.x) + Math.abs(e.clientY - hold.y) > CLICK_SLOP_PX * 2) endHold();
+    };
+    const menu = (e: Event) => {
+      e.preventDefault();
+      const m = e as MouseEvent;
+      // a right drag slides the table: only a right click that stayed in place asks for the menu
+      if (rightAt && Math.abs(m.clientX - rightAt.x) + Math.abs(m.clientY - rightAt.y) <= CLICK_SLOP_PX * 2) openMenu(m.clientX, m.clientY);
+      rightAt = null;
+    };
     const isKind = (e: DragEvent) => !!e.dataTransfer?.types.includes(KIND_MIME);
     const over = (e: DragEvent) => {
       if (!isKind(e)) return;
@@ -691,6 +740,10 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     window.addEventListener('pointercancel', up);
     el.addEventListener('wheel', wheel, { passive: false });
     el.addEventListener('contextmenu', menu);
+    el.addEventListener('pointerdown', pressMenu);
+    window.addEventListener('pointermove', moveMenu);
+    window.addEventListener('pointerup', endHold);
+    window.addEventListener('pointercancel', endHold);
     el.addEventListener('dragover', over);
     el.addEventListener('drop', drop);
     return () => {
@@ -704,6 +757,11 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       window.removeEventListener('pointercancel', up);
       el.removeEventListener('wheel', wheel);
       el.removeEventListener('contextmenu', menu);
+      el.removeEventListener('pointerdown', pressMenu);
+      window.removeEventListener('pointermove', moveMenu);
+      window.removeEventListener('pointerup', endHold);
+      window.removeEventListener('pointercancel', endHold);
+      endHold();
       el.removeEventListener('dragover', over);
       el.removeEventListener('drop', drop);
       cancel.current?.();

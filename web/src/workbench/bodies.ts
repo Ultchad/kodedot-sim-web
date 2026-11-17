@@ -516,6 +516,20 @@ export class Bodies {
         y1 = this.v.y + 5;
         z0 = this.v.z - 7;
         z1 = this.v.z + 7;
+      } else if (it.mounted) {
+        // on the Dot's header: the box of its body where the Dot carries it
+        const s = SIZES[it.kind];
+        x0 = y0 = z0 = Infinity;
+        x1 = y1 = z1 = -Infinity;
+        for (let i = 0; i < 8; i++) {
+          this.v.set(i & 1 ? s.w / 2 : -s.w / 2, i & 2 ? s.h : 0, i & 4 ? s.d / 2 : -s.d / 2).applyMatrix4(it.matrix);
+          x0 = Math.min(x0, this.v.x);
+          x1 = Math.max(x1, this.v.x);
+          y0 = Math.min(y0, this.v.y);
+          y1 = Math.max(y1, this.v.y);
+          z0 = Math.min(z0, this.v.z);
+          z1 = Math.max(z1, this.v.z);
+        }
       } else {
         const s = SIZES[it.kind];
         const turned = it.trot % 2 === 1;

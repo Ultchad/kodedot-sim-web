@@ -1,3 +1,4 @@
+import { WorkbenchMenu } from './WorkbenchMenu';
 import { WIRE_COLORS } from '../bench/store';
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from 'react';
 import { getKind } from '../bench/kinds';
@@ -287,6 +288,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
             ))}
           </div>
         )}
+        {workbench && !codeFor && <WorkbenchMenu />}
         {mount3d && (
           <div className={show3d ? 'anim-fade flex min-h-0 min-w-0 flex-1' : 'hidden'} data-testid="stage-3d" data-shown={show3d} data-mode={workbench ? 'workbench' : 'device'}>
             <Boundary onError={() => host.reportGlFailure('unavailable')}>

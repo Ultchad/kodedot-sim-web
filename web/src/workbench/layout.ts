@@ -3,8 +3,9 @@
  * is, the grid, what "near" means for each wireless area as a distance on the table, and where an object goes when it is
  * brought near or taken away with the switch.
  *
- * Table frame (millimetres): X to the right, Z towards the viewer, Y up. The Dot lies face up at the origin with its top
- * edge (the expansion connector) towards -Z.
+ * Table frame (millimetres): X to the right, Z towards the viewer, Y up. The Dot is at the origin: lying face up with its
+ * top edge (the expansion connector) towards -Z, or put down one of the other ways of `DotPose`; `applyDotPose` moves the
+ * footprint, the anchors and the ranges with it.
  */
 import { bodyDims, SIDE_FEATURES_ESTIMATE } from '../lib/bodyModel';
 
@@ -68,36 +69,127 @@ export function registerSize(kind: string, size: { w: number; d: number; h: numb
 }
 export const hasBody = (kind: string): boolean => kind in SIZES;
 
+// ------------------------------------------------------------------------------------------- how the Dot is put down
+
+/**
+ * The ways the Dot can be put on the table: lying on its back (screen up, top edge away from the viewer), standing on
+ * its bottom edge (screen toward the viewer), or on its right side (the screen toward the viewer, landscape, top edge
+ * to the right; the card slot in the left wall is then on top).
+ */
+export type DotPose = 'lying' | 'standing' | 'side';
+export const DOT_POSES: readonly DotPose[] = ['lying', 'standing', 'side'];
+export const isDotPose = (v: unknown): v is DotPose => v === 'lying' || v === 'standing' || v === 'side';
+type V3 = readonly [number, number, number];
+/**
+ * Where the Dot's own axes point for each way (table frame: x right, y up, z toward the viewer). The Dot's frame is X
+ * to its right, Y to its top edge, Z out of the screen. The scene makes its rotation from the same three vectors.
+ */
+export const POSE_AXES: Record<DotPose, { x: V3; y: V3; z: V3 }> = {
+  lying: { x: [1, 0, 0], y: [0, 0, -1], z: [0, 1, 0] },
+  standing: { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] },
+  side: { x: [0, -1, 0], y: [1, 0, 0], z: [0, 0, 1] },
+};
+/** The Dot's half extents along its own X, Y, Z. */
+const HALF: V3 = [D.hw, D.hh, D.depth / 2];
+/** How high the Dot's centre is when it rests that way. */
+export function dotCentreHeight(pose: DotPose): number {
+  const a = POSE_AXES[pose];
+  return Math.abs(a.x[1]) * HALF[0] + Math.abs(a.y[1]) * HALF[1] + Math.abs(a.z[1]) * HALF[2];
+}
+/** A point of the Dot's own frame (mm from its centre) on the table: x and z, and how high. */
+export function dotToTable(pose: DotPose, X: number, Y: number, Z: number): { x: number; y: number; z: number } {
+  const a = POSE_AXES[pose];
+  return { x: a.x[0] * X + a.y[0] * Y + a.z[0] * Z, y: dotCentreHeight(pose) + a.x[1] * X + a.y[1] * Y + a.z[1] * Z, z: a.x[2] * X + a.y[2] * Y + a.z[2] * Z };
+}
+/** A direction of the Dot's frame on the table: its part along the table (x, z) and its part upward. */
+function dotDir(pose: DotPose, X: number, Y: number, Z: number): { x: number; z: number; up: number } {
+  const a = POSE_AXES[pose];
+  return { x: a.x[0] * X + a.y[0] * Y + a.z[0] * Z, z: a.x[2] * X + a.y[2] * Y + a.z[2] * Z, up: a.x[1] * X + a.y[1] * Y + a.z[1] * Z };
+}
+
 // ----------------------------------------------------------------------------------------------------------- zones
 
 /**
- * Where on the Dot each radio lives. The maker publishes no positions for the coils, the infrared window or the USB-C
- * port, so these are estimates: both coils against the back cover (NFC in the upper half, the 125 kHz coil in the lower
- * half), infrared out of the top edge, USB-C in the middle of the bottom edge. The card slot is the one on the left wall.
+ * Where on the Dot each radio lives, in the Dot's own frame. The maker publishes no positions for the coils, the
+ * infrared window or the USB-C port, so these are estimates: both coils against the back cover (NFC in the upper half,
+ * the 125 kHz coil in the lower half), infrared out of the top edge, USB-C in the middle of the bottom edge. The card
+ * slot is the one on the left wall.
  */
-export const ANCHORS = {
-  nfc: { x: 0, z: -14 },
-  rfid: { x: 0, z: 13 },
-  ir: { x: 0, z: -DOT.hd },
-  wifi: { x: 0, z: 0 },
-  usb: { x: 0, z: DOT.hd },
-  sd: { x: -DOT.hw, z: -SIDE_FEATURES_ESTIMATE.slot.y },
-} as const;
+const ON_DOT: Record<'nfc' | 'rfid' | 'ir' | 'wifi' | 'usb' | 'sd', V3> = {
+  nfc: [0, 14, -D.depth / 2],
+  rfid: [0, -13, -D.depth / 2],
+  ir: [0, D.hh, 0],
+  wifi: [0, 0, 0],
+  usb: [0, -D.hh, 0],
+  sd: [-D.hw, SIDE_FEATURES_ESTIMATE.slot.y, 0],
+};
+
+/** The same places on the table, for the way the Dot is put down now (`applyDotPose` rewrites them). */
+export const ANCHORS: Record<keyof typeof ON_DOT, Pos> = { nfc: { x: 0, z: 0 }, rfid: { x: 0, z: 0 }, ir: { x: 0, z: 0 }, wifi: { x: 0, z: 0 }, usb: { x: 0, z: 0 }, sd: { x: 0, z: 0 } };
 
 export type Zone =
   | { shape: 'circle'; x: number; z: number; r: number; /** 'edge': the nearest point of the object counts; 'centre': its middle */ by: 'edge' | 'centre' }
   | { shape: 'sector'; x: number; z: number; /** direction of the beam, radians from -Z towards +X */ dir: number; half: number; len: number };
 
-const ZONES: Record<string, Zone> = {
-  nfc: { shape: 'circle', ...ANCHORS.nfc, r: 46, by: 'edge' },
-  rfid: { shape: 'circle', ...ANCHORS.rfid, r: 58, by: 'edge' },
-  ir: { shape: 'sector', ...ANCHORS.ir, dir: 0, half: (33 * Math.PI) / 180, len: 255 },
-  wifi: { shape: 'circle', ...ANCHORS.wifi, r: 300, by: 'centre' },
-  power: { shape: 'circle', ...ANCHORS.usb, r: 105, by: 'edge' },
-  usb: { shape: 'circle', ...ANCHORS.usb, r: 120, by: 'edge' },
-  ble: { shape: 'circle', ...ANCHORS.wifi, r: 260, by: 'centre' },
-  sd: { shape: 'circle', ...ANCHORS.sd, r: 26, by: 'edge' },
-};
+const ZONES: Record<string, Zone> = {};
+/** The Dot's footprint on the table (rewritten by `applyDotPose`). */
+export const DOT_RECT: Rect = { x0: -DOT.hw, x1: DOT.hw, z0: -DOT.hd, z1: DOT.hd };
+/** Where each area's things wait when they are away from the Dot, and where they come to when brought near. */
+const PARK: Record<string, { near: Pos; far: Pos }> = {};
+let poseNow: DotPose | null = null;
+export const dotPose = (): DotPose => poseNow ?? 'lying';
+
+/**
+ * Puts the Dot down a given way, as far as the table's numbers go: its footprint, where its coils, its infrared
+ * window, its port and its card slot are, and from there every range. A range is measured from where the thing really
+ * is: the infrared beam goes the way the top edge points (standing, it points at the ceiling and only what is close
+ * gets the light that comes back down); a port or a slot that faces the table cannot be reached.
+ */
+export function applyDotPose(pose: DotPose): void {
+  if (pose === poseNow) return;
+  poseNow = pose;
+  // footprint: the box's corners on the table
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    const p = dotToTable(pose, i & 1 ? D.hw : -D.hw, i & 2 ? D.hh : -D.hh, i & 4 ? D.depth / 2 : -D.depth / 2);
+    x0 = Math.min(x0, p.x);
+    x1 = Math.max(x1, p.x);
+    z0 = Math.min(z0, p.z);
+    z1 = Math.max(z1, p.z);
+  }
+  Object.assign(DOT_RECT, { x0, x1, z0, z1 });
+  for (const k of Object.keys(ON_DOT) as (keyof typeof ON_DOT)[]) {
+    const p = dotToTable(pose, ...ON_DOT[k]);
+    ANCHORS[k].x = p.x;
+    ANCHORS[k].z = p.z;
+  }
+  const beam = dotDir(pose, 0, 1, 0), port = dotDir(pose, 0, -1, 0), slot = dotDir(pose, -1, 0, 0);
+  const flat = (d: { x: number; z: number }) => Math.hypot(d.x, d.z) > 0.5;
+  // what faces the table cannot be reached: a range nothing is ever in
+  const shut = (a: Pos): Zone => ({ shape: 'circle', ...a, r: -1, by: 'edge' });
+  const usbOpen = port.up > -0.5, sdOpen = slot.up > -0.5;
+  Object.assign(ZONES, {
+    nfc: { shape: 'circle', ...ANCHORS.nfc, r: 46, by: 'edge' },
+    rfid: { shape: 'circle', ...ANCHORS.rfid, r: 58, by: 'edge' },
+    ir: flat(beam) ? { shape: 'sector', ...ANCHORS.ir, dir: Math.atan2(beam.x, -beam.z), half: (33 * Math.PI) / 180, len: 255 } : { shape: 'circle', ...ANCHORS.ir, r: 130, by: 'edge' },
+    wifi: { shape: 'circle', ...ANCHORS.wifi, r: 300, by: 'centre' },
+    power: usbOpen ? { shape: 'circle', ...ANCHORS.usb, r: 105, by: 'edge' } : shut(ANCHORS.usb),
+    usb: usbOpen ? { shape: 'circle', ...ANCHORS.usb, r: 120, by: 'edge' } : shut(ANCHORS.usb),
+    ble: { shape: 'circle', ...ANCHORS.wifi, r: 260, by: 'centre' },
+    sd: sdOpen ? { shape: 'circle', ...ANCHORS.sd, r: 26, by: 'edge' } : shut(ANCHORS.sd),
+  } satisfies Record<string, Zone>);
+  Object.assign(PARK, {
+    nfc: { near: { x: x0 - 22, z: ANCHORS.nfc.z }, far: { x: -190, z: 70 } },
+    rfid: { near: { x: x1 + 26, z: ANCHORS.rfid.z }, far: { x: 190, z: 70 } },
+    ir: { near: flat(beam) ? { x: ANCHORS.ir.x + beam.x * (205 - D.hh), z: ANCHORS.ir.z + beam.z * (205 - D.hh) } : { x: 0, z: z0 - 90 }, far: { x: -240, z: -120 } },
+    wifi: { near: { x: 150, z: -120 }, far: { x: 255, z: -235 } },
+    power: { near: { x: ANCHORS.usb.x + port.x * 60, z: ANCHORS.usb.z + port.z * 60 }, far: { x: 150, z: 140 } },
+    usb: { near: { x: ANCHORS.usb.x - 110 * Math.abs(port.z) + port.x * 95, z: ANCHORS.usb.z + port.z * 95 - 110 * Math.abs(port.x) }, far: { x: -215, z: 130 } },
+    ble: { near: { x: -150, z: -110 }, far: { x: -285, z: -235 } },
+    sd: { near: { x: ANCHORS.sd.x + slot.x * 14, z: ANCHORS.sd.z + slot.z * 14 }, far: { x: -90, z: 60 } },
+  });
+}
+applyDotPose('lying');
 
 /** The zone that decides "near" for a kind, or null when distance means nothing for it (the battery). */
 export function zoneOf(kind: string): Zone | null {
@@ -114,8 +206,6 @@ export function rectOf(kind: string, pos: Pos, rot: Rot): Rect {
   const s = sizeOf(kind, rot);
   return { x0: pos.x - s.w / 2, x1: pos.x + s.w / 2, z0: pos.z - s.d / 2, z1: pos.z + s.d / 2 };
 }
-export const DOT_RECT: Rect = { x0: -DOT.hw, x1: DOT.hw, z0: -DOT.hd, z1: DOT.hd };
-
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
 /** Distance from a point to a rectangle (0 inside). */
@@ -232,17 +322,6 @@ export function freeSpot(kind: string, want: Pos, rot: Rot, obs: readonly Rect[]
   return best ?? (ok === ANY ? start : freeSpot(kind, want, rot, obs, ANY, step));
 }
 
-/** Where each area's things wait when they are away from the Dot, and where they come to when brought near. */
-const PARK: Record<string, { near: Pos; far: Pos }> = {
-  nfc: { near: { x: -(DOT.hw + 22), z: -14 }, far: { x: -190, z: 70 } },
-  rfid: { near: { x: DOT.hw + 26, z: 14 }, far: { x: 190, z: 70 } },
-  ir: { near: { x: 0, z: -205 }, far: { x: -240, z: -120 } },
-  wifi: { near: { x: 150, z: -120 }, far: { x: 255, z: -235 } },
-  power: { near: { x: 0, z: DOT.hd + 60 }, far: { x: 150, z: 140 } },
-  usb: { near: { x: -110, z: DOT.hd + 95 }, far: { x: -215, z: 130 } },
-  ble: { near: { x: -150, z: -110 }, far: { x: -285, z: -235 } },
-  sd: { near: { x: -(DOT.hw + 14), z: ANCHORS.sd.z }, far: { x: -90, z: 60 } },
-};
 const parkOf = (kind: string) => PARK[kind === SD_ID ? 'sd' : kind.split('.')[0]] ?? { near: { x: -120, z: 120 }, far: { x: -120, z: 120 } };
 
 /** The place an object goes to when the switch says near (inside its zone) or away (outside it), close to `from` when given. */

@@ -70,6 +70,19 @@ export class WorkbenchBus {
     return () => this.codeListeners.delete(l);
   };
   getCode = (): string | null => this.code;
+  /** The small menu opened on a thing of the table (right click, long press): where (client px) and for what (an id, or DOT_ID). */
+  menu: { x: number; y: number; target: string } | null = null;
+  private menuListeners = new Set<() => void>();
+  openMenu(m: { x: number; y: number; target: string } | null): void {
+    if (!m && !this.menu) return;
+    this.menu = m;
+    for (const l of [...this.menuListeners]) l();
+  }
+  onMenu = (l: () => void): (() => void) => {
+    this.menuListeners.add(l);
+    return () => this.menuListeners.delete(l);
+  };
+  getMenu = (): { x: number; y: number; target: string } | null => this.menu;
   /** The pointer moves things, or draws wires between terminals. */
   tool: 'move' | 'wire' = 'move';
   /** The colour the next wire gets. */

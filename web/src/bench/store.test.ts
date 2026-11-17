@@ -220,3 +220,54 @@ describe('BenchStore', () => {
     expect(s.getState().redo).toBe(0);
   });
 });
+
+describe('how the Dot is put down', () => {
+  it('is part of the bench: saved, kept over a reload, opened from a file, undone and redone', () => {
+    const mem = new MemStorage();
+    const s = new BenchStore(mem, kindOf);
+    expect(s.getState().dotPose).toBe('lying');
+    s.checkpoint();
+    s.setDotPose('standing');
+    expect(s.getState().dotPose).toBe('standing');
+    expect(JSON.parse(mem.data.get(BENCH_STORAGE_KEY)!).dotPose).toBe('standing');
+    // the table's numbers follow: the footprint is the standing Dot's
+    expect(DOT_RECT.z1 - DOT_RECT.z0).toBeLessThan(25);
+    const again = new BenchStore(mem, kindOf);
+    expect(again.getState().dotPose).toBe('standing');
+    expect(again.undo()).toBe(false);
+    expect(s.undo()).toBe(true);
+    expect(s.getState().dotPose).toBe('lying');
+    expect(DOT_RECT.z1 - DOT_RECT.z0).toBeGreaterThan(70);
+    expect(s.redo()).toBe(true);
+    expect(s.getState().dotPose).toBe('standing');
+    const file = JSON.parse(JSON.stringify(s.exportData()));
+    const t = new BenchStore(null, kindOf);
+    expect(t.getState().dotPose).toBe('lying');
+    expect(t.importData(file)).toBe(true);
+    expect(t.getState().dotPose).toBe('standing');
+    expect(t.importData({ objects: [], dotPose: 'upside down' })).toBe(true);
+    expect(t.getState().dotPose).toBe('lying');
+  });
+  it('measures who is in range again, moves aside what the Dot would lie on, and keeps the card in its slot', () => {
+    const s = new BenchStore(null, kindOf);
+    const tag = s.add('nfc.tag')!;
+    expect(s.get(tag.id)!.near).toBe(true); // beside the lying Dot's coil
+    const where = s.get(tag.id)!.pos;
+    s.moveMany([{ id: SD_ID, pos: s.fixtureSpot(SD_ID, true) }]);
+    expect(isNear(SD_ID, s.getState().fixtures[SD_ID].pos, 0)).toBe(true);
+    s.checkpoint();
+    s.setDotPose('side');
+    // on its side the Dot is 77 mm wide: the tag that was against its left side is moved off it, and is in range again or not by where it now is
+    const now = s.get(tag.id)!;
+    expect(overlaps(rectOf(now.kind, now.pos, now.rot), DOT_RECT)).toBe(false);
+    expect(now.near).toBe(isNear(now.kind, now.pos, now.rot));
+    expect(isNear(SD_ID, s.getState().fixtures[SD_ID].pos, 0)).toBe(true);
+    s.setDotPose('standing');
+    expect(s.get(tag.id)!.near).toBe(isNear('nfc.tag', s.get(tag.id)!.pos, 0));
+    expect(isNear(SD_ID, s.getState().fixtures[SD_ID].pos, 0)).toBe(true);
+    s.undo();
+    expect(s.getState().dotPose).toBe('lying');
+    expect(s.get(tag.id)!.pos).toEqual(where);
+    expect(s.get(tag.id)!.near).toBe(true);
+  });
+});

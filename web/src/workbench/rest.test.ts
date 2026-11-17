@@ -5,13 +5,13 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Quaternion, Vector3 } from 'three';
+import { Euler, Quaternion, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { makeCtx } from '../bench3d/contract';
 import { MODELS } from '../bench3d/registry';
 import { mountMatrix, type GeoManifest, type MountGeo } from '../parts/geometry';
-import { DOT } from './layout';
-import { LYING, dotCorners, hullCorners, lowestY, lyingQuat, restTilt, standLift, transformed, vertexCloud } from './rest';
+import { DOT, DOT_POSES, dotCentreHeight, dotToTable, type DotPose } from './layout';
+import { LYING, dotCorners, hullCorners, lowestY, poseFrame, restTilt, restingQuat, standLift, transformed, vertexCloud } from './rest';
 
 const TOL = 0.1;
 const PARTS = resolve(__dirname, '../../../parts');
@@ -30,12 +30,13 @@ const minY = (pts: Float32Array) => {
 };
 
 /** The Dot with a module, as world.ts poses it with no hand on it: the attitude, how high its centre is, and the tilt. */
-function assembly(m: Manifest, side: 'upright' | 'turned') {
+function assembly(m: Manifest, side: 'upright' | 'turned', pose: DotPose = 'lying') {
   const mat = mountMatrix(m.body, m.mount, side)!;
   const cloud = transformed(cloudOf(m.id), mat); // every vertex of the module, in the Dot's frame
   const hull = transformed(hullCorners(cloudOf(m.id)), mat); // what the scene keeps of it
-  const rest = restTilt([CORNERS, hull]);
-  const quat = lyingQuat(null, rest, new Quaternion());
+  const frame = poseFrame(pose);
+  const rest = restTilt([CORNERS, hull], frame.up, frame.along);
+  const quat = restingQuat(frame, null, 0, rest, new Quaternion());
   const y = -Math.min(lowestY(CORNERS, quat), lowestY(hull, quat));
   const world = (pts: Float32Array) => {
     const out = new Float32Array(pts.length);
@@ -70,11 +71,23 @@ describe('nothing under the table', () => {
     });
   }
 
-  for (const id of MODULES) {
+  for (const pose of DOT_POSES) {
+    it(`the Dot alone, ${pose}, rests on the table`, () => {
+      const q = restingQuat(poseFrame(pose), null, 0, 0, new Quaternion());
+      expect(-lowestY(CORNERS, q)).toBeCloseTo(dotCentreHeight(pose), 4);
+      // the same rotation the table's numbers are made from: the top edge's middle is where layout.ts says
+      const top = new Vector3(0, DOT.hd, 0).applyQuaternion(q), want = dotToTable(pose, 0, DOT.hd, 0);
+      expect(top.x).toBeCloseTo(want.x, 4);
+      expect(top.y + dotCentreHeight(pose)).toBeCloseTo(want.y, 4);
+      expect(top.z).toBeCloseTo(want.z, 4);
+    });
+  }
+
+  for (const pose of DOT_POSES) for (const id of MODULES) {
     const m = manifests.find((x) => x.id === id)!;
     for (const side of m.mount?.orientations ?? ['upright']) {
-      it(`the Dot with ${id} mounted ${side} rests on the table`, () => {
-        const a = assembly(m, side);
+      it(`the Dot ${pose} with ${id} mounted ${side} rests on the table`, () => {
+        const a = assembly(m, side, pose);
         const low = Math.min(minY(a.module), minY(a.dot));
         expect(minY(a.module), `module lowest ${minY(a.module).toFixed(3)} mm`).toBeGreaterThanOrEqual(-TOL);
         expect(minY(a.dot), `Dot lowest ${minY(a.dot).toFixed(3)} mm`).toBeGreaterThanOrEqual(-TOL);
@@ -85,6 +98,15 @@ describe('nothing under the table', () => {
           // propped up: the module touches too, away from the Dot's bottom edge, so the stack lies on two lines
           expect(minY(a.module)).toBeLessThan(TOL);
           expect(a.rest).toBeLessThan(0.5);
+        }
+        // and however the hand tips it and turns it, the lowest point of the whole assembly is what is put on the table
+        const frame = poseFrame(pose);
+        for (const [pitch, roll, heading] of [[40, 0, 0], [-30, 55, 120], [75, -75, 250]]) {
+          const tilt = new Quaternion().setFromEuler(new Euler((pitch * Math.PI) / 180, (roll * Math.PI) / 180, 0, 'YXZ'));
+          const q = restingQuat(frame, tilt, heading, a.rest, new Quaternion());
+          const hull = transformed(hullCorners(cloudOf(m.id)), mountMatrix(m.body, m.mount, side)!);
+          const y = -Math.min(lowestY(CORNERS, q), lowestY(hull, q));
+          expect(lowestY(a.cloud, q) + y, `tipped ${pitch}, ${roll}, turned ${heading}`).toBeGreaterThanOrEqual(-TOL);
         }
       });
     }

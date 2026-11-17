@@ -1,3 +1,4 @@
+import { PosePicker } from './WorkbenchMenu';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { MOTION_KIND, poseOf } from '../bench/drivers/motion';
 import { KINDS, getKind, kindsOf } from '../bench/kinds';
@@ -224,6 +225,11 @@ function DotCard() {
           <h3 className="text-[17px] leading-snug">{t('wb.dot.name')}</h3>
           <p className="tag m-0 mt-0.5 !text-[11px]">{t('kind.motion.pose')}</p>
         </div>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <h4 className="tag m-0 !text-[11px]">{t('wb.pose')}</h4>
+        <PosePicker />
+        <p className="m-0 text-[13px] leading-snug text-ink2">{t('wb.menu.hint')}</p>
       </div>
       <p className="m-0 text-[13.5px] leading-snug text-ink2">{t('wb.dot.tilt.hint')}</p>
       <div className="flex flex-col gap-1.5">

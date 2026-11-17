@@ -11,6 +11,7 @@
  */
 import { Euler, Matrix4, Quaternion, Vector3, type BufferAttribute, type Mesh, type Object3D } from 'three';
 import { ConvexHull } from 'three/examples/jsm/math/ConvexHull.js';
+import { POSE_AXES, type DotPose } from './layout';
 
 const v = new Vector3();
 const m4 = new Matrix4();
@@ -98,15 +99,17 @@ export function dotCorners(hw: number, hh: number, zf: number, zb: number): Floa
 }
 
 /**
- * The angle (radians, about the Dot's own X; positive lifts its top edge) at which the Dot and what is mounted on it
- * lie on the table: the lower edge of the assembly's outline, seen from the side, that is under its centre of mass.
- * `sets` are point sets in the Dot's frame (its own corners first); `comY` is where the weight is along the Dot (its
- * middle: the battery and the boards are in the Dot, a module is light).
+ * How the Dot and what is mounted on it settle on the table when the Dot is put down a given way: the angle (radians)
+ * about `axis` (in the Dot's frame) by which the assembly rocks from the pose until it lies on the lower edge of its
+ * outline that is under its centre of mass. `up` is the Dot-frame direction that points up in the pose, `along` the
+ * direction along which the assembly is long (the outline is seen square to both); `axis` is along x up, so a
+ * positive angle lifts the +along end. `sets` are point sets in the Dot's frame (its own corners first); `com` is
+ * where the weight is along `along` (the Dot's middle: the battery and the boards are in the Dot, a module is light).
  */
-export function restTilt(sets: readonly Float32Array[], comY = 0): number {
-  // the outline from the side: (Y, Z) of every point; its lower hull, left to right (Andrew's monotone chain)
+export function restTilt(sets: readonly Float32Array[], up: readonly [number, number, number] = [0, 0, 1], along: readonly [number, number, number] = [0, 1, 0], com = 0): number {
+  // the outline from the side: (along, up) of every point; its lower hull, left to right (Andrew's monotone chain)
   const pts: [number, number][] = [];
-  for (const s of sets) for (let i = 0; i < s.length; i += 3) pts.push([s[i + 1], s[i + 2]]);
+  for (const s of sets) for (let i = 0; i < s.length; i += 3) pts.push([s[i] * along[0] + s[i + 1] * along[1] + s[i + 2] * along[2], s[i] * up[0] + s[i + 1] * up[1] + s[i + 2] * up[2]]);
   pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const low: [number, number][] = [];
   for (const p of pts) {
@@ -119,7 +122,7 @@ export function restTilt(sets: readonly Float32Array[], comY = 0): number {
   }
   for (let i = 0; i + 1 < low.length; i++) {
     const a = low[i], b = low[i + 1];
-    if (a[0] <= comY && comY <= b[0] && b[0] - a[0] > 1e-6) return Math.atan2(-(b[1] - a[1]), b[0] - a[0]) || 0;
+    if (a[0] <= com && com <= b[0] && b[0] - a[0] > 1e-6) return Math.atan2(-(b[1] - a[1]), b[0] - a[0]) || 0;
   }
   return 0;
 }
@@ -129,16 +132,56 @@ export const standLift = (plugMm: number | undefined): number => Math.max(0, plu
 
 /** The Dot lying on its back: the model's front (+Z) looks up, its top edge (+Y) points away from the viewer (-Z). */
 export const LYING = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0));
-const X_AXIS = new Vector3(1, 0, 0);
+const LYING_BACK = LYING.clone().invert();
+const UP = new Vector3(0, 1, 0);
 const qr = new Quaternion();
+
+/** One way of putting the Dot down, for the scene: its rotation, and how it rocks when a module props it up. */
+export interface PoseFrame {
+  pose: DotPose;
+  /** The Dot's frame to the table's. */
+  base: Quaternion;
+  /** In the Dot's frame: the direction that is up, the direction the assembly is long in, and the axis it rocks about. */
+  up: [number, number, number];
+  along: [number, number, number];
+  axis: Vector3;
+}
+const frames = new Map<DotPose, PoseFrame>();
+/** The frame of a pose, made from the same axes the table's numbers use (layout.ts, POSE_AXES). */
+export function poseFrame(pose: DotPose): PoseFrame {
+  let f = frames.get(pose);
+  if (!f) {
+    const a = POSE_AXES[pose];
+    const base = new Quaternion().setFromRotationMatrix(new Matrix4().makeBasis(new Vector3(...a.x), new Vector3(...a.y), new Vector3(...a.z)));
+    // what points up: the Dot axis whose image is the table's +Y (each pose turns the Dot by quarter turns)
+    const up: [number, number, number] = [a.x[1], a.y[1], a.z[1]];
+    // standing, the Dot is short and deep at its foot: it could only rock front to back; lying or on its side, along its length
+    const along: [number, number, number] = Math.abs(up[1]) > 0.5 ? [0, 0, 1] : [0, 1, 0];
+    const axis = new Vector3(...along).cross(new Vector3(...up)).normalize();
+    frames.set(pose, (f = { pose, base, up, along, axis }));
+  }
+  return f;
+}
+
 /**
- * The Dot's attitude on the table: lying, then the hand's tilt (`user`, in the lying Dot's frame), then the way the
- * assembly lies by itself (`rest`, about the Dot's own X).
+ * The Dot's attitude on the table: put down as `frame` says, turned on the table by `heading` degrees (clockwise seen
+ * from above), tipped by the hand (`tilt`: pitch about the table's left-right line and roll about its near-far line,
+ * as a rotation in the lying Dot's frame, or null), and rocked by `rest` about the frame's axis (how the assembly
+ * lies by itself).
  */
+export function restingQuat(frame: PoseFrame, tilt: Quaternion | null, headingDeg: number, rest: number, out: Quaternion): Quaternion {
+  out.copy(frame.base);
+  if (headingDeg !== 0) out.premultiply(qr.setFromAxisAngle(UP, (-headingDeg * Math.PI) / 180));
+  // the hand's tilt is about the table's own lines, whichever way the Dot is put down
+  if (tilt) out.premultiply(qr.copy(LYING).multiply(tilt).multiply(LYING_BACK));
+  if (rest !== 0) out.multiply(qr.setFromAxisAngle(frame.axis, rest));
+  return out;
+}
+/** As `restingQuat` for the lying Dot with the hand's tilt and turn in one rotation (kept for what only knows lying). */
 export function lyingQuat(user: Quaternion | null, rest: number, out: Quaternion): Quaternion {
   out.copy(LYING);
   if (user) out.multiply(user);
-  if (rest !== 0) out.multiply(qr.setFromAxisAngle(X_AXIS, rest));
+  if (rest !== 0) out.multiply(qr.setFromAxisAngle(poseFrame('lying').axis, rest));
   return out;
 }
 /** The height of the lowest of some points of the Dot's frame when the Dot is turned by `quat` about its centre. */
