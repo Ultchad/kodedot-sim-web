@@ -17,10 +17,10 @@
  * LIVE STATE WITHOUT INVENTED PARTS. The real board has no lamps, so none are drawn. Two things are the simulator's
  * own way of speaking, as a burning LED's glare is: a driven bridge output warms the head of its own screw (a faint
  * amber, by the output's level: it marks the live terminal, nothing more), and a fault (the engine's flag, or nFAULT
- * pulled low while its pull-up rail is fed) makes the driver chip glow red hot on a scorched patch of board.
+ * pulled low while its pull-up rail is fed) makes the driver chip glow red hot, with its heat on the board round it.
  */
 import manifest from '../../../../../parts/kode-robotics/manifest.json';
-import { FONT, PAL, PITCH, Shape, defineModel, footprintOf, glowing, part, partState, print, setLamp, terminalsFromManifest, text, topQuad, type PartState, type Pt } from '../../index';
+import { FONT, PAL, PITCH, Shape, defineModel, footprintOf, glowing, halo, partState, print, setLamp, terminalsFromManifest, text, topQuad, type PartState, type Pt } from '../../index';
 import { SILK, asManifest, chipPassive, connectorOf, earOutline, outlineBoard, pinPoints, pinStrip, rightAngleHeader, screwBlock, socketStrip, stripBetween } from './shared';
 
 const M = asManifest(manifest);
@@ -97,12 +97,9 @@ export default defineModel<PartState>({
     const root = s.toObject();
     const chip = new Shape();
     chip.box('matte', '#303034', U501.x, U501.z, 4, 4, TOP + 0.03, TOP + 0.85, 0.2, 0.12, { ao: 0.95 });
-    const heat = new Shape();
-    heat.disc('glass', '#ff3a1a', U501.x, U501.z, 6.4, TOP + 0.03, TOP + 0.07, 0, ctx.seg(22), { ao: 1 });
-    const hot = glowing('heat', heat);
-    hot.visible = false;
     root.add(
-      hot,
+      // the heat a faulted driver throws on the board round it: the kit's halo, dark until then
+      halo('heat', [U501.x, TOP + 0.06, U501.z], 13),
       print({
         name: 'silk',
         quad: topQuad(0, 0, TOP + 0.02, W / 2, D / 2),
@@ -176,13 +173,13 @@ export default defineModel<PartState>({
       const level = awake && !fault ? Number(o[OUTS[i].out] ?? 0) : 0;
       setLamp(obj, OUTS[i].screw, AMBER, level > 0.02 ? 0.12 + 0.4 * level : 0);
     }
-    part(obj, 'heat')!.visible = fault;
     if (fault) {
       setLamp(obj, 'u501', 0xe01800, 0.5 + 0.22 * Math.sin(env.time * 9));
-      setLamp(obj, 'heat', 0xff2a10, 0.75 + 0.25 * Math.sin(env.time * 9));
+      setLamp(obj, 'heat', 0xff3410, 0.8 + 0.2 * Math.sin(env.time * 9));
       return true;
     }
     setLamp(obj, 'u501', 0, 0);
+    setLamp(obj, 'heat', 0, 0);
   },
   states: {
     off: partState({ power: { on: false, reason: 'no 5 V' } }),
