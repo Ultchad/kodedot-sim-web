@@ -5,7 +5,7 @@ import puppeteer from 'puppeteer-core';
 import { openPage, root, sleep, startServer, until, waitRunning } from './ux-lib.mjs';
 
 // as ux-lib's launch, with a shorter protocol timeout: a page that stops answering is noticed in a minute, not three
-const launch = () => puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: true, protocolTimeout: 70000, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
+const launch = () => puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: true, protocolTimeout: 70000, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
 
 export { sleep, until };
 export const shots = join(root, 'screenshots', 'workbench2');
