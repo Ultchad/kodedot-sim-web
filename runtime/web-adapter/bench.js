@@ -57,7 +57,7 @@ export class Bench {
     this._lastIn = "";
     this._flushing = false; this._again = false; this._pending = false;
     this._offs = [];
-    this.clock._stepper = null;
+    this.clock._stepper = (t) => this._stepTo(t);
     this._solve();
   }
 
@@ -96,7 +96,7 @@ export class Bench {
     const fields = {};
     for (const f of m.fields ?? []) fields[f.name] = f.default;
     for (const [k, v] of Object.entries(o.fields ?? {})) if (k in fields) fields[k] = this._coerce(m.fields.find((f) => f.name === k), v);
-    const part = { instance, id: m.id, def, label: o.label ?? instance, pos: { x: 0, y: 0, rot: 0, ...(o.pos ?? {}) }, fields, outputs: {}, impl: null, starting: null,
+    const part = { instance, id: m.id, def, label: o.label ?? instance, pos: { x: 0, y: 0, rot: 0, ...(o.pos ?? {}) }, fields, outputs: {}, impl: null, starting: null, startP: null, console: [], consoleTail: "",
       pins: new Map(m.pins.map((p) => [p.name, p])) };
     for (const out of m.outputs ?? []) part.outputs[out.name] = out.type === "boolean" ? false : 0;
     this.parts.set(instance, part);
@@ -166,6 +166,7 @@ export class Bench {
       net: (term) => bench._netInfo(term),
       setOutput(name, v) { if (part.outputs[name] === v) return; part.outputs[name] = v; bench._emit("output", { instance: part.instance, name, value: v, t: bench.clock.now() }); },
       changed() { bench._touch(); },
+      console(text) { bench._console(part, text); },
       log(level, text) { bench._emit("log", { instance: part.instance, level, text, t: bench.clock.now() }); },
       warn(cls, text) { bench._warn(cls, `${part.instance}: ${text}`, { instance: part.instance }); },
       bench_i2c: (m, addr, w, rlen) => bench.i2cXfer(m, addr, w, rlen),
@@ -308,8 +309,14 @@ export class Bench {
     } else if (!on) { for (const k of Object.keys(part.outputs)) part.outputs[k] = typeof part.outputs[k] === "boolean" ? false : 0; part.impl?.last?.clear?.(); }
     this._emit("part", { type: "power", instance: part.instance, on });
   }
-  async _startWasm(part) {
-    if (part.starting) return;
+  _startWasm(part) {
+    if (part.starting) return part.startP;
+    const p = this._startWasm2(part).finally(() => { if (part.startP === p) part.startP = null; });
+    part.startP = p; return p;
+  }
+  /** Resolves when every wasm part that should be running has finished starting (boot is about 40 to 50 ms each). */
+  async ready() { for (;;) { const ps = [...this.parts.values()].map((p) => p.startP).filter(Boolean); if (!ps.length) return; await Promise.all(ps); } }
+  async _startWasm2(part) {
     const token = part.starting = Symbol();
     try {
       let factory = this._wasmFactory;
@@ -514,9 +521,51 @@ export class Bench {
     return delivered;
   }
 
+  // ---------------------------------------------------------------- console, restart
+  _console(part, text) {
+    part.consoleTail += text;
+    const lines = part.consoleTail.split("\n"); part.consoleTail = lines.pop();
+    for (const l of lines) { part.console.push(l.replace(/\r$/, "")); if (part.console.length > 200) part.console.shift(); this._emit("console", { instance: part.instance, line: l, t: this.clock.now() }); }
+    if (lines.length) { this.version++; this._emit("change", { version: this.version }); }
+  }
+  /** Type into a part's Serial console (a wasm part). */
+  serialIn(instance, text) { this._part(instance).impl?.consoleIn?.(text); }
+  /** Power-cycle a wasm part (a stuck sketch, or after editing its code). */
+  async restartPart(instance) {
+    const part = this._part(instance);
+    if (!this._power.get(instance)) return;
+    try { part.impl?.dispose?.(); } catch {}
+    part.impl = null; part.starting = null; part.startP = null; part.console = []; part.consoleTail = "";
+    this._touch(); await this._startWasm(part);
+  }
+
   // ---------------------------------------------------------------- time
-  /** Stepped clock: advance virtual time by `us` (fires timers, such as contact bounce, in order). */
+  /** Stepped clock: advance virtual time by `us` (fires timers, such as contact bounce, in order; wasm parts run until they park). */
   async advance(us) { await this.clock.advance(us); this._flush(); }
+  async _stepTo(target) {
+    const clock = this.clock, impls = () => [...this.parts.values()].map((p) => p.impl).filter((i) => i?.parked && !i.dead);
+    const settle = async () => {
+      const t0 = Date.now();
+      for (;;) {
+        const all = impls().filter((i) => !i.busy);
+        for (const i of all) i.drain();
+        if (all.every((i) => i.parked())) return true;
+        if (Date.now() - t0 > 3000) return false;
+        await new Promise((r) => setTimeout(r, 0));
+      }
+    };
+    for (let guard = 0; guard < 200000; guard++) {
+      await this.ready(); await settle(); this._flush();
+      const now = clock.now(), parked = impls().filter((i) => i.parked() && !i.busy);
+      const nextPart = Math.min(Infinity, ...parked.map((i) => i.deadline())), nextTimer = clock.nextTimer();
+      if (now >= target && nextPart > target && nextTimer > target) return;
+      const next = Math.max(now, Math.min(target, nextPart, nextTimer));
+      clock._stepTo(next);
+      for (const i of parked) if (i.deadline() <= next) i.wake();
+      this._flush();
+    }
+    this._warn("clock", "stepped clock gave up: a part keeps waking at the same instant");
+  }
 
   // ---------------------------------------------------------------- state for the page
   /**
@@ -533,7 +582,7 @@ export class Bench {
       device: { pins: this.devicePins.map((d, i) => ({ ...d, term: posTerm(i), ...pinState(posTerm(i)) })) },
       parts: [...this.parts.values()].map((p) => ({
         instance: p.instance, id: p.id, label: p.label, pos: { ...p.pos }, fields: { ...p.fields }, outputs: { ...p.outputs }, kind: p.def.manifest.behaviour.type,
-        power: { on: !!this._power.get(p.instance), reason: p.powerWhy ?? null }, visuals: this._visuals(p),
+        power: { on: !!this._power.get(p.instance), reason: p.powerWhy ?? null }, visuals: this._visuals(p), console: p.console.slice(-50), busy: !!p.impl?.busy,
         pins: Object.fromEntries(p.def.manifest.pins.filter((x) => x.kind !== "nc").map((x) => [x.name, pinState(`${p.instance}.${x.name}`)])),
       })),
       wires: [...this.wires.values()].map((w) => ({ ...w, short: bad.has(this._netInfo(w.from).id) })),
@@ -547,7 +596,7 @@ export class Bench {
       if (s.output !== undefined) x = Number(p.outputs[s.output]) || 0;
       else if (s.field !== undefined) x = Number(p.fields[s.field]) || 0;
       else if (s.pin !== undefined) { const n = this._netInfo(`${p.instance}.${s.pin}`); x = n.pwm ? n.pwm.duty : n.level; }
-      else if (s.gpio !== undefined) { const pin = p.def.manifest.pins.find((q) => q.gpio === s.gpio); if (pin) { const n = this._netInfo(`${p.instance}.${pin.name}`); x = n.pwm ? n.pwm.duty : n.level; } }
+      else if (s.gpio !== undefined) { const gs = p.impl?.gpioState?.(s.gpio); if (gs !== null && gs !== undefined) x = gs; else { const pin = p.def.manifest.pins.find((q) => q.gpio === s.gpio); if (pin) { const n = this._netInfo(`${p.instance}.${pin.name}`); x = n.pwm ? n.pwm.duty : n.level; } } }
       if (v.scale) { const [a, b] = v.scale.in, [c, d] = v.scale.out; x = c + ((clamp(x, Math.min(a, b), Math.max(a, b)) - a) / (b - a || 1)) * (d - c); }
       out[v.id] = x;
     }
