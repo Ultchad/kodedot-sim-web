@@ -1,0 +1,56 @@
+{
+  "name": "diode conducts forward only",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "K",
+        "level": 0
+      }
+    },
+    {
+      "comment": "(3.3 - 0.75) V over 236 ohm: about 10.8 mA",
+      "expect_output": {
+        "name": "current_ma",
+        "min": 10,
+        "max": 11.6
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "A",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "K",
+        "level": 1
+      }
+    },
+    {
+      "comment": "reversed: blocked",
+      "expect_output": {
+        "name": "current_ma",
+        "value": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "K",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "current_ma",
+        "value": 0
+      }
+    }
+  ]
+}

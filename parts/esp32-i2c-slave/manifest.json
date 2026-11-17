@@ -1,0 +1,452 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.esp32-i2c-slave",
+  "name": {
+    "en": "ESP32: I2C slave",
+    "pt-BR": "ESP32: escravo I2C",
+    "es": "ESP32: esclavo I2C"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "An ESP32 running real Arduino code as an I2C slave (default address 0x42) that the Kode Dot can read. Registers: 0 ID (0xA5), 1 uptime in seconds, 2 and 3 the Value field (16 bit, big endian), 4 LED (read/write: 1 lights the on-board LED). A read starting at a register continues into the next ones.",
+    "pt-BR": "Um ESP32 rodando código Arduino de verdade como escravo I2C (endereço padrão 0x42) que o Kode Dot pode ler. Registradores: 0 ID (0xA5), 1 tempo ligado em segundos, 2 e 3 o campo Valor (16 bits, big endian), 4 LED (leitura/escrita: 1 acende o LED da placa). Uma leitura a partir de um registrador continua nos seguintes.",
+    "es": "Un ESP32 con código Arduino real como esclavo I2C (dirección 0x42 por defecto) que el Kode Dot puede leer. Registros: 0 ID (0xA5), 1 tiempo encendido en segundos, 2 y 3 el campo Valor (16 bits, big endian), 4 LED (lectura/escritura: 1 enciende el LED de la placa). Una lectura desde un registro continúa en los siguientes."
+  },
+  "category": "mcu",
+  "tags": [
+    "esp32",
+    "i2c",
+    "slave",
+    "arduino"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 480,
+    "height": 260
+  },
+  "pins": [
+    {
+      "name": "V33",
+      "kind": "power_in",
+      "pos": {
+        "x": 30,
+        "y": 238
+      },
+      "label": {
+        "en": "3V3"
+      },
+      "min_mv": 3000,
+      "max_mv": 3600,
+      "typ_ma": 60,
+      "mm": {
+        "x": 5,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "GND",
+      "kind": "ground",
+      "pos": {
+        "x": 58,
+        "y": 238
+      },
+      "label": {
+        "en": "GND"
+      },
+      "mm": {
+        "x": 7.54,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "TX",
+      "kind": "io",
+      "gpio": 17,
+      "pos": {
+        "x": 86,
+        "y": 238
+      },
+      "label": {
+        "en": "TX"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 10.08,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "RX",
+      "kind": "io",
+      "gpio": 16,
+      "pos": {
+        "x": 114,
+        "y": 238
+      },
+      "label": {
+        "en": "RX"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 12.62,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "SDA",
+      "kind": "io",
+      "gpio": 21,
+      "pos": {
+        "x": 142,
+        "y": 238
+      },
+      "label": {
+        "en": "SDA"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 15.16,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "SCL",
+      "kind": "io",
+      "gpio": 22,
+      "pos": {
+        "x": 170,
+        "y": 238
+      },
+      "label": {
+        "en": "SCL"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 17.7,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO4",
+      "kind": "io",
+      "gpio": 4,
+      "pos": {
+        "x": 198,
+        "y": 238
+      },
+      "label": {
+        "en": "4"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 20.24,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO5",
+      "kind": "io",
+      "gpio": 5,
+      "pos": {
+        "x": 226,
+        "y": 238
+      },
+      "label": {
+        "en": "5"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 22.78,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO13",
+      "kind": "io",
+      "gpio": 13,
+      "pos": {
+        "x": 254,
+        "y": 238
+      },
+      "label": {
+        "en": "13"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 25.32,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO14",
+      "kind": "io",
+      "gpio": 14,
+      "pos": {
+        "x": 282,
+        "y": 238
+      },
+      "label": {
+        "en": "14"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 27.86,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO18",
+      "kind": "io",
+      "gpio": 18,
+      "pos": {
+        "x": 310,
+        "y": 238
+      },
+      "label": {
+        "en": "18"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 30.4,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO19",
+      "kind": "io",
+      "gpio": 19,
+      "pos": {
+        "x": 338,
+        "y": 238
+      },
+      "label": {
+        "en": "19"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 32.94,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO23",
+      "kind": "io",
+      "gpio": 23,
+      "pos": {
+        "x": 366,
+        "y": 238
+      },
+      "label": {
+        "en": "23"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 35.48,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO25",
+      "kind": "io",
+      "gpio": 25,
+      "pos": {
+        "x": 394,
+        "y": 238
+      },
+      "label": {
+        "en": "25"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 38.02,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO34",
+      "kind": "analog",
+      "gpio": 34,
+      "pos": {
+        "x": 422,
+        "y": 238
+      },
+      "label": {
+        "en": "34"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 40.56,
+        "y": 26.7
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "IO35",
+      "kind": "analog",
+      "gpio": 35,
+      "pos": {
+        "x": 450,
+        "y": 238
+      },
+      "label": {
+        "en": "35"
+      },
+      "abs_max_mv": 3600,
+      "mm": {
+        "x": 43.1,
+        "y": 26.7
+      },
+      "face": "bottom"
+    }
+  ],
+  "fields": [
+    {
+      "name": "address",
+      "type": "enum",
+      "label": {
+        "en": "I2C address",
+        "pt-BR": "Endereço I2C",
+        "es": "Dirección I2C"
+      },
+      "default": 66,
+      "values": [
+        {
+          "value": 66,
+          "label": {
+            "en": "0x42"
+          }
+        },
+        {
+          "value": 67,
+          "label": {
+            "en": "0x43"
+          }
+        },
+        {
+          "value": 68,
+          "label": {
+            "en": "0x44"
+          }
+        },
+        {
+          "value": 69,
+          "label": {
+            "en": "0x45"
+          }
+        }
+      ]
+    },
+    {
+      "name": "value",
+      "type": "integer",
+      "label": {
+        "en": "Value",
+        "pt-BR": "Valor",
+        "es": "Valor"
+      },
+      "min": 0,
+      "max": 65535,
+      "step": 1,
+      "default": 1234,
+      "ui": "input"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "reads",
+      "type": "number",
+      "label": {
+        "en": "Reads served",
+        "pt-BR": "Leituras atendidas",
+        "es": "Lecturas atendidas"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "led",
+      "effect": "glow",
+      "x": 420,
+      "y": 70,
+      "r": 10,
+      "color": "#3ddc84",
+      "source": {
+        "gpio": 2
+      }
+    },
+    {
+      "id": "count",
+      "effect": "text",
+      "x": 330,
+      "y": 80,
+      "w": 120,
+      "h": 22,
+      "color": "#ffffff",
+      "source": {
+        "output": "reads"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "wasm",
+    "entry": "behaviour.wasm",
+    "abi": 1,
+    "memory_kb": 1024,
+    "stack_kb": 64,
+    "sources": [
+      "src/main.ino"
+    ],
+    "core": "esp32"
+  },
+  "body": {
+    "w_mm": 55,
+    "d_mm": 28,
+    "h_mm": 13
+  },
+  "keywords": {
+    "en": [
+      "esp32",
+      "microcontroller",
+      "board",
+      "wifi",
+      "uart",
+      "3.3v"
+    ],
+    "pt-BR": [
+      "esp32",
+      "microcontrolador",
+      "placa",
+      "wifi",
+      "uart",
+      "3,3v"
+    ],
+    "es": [
+      "esp32",
+      "microcontrolador",
+      "placa",
+      "wifi",
+      "uart",
+      "3,3v"
+    ]
+  }
+}

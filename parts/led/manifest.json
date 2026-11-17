@@ -1,0 +1,152 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "id": "dotbench.led",
+  "name": {
+    "en": "LED with resistor",
+    "pt-BR": "LED com resistor",
+    "es": "LED con resistencia"
+  },
+  "description": {
+    "en": "A red LED with a series resistor you can change. Anode to a GPIO (or a rail), cathode to GND. It glows by the current the net gives it: about 10 mA is full brightness.",
+    "pt-BR": "Um LED vermelho com resistor em série ajustável. Anodo em um GPIO (ou trilho), catodo no GND. Brilha conforme a corrente que a rede entrega: cerca de 10 mA é brilho total.",
+    "es": "Un LED rojo con resistencia en serie ajustable. Ánodo a un GPIO (o riel), cátodo a GND. Brilla según la corriente de la red: unos 10 mA es brillo máximo."
+  },
+  "category": "actuator",
+  "tags": [
+    "led",
+    "output"
+  ],
+  "picture": {
+    "file": "picture.svg",
+    "width": 120,
+    "height": 150
+  },
+  "pins": [
+    {
+      "name": "A",
+      "kind": "io",
+      "pos": {
+        "x": 40,
+        "y": 134
+      },
+      "label": {
+        "en": "A"
+      },
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 1.63,
+        "y": 2.9
+      },
+      "face": "bottom"
+    },
+    {
+      "name": "K",
+      "kind": "io",
+      "pos": {
+        "x": 80,
+        "y": 134
+      },
+      "label": {
+        "en": "K"
+      },
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 4.17,
+        "y": 2.9
+      },
+      "face": "bottom"
+    }
+  ],
+  "fields": [
+    {
+      "name": "ohms",
+      "type": "number",
+      "label": {
+        "en": "Resistor",
+        "pt-BR": "Resistor",
+        "es": "Resistencia"
+      },
+      "min": 0,
+      "max": 10000,
+      "step": 10,
+      "unit": "Ω",
+      "default": 330,
+      "ui": "input"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "brightness",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "Brightness",
+        "pt-BR": "Brilho",
+        "es": "Brillo"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "glow",
+      "effect": "glow",
+      "x": 60,
+      "y": 48,
+      "r": 30,
+      "color": "#ff3b30",
+      "source": {
+        "output": "brightness"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "led",
+        "anode": "A",
+        "cathode": "K",
+        "output": "brightness",
+        "vf_mv": 1900,
+        "series_ohms": {
+          "field": "ohms"
+        },
+        "full_ma": 10
+      }
+    ]
+  },
+  "body": {
+    "w_mm": 5.8,
+    "d_mm": 5.8,
+    "h_mm": 9
+  },
+  "keywords": {
+    "en": [
+      "led",
+      "light",
+      "indicator",
+      "diode"
+    ],
+    "pt-BR": [
+      "led",
+      "luz",
+      "indicador",
+      "diodo"
+    ],
+    "es": [
+      "led",
+      "luz",
+      "indicador",
+      "diodo"
+    ]
+  }
+}

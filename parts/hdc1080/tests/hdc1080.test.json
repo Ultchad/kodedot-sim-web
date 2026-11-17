@@ -1,0 +1,115 @@
+{
+  "name": "HDC1080 registers",
+  "steps": [
+    {
+      "comment": "23.5 C: (23.5 + 40) / 165 * 65536 = 25221 = 0x6285",
+      "i2c": {
+        "addr": 64,
+        "write": [
+          0
+        ],
+        "read": 2,
+        "expect": [
+          98,
+          133
+        ]
+      }
+    },
+    {
+      "comment": "45 % RH: 45 / 100 * 65536 = 29491 = 0x7333",
+      "i2c": {
+        "addr": 64,
+        "write": [
+          1
+        ],
+        "read": 2,
+        "expect": [
+          115,
+          51
+        ]
+      }
+    },
+    {
+      "comment": "manufacturer id",
+      "i2c": {
+        "addr": 64,
+        "write": [
+          254
+        ],
+        "read": 2,
+        "expect": [
+          84,
+          73
+        ]
+      }
+    },
+    {
+      "comment": "device id",
+      "i2c": {
+        "addr": 64,
+        "write": [
+          255
+        ],
+        "read": 2,
+        "expect": [
+          16,
+          80
+        ]
+      }
+    },
+    {
+      "set_field": {
+        "temperature": -40
+      }
+    },
+    {
+      "i2c": {
+        "addr": 64,
+        "write": [
+          0
+        ],
+        "read": 2,
+        "expect": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "comment": "writable configuration register",
+      "i2c": {
+        "addr": 64,
+        "write": [
+          2,
+          0,
+          0
+        ],
+        "read": 0
+      }
+    },
+    {
+      "i2c": {
+        "addr": 64,
+        "write": [
+          2
+        ],
+        "read": 2,
+        "expect": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "comment": "no other address answers",
+      "i2c": {
+        "addr": 65,
+        "write": [
+          0
+        ],
+        "read": 2,
+        "expect_nack": true
+      }
+    }
+  ]
+}

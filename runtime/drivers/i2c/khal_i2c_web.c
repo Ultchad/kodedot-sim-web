@@ -7,6 +7,7 @@
 #include <string.h>
 #include "khal_i2c.h"
 #include "dotbench_board.h"
+#include "dotbench_exp.h"
 
 struct i2c_master_dev_t { const dotbench_i2c_chip_t *chip; };
 #define MAXCHIPS 16
@@ -67,5 +68,12 @@ kode_status_t khal_i2c_read_reg(khal_i2c_dev_t dev, uint8_t reg, uint8_t *buf, s
 kode_status_t khal_i2c_write_regs(khal_i2c_dev_t dev, uint8_t reg, const uint8_t *buf, size_t len)
 {
     if (!dev || !buf || !len || len > KHAL_I2C_BURST_MAX) return KODE_DENIED;
-    return dev->chip->write(dev->chip->ctx, reg, buf, len) == 0 ? KODE_OK : KODE_IO_ERROR;
+    int rc = dev->chip->write(dev->chip->ctx, reg, buf, len);
+    /* J3's 5 V rail is the PMIC's boost: the bench model needs to know the OTG_CONFIG bit (BQ25896 REG03 bit 5), which the real
+     * AO_Power writes through kdrv_bq25896; REG_RST (REG14 bit 7) puts it back off. The chip model itself is the power area's. */
+    if (rc == 0 && dev->chip->addr == 0x6B) {
+        if (reg <= 0x03 && 0x03 < (unsigned)reg + len) dbx_set_v5_boost((buf[0x03 - reg] & 0x20) != 0);
+        if (reg <= 0x14 && 0x14 < (unsigned)reg + len && (buf[0x14 - reg] & 0x80)) dbx_set_v5_boost(false);
+    }
+    return rc == 0 ? KODE_OK : KODE_IO_ERROR;
 }

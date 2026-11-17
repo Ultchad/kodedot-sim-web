@@ -1,0 +1,208 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.l298n",
+  "name": {
+    "en": "L298N motor driver",
+    "pt-BR": "Driver de motor L298N",
+    "es": "Driver de motor L298N"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "The common red L298N module: two H-bridges (OUT1/OUT2 and OUT3/OUT4) from the motor supply VS (5 to 35 V) with a 1.4 V drop high side, 2 ohm outputs; inputs IN1..IN4 read 2.3 V and up as high, so 3.3 V logic works; ENA/ENB have the jumper's 10k pull-up to the module's 5 V pin, drive them with PWM for speed (the output is chopped by duty, off-time reads as freewheel to 0 V). The 5 V pin always supplies 5 V (the on-board regulator is not modelled). Not modelled: current sensing, thermal limits, inductive kick.",
+    "pt-BR": "O módulo vermelho L298N comum: duas pontes H (OUT1/OUT2 e OUT3/OUT4) a partir da alimentação VS (5 a 35 V) com queda de 1,4 V no lado alto, saídas de 2 ohm; as entradas IN1..IN4 leem 2,3 V ou mais como alto, então lógica de 3,3 V funciona; ENA/ENB têm o pull-up de 10k do jumper para o pino de 5 V do módulo, acione-os com PWM para velocidade (a saída é picotada pelo duty, o tempo desligado vale como roda livre a 0 V). O pino de 5 V sempre fornece 5 V (o regulador da placa não é modelado). Não modelado: sensor de corrente, limites térmicos, pico indutivo.",
+    "es": "El módulo rojo L298N común: dos puentes H (OUT1/OUT2 y OUT3/OUT4) desde la alimentación VS (5 a 35 V) con caída de 1,4 V en el lado alto, salidas de 2 ohm; las entradas IN1..IN4 leen 2,3 V o más como alto, así que la lógica de 3,3 V funciona; ENA/ENB tienen el pull-up de 10k del puente hacia el pin de 5 V del módulo, mánejalos con PWM para la velocidad (la salida se trocea por ciclo de trabajo, el tiempo apagado cuenta como rueda libre a 0 V). El pin de 5 V siempre da 5 V (el regulador de la placa no se modela). No modelado: sensor de corriente, límites térmicos, pico inductivo."
+  },
+  "category": "module",
+  "tags": [
+    "l298n",
+    "h-bridge",
+    "motor-driver",
+    "driver"
+  ],
+  "keywords": {
+    "en": [
+      "l298n",
+      "h-bridge",
+      "motor driver",
+      "dc motor",
+      "driver",
+      "pwm"
+    ],
+    "pt-BR": [
+      "l298n",
+      "ponte h",
+      "driver de motor",
+      "motor dc",
+      "pwm"
+    ],
+    "es": [
+      "l298n",
+      "puente h",
+      "driver de motor",
+      "motor dc",
+      "pwm"
+    ]
+  },
+  "body": {
+    "w_mm": 43,
+    "d_mm": 43,
+    "h_mm": 27
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 430,
+    "height": 430
+  },
+  "logic_mv": 3000,
+  "pins": [
+    {"name":"IN1","kind":"io","pos":{"x":110,"y":400},"mm":{"x":11,"y":40},"face":"top","label":{"en":"IN1"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN2","kind":"io","pos":{"x":135.4,"y":400},"mm":{"x":13.54,"y":40},"face":"top","label":{"en":"IN2"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN3","kind":"io","pos":{"x":160.8,"y":400},"mm":{"x":16.08,"y":40},"face":"top","label":{"en":"IN3"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"IN4","kind":"io","pos":{"x":186.2,"y":400},"mm":{"x":18.62,"y":40},"face":"top","label":{"en":"IN4"},"abs_max_mv":7000,"pulldown_ohms":100000},
+    {"name":"ENA","kind":"io","pos":{"x":211.6,"y":400},"mm":{"x":21.16,"y":40},"face":"top","label":{"en":"ENA"},"abs_max_mv":7000,"pullup_ohms":10000,"pull_rail":"V5"},
+    {"name":"ENB","kind":"io","pos":{"x":237,"y":400},"mm":{"x":23.7,"y":40},"face":"top","label":{"en":"ENB"},"abs_max_mv":7000,"pullup_ohms":10000,"pull_rail":"V5"},
+    {"name":"OUT1","kind":"io","pos":{"x":0,"y":95},"mm":{"x":0,"y":9.5},"face":"left","label":{"en":"OUT1"},"abs_max_mv":60000},
+    {"name":"OUT2","kind":"io","pos":{"x":0,"y":145.8},"mm":{"x":0,"y":14.58},"face":"left","label":{"en":"OUT2"},"abs_max_mv":60000},
+    {"name":"OUT3","kind":"io","pos":{"x":430,"y":95},"mm":{"x":43,"y":9.5},"face":"right","label":{"en":"OUT3"},"abs_max_mv":60000},
+    {"name":"OUT4","kind":"io","pos":{"x":430,"y":145.8},"mm":{"x":43,"y":14.58},"face":"right","label":{"en":"OUT4"},"abs_max_mv":60000},
+    {"name":"VS","kind":"power_in","pos":{"x":290,"y":330},"mm":{"x":29,"y":33},"face":"top","label":{"en":"12V"},"min_mv":5000,"max_mv":35000,"typ_ma":0},
+    {"name":"GND","kind":"ground","pos":{"x":340.8,"y":330},"mm":{"x":34.08,"y":33},"face":"top","label":{"en":"GND"}},
+    {"name":"V5","kind":"power_out","pos":{"x":391.6,"y":330},"mm":{"x":39.16,"y":33},"face":"top","label":{"en":"5V"},"out_mv":5000,"out_ohms":20}
+  ],
+  "outputs": [
+    {
+      "name": "out1",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "OUT1"
+      }
+    },
+    {
+      "name": "out2",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "OUT2"
+      }
+    },
+    {
+      "name": "out3",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "OUT3"
+      }
+    },
+    {
+      "name": "out4",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "OUT4"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "led_in1",
+      "effect": "glow",
+      "x": 90,
+      "y": 300,
+      "r": 7,
+      "color": "#ffcc00",
+      "source": {
+        "pin": "IN1"
+      }
+    },
+    {
+      "id": "led_in2",
+      "effect": "glow",
+      "x": 110,
+      "y": 300,
+      "r": 7,
+      "color": "#ffcc00",
+      "source": {
+        "pin": "IN2"
+      }
+    },
+    {
+      "id": "led_in3",
+      "effect": "glow",
+      "x": 130,
+      "y": 300,
+      "r": 7,
+      "color": "#ffcc00",
+      "source": {
+        "pin": "IN3"
+      }
+    },
+    {
+      "id": "led_in4",
+      "effect": "glow",
+      "x": 150,
+      "y": 300,
+      "r": 7,
+      "color": "#ffcc00",
+      "source": {
+        "pin": "IN4"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "half_bridge",
+        "in": "IN1",
+        "out": "OUT1",
+        "vs": "VS",
+        "en": "ENA",
+        "drop_mv": 1400,
+        "ohms": 2,
+        "output": "out1"
+      },
+      {
+        "type": "half_bridge",
+        "in": "IN2",
+        "out": "OUT2",
+        "vs": "VS",
+        "en": "ENA",
+        "drop_mv": 1400,
+        "ohms": 2,
+        "output": "out2"
+      },
+      {
+        "type": "half_bridge",
+        "in": "IN3",
+        "out": "OUT3",
+        "vs": "VS",
+        "en": "ENB",
+        "drop_mv": 1400,
+        "ohms": 2,
+        "output": "out3"
+      },
+      {
+        "type": "half_bridge",
+        "in": "IN4",
+        "out": "OUT4",
+        "vs": "VS",
+        "en": "ENB",
+        "drop_mv": 1400,
+        "ohms": 2,
+        "output": "out4"
+      }
+    ]
+  }
+}

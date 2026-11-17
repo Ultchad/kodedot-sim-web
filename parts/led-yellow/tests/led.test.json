@@ -1,0 +1,57 @@
+{
+  "name": "yellow LED current, brightness and burning",
+  "steps": [
+    {
+      "comment": "dark with nothing wired",
+      "expect_output": {
+        "name": "brightness",
+        "value": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "K",
+        "level": 0
+      }
+    },
+    {
+      "comment": "3.3 V across 236 ohm and the LED knee leaves a few mA",
+      "expect_output": {
+        "name": "current_ma",
+        "min": 1,
+        "max": 12
+      }
+    },
+    {
+      "expect_output": {
+        "name": "overcurrent",
+        "value": false
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "A",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "K",
+        "level": 1
+      }
+    },
+    {
+      "comment": "reversed: dark",
+      "expect_output": {
+        "name": "brightness",
+        "value": 0
+      }
+    }
+  ]
+}
