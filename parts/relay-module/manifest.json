@@ -1,0 +1,154 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.relay-module",
+  "name": {
+    "en": "Relay module 5 V",
+    "pt-BR": "Módulo relé 5 V",
+    "es": "Módulo relé 5 V"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A single-channel 5 V relay module: VCC and GND power the coil, IN switches it (active low by default, the field picks the jumper), 8 ms contact time in virtual time. COM joins NC at rest and NO when the coil is energised; with the module unpowered COM-NC still conducts. Contacts are ideal wires: no rating, no arc, no coil kick, no mains safety. The page can show the click and a state LED.",
+    "pt-BR": "Um módulo relé de 5 V de um canal: VCC e GND alimentam a bobina, IN a aciona (ativo em baixo por padrão, o campo escolhe o jumper), 8 ms de tempo de contato no tempo virtual. COM liga ao NC em repouso e ao NO com a bobina energizada; com o módulo sem energia COM-NC continua conduzindo. Os contatos são fios ideais: sem limite, sem arco, sem pico da bobina, sem segurança de rede elétrica. A página pode mostrar o clique e um LED de estado.",
+    "es": "Un módulo relé de 5 V de un canal: VCC y GND alimentan la bobina, IN la activa (activo en bajo por defecto, el campo elige el puente), 8 ms de tiempo de contacto en tiempo virtual. COM une con NC en reposo y con NO con la bobina energizada; con el módulo sin alimentar COM-NC sigue conduciendo. Los contactos son cables ideales: sin límite, sin arco, sin pico de bobina, sin seguridad de red eléctrica. La página puede mostrar el clic y un LED de estado."
+  },
+  "category": "actuator",
+  "tags": [
+    "relay",
+    "switch",
+    "5v"
+  ],
+  "keywords": {
+    "en": [
+      "relay",
+      "switch",
+      "contact",
+      "5v",
+      "load",
+      "mains"
+    ],
+    "pt-BR": [
+      "relé",
+      "rele",
+      "chave",
+      "contato",
+      "carga"
+    ],
+    "es": [
+      "relé",
+      "relevador",
+      "interruptor",
+      "contacto",
+      "carga"
+    ]
+  },
+  "body": {
+    "w_mm": 50,
+    "d_mm": 26,
+    "h_mm": 18.5
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 500,
+    "height": 260
+  },
+  "logic_mv": 3000,
+  "pins": [
+    {"name":"VCC","kind":"power_in","pos":{"x":15,"y":60},"mm":{"x":1.5,"y":6,"z":11.4},"face":"left","label":{"en":"VCC"},"min_mv":4000,"max_mv":6500,"typ_ma":70},
+    {"name":"GND","kind":"ground","pos":{"x":15,"y":85.4},"mm":{"x":1.5,"y":8.54,"z":11.4},"face":"left","label":{"en":"GND"}},
+    {"name":"IN","kind":"io","pos":{"x":15,"y":110.8},"mm":{"x":1.5,"y":11.08,"z":11.4},"face":"left","label":{"en":"IN"},"abs_max_mv":6000},
+    {"name":"COM","kind":"io","pos":{"x":500,"y":60},"mm":{"x":50,"y":6,"z":6.3},"face":"right","label":{"en":"COM"},"abs_max_mv":60000},
+    {"name":"NO","kind":"io","pos":{"x":500,"y":110.8},"mm":{"x":50,"y":11.08,"z":6.3},"face":"right","label":{"en":"NO"},"abs_max_mv":60000},
+    {"name":"NC","kind":"io","pos":{"x":500,"y":161.6},"mm":{"x":50,"y":16.16,"z":6.3},"face":"right","label":{"en":"NC"},"abs_max_mv":60000}
+  ],
+  "fields": [
+    {
+      "name": "active",
+      "type": "enum",
+      "label": {
+        "en": "Active level",
+        "pt-BR": "Nível ativo",
+        "es": "Nivel activo"
+      },
+      "default": "low",
+      "values": [
+        {
+          "value": "low",
+          "label": {
+            "en": "Low",
+            "pt-BR": "Baixo",
+            "es": "Bajo"
+          }
+        },
+        {
+          "value": "high",
+          "label": {
+            "en": "High",
+            "pt-BR": "Alto",
+            "es": "Alto"
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "energized",
+      "type": "boolean",
+      "label": {
+        "en": "Coil on",
+        "pt-BR": "Bobina ligada",
+        "es": "Bobina activa"
+      }
+    },
+    {
+      "name": "closed",
+      "type": "boolean",
+      "label": {
+        "en": "COM-NO closed",
+        "pt-BR": "COM-NO fechado",
+        "es": "COM-NO cerrado"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "led",
+      "effect": "glow",
+      "x": 120,
+      "y": 60,
+      "r": 8,
+      "color": "#ff3b30",
+      "source": {
+        "output": "energized"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "relay",
+        "in": "IN",
+        "active": {
+          "field": "active",
+          "op": "eq",
+          "value": "high"
+        },
+        "com": "COM",
+        "no": "NO",
+        "nc": "NC",
+        "coil_ms": 8,
+        "energized_output": "energized",
+        "closed_output": "closed"
+      }
+    ]
+  }
+}

@@ -26,27 +26,39 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 120,
-    "height": 120
+    "width": 150,
+    "height": 150
   },
   "pins": [
     {
       "name": "A",
       "kind": "io",
       "pos": {
-        "x": 24,
-        "y": 100
+        "x": 11.5,
+        "y": 75
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 0.46,
+        "y": 3,
+        "z": 0
+      },
+      "face": "bottom"
     },
     {
       "name": "B",
       "kind": "io",
       "pos": {
-        "x": 96,
-        "y": 100
+        "x": 138.5,
+        "y": 75
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 5.54,
+        "y": 3,
+        "z": 0
+      },
+      "face": "bottom"
     }
   ],
   "fields": [
@@ -65,10 +77,10 @@
     {
       "field": "pressed",
       "region": {
-        "x": 30,
-        "y": 15,
-        "w": 60,
-        "h": 60
+        "x": 37.5,
+        "y": 18.8,
+        "w": 75,
+        "h": 75
       },
       "mode": "momentary"
     }
@@ -77,10 +89,10 @@
     {
       "id": "cap",
       "effect": "fill",
-      "x": 40,
-      "y": 25,
-      "w": 40,
-      "h": 40,
+      "x": 50,
+      "y": 31.2,
+      "w": 50,
+      "h": 50,
       "color": "#e03a3a",
       "source": {
         "field": "pressed"
@@ -100,6 +112,31 @@
         },
         "bounce_ms": 5
       }
+    ]
+  },
+  "body": {
+    "w_mm": 6,
+    "d_mm": 6,
+    "h_mm": 5
+  },
+  "keywords": {
+    "en": [
+      "button",
+      "switch",
+      "push",
+      "input"
+    ],
+    "pt-BR": [
+      "botão",
+      "chave",
+      "pressionar",
+      "entrada"
+    ],
+    "es": [
+      "botón",
+      "pulsador",
+      "interruptor",
+      "entrada"
     ]
   }
 }

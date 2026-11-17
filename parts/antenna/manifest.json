@@ -1,0 +1,130 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.antenna",
+  "name": {
+    "en": "Antenna (SMA stub)",
+    "pt-BR": "Antena (SMA)",
+    "es": "Antena (SMA)"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A passive stub antenna on an SMA base: FEED goes to a module's antenna pin, GND to its ground. It is a wiring target and a model for the 3D scene: to the bench it is an open circuit at DC (a 1 Gohm resistor), so it never changes a voltage. The band and gain are fields the page can read. It does NOT model radiation, matching (VSWR), range or detuning: wireless range is decided by distance on the bench table, and a module works with or without an antenna in this build.",
+    "pt-BR": "Uma antena passiva tipo stub em base SMA: FEED vai ao pino de antena de um módulo, GND ao terra dele. É um alvo de ligação e um modelo para a cena 3D: para a bancada é um circuito aberto em DC (um resistor de 1 Gohm), então nunca muda uma tensão. A banda e o ganho são campos que a página pode ler. NÃO modela radiação, casamento (VSWR), alcance nem dessintonia: o alcance sem fio é decidido pela distância na mesa da bancada, e um módulo funciona com ou sem antena nesta versão.",
+    "es": "Una antena pasiva tipo stub en base SMA: FEED va al pin de antena de un módulo, GND a su tierra. Es un objetivo de cableado y un modelo para la escena 3D: para el banco es un circuito abierto en DC (una resistencia de 1 Gohm), así que nunca cambia una tensión. La banda y la ganancia son campos que la página puede leer. NO modela radiación, adaptación (VSWR), alcance ni desintonía: el alcance inalámbrico lo decide la distancia en la mesa del banco, y un módulo funciona con o sin antena en esta versión."
+  },
+  "category": "wireless",
+  "tags": [
+    "antenna",
+    "rf",
+    "wireless",
+    "sma"
+  ],
+  "keywords": {
+    "en": [
+      "antenna",
+      "rf",
+      "wifi",
+      "lora",
+      "sma",
+      "wireless",
+      "2.4ghz"
+    ],
+    "pt-BR": [
+      "antena",
+      "rf",
+      "wifi",
+      "lora",
+      "sma",
+      "sem fio",
+      "2,4ghz"
+    ],
+    "es": [
+      "antena",
+      "rf",
+      "wifi",
+      "lora",
+      "sma",
+      "inalámbrico",
+      "2,4ghz"
+    ]
+  },
+  "body": {
+    "w_mm": 10,
+    "d_mm": 10,
+    "h_mm": 60
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 100,
+    "height": 100
+  },
+  "pins": [
+    {"name":"FEED","kind":"io","pos":{"x":50,"y":37.3},"mm":{"x":5,"y":3.73,"z":0},"face":"bottom","label":{"en":"FEED"},"abs_max_mv":60000},
+    {"name":"GND","kind":"io","pos":{"x":50,"y":62.7},"mm":{"x":5,"y":6.27,"z":0},"face":"bottom","label":{"en":"GND"},"abs_max_mv":60000}
+  ],
+  "fields": [
+    {
+      "name": "band",
+      "type": "enum",
+      "label": {
+        "en": "Band",
+        "pt-BR": "Banda",
+        "es": "Banda"
+      },
+      "default": 2400,
+      "values": [
+        {
+          "value": 433,
+          "label": {
+            "en": "433 MHz"
+          }
+        },
+        {
+          "value": 868,
+          "label": {
+            "en": "868/915 MHz"
+          }
+        },
+        {
+          "value": 2400,
+          "label": {
+            "en": "2.4 GHz"
+          }
+        }
+      ]
+    },
+    {
+      "name": "gain_dbi",
+      "type": "number",
+      "label": {
+        "en": "Gain",
+        "pt-BR": "Ganho",
+        "es": "Ganancia"
+      },
+      "min": 0,
+      "max": 12,
+      "step": 0.5,
+      "unit": "dBi",
+      "default": 2,
+      "ui": "input"
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "resistor",
+        "a": "FEED",
+        "b": "GND",
+        "ohms": 1000000000
+      }
+    ]
+  }
+}

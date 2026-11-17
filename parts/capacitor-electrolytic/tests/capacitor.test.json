@@ -1,0 +1,70 @@
+{
+  "name": "electrolytic: charges the right way, bursts backwards",
+  "steps": [
+    {
+      "set_field": {
+        "uf": 100
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "POS",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "NEG",
+        "level": 0
+      }
+    },
+    {
+      "advance_ms": 300
+    },
+    {
+      "comment": "plus high: charged, no hazard",
+      "expect_output": {
+        "name": "volts_mv",
+        "min": 3100
+      }
+    },
+    {
+      "expect_output": {
+        "name": "burst",
+        "value": false
+      }
+    },
+    {
+      "comment": "swap the polarity: discharge, then reverse",
+      "set_pin": {
+        "pin": "POS",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "NEG",
+        "level": 1
+      }
+    },
+    {
+      "advance_ms": 40
+    },
+    {
+      "expect_output": {
+        "name": "reversed",
+        "value": true
+      }
+    },
+    {
+      "advance_ms": 120
+    },
+    {
+      "comment": "backwards for more than 40 ms: bursts",
+      "expect_output": {
+        "name": "burst",
+        "value": true
+      }
+    }
+  ]
+}

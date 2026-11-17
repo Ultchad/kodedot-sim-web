@@ -21,13 +21,21 @@ export class PartTester {
     const b = this.bench, m = this.m;
     b.registerPart(this.def);
     this.instance = b.addPart(m.id, { fields: o.fields });
-    this.exp = new Map(); let n = 0;
-    for (const pin of m.pins) {
-      if (pin.kind === "io" || pin.kind === "analog") { if (n < 14) { this.exp.set(pin.name, n); b.connect(`device.EXP${n + 1}`, `${this.instance}.${pin.name}`); n++; } }
+    this.exp = new Map(); let n = 0; this.nWired = 0;
+    const aliased = m.pins.some((p) => p.aliases?.length);   // a board with aliased pins: wire those up front, every other io pin when a scenario first names it (there are more than 14)
+    // pins with aliases (TX, RX, SDA, SCL on a board) come first: the tester wires the first 14 io pins, and a scenario names them by either name
+    for (const pin of [...m.pins].sort((a, b) => (b.aliases?.length ? 1 : 0) - (a.aliases?.length ? 1 : 0))) {
+      if (pin.kind === "io" || pin.kind === "analog") { if (n < 14 && (!aliased || pin.aliases?.length)) { this.exp.set(pin.name, n); for (const al of pin.aliases ?? []) this.exp.set(al, n); b.connect(`device.EXP${n + 1}`, `${this.instance}.${pin.name}`); n++; this.nWired = n; } }
       else if (pin.kind === "ground") b.connect("device.GND", `${this.instance}.${pin.name}`);
       else if (pin.kind === "power_in") {
-        const v5 = (pin.min_mv ?? 0) <= 5000 && (pin.max_mv ?? 0) >= 5000 && !((pin.min_mv ?? 0) <= 3300 && (pin.max_mv ?? 0) >= 3300);
-        b.connect(v5 ? "device.V5" : "device.V33", `${this.instance}.${pin.name}`);
+        const lo = pin.min_mv ?? 0, hi = pin.max_mv ?? 0;
+        const v5 = lo <= 5000 && hi >= 5000 && !(lo <= 3300 && hi >= 3300);
+        if (!v5 && !(lo <= 3300 && hi >= 3300)) {       // a supply the Dot cannot give (a motor supply, 8 to 35 V): a helper source, 12 V clipped into the range
+          const mv = Math.min(Math.max(12000, lo), hi), id = "tester.psu";
+          if (!b.defs.has(id)) b.registerPart({ manifest: { id, version: "1.0.0", name: { en: "tester supply" }, category: "power", pins: [{ name: "POS", kind: "io", abs_max_mv: 60000 }, { name: "NEG", kind: "io", abs_max_mv: 60000 }], fields: [{ name: "mv", type: "number", default: 12000 }], behaviour: { type: "declarative", engine: 1, elements: [{ type: "cell", pos: "POS", neg: "NEG", mv: { field: "mv" }, ohms: 0.2 }] } }, sha256: "" });
+          const psu = b.addPart(id, { fields: { mv }, label: "tester supply" });
+          b.connect(`${psu}.POS`, `${this.instance}.${pin.name}`); b.connect(`${psu}.NEG`, "device.GND");
+        } else b.connect(v5 ? "device.V5" : "device.V33", `${this.instance}.${pin.name}`);
       }
     }
     for (const nm of ["SDA", "SCL"]) if (this.exp.has(nm)) b.setDevicePin(this.exp.get(nm), { mode: "in", pull: "up" });
@@ -37,7 +45,12 @@ export class PartTester {
   }
   get part() { return this.bench.parts.get(this.instance); }
   term(name) { return `${this.instance}.${name}`; }
-  dev(name) { if (!this.exp.has(name)) throw new Error(`pin ${name} has no header position (io and analog pins only)`); return `device.EXP${this.exp.get(name) + 1}`; }
+  /** The header position (0 based) a pin is wired to; an io pin not wired yet gets the next free one. */
+  _pos(name) {
+    if (!this.exp.has(name) && this.nWired < 14) { const pin = this.m.pins.find((p) => p.name === name || p.aliases?.includes(name)); if (pin && (pin.kind === "io" || pin.kind === "analog")) { const k = this.nWired++; this.exp.set(pin.name, k); this.bench.connect(`device.EXP${k + 1}`, `${this.instance}.${pin.name}`); } }
+    return this.exp.get(name);
+  }
+  dev(name) { this._pos(name); if (!this.exp.has(name)) throw new Error(`pin ${name} has no header position (io and analog pins only)`); return `device.EXP${this.exp.get(name) + 1}`; }
   async advance(ms) { await this.bench.advance(ms * 1000); }
   setField(name, v) { return this.bench.setField(this.instance, name, v); }
   press(field, ms) { return this.bench.press(this.instance, field, ms); }
@@ -45,11 +58,11 @@ export class PartTester {
   console() { const p = this.part; p.impl?.drain?.(); return p.console.join("\n") + (p.consoleTail ? (p.console.length ? "\n" : "") + p.consoleTail : ""); }
   serialIn(text) { this.bench.serialIn(this.instance, text); }
   /** The tester drives a header pin: level 0/1, or null to release it. */
-  drive(name, level) { const i = this.exp.get(name); this.bench.setDevicePin(i, level === null ? { mode: "z" } : { mode: "out", level: level ? 1 : 0 }); }
+  drive(name, level) { const i = this._pos(name); this.bench.setDevicePin(i, level === null ? { mode: "z" } : { mode: "out", level: level ? 1 : 0 }); }
   level(name) { return this.bench.net(this.dev(name)).level; }
   mv(name) { const n = this.bench.net(this.dev(name)); return n.floating ? 0 : n.mv; }
-  pwm(name, hz, dutyPct) { this.bench.setDevicePin(this.exp.get(name), { mode: "pwm", hz, duty: Math.round((dutyPct / 100) * 65536) }); }
-  pullup(name) { this.bench.setDevicePin(this.exp.get(name), { mode: "in", pull: "up" }); }
+  pwm(name, hz, dutyPct) { this.bench.setDevicePin(this._pos(name), { mode: "pwm", hz, duty: Math.round((dutyPct / 100) * 65536) }); }
+  pullup(name) { this.bench.setDevicePin(this._pos(name), { mode: "in", pull: "up" }); }
   /** I2C transaction as the device would do it: write w, then read rlen (a repeated start). {ok, nack, data, result} */
   async i2c(addr, w = [], rlen = 0, hz = 100000) {
     const r = await this.bench.i2cXfer({ sda: this.dev("SDA"), scl: this.dev("SCL"), hz }, addr, Uint8Array.from(w), rlen);

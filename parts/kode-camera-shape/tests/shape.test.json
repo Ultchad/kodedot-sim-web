@@ -1,0 +1,17 @@
+{
+  "name": "a shape-only module has no behaviour: a pin keeps what the tester drives",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "SDA",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "SDA",
+        "level": 1
+      }
+    }
+  ]
+}

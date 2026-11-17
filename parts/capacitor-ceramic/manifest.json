@@ -1,0 +1,127 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.capacitor-ceramic",
+  "name": {
+    "en": "Ceramic capacitor",
+    "pt-BR": "Capacitor cerâmico",
+    "es": "Condensador cerámico"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A non-polarised ceramic capacitor, 1 pF to 100 uF, 50 V. The bench steps it in virtual time (backward Euler), so it charges and discharges through the resistance around it: an RC filter, a debounce, a smoothing cap. Ideal capacitor plus a small series resistance; no leakage, no inductance.",
+    "pt-BR": "Um capacitor cerâmico sem polaridade, de 1 pF a 100 uF, 50 V. A bancada o integra no tempo virtual (Euler implícito), então ele carrega e descarrega pela resistência ao redor: filtro RC, debounce, desacoplamento. Capacitor ideal com uma pequena resistência em série; sem fuga, sem indutância.",
+    "es": "Un condensador cerámico sin polaridad, de 1 pF a 100 uF, 50 V. El banco lo integra en tiempo virtual (Euler implícito), así que carga y descarga por la resistencia que lo rodea: filtro RC, antirrebote, desacoplo. Condensador ideal con una pequeña resistencia en serie; sin fuga, sin inductancia."
+  },
+  "category": "passive",
+  "tags": [
+    "capacitor",
+    "ceramic",
+    "passive"
+  ],
+  "keywords": {
+    "en": [
+      "capacitor",
+      "ceramic",
+      "filter",
+      "decoupling",
+      "rc",
+      "farad"
+    ],
+    "pt-BR": [
+      "capacitor",
+      "cerâmico",
+      "filtro",
+      "desacoplamento",
+      "rc",
+      "farad"
+    ],
+    "es": [
+      "condensador",
+      "capacitor",
+      "cerámico",
+      "filtro",
+      "desacoplo",
+      "rc",
+      "faradio"
+    ]
+  },
+  "body": {
+    "w_mm": 7.62,
+    "d_mm": 3,
+    "h_mm": 7
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 91,
+    "height": 36
+  },
+  "pins": [
+    {"name":"A","kind":"io","pos":{"x":15.2,"y":18},"mm":{"x":1.27,"y":1.5,"z":0},"face":"bottom","label":{"en":"A"},"abs_max_mv":50000},
+    {"name":"B","kind":"io","pos":{"x":76.2,"y":18},"mm":{"x":6.35,"y":1.5,"z":0},"face":"bottom","label":{"en":"B"},"abs_max_mv":50000}
+  ],
+  "fields": [
+    {
+      "name": "uf",
+      "type": "number",
+      "label": {
+        "en": "Capacitance",
+        "pt-BR": "Capacitância",
+        "es": "Capacidad"
+      },
+      "min": 0.000001,
+      "max": 100,
+      "step": 0.000001,
+      "unit": "µF",
+      "default": 0.1,
+      "ui": "input"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "volts_mv",
+      "type": "number",
+      "unit": "mV",
+      "label": {
+        "en": "Voltage A to B",
+        "pt-BR": "Tensão A para B",
+        "es": "Tensión A a B"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "value",
+      "effect": "text",
+      "x": 38,
+      "y": 24,
+      "color": "#1d2a38",
+      "source": {
+        "field": "uf"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "capacitor",
+        "a": "A",
+        "b": "B",
+        "farads": {
+          "field": "uf",
+          "scale": 0.000001
+        },
+        "esr_ohms": 0.05,
+        "max_mv": 50000,
+        "voltage_output": "volts_mv"
+      }
+    ]
+  }
+}

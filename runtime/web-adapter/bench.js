@@ -13,8 +13,8 @@
 //
 // Terminals are "<instance>.<pin>"; the device is the instance "device": EXP1..EXP14, V33, V5, GND (DEVICE_TERMINALS has the J3 pin numbers).
 import { BenchClock } from "./bench-clock.js";
-import { computeNets, solveSources, digital, conflicts } from "./bench-solver.js";
-import { readDotpart, describeDotpart } from "./dotpart.js";
+import { computeNets, solveSources, solveNetwork, digital, conflicts } from "./bench-solver.js";
+import { readDotpart, describeDotpart, checkWasmModule, sha256Hex } from "./dotpart.js";
 import { DeclarativePart, evalExpr } from "./bench-declarative.js";
 
 export const DEVICE = "device", VDD_DEVICE = 3300, V5_MV = 5000, DEVICE_SERIES_OHMS = 68, DEVICE_PULL_OHMS = 45000, GND_OHMS = 0.01;
@@ -26,6 +26,8 @@ export const DEVICE_TERMINALS = [
   { term: "device.V5", name: "V5", pin: 1, alt: 20, kind: "power_out" }, { term: "device.V33", name: "V33", pin: 2, alt: 19, kind: "power_out" },
   { term: "device.GND", name: "GND", pin: 10, alt: 11, kind: "ground" },
 ];
+/** GPIO behind J3 position 1..14 (SDK numbering, kode.h): module tables are written in GPIO, the bench turns them into positions. */
+export const J3_GPIO = [8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16];
 const POS = 14;
 const R = { OK: 0, NACK_ADDR: 1, NACK_DATA: 2, STUCK: 3, TIMEOUT: 4, REFUSED: 5 };
 const K = { I2C_OPEN: 1, I2C_CLOSE: 2, I2C_XFER: 3, I2C_PROBE: 4, SPI_OPEN: 5, SPI_CLOSE: 6, SPI_XFER: 7, UART_OPEN: 8, UART_CLOSE: 9, UART_WRITE: 10 };
@@ -37,6 +39,9 @@ export class Bench {
   /** @param {{clock?: BenchClock, wasm?: (part, host) => object}} [o] wasm: factory of the part runtime (default: ./bench-wasm.js, loaded on first use) */
   constructor(o = {}) {
     this.clock = o.clock ?? new BenchClock();
+    this.capStepUs = o.capStepUs ?? (o.clock && o.clock.mode === "stepped" ? 200 : 1000);   // shortest transient step; the step grows while nothing changes quickly
+    this.capMaxStepUs = o.capMaxStepUs ?? 20000;
+    this._capT = 0; this._capRun = false; this._capCancel = null; this._capDt = 0; this._bcur = new Map();
     this._wasmFactory = o.wasm ?? null;
     this.defs = new Map();            // manifest id -> def (readDotpart result)
     this.parts = new Map();           // instance -> part
@@ -97,9 +102,10 @@ export class Bench {
     const fields = {};
     for (const f of m.fields ?? []) fields[f.name] = f.default;
     for (const [k, v] of Object.entries(o.fields ?? {})) if (k in fields) fields[k] = this._coerce(m.fields.find((f) => f.name === k), v);
-    const part = { instance, id: m.id, def, label: o.label ?? instance, pos: { x: 0, y: 0, rot: 0, ...(o.pos ?? {}) }, fields, outputs: {}, impl: null, starting: null, startP: null, console: [], consoleTail: "",
-      pins: new Map(m.pins.map((p) => [p.name, p])) };
+    const part = { instance, id: m.id, def, label: o.label ?? instance, pos: { x: 0, y: 0, rot: 0, ...(o.pos ?? {}) }, fields, outputs: {}, impl: null, starting: null, startP: null, console: [], consoleTail: "", code: null, storage: null,
+      pins: new Map(m.pins.map((p) => [p.name, p])), alias: new Map(m.pins.flatMap((p) => (p.aliases ?? []).map((a) => [a, p.name]))) };
     for (const out of m.outputs ?? []) part.outputs[out.name] = out.type === "boolean" ? false : 0;
+    part.mount = null;
     this.parts.set(instance, part);
     if (m.behaviour.type === "declarative") part.impl = new DeclarativePart(part, this._host(part));
     this._touch(); this._emit("part", { type: "added", instance });
@@ -134,6 +140,8 @@ export class Bench {
     this._touch(); this._emit("part", { type: "field", instance, name, value: v });
     return v;
   }
+  /** Replace a part that burned out or burst (an LED with no resistor, an electrolytic capacitor backwards): clears its failure latches. */
+  repairPart(instance) { const p = this._part(instance); p.impl?.repair?.(); this._touch(); }
   /** Momentary control: the field goes true, then false after `ms` of virtual time. */
   press(instance, name, ms = 150) { this.setField(instance, name, true); return new Promise((res) => this.clock.after(ms * 1000, () => { this.setField(instance, name, false); res(); })); }
 
@@ -144,8 +152,11 @@ export class Bench {
     for (const p of this.parts.values()) for (const pin of p.def.manifest.pins) if (pin.kind !== "nc") out.push({ term: `${p.instance}.${pin.name}`, owner: p.instance, pin: pin.name, kind: pin.kind });
     return out;
   }
-  _has(term) { const [o, ...r] = term.split("."), pin = r.join("."); if (o === DEVICE) return DEVICE_TERMINALS.some((t) => t.name === pin); const p = this.parts.get(o); return !!p && p.pins.has(pin) && p.pins.get(pin).kind !== "nc"; }
+  /** A terminal name as the manifest's pin `aliases` give it (an old name of a renamed pin) becomes the pin's own name. */
+  _canon(term) { const i = term.indexOf("."); if (i < 0) return term; const a = this.parts.get(term.slice(0, i))?.alias?.get(term.slice(i + 1)); return a ? term.slice(0, i + 1) + a : term; }
+  _has(term) { term = this._canon(term); const [o, ...r] = term.split("."), pin = r.join("."); if (o === DEVICE) return DEVICE_TERMINALS.some((t) => t.name === pin); const p = this.parts.get(o); return !!p && p.pins.has(pin) && p.pins.get(pin).kind !== "nc"; }
   connect(a, b, o = {}) {
+    a = this._canon(a); b = this._canon(b);
     for (const t of [a, b]) if (!this._has(t)) throw new Error(`no such terminal ${t}`);
     if (a === b) throw new Error("a wire needs two different terminals");
     for (const w of this.wires.values()) if ((w.from === a && w.to === b) || (w.from === b && w.to === a)) return w.id;
@@ -155,7 +166,7 @@ export class Bench {
     this._touch(); return id;
   }
   disconnect(id) { if (!this.wires.delete(id)) return false; this._touch(); return true; }
-  wireOf(a, b) { for (const w of this.wires.values()) if ((w.from === a && w.to === b) || (w.from === b && w.to === a)) return w.id; return null; }
+  wireOf(a, b) { a = this._canon(a); b = this._canon(b); for (const w of this.wires.values()) if ((w.from === a && w.to === b) || (w.from === b && w.to === a)) return w.id; return null; }
 
   // ---------------------------------------------------------------- host handed to a part runtime
   _host(part) {
@@ -175,12 +186,14 @@ export class Bench {
   }
   _netInfo(term) { return this._net.get(term) ?? { mv: 0, mvHigh: 0, mvLow: 0, rth: Infinity, floating: true, level: 0, pwm: null, id: -1 }; }
   /** Live net data of a terminal (for the page and tests). */
-  net(term) { this._flush(); return this._netInfo(term); }
+  net(term) { this._flush(); return this._netInfo(this._canon(term)); }
   /** The id of a terminal's net (same id, same net), -1 when unknown. */
-  netId(term) { this._flush(); return this._net.get(term)?.id ?? -1; }
+  netId(term) { this._flush(); return this._net.get(this._canon(term))?.id ?? -1; }
 
   // ---------------------------------------------------------------- solving
-  _touch() { this._dirty = true; this._flush(); }
+  _touch() { this._dirty = true; if (!this._batch) this._flush(); }
+  /** Run fn with the solver paused, then solve once: loading a layout or wiring many terminals costs one solve instead of one per call. */
+  batch(fn) { this._batch = (this._batch ?? 0) + 1; try { return fn(); } finally { if (--this._batch === 0) this._flush(); } }
   _flush() {
     if (this._flushing) { this._again = true; return; }
     this._flushing = true;
@@ -188,13 +201,17 @@ export class Bench {
     finally { this._flushing = false; }
   }
   _supplyPin(m) { return m.pins.find((p) => p.kind === "power_in"); }
-  _partMv(part, info) { const sp = this._supplyPin(part.def.manifest); if (!sp) return VDD_DEVICE; const n = info(`${part.instance}.${sp.name}`); return n.floating ? 0 : n.mv; }
+  /** A pin the part drives from its own supply (a board on USB): pin.internal = {mv, ohms?, field?}; with a field, only while it is true. */
+  _internalOn(p, pin) { const f = pin.internal?.field; return !!pin.internal && (f === undefined || !!p.fields[f]); }
+  _partMv(part, info) { if (part.def.manifest.logic_mv) return part.def.manifest.logic_mv; const sp = this._supplyPin(part.def.manifest); if (!sp) return VDD_DEVICE; const n = info(`${part.instance}.${sp.name}`); return n.floating ? 0 : n.mv; }
   /** One pass: nets from wires and closed contacts, sources, solve. */
-  _pass(power, prevMv) {
+  _pass(power, prevMv, dtc = 0) {
     const terms = DEVICE_TERMINALS.map((t) => t.term), pairs = [];
     for (const p of this.parts.values()) for (const pin of p.def.manifest.pins) if (pin.kind !== "nc") terms.push(`${p.instance}.${pin.name}`);
     for (const w of this.wires.values()) pairs.push([w.from, w.to]);
-    for (const p of this.parts.values()) if (power.get(p.instance) && p.impl?.joins) for (const j of p.impl.joins()) pairs.push(j);
+    for (const p of this.parts.values()) for (const g of p.def.manifest.groups ?? []) for (let i = 1; i < g.pins.length; i++) pairs.push([`${p.instance}.${g.pins[0]}`, `${p.instance}.${g.pins[i]}`]);
+    for (const p of this.parts.values()) for (const pr of this._mountPairs(p)) pairs.push(pr);
+    for (const p of this.parts.values()) { if (power.get(p.instance)) { if (p.impl?.joins) for (const j of p.impl.joins()) pairs.push(j); } else if (p.impl?.joinsUnpowered) for (const j of p.impl.joinsUnpowered()) pairs.push(j); }
     const { netOf, nets } = computeNets(terms, pairs);
     const srcs = nets.map(() => []);
     const add = (s) => { const i = netOf.get(s.term); if (i !== undefined) srcs[i].push(s); };
@@ -212,10 +229,13 @@ export class Bench {
     for (const p of this.parts.values()) {
       const m = p.def.manifest, on = power.get(p.instance);
       const vOf = (t) => prevMv.get(t) ?? 0;
-      const sp = this._supplyPin(m), vhigh = sp ? vOf(`${p.instance}.${sp.name}`) || 0 : VDD_DEVICE;
+      const sp = this._supplyPin(m), vhigh = m.logic_mv ?? (sp ? vOf(`${p.instance}.${sp.name}`) || 0 : VDD_DEVICE);
+      const selfRef = m.pins.some((x) => x.internal && this._internalOn(p, x));
       for (const pin of m.pins) {
         const term = `${p.instance}.${pin.name}`;
-        if (pin.kind === "ground") add({ term, mv: 0, ohms: GND_OHMS, kind: "rail" });
+        if (pin.kind === "ground" && selfRef) add({ term, mv: 0, ohms: GND_OHMS, kind: "rail" });
+        if (pin.internal && this._internalOn(p, pin)) add({ term, mv: pin.internal.mv, ohms: pin.internal.ohms ?? 0.5, kind: "rail" });
+        if (pin.kind === "power_out" && on) add({ term, mv: pin.out_mv, ohms: pin.out_ohms ?? 5, kind: "rail" });
         const rail = pin.pull_rail ?? sp?.name, rv = rail ? vOf(`${p.instance}.${rail}`) : VDD_DEVICE;
         if (pin.pullup_ohms && rv > 0) add({ term, mv: rv, ohms: pin.pullup_ohms, kind: "pull" });
         if (pin.pulldown_ohms) add({ term, mv: 0, ohms: pin.pulldown_ohms, kind: "pull" });
@@ -233,19 +253,81 @@ export class Bench {
       }
       return { id, members, srcs: list, mv: r.mv, rth: r.rth, floating: r.floating, strong: r.strong, mvHigh, mvLow, pwm };
     });
-    return { netOf, nets, info };
+    const br = this._nodal(netOf, info, power, dtc);
+    return { netOf, nets, info, br };
   }
+  /**
+   * Parts with two-terminal elements (resistor, capacitor, diode, cell) hand their branches over (impl.branches()). Nets joined by a branch are solved
+   * together (bench-solver solveNetwork); a bench with no branch costs one empty loop. PWM sources are solved at their high and at their low level and
+   * averaged by duty, so a net behind a resistor swings too (and a capacitor sees the average: it is a perfect PWM filter, see docs).
+   */
+  _nodal(netOf, info, power, dt) {
+    const list = [];
+    for (const p of this.parts.values()) {
+      if (!power.get(p.instance) || !p.impl?.branches) continue;
+      for (const b of p.impl.branches()) {
+        const a = netOf.get(b.a), c = netOf.get(b.b);
+        if (a === undefined || c === undefined) continue;
+        list.push({ ...b, an: a, bn: c, part: p });
+      }
+    }
+    if (!list.length) return null;
+    const refNets = new Set();
+    for (const p of this.parts.values()) { if (!power.get(p.instance)) continue; for (const pin of p.def.manifest.pins) if (pin.kind === "ground") { const k = netOf.get(`${p.instance}.${pin.name}`); if (k !== undefined) refNets.add(k); } }
+    for (const b of list) if (b.refB) refNets.add(b.bn);
+    const uf = new Map(), find = (x) => { while (uf.get(x) !== undefined && uf.get(x) !== x) x = uf.get(x); return x; };
+    for (const b of list) if (b.an !== b.bn) { const ra = find(b.an), rb = find(b.bn); if (ra !== rb) uf.set(ra, rb); if (!uf.has(rb)) uf.set(rb, rb); }
+    const comps = new Map();
+    for (const b of list) { const r = find(b.an); if (!comps.has(r)) comps.set(r, { nets: new Set(), br: [] }); const c = comps.get(r); c.nets.add(b.an); c.nets.add(b.bn); c.br.push(b); }
+    const out = [];
+    for (const c of comps.values()) {
+      const ids = [...c.nets], idx = new Map(ids.map((n, i) => [n, i]));
+      const pwmNet = ids.map((n) => info[n]).find((x) => x.pwm), duty = pwmNet ? pwmNet.pwm.duty : 0;
+      const ref = Math.max(0, ids.findIndex((n) => refNets.has(n)));
+      const mk = (which) => ids.map((n) => { const x = info[n], g = x.floating ? 0 : 1 / Math.max(x.rth, 1e-6), mv = which === "hi" ? x.mvHigh : which === "lo" ? x.mvLow : x.mv; return { g, i: g * mv }; });
+      const brs = c.br.filter((b) => b.an !== b.bn).map((b) => ({ ...b, a: idx.get(b.an), b: idx.get(b.bn), on: b.part.impl?.diodeOn?.get(b.id) ?? false }));
+      const solve = (which) => { const cl = brs.map((b) => ({ ...b })), r = solveNetwork(mk(which), cl, { dt, ref }); r.on = cl.map((b) => b.on); return r; };
+      const hi = solve(pwmNet ? "hi" : "dc"), lo = pwmNet ? solve("lo") : hi;
+      if (!hi.hasSrc) continue;
+      brs.forEach((b, k) => { b.on = hi.on[k]; });
+      brs.forEach((b, k) => { b.cur = pwmNet ? duty * hi.cur[k] + (1 - duty) * lo.cur[k] : hi.cur[k]; b.curHi = hi.cur[k]; b.curLo = lo.cur[k]; b.vd = pwmNet ? duty * (hi.v[b.a] - hi.v[b.b]) + (1 - duty) * (lo.v[b.a] - lo.v[b.b]) : hi.v[b.a] - hi.v[b.b]; });
+      ids.forEach((n, i) => {
+        const x = info[n], vh = hi.v[i], vl = lo.v[i];
+        x.floating = false; x.mvHigh = vh; x.mvLow = vl; x.mv = pwmNet ? duty * vh + (1 - duty) * vl : vh;
+        x.pwm = pwmNet && Math.abs(vh - vl) > 1 ? { hz: pwmNet.pwm.hz, duty } : null;
+        if (!(x.rth < Infinity)) x.rth = 10000;
+        x.nodal = true;
+      });
+      out.push(...brs);
+    }
+    // an element that is not in a solved component reports no current
+    return out;
+  }
+  /**
+   * A part with supply or ground pins runs when (1) one of its ground pins is on a net that has a source (the device GND, a battery minus, a board's own ground)
+   * and (2) every supply group is satisfied: relative to that ground, at least one power_in pin of the group is inside [min_mv, max_mv]
+   * (pins without `supply_group` are groups of one; a board with VIN and 5V pins puts both in one group). A pin above max_mv switches the part off with a hazard.
+   */
   _powerOf(netOf, info) {
-    const gnd = netOf.get("device.GND"), out = new Map(), why = new Map();
+    const out = new Map(), why = new Map();
+    const nv = (t) => { const k = netOf.get(t); return k === undefined ? { mv: 0, floating: true } : info[k]; };
     for (const p of this.parts.values()) {
       const m = p.def.manifest, supplies = m.pins.filter((x) => x.kind === "power_in"), grounds = m.pins.filter((x) => x.kind === "ground");
       if (!supplies.length && !grounds.length) { out.set(p.instance, true); continue; }
-      let on = true, reason = null;
-      if (grounds.length && !grounds.some((g) => netOf.get(`${p.instance}.${g.name}`) === gnd)) { on = false; reason = "ground is not wired to GND"; }
-      if (on) for (const s of supplies) {
-        const n = info[netOf.get(`${p.instance}.${s.name}`)], mv = n.floating ? 0 : n.mv, lo = Math.max(s.min_mv ?? 0, 1);
-        if (mv < lo) { on = false; reason = `${s.name} is ${mvTxt(mv)}, needs ${mvTxt(lo)}`; break; }
-        if (s.max_mv !== undefined && mv > s.max_mv) { on = false; reason = `supply too high: ${s.name} is ${mvTxt(mv)}, limit ${mvTxt(s.max_mv)}`; break; }
+      let on = true, reason = null, vg = 0;
+      if (grounds.length) {
+        const g = grounds.map((x) => nv(`${p.instance}.${x.name}`)).find((n) => !n.floating);
+        if (!g) { on = false; reason = "ground is not wired to GND"; } else vg = g.mv;
+      }
+      if (on) {
+        const groups = new Map();
+        for (const s of supplies) {
+          const n = nv(`${p.instance}.${s.name}`), mv = (n.floating ? 0 : n.mv) - vg, lo = Math.max(s.min_mv ?? 0, 1), key = s.supply_group ?? "\0" + s.name;
+          if (s.max_mv !== undefined && mv > s.max_mv) { on = false; reason = `supply too high: ${s.name} is ${mvTxt(mv)}, limit ${mvTxt(s.max_mv)}`; break; }
+          const g = groups.get(key) ?? { ok: false, why: null }; groups.set(key, g);
+          if (mv >= lo) g.ok = true; else g.why ??= `${s.name} is ${mvTxt(mv)}, needs ${mvTxt(lo)}`;
+        }
+        if (on) for (const g of groups.values()) if (!g.ok) { on = false; reason = g.why; break; }
       }
       out.set(p.instance, on); why.set(p.instance, reason);
     }
@@ -255,10 +337,16 @@ export class Bench {
     let power = new Map(this._power);
     for (const p of this.parts.values()) if (!power.has(p.instance)) power.set(p.instance, false);
     let res = null, why = new Map(), prev = this._prevMv;
+    const nowT = this.clock.now();
+    const commit = this._capRun && nowT - this._capT >= this.capStepUs * 0.5;
+    const dtc = this._capRun ? Math.max((nowT - this._capT) / 1e6, 1e-6) : 1e-6;
+    const lvl0 = this._lvl, owner = (t) => t.split(".")[0];
+    let lv = new Map();
     for (let pass = 0; pass < 4; pass++) {
-      res = this._pass(power, prev);
+      res = this._pass(power, prev, dtc);
+      const lvNow = this._levels(res, lvl0, nowT);
       this._net.clear();
-      for (const [t, i] of res.netOf) this._net.set(t, { ...res.info[i], level: this._lvl.get(t) ?? 0 });
+      for (const [t, i] of res.netOf) { const l = lvNow.get(t); this._net.set(t, { ...res.info[i], level: l[0], vdd: l[1], term: t }); }
       const mv = new Map();
       for (const [t, i] of res.netOf) mv.set(t, res.info[i].floating ? 0 : res.info[i].mv);
       const pw = this._powerOf(res.netOf, res.info);
@@ -266,25 +354,18 @@ export class Bench {
       let changed = false;
       for (const [k, v] of pw.power) if (power.get(k) !== v) changed = true;
       for (const [t, v] of mv) if (Math.abs((prev.get(t) ?? 0) - v) > 1) changed = true;
-      power = pw.power; prev = mv;
+      for (const [t, l] of lvNow) if (lv.get(t)?.[0] !== l[0]) changed = true;       // levels feed back into sources (a half bridge follows its inputs)
+      lv = lvNow; power = pw.power; prev = mv;
       if (!changed) break;
     }
-    // commit nets
-    this._net.clear();
+    // commit nets and levels
     const { netOf, info } = res;
-    const owner = (t) => t.split(".")[0];
     const now = this.clock.now();
     const edges = [];
-    for (const [t, i] of netOf) {
-      const n = info[i], o = owner(t);
-      let vdd = VDD_DEVICE;
-      if (o !== DEVICE) { const part = this.parts.get(o); vdd = this._partMv(part, (x) => { const k = netOf.get(x); return k === undefined ? { mv: 0, floating: true } : info[k]; }) || VDD_DEVICE; }
-      let mvNow = n.mv;
-      if (n.pwm) mvNow = ((now * n.pwm.hz) % 1e6) / 1e6 < n.pwm.duty ? n.mvHigh : n.mvLow;
-      const was = this._lvl.get(t) ?? 0, level = n.floating ? 0 : digital(mvNow, vdd, was);
-      this._lvl.set(t, level);
-      if (level !== was) edges.push({ term: t, level });
-      this._net.set(t, { ...n, level, vdd, term: t });
+    for (const [t, l] of lv) {
+      const was = lvl0.get(t) ?? 0;
+      this._lvl.set(t, l[0]);
+      if (l[0] !== was) edges.push({ term: t, level: l[0] });
     }
     this._prevMv = prev;
     // part power transitions, then outputs
@@ -292,6 +373,7 @@ export class Bench {
     for (const p of this.parts.values()) { const on = !!power.get(p.instance); if (on !== !!this._power.get(p.instance)) trans.push([p, on]); p.powerWhy = why.get(p.instance) ?? null; }
     this._power = power;
     for (const [p, on] of trans) this._applyPower(p, on);
+    this._branchResults(res.br, commit ? dtc : 0, nowT);
     this._hazards(res);
     for (const p of this.parts.values()) if (power.get(p.instance)) { try { p.impl?.evaluate?.(); } catch (e) { console.error(e); } }
     for (const e of edges) {
@@ -303,6 +385,54 @@ export class Bench {
     this._writeInputs();
     this.version++;
     this._emit("change", { version: this.version });
+  }
+  /** Digital level of every terminal (with hysteresis from lvl0) and the reader's supply: Map term -> [level, vdd mV]. */
+  _levels(res, lvl0, now) {
+    const { netOf, info } = res, out = new Map();
+    const look = (x) => { const k = netOf.get(x); return k === undefined ? { mv: 0, floating: true } : info[k]; };
+    for (const [t, i] of netOf) {
+      const n = info[i], o = t.split(".")[0];
+      let vdd = VDD_DEVICE;
+      if (o !== DEVICE) vdd = this._partMv(this.parts.get(o), look) || VDD_DEVICE;
+      let mvNow = n.mv;
+      if (n.pwm) mvNow = ((now * n.pwm.hz) % 1e6) / 1e6 < n.pwm.duty ? n.mvHigh : n.mvLow;
+      out.set(t, [n.floating ? 0 : digital(mvNow, vdd, lvl0.get(t) ?? 0, o === DEVICE ? undefined : (this.parts.get(o)?.def.manifest.vih_pct ?? 75) / 100), vdd]);
+    }
+    return out;
+  }
+  /** Hand each solved branch back to its part; step the capacitors (commit: dt in seconds) and keep the transient clock ticking while any capacitor still moves. */
+  _branchResults(br, commitDt, now) {
+    let moving = false, maxDv = 0, hasCap = false;
+    for (const p of this.parts.values()) p.impl?.clearBranches?.();                // a component that was not solved (nothing drives it) reports no current
+    for (const b of br ?? []) {
+      try { b.part.impl.onBranch?.(b.id, b, commitDt); } catch (e) { console.error(e); }
+      if (b.kind === "cap") {
+        hasCap = true;
+        if (Math.abs(b.cur) > 1e-6) moving = true;
+        if (commitDt > 0) maxDv = Math.max(maxDv, Math.abs(b.cur * commitDt / b.c));
+      }
+    }
+    if (commitDt > 0) {
+      this._capT = now;
+      if (maxDv > 40) this._capDt = Math.max(this.capStepUs, this._capDt / 2); else if (maxDv < 10) this._capDt = Math.min(this.capMaxStepUs, this._capDt * 1.5);
+    }
+    if (moving && !this._capRun) { this._capRun = true; this._capT = now; this._capDt = this.capStepUs; }
+    if (!moving && this._capRun) this._capRun = false;
+    if (!hasCap) this._capRun = false;
+    if (this._capCancel && (commitDt > 0 || !this._capRun)) { this._capCancel(); this._capCancel = null; }
+    if (this._capRun && !this._capCancel) this._capCancel = this.clock.schedule(now + this._capDt, () => { this._capCancel = null; this._touch(); });
+  }
+  /**
+   * A firmware part wrote a pin: tell the parts that count pulses (a STEP input) at once, with the pin write's own virtual time, so a 2 us pulse that
+   * would have been collapsed inside one solve still counts. Receivers are the powered parts whose watchPins() are on the same net.
+   */
+  preciseLevel(term, level, t) {
+    const id = this._netInfo(term).id;
+    if (id < 0) return;
+    for (const p of this.parts.values()) {
+      if (!this._power.get(p.instance) || !p.impl?.watchPins) continue;
+      for (const pin of p.impl.watchPins()) if (this._netInfo(`${p.instance}.${pin}`).id === id) p.impl.onLevel(pin, level, t);
+    }
   }
   _applyPower(part, on) {
     if (part.def.manifest.behaviour.type === "wasm") {
@@ -348,6 +478,7 @@ export class Bench {
       }
     }
     for (const p of this.parts.values()) if (!this._power.get(p.instance) && p.powerWhy?.startsWith("supply too high")) out.push({ class: "overvoltage", terms: [p.instance], net: -1, text: `${p.instance}: ${p.powerWhy}` });
+    for (const p of this.parts.values()) if (this._power.get(p.instance) && p.impl?.hazards) { try { out.push(...p.impl.hazards()); } catch (e) { console.error(e); } }
     const budget = { V5: 0, V33: 0 };
     for (const p of this.parts.values()) {
       if (!this._power.get(p.instance)) continue;
@@ -364,6 +495,8 @@ export class Bench {
 
   // ---------------------------------------------------------------- headless use (tests, `dotbench part test`): no firmware, the caller plays the device
   /** Switch the device's rails without firmware. */
+  /** The Dot on USB: the 5 V rail is there whatever the firmware does with the boost bit (an app on USB never switches it: kode_pin_power_5v is refused). Persists across firmware events. */
+  setUsbPower(on) { this.usbPower = !!on; if (on) this.rails.V5 = true; this._touch(); }
   setRails(r) { Object.assign(this.rails, r); this._touch(); }
   /** Set what "the device" does with one J3 position (index 0..13): {mode: "z"|"in"|"out"|"pwm", pull, level, hz, duty (q16)}. */
   setDevicePin(i, st) { this.devicePins[i] = { mode: "z", pull: "none", level: 0, hz: 0, duty: 0, ...st }; this._touch(); }
@@ -413,7 +546,7 @@ export class Bench {
       do {
         this._serviceAgain = false;
         this.devicePins = link.readPins();
-        const v5 = link.v5Boost(); if (v5 !== this.rails.V5) this.rails.V5 = v5;
+        const v5 = this.usbPower || link.v5Boost(); if (v5 !== this.rails.V5) this.rails.V5 = v5;
         const pl = !!link.v33Pulse?.(); if (pl && !this._lastPulse) this.rails.V33 = true; this._lastPulse = pl;     // an edge: a later hosted io 5 low overrides it
         this._touch();
         let req;
@@ -503,6 +636,7 @@ export class Bench {
       }
     }
     if (!sel.length) {
+      if (n(master.mosi) === n(master.miso)) return { result: R.OK, r: Uint8Array.from(w) };       // MOSI wired to MISO: the bus loops back
       const miso = this._netInfo(master.miso), pulled = miso.srcs.some((s) => s.kind === "pull" && s.mv > VDD_DEVICE / 2);
       return { result: R.OK, r: new Uint8Array(w.length).fill(pulled ? 0xff : 0) };
     }
@@ -550,6 +684,67 @@ export class Bench {
     this._touch(); await this._startWasm(part);
   }
 
+  // ---------------------------------------------------------------- modules that plug onto the Dot's J3 header
+  /** The terminal pairs a mounted module adds: every module pin that the manifest's `mount` names meets a header position (or a rail) at once. */
+  _mountPairs(p) {
+    if (!p.mount) return [];
+    const mt = p.def.manifest.mount, turned = p.mount.orientation === "turned", out = [];
+    for (const e of mt.pins ?? []) {
+      const pos = J3_GPIO.indexOf(e.gpio) + 1; if (pos < 1) continue;
+      out.push([`${p.instance}.${e.pin}`, `${DEVICE}.EXP${turned ? 15 - pos : pos}`]);
+    }
+    for (const e of mt.rails ?? []) out.push([`${p.instance}.${e.pin}`, `${DEVICE}.${e.rail}`]);
+    return out;
+  }
+  /**
+   * Plug a module (a part whose manifest has `mount`) onto the header: all its terminals meet the Dot's in one action. Only one module at a time (as on the
+   * hardware). orientation "upright" or "turned"; turned maps position p to 15 - p, rails stay. Mounting an already mounted module changes its orientation.
+   */
+  mountPart(instance, orientation = "upright") {
+    const p = this._part(instance), mt = p.def.manifest.mount;
+    if (!mt) throw new Error(`${p.def.manifest.id} does not mount on the header (no mount table in its manifest)`);
+    if (!(mt.orientations ?? ["upright"]).includes(orientation)) throw new Error(`${p.def.manifest.id} cannot be mounted ${orientation} (${(mt.orientations ?? ["upright"]).join(", ")})`);
+    for (const o of this.parts.values()) if (o !== p && o.mount) throw new Error(`a module is already mounted (${o.instance}); unmount it first`);
+    p.mount = { orientation }; this._touch(); this._emit("part", { type: "mount", instance, orientation });
+    return orientation;
+  }
+  unmountPart(instance) { const p = this._part(instance); if (!p.mount) return false; p.mount = null; this._touch(); this._emit("part", { type: "mount", instance, orientation: null }); return true; }
+  /** The mounted module, if any: {instance, orientation}. */
+  mounted() { for (const p of this.parts.values()) if (p.mount) return { instance: p.instance, orientation: p.mount.orientation }; return null; }
+
+  // ---------------------------------------------------------------- code parts (a board carries its own sketch)
+  /** What a wasm part runs: {source, wasm, sha256, name, custom}. The package's own sketch and binary until setPartCode replaces them. */
+  getPartCode(instance) {
+    const p = this._part(instance), b = p.def.manifest.behaviour;
+    if (b.type !== "wasm") throw new Error(`${instance} is not a code part`);
+    if (p.code) return { source: p.code.source, wasm: p.code.wasm, sha256: p.code.sha256, name: p.code.name, custom: true };
+    const f = (b.sources ?? []).find((x) => x.endsWith(".ino")) ?? (b.sources ?? [])[0];
+    return { source: f && p.def.files?.has(f) ? new TextDecoder().decode(p.def.files.get(f)) : "", wasm: p.def.wasm, sha256: b.wasm_sha256 ?? null, name: p.def.manifest.id, custom: false };
+  }
+  /**
+   * "Compile and upload": give ONE board new source text and a new binary (from `dotbench part build`, or the in-browser compiler), then restart just that
+   * part. The binary must pass the ABI 1 allow-list; anything else throws (nothing is accepted silently). The part's EEPROM is kept, like flash.
+   * @param {string} instance @param {{source?: string, wasm: Uint8Array, name?: string}} code
+   */
+  async setPartCode(instance, code) {
+    const p = this._part(instance);
+    if (p.def.manifest.behaviour.type !== "wasm") throw new Error(`${instance} is not a code part`);
+    const wasm = code?.wasm instanceof Uint8Array ? code.wasm : code?.wasm instanceof ArrayBuffer ? new Uint8Array(code.wasm) : null;
+    if (!wasm?.length) throw new Error("setPartCode needs the compiled wasm (Uint8Array)");
+    if (wasm.length > 4 << 20) throw new Error("the binary is over 4 MiB");
+    const mod = await WebAssembly.compile(wasm), bad = checkWasmModule(mod);
+    if (bad.length) throw new Error(`the binary is not an ABI 1 part: ${bad[0]}`);
+    const sha256 = await sha256Hex(wasm);
+    p.code = { source: String(code.source ?? ""), wasm: wasm.slice(), sha256, name: code.name ?? "sketch", _module: mod };
+    this._touch(); this._emit("part", { type: "code", instance, sha256 });
+    if (this._power.get(instance)) await this.restartPart(instance);
+    return { sha256, bytes: wasm.length };
+  }
+  /** Back to the sketch and binary that came in the package. */
+  async clearPartCode(instance) { const p = this._part(instance); p.code = null; this._emit("part", { type: "code", instance, sha256: null }); if (this._power.get(instance)) await this.restartPart(instance); }
+  /** The serial monitor of one board: the last lines it printed (a "console" event delivers each new line as it comes). */
+  serialLog(instance) { const p = this._part(instance); return [...p.console, ...(p.consoleTail ? [p.consoleTail] : [])]; }
+
   // ---------------------------------------------------------------- time
   /** Stepped clock: advance virtual time by `us` (fires timers, such as contact bounce, in order; wasm parts run until they park). */
   async advance(us) { await this.clock.advance(us); this._flush(); }
@@ -593,13 +788,16 @@ export class Bench {
       device: { pins: this.devicePins.map((d, i) => ({ ...d, term: posTerm(i), ...pinState(posTerm(i)) })) },
       parts: [...this.parts.values()].map((p) => ({
         instance: p.instance, id: p.id, label: p.label, pos: { ...p.pos }, fields: { ...p.fields }, outputs: { ...p.outputs }, kind: p.def.manifest.behaviour.type,
-        power: { on: !!this._power.get(p.instance), reason: p.powerWhy ?? null }, visuals: this._visuals(p), console: p.console.slice(-50), busy: !!p.impl?.busy, crashed: !!p.impl?.crashed,
-        pins: Object.fromEntries(p.def.manifest.pins.filter((x) => x.kind !== "nc").map((x) => [x.name, pinState(`${p.instance}.${x.name}`)])),
+        power: { on: !!this._power.get(p.instance), reason: p.powerWhy ?? null }, mount: p.mount ? { ...p.mount } : null, visuals: this._visuals(p), console: p.console.slice(-50), busy: !!p.impl?.busy, crashed: !!p.impl?.crashed,
+        pins: Object.fromEntries(p.def.manifest.pins.filter((x) => x.kind !== "nc" && !this._grouped(p).has(x.name)).map((x) => [x.name, pinState(`${p.instance}.${x.name}`)])),
+        groups: (p.def.manifest.groups ?? []).map((g, i) => ({ index: i, pin: g.pins[0], ...pinState(`${p.instance}.${g.pins[0]}`) })),
+        failed: p.impl?.failed ? [...p.impl.failed.values()].map((f) => f.text) : [],
       })),
       wires: [...this.wires.values()].map((w) => ({ ...w, short: bad.has(this._netInfo(w.from).id) })),
       hazards: this.hazards.map((h) => ({ ...h })), events: this.events.slice(-20).map(({ key, ...e }) => e),
     };
   }
+  _grouped(p) { if (!p._grouped) p._grouped = new Set((p.def.manifest.groups ?? []).flatMap((g) => g.pins)); return p._grouped; }
   _visuals(p) {
     const out = {};
     for (const v of p.def.manifest.visuals ?? []) {
@@ -619,12 +817,14 @@ export class Bench {
     return {
       format: "dotbench-layout", version: 1, name,
       device: { rails: { V33: "app", V5: "app" }, header: "kode-dot-j3" },
-      parts: [...this.parts.values()].map((p) => ({ instance: p.instance, part: { id: p.id, version: p.def.manifest.version, sha256: p.def.sha256 }, label: p.label, pos: { ...p.pos }, fields: { ...p.fields } })),
+      parts: [...this.parts.values()].map((p) => ({ instance: p.instance, part: { id: p.id, version: p.def.manifest.version, sha256: p.def.sha256 }, label: p.label, pos: { ...p.pos }, fields: { ...p.fields },
+        ...(p.mount ? { mount: { ...p.mount } } : {}), ...(p.code ? { code: { source: p.code.source, wasm_b64: b64(p.code.wasm), sha256: p.code.sha256, name: p.code.name } } : {}), ...(p.storage ? { storage_b64: b64(p.storage) } : {}) })),
       wires: [...this.wires.values()].map((w) => ({ id: w.id, from: w.from, to: w.to, ...(w.color ? { color: w.color } : {}) })),
     };
   }
   /** Replace the bench by a layout. Returns {missing: [{instance, id, version}], dropped: [string], notes: [string]}. Parts whose definition is not loaded are listed in `missing` and skipped, with their wires. */
-  restore(layout) {
+  restore(layout) { return this.batch(() => this._restore(layout)); }
+  _restore(layout) {
     if (!layout || layout.format !== "dotbench-layout") throw new Error("not a dotbench layout");
     if (layout.version !== 1) throw new Error(`layout version ${layout.version} is not supported`);
     for (const i of [...this.parts.keys()]) this.removePart(i);
@@ -636,6 +836,10 @@ export class Bench {
       if (lp.part.version && lp.part.version !== def.manifest.version) notes.push(`${lp.instance}: layout was made with ${lp.part.id} ${lp.part.version}, ${def.manifest.version} is loaded`);
       const fields = {}; for (const [k, v] of Object.entries(lp.fields ?? {})) { try { this._coerce((def.manifest.fields ?? []).find((f) => f.name === k), v); fields[k] = v; } catch { notes.push(`${lp.instance}: field ${k} dropped`); } }
       this.addPart(lp.part.id, { instance: lp.instance, label: lp.label, pos: lp.pos, fields });
+      const np = this.parts.get(lp.instance);
+      if (lp.mount && def.manifest.mount) { try { this.mountPart(lp.instance, lp.mount.orientation); } catch (e) { notes.push(`${lp.instance}: ${e.message}`); } }
+      if (lp.code?.wasm_b64 && def.manifest.behaviour.type === "wasm") np.code = { source: String(lp.code.source ?? ""), wasm: unb64(lp.code.wasm_b64), sha256: lp.code.sha256 ?? null, name: lp.code.name ?? "sketch" };     // checked against the ABI 1 allow-list when the part starts
+      if (lp.storage_b64 && def.manifest.behaviour.type === "wasm") np.storage = unb64(lp.storage_b64);
     }
     for (const w of layout.wires ?? []) {
       try { this.connect(w.from, w.to, { id: w.id, color: w.color }); } catch (e) { dropped.push(`${w.from} - ${w.to}: ${e.message}`); }
@@ -649,3 +853,6 @@ export class Bench {
     this.parts.clear(); this.wires.clear(); this.clock.dispose();
   }
 }
+
+const b64 = (u8) => { if (typeof Buffer !== "undefined") return Buffer.from(u8).toString("base64"); let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = (t) => { if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(t, "base64")); const s = atob(t), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };

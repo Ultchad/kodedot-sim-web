@@ -13,9 +13,13 @@ step() { echo "== $1"; shift; "$@" || rc=1; }
 step "schema copies" node "$root/tools/dblib/part/gen-schema.mjs" --check
 step "built-in library: build and run every part's scenarios" node "$root/parts/build-library.mjs" --test
 step "bench unit tests" node "$here/bench.test.mjs"
+step "geometry of every part (picture = mm x scale, grid, inside the body, contact heights)" node "$here/geometry.test.mjs"
+step "circuit tests (nodal solve, capacitors, hazards)" node "$here/circuit.test.mjs"
+step "boards and Arduino libraries (compiles sketches for each board)" node "$here/boards.test.mjs"
+step "Kode modules (mount, Maker, Robotics, a Dot app)" node "$here/modules.test.mjs"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 step "starter: new, build, test" bash -c "cd '$tmp' && '$root/tools/dotbench' part new '$tmp/demo' >/dev/null && '$root/tools/dotbench' part build '$tmp/demo' && '$root/tools/dotbench' part test '$tmp/demo'"
-for a in parts_io parts_i2c parts_uart; do [ -f "$DOTBENCH_BUILD/apps/$a/$a.dotbench" ] || "$root/tools/dotbench" build "$here/apps/$a" | tail -1; done
+for a in parts_io parts_i2c parts_uart parts_robotics; do [ -f "$DOTBENCH_BUILD/apps/$a/$a.dotbench" ] || "$root/tools/dotbench" build "$here/apps/$a" | tail -1; done
 for a in expansion_io exp_bus; do [ -f "$DOTBENCH_BUILD/apps/$a/$a.dotbench" ] || "$root/tools/dotbench" build "${DOTBENCH_SDK:-/home/claude/src/kode-sdk}/examples/$a" | tail -1; done
 step "end to end with real firmware" node --expose-gc "$here/e2e_apps.test.mjs"
 if [ "${1:-}" = "--browser" ]; then step "headless Chrome" node "$root/tests/browser/parts.test.mjs"; fi

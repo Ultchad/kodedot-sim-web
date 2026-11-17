@@ -1,0 +1,358 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.kode-robotics",
+  "name": {
+    "en": "Kode Robotics module",
+    "pt-BR": "Módulo Kode Robotics",
+    "es": "Módulo Kode Robotics"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "The official Robotics module (KDROB001): AT8833CQ dual H-bridge for two brushed motors (MOTA_1/2, MOTB_1/2, also the stepper header STP_1..4), a servo output (J402: GND, 5V, SIG on GPIO11), an I2C port (J403, GPIO8 SCL and GPIO9 SDA with 2.2 kohm pull-ups to 3.3 V) and a sensor header (J404, GPIO15 to 18). It mounts on J3, upright or turned. Upright map: AIN1 GPIO20, AIN2 GPIO21, BIN1 GPIO13, BIN2 GPIO14, nSLEEP GPIO19 (the driver is asleep, outputs high impedance, until it is high), nFAULT GPIO12. The motors and servo run from the Dot's 5 V rail, so it must be on. Drive IN1 or IN2 with PWM and hold the other level, like the real module. ASSUMED (not published, marked in the mount table): the AT8833CQ is treated as a DRV8833 (AIN1 drives AOUT1 and so on, a 0.3 V drop and 0.4 ohm per leg), the order of the four pins of the stepper header, the rail of nFAULT's 10 kohm pull-up (3.3 V). NOT modelled: the 0.4 A current chop and the 2.2 to 3 A trip (nFAULT never asserts), servo timing limits, the module's own identification lines. Size and terminal positions are estimates from pictures (header pitch 2.54 mm is exact).",
+    "pt-BR": "O módulo Robotics oficial (KDROB001): ponte H dupla AT8833CQ para dois motores DC (MOTA_1/2, MOTB_1/2, também o conector de passo STP_1..4), uma saída de servo (J402: GND, 5V, SIG no GPIO11), uma porta I2C (J403, GPIO8 SCL e GPIO9 SDA com pull-ups de 2,2 kohm a 3,3 V) e um conector de sensores (J404, GPIO15 a 18). Encaixa no J3, normal ou virado. Mapa normal: AIN1 GPIO20, AIN2 GPIO21, BIN1 GPIO13, BIN2 GPIO14, nSLEEP GPIO19 (o driver dorme, saídas em alta impedância, até ficar alto), nFAULT GPIO12. Os motores e o servo usam o trilho de 5 V do Dot, que precisa estar ligado. Acione IN1 ou IN2 com PWM e mantenha o outro nível, como o módulo real. ASSUMIDO (não publicado, marcado na tabela de montagem): o AT8833CQ é tratado como um DRV8833 (AIN1 aciona AOUT1 e assim por diante, queda de 0,3 V e 0,4 ohm por perna), a ordem dos quatro pinos do conector de passo, o trilho do pull-up de 10 kohm do nFAULT (3,3 V). NÃO modelado: o limite de 0,4 A e o desarme de 2,2 a 3 A (nFAULT nunca é acionado), limites de tempo do servo, as linhas de identificação do módulo. Tamanho e posições dos terminais são estimativas a partir de fotos (o passo de 2,54 mm do cabeçalho é exato).",
+    "es": "El módulo Robotics oficial (KDROB001): puente H doble AT8833CQ para dos motores DC (MOTA_1/2, MOTB_1/2, también el conector paso a paso STP_1..4), una salida de servo (J402: GND, 5V, SIG en GPIO11), un puerto I2C (J403, GPIO8 SCL y GPIO9 SDA con pull-ups de 2,2 kohm a 3,3 V) y un conector de sensores (J404, GPIO15 a 18). Encaja en el J3, normal o girado. Mapa normal: AIN1 GPIO20, AIN2 GPIO21, BIN1 GPIO13, BIN2 GPIO14, nSLEEP GPIO19 (el driver duerme, salidas en alta impedancia, hasta que esté alto), nFAULT GPIO12. Los motores y el servo usan el riel de 5 V del Dot, que debe estar encendido. Maneja IN1 o IN2 con PWM y mantén el otro nivel, como el módulo real. ASUMIDO (no publicado, marcado en la tabla de montaje): el AT8833CQ se trata como un DRV8833 (AIN1 maneja AOUT1 y así sucesivamente, caída de 0,3 V y 0,4 ohm por pierna), el orden de los cuatro pines del conector paso a paso, el riel del pull-up de 10 kohm de nFAULT (3,3 V). NO modelado: el límite de 0,4 A y el disparo de 2,2 a 3 A (nFAULT nunca se activa), límites de tiempo del servo, las líneas de identificación del módulo. El tamaño y las posiciones de los terminales son estimaciones a partir de fotos (el paso de 2,54 mm del cabezal es exacto)."
+  },
+  "category": "kode-module",
+  "tags": [
+    "kode",
+    "module",
+    "robotics",
+    "motor",
+    "servo",
+    "stepper",
+    "h-bridge",
+    "at8833"
+  ],
+  "keywords": {
+    "en": [
+      "robotics",
+      "kode",
+      "module",
+      "motor driver",
+      "h-bridge",
+      "servo",
+      "stepper",
+      "at8833",
+      "i2c"
+    ],
+    "pt-BR": [
+      "robótica",
+      "kode",
+      "módulo",
+      "driver de motor",
+      "ponte h",
+      "servo",
+      "passo",
+      "at8833",
+      "i2c"
+    ],
+    "es": [
+      "robótica",
+      "kode",
+      "módulo",
+      "driver de motor",
+      "puente h",
+      "servo",
+      "paso a paso",
+      "at8833",
+      "i2c"
+    ]
+  },
+  "body": {
+    "w_mm": 58,
+    "d_mm": 60,
+    "h_mm": 14,
+    "estimate": true
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 464,
+    "height": 480
+  },
+  "logic_mv": 3000,
+  "mount": {
+    "via": "direct",
+    "orientations": [
+      "upright",
+      "turned"
+    ],
+    "pins": [
+      {
+        "pin": "SCL",
+        "gpio": 8,
+        "source": "documented"
+      },
+      {
+        "pin": "SDA",
+        "gpio": 9,
+        "source": "documented"
+      },
+      {
+        "pin": "GPIO10",
+        "gpio": 10,
+        "source": "documented"
+      },
+      {
+        "pin": "SERVO",
+        "gpio": 11,
+        "source": "documented"
+      },
+      {
+        "pin": "NFAULT",
+        "gpio": 12,
+        "source": "documented"
+      },
+      {
+        "pin": "BIN1",
+        "gpio": 13,
+        "source": "documented"
+      },
+      {
+        "pin": "BIN2",
+        "gpio": 14,
+        "source": "documented"
+      },
+      {
+        "pin": "AIN2",
+        "gpio": 21,
+        "source": "documented"
+      },
+      {
+        "pin": "NSLEEP",
+        "gpio": 19,
+        "source": "documented"
+      },
+      {
+        "pin": "AIN1",
+        "gpio": 20,
+        "source": "documented"
+      },
+      {
+        "pin": "S17",
+        "gpio": 17,
+        "source": "documented"
+      },
+      {
+        "pin": "S18",
+        "gpio": 18,
+        "source": "documented"
+      },
+      {
+        "pin": "S15",
+        "gpio": 15,
+        "source": "documented"
+      },
+      {
+        "pin": "S16",
+        "gpio": 16,
+        "source": "documented"
+      }
+    ],
+    "rails": [
+      {
+        "pin": "V5",
+        "rail": "V5"
+      },
+      {
+        "pin": "V33",
+        "rail": "V33"
+      },
+      {
+        "pin": "GND",
+        "rail": "GND"
+      },
+      {
+        "pin": "GND_2",
+        "rail": "GND"
+      },
+      {
+        "pin": "V33_2",
+        "rail": "V33"
+      },
+      {
+        "pin": "V5_2",
+        "rail": "V5"
+      }
+    ],
+    "connector": {
+      "seat_mm": {
+        "x": 29,
+        "y": 52,
+        "z": 4.14
+      },
+      "pin_dir": "+y",
+      "pin_length_mm": 8,
+      "odd_row": "low_z",
+      "source": "assumed"
+    },
+    "placement": {
+      "anchor_dot_mm": {
+        "x": 0,
+        "y": 38.5,
+        "z": 0
+      },
+      "upright": {
+        "x": "-X",
+        "y": "-Y",
+        "z": "-Z"
+      },
+      "turned": {
+        "x": "+X",
+        "y": "-Y",
+        "z": "+Z"
+      },
+      "source": "assumed"
+    }
+  },
+  "pins": [
+    {"name":"AIN1","kind":"io","pos":{"x":201.5,"y":448},"mm":{"x":25.19,"y":56,"z":5.41},"face":"bottom","label":{"en":"AIN1"},"abs_max_mv":3600,"pulldown_ohms":100000,"ref":"J401.8"},
+    {"name":"AIN2","kind":"io","pos":{"x":221.8,"y":448},"mm":{"x":27.73,"y":56,"z":5.41},"face":"bottom","label":{"en":"AIN2"},"abs_max_mv":3600,"pulldown_ohms":100000,"ref":"J401.10"},
+    {"name":"NSLEEP","kind":"io","pos":{"x":201.5,"y":448},"mm":{"x":25.19,"y":56,"z":2.87},"face":"bottom","label":{"en":"NSLEEP"},"abs_max_mv":3600,"ref":"J401.7"},
+    {"name":"MOTA_1","kind":"io","pos":{"x":331.2,"y":40},"mm":{"x":41.4,"y":5,"z":10.1},"face":"top","label":{"en":"MOTA1"},"abs_max_mv":7000},
+    {"name":"MOTA_2","kind":"io","pos":{"x":371.8,"y":40},"mm":{"x":46.48,"y":5,"z":10.1},"face":"top","label":{"en":"MOTA2"},"abs_max_mv":7000},
+    {"name":"STP_2","kind":"io","pos":{"x":221.8,"y":44},"mm":{"x":27.73,"y":5.5,"z":10.1},"face":"top","label":{"en":"STP_2"},"abs_max_mv":7000},
+    {"name":"V5","kind":"power_in","pos":{"x":323.4,"y":448},"mm":{"x":40.43,"y":56,"z":2.87},"face":"bottom","label":{"en":"V5"},"min_mv":4500,"max_mv":5500,"typ_ma":100,"ref":"J401.19"},
+    {"name":"V33","kind":"io","pos":{"x":323.4,"y":448},"mm":{"x":40.43,"y":56,"z":5.41},"face":"bottom","label":{"en":"V33"},"abs_max_mv":3600,"ref":"J401.20"},
+    {"name":"SCL","kind":"io","pos":{"x":303.1,"y":448},"mm":{"x":37.89,"y":56,"z":2.87},"face":"bottom","label":{"en":"SCL"},"abs_max_mv":3600,"pullup_ohms":2200,"pull_rail":"V33","ref":"J401.17"},
+    {"name":"SDA","kind":"io","pos":{"x":303.1,"y":448},"mm":{"x":37.89,"y":56,"z":5.41},"face":"bottom","label":{"en":"SDA"},"abs_max_mv":3600,"pullup_ohms":2200,"pull_rail":"V33","ref":"J401.18"},
+    {"name":"GPIO10","kind":"io","pos":{"x":282.8,"y":448},"mm":{"x":35.35,"y":56,"z":2.87},"face":"bottom","label":{"en":"GPIO10"},"abs_max_mv":3600,"ref":"J401.15"},
+    {"name":"SERVO","kind":"io","pos":{"x":282.8,"y":448},"mm":{"x":35.35,"y":56,"z":5.41},"face":"bottom","label":{"en":"SERVO"},"abs_max_mv":3600,"ref":"J401.16"},
+    {"name":"NFAULT","kind":"io","pos":{"x":262.5,"y":448},"mm":{"x":32.81,"y":56,"z":2.87},"face":"bottom","label":{"en":"NFAULT"},"abs_max_mv":3600,"pullup_ohms":10000,"pull_rail":"V33","ref":"J401.13"},
+    {"name":"BIN1","kind":"io","pos":{"x":262.5,"y":448},"mm":{"x":32.81,"y":56,"z":5.41},"face":"bottom","label":{"en":"BIN1"},"abs_max_mv":3600,"pulldown_ohms":100000,"ref":"J401.14"},
+    {"name":"BIN2","kind":"io","pos":{"x":242.2,"y":448},"mm":{"x":30.27,"y":56,"z":2.87},"face":"bottom","label":{"en":"BIN2"},"abs_max_mv":3600,"pulldown_ohms":100000,"ref":"J401.11"},
+    {"name":"GND","kind":"ground","pos":{"x":242.2,"y":448},"mm":{"x":30.27,"y":56,"z":5.41},"face":"bottom","label":{"en":"GND"},"ref":"J401.12"},
+    {"name":"GND_2","kind":"ground","pos":{"x":221.8,"y":448},"mm":{"x":27.73,"y":56,"z":2.87},"face":"bottom","label":{"en":"GND_2"},"ref":"J401.9"},
+    {"name":"S17","kind":"io","pos":{"x":181.2,"y":448},"mm":{"x":22.65,"y":56,"z":2.87},"face":"bottom","label":{"en":"S17"},"abs_max_mv":3600,"ref":"J401.5"},
+    {"name":"S18","kind":"io","pos":{"x":181.2,"y":448},"mm":{"x":22.65,"y":56,"z":5.41},"face":"bottom","label":{"en":"S18"},"abs_max_mv":3600,"ref":"J401.6"},
+    {"name":"S15","kind":"io","pos":{"x":160.9,"y":448},"mm":{"x":20.11,"y":56,"z":2.87},"face":"bottom","label":{"en":"S15"},"abs_max_mv":3600,"ref":"J401.3"},
+    {"name":"S16","kind":"io","pos":{"x":160.9,"y":448},"mm":{"x":20.11,"y":56,"z":5.41},"face":"bottom","label":{"en":"S16"},"abs_max_mv":3600,"ref":"J401.4"},
+    {"name":"V33_2","kind":"io","pos":{"x":140.6,"y":448},"mm":{"x":17.57,"y":56,"z":2.87},"face":"bottom","label":{"en":"V33_2"},"abs_max_mv":3600,"ref":"J401.1"},
+    {"name":"V5_2","kind":"io","pos":{"x":140.6,"y":448},"mm":{"x":17.57,"y":56,"z":5.41},"face":"bottom","label":{"en":"V5_2"},"abs_max_mv":60000,"ref":"J401.2"},
+    {"name":"MOTB_1","kind":"io","pos":{"x":92,"y":40},"mm":{"x":11.5,"y":5,"z":10.1},"face":"top","label":{"en":"MOTB1"},"abs_max_mv":7000},
+    {"name":"MOTB_2","kind":"io","pos":{"x":132.6,"y":40},"mm":{"x":16.58,"y":5,"z":10.1},"face":"top","label":{"en":"MOTB2"},"abs_max_mv":7000},
+    {"name":"STP_1","kind":"io","pos":{"x":201.5,"y":44},"mm":{"x":25.19,"y":5.5,"z":10.1},"face":"top","label":{"en":"STP_1"},"abs_max_mv":7000},
+    {"name":"STP_3","kind":"io","pos":{"x":242.2,"y":44},"mm":{"x":30.27,"y":5.5,"z":10.1},"face":"top","label":{"en":"STP_3"},"abs_max_mv":7000},
+    {"name":"STP_4","kind":"io","pos":{"x":262.5,"y":44},"mm":{"x":32.81,"y":5.5,"z":10.1},"face":"top","label":{"en":"STP_4"},"abs_max_mv":7000},
+    {"name":"J402_GND","kind":"io","pos":{"x":28,"y":104},"mm":{"x":3.5,"y":13,"z":10.1},"face":"top","label":{"en":"J402_GND"},"abs_max_mv":60000},
+    {"name":"J402_V5","kind":"io","pos":{"x":28,"y":124.3},"mm":{"x":3.5,"y":15.54,"z":10.1},"face":"top","label":{"en":"J402_V5"},"abs_max_mv":7000},
+    {"name":"J402_SIG","kind":"io","pos":{"x":28,"y":144.6},"mm":{"x":3.5,"y":18.08,"z":10.1},"face":"top","label":{"en":"J402_SIG"},"abs_max_mv":3600},
+    {"name":"J403_GND","kind":"io","pos":{"x":28,"y":165},"mm":{"x":3.5,"y":20.62,"z":10.1},"face":"top","label":{"en":"J403_GND"},"abs_max_mv":60000},
+    {"name":"J403_GPIO10","kind":"io","pos":{"x":28,"y":185.3},"mm":{"x":3.5,"y":23.16,"z":10.1},"face":"top","label":{"en":"J403_GPIO10"},"abs_max_mv":3600},
+    {"name":"J403_SDA","kind":"io","pos":{"x":28,"y":205.6},"mm":{"x":3.5,"y":25.7,"z":10.1},"face":"top","label":{"en":"J403_SDA"},"abs_max_mv":3600},
+    {"name":"J403_SCL","kind":"io","pos":{"x":28,"y":225.9},"mm":{"x":3.5,"y":28.24,"z":10.1},"face":"top","label":{"en":"J403_SCL"},"abs_max_mv":3600},
+    {"name":"J403_V33","kind":"io","pos":{"x":28,"y":246.2},"mm":{"x":3.5,"y":30.78,"z":10.1},"face":"top","label":{"en":"J403_V33"},"abs_max_mv":3600},
+    {"name":"J404_GND","kind":"io","pos":{"x":436,"y":160},"mm":{"x":54.5,"y":20,"z":10.1},"face":"top","label":{"en":"J404_GND"},"abs_max_mv":60000},
+    {"name":"J404_18","kind":"io","pos":{"x":436,"y":180.3},"mm":{"x":54.5,"y":22.54,"z":10.1},"face":"top","label":{"en":"J404_18"},"abs_max_mv":3600},
+    {"name":"J404_17","kind":"io","pos":{"x":436,"y":200.6},"mm":{"x":54.5,"y":25.08,"z":10.1},"face":"top","label":{"en":"J404_17"},"abs_max_mv":3600},
+    {"name":"J404_16","kind":"io","pos":{"x":436,"y":221},"mm":{"x":54.5,"y":27.62,"z":10.1},"face":"top","label":{"en":"J404_16"},"abs_max_mv":3600},
+    {"name":"J404_15","kind":"io","pos":{"x":436,"y":241.3},"mm":{"x":54.5,"y":30.16,"z":10.1},"face":"top","label":{"en":"J404_15"},"abs_max_mv":3600},
+    {"name":"J404_V33","kind":"io","pos":{"x":436,"y":261.6},"mm":{"x":54.5,"y":32.7,"z":10.1},"face":"top","label":{"en":"J404_V33"},"abs_max_mv":3600}
+  ],
+  "groups": [
+    {"pins":["GND","GND_2","J402_GND","J403_GND","J404_GND"]},
+    {"pins":["V5","V5_2","J402_V5"]},
+    {"pins":["V33","V33_2","J403_V33","J404_V33"]},
+    {"pins":["SERVO","J402_SIG"]},
+    {"pins":["SDA","J403_SDA"]},
+    {"pins":["SCL","J403_SCL"]},
+    {"pins":["GPIO10","J403_GPIO10"]},
+    {"pins":["S15","J404_15"]},
+    {"pins":["S16","J404_16"]},
+    {"pins":["S17","J404_17"]},
+    {"pins":["S18","J404_18"]},
+    {"pins":["STP_1","MOTA_1"]},
+    {"pins":["STP_2","MOTA_2"]},
+    {"pins":["STP_3","MOTB_1"]},
+    {"pins":["STP_4","MOTB_2"]}
+  ],
+  "outputs": [
+    {
+      "name": "aout1",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "AOUT1"
+      }
+    },
+    {
+      "name": "aout2",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "AOUT2"
+      }
+    },
+    {
+      "name": "bout1",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "BOUT1"
+      }
+    },
+    {
+      "name": "bout2",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "label": {
+        "en": "BOUT2"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "half_bridge",
+        "in": "AIN1",
+        "out": "MOTA_1",
+        "vs": "V5",
+        "en": "NSLEEP",
+        "drop_mv": 300,
+        "ohms": 0.4,
+        "output": "aout1"
+      },
+      {
+        "type": "half_bridge",
+        "in": "AIN2",
+        "out": "MOTA_2",
+        "vs": "V5",
+        "en": "NSLEEP",
+        "drop_mv": 300,
+        "ohms": 0.4,
+        "output": "aout2"
+      },
+      {
+        "type": "half_bridge",
+        "in": "BIN1",
+        "out": "MOTB_1",
+        "vs": "V5",
+        "en": "NSLEEP",
+        "drop_mv": 300,
+        "ohms": 0.4,
+        "output": "bout1"
+      },
+      {
+        "type": "half_bridge",
+        "in": "BIN2",
+        "out": "MOTB_2",
+        "vs": "V5",
+        "en": "NSLEEP",
+        "drop_mv": 300,
+        "ohms": 0.4,
+        "output": "bout2"
+      }
+    ]
+  }
+}

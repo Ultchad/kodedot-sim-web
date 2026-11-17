@@ -8,7 +8,7 @@
 class TwoWire : public HardwareI2C {
 public:
   explicit TwoWire(uint8_t port) : port_(port) {}
-  bool begin(int sda = -1, int scl = -1, uint32_t frequency = 0);
+  bool begin(int sda, int scl, uint32_t frequency = 0);
   bool begin(uint8_t slaveAddr, int sda, int scl, uint32_t frequency);
   void begin() override { begin(-1, -1, 0); }
   void begin(uint8_t address) override { begin(address, -1, -1, 0); }

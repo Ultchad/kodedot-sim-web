@@ -6,6 +6,8 @@
 #include "api/HardwareSerial.h"
 #include "api/HardwareI2C.h"
 #include "api/HardwareSPI.h"
+#include "api/itoa.h"
+#include "api/deprecated-avr-comp/avr/dtostrf.h"
 #undef SPIClass
 #include <stdio.h>
 #include <stdarg.h>
@@ -13,9 +15,6 @@
 
 using namespace arduino;
 
-#ifndef ESP32
-#define ESP32 1
-#endif
 #define IRAM_ATTR
 #define ICACHE_RAM_ATTR
 #define DRAM_ATTR
@@ -24,26 +23,37 @@ using namespace arduino;
 #define PROGMEM
 #endif
 typedef bool boolean;
+#ifndef _BV
+#define _BV(b) (1UL << (b))
+#endif
+#ifndef PSTR
+#define PSTR(s) (s)
+#endif
 
-// --- ESP32 Arduino extras (first-version scope: see docs/component-api.md) ---
+// --- analog, as every board's core has them: resolution comes from the board's variant (pins_arduino.h) ---
 void analogReadResolution(uint8_t bits);
 void analogWriteResolution(uint8_t bits);
-void analogSetAttenuation(int att);
 void analogWriteFrequency(uint32_t hz);
+int64_t esp_timer_get_time(void);
+void dotcore_poll(void);          // timed work (tone() durations, LED matrix sequences) the sketch does not call itself: runs at every time call and yield
+
+#if DP_ESP_API
+// --- ESP32 Arduino extras (first-version scope: see docs/component-api.md) ---
+void analogSetAttenuation(int att);
 bool ledcAttach(uint8_t pin, uint32_t freq, uint8_t resolution);          // arduino-esp32 3.x
 void ledcWrite(uint8_t pin, uint32_t duty);                               // 3.x: by pin
 uint32_t ledcSetup(uint8_t channel, uint32_t freq, uint8_t resolution);   // 2.x
 void ledcAttachPin(uint8_t pin, uint8_t channel);                         // 2.x
 void ledcWriteChannel(uint8_t channel, uint32_t duty);
 void dacWrite(uint8_t pin, uint8_t value);
-int64_t esp_timer_get_time(void);
 uint32_t getCpuFrequencyMhz(void);
 uint32_t esp_random(void);
 #define ADC_11db 3
 
-class EspClass { public: void restart(); uint32_t getFreeHeap(); const char *getChipModel() { return "dotbench-ESP32"; }
+class EspClass { public: void restart(); uint32_t getFreeHeap(); const char *getChipModel() { return DP_BOARD_NAME; }
   uint32_t getChipRevision() { return 1; } uint32_t getCpuFreqMHz() { return 240; } uint32_t getFlashChipSize() { return 4u << 20; } const char *getSdkVersion() { return "dotbench"; } };
 extern EspClass ESP;
+#endif
 
 class DPSerial : public HardwareSerial {
 public:
@@ -70,5 +80,11 @@ private:
   uint8_t rx_[256]; uint16_t rxh_ = 0, rxt_ = 0;
   void flushTx();
 };
-extern DPSerial Serial, Serial1, Serial2;
+extern DPSerial Serial;
+#if DP_HAS_SERIAL1
+extern DPSerial Serial1;
+#endif
+#if DP_ESP_API
+extern DPSerial Serial2;
+#endif
 void serialEvent() __attribute__((weak));

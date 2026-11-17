@@ -1,0 +1,279 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.uno-r3",
+  "name": {
+    "en": "Arduino Uno R3",
+    "pt-BR": "Arduino Uno R3",
+    "es": "Arduino Uno R3"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "Arduino Uno R3 (ATmega328P form factor): 5 V logic, D0-D13 with PWM on 3 5 6 9 10 11 (490 Hz, 980 Hz on 5 and 6), A0-A5 on a 10 bit ADC with a 5 V reference, I2C on A4 and A5 (also the SDA and SCL header pins), SPI on D10-D13, Serial on USB and on D0 and D1, interrupts on D2 and D3, EEPROM 1 KB. Power it with the usb field, 5 V on the 5V pin or 6.5 to 20 V on VIN (the regulator does not feed 5V and 3V3 from VIN in this model; 3V3 is a 50 mA output while the board is powered). This part does NOT emulate the chip: there is no AVR/ARM/Xtensa core, no bootloader and no peripheral registers. Its sketch is compiled to WebAssembly against ArduinoCore-API + dotcore (the bench's Arduino core), so the pins, voltages, Arduino API and timing in milliseconds are real, instruction timing is not. Code that pokes registers (PORTB, DDRB, TCCR1A, direct HW access) does not compile.",
+    "pt-BR": "Arduino Uno R3 (formato do ATmega328P): lógica de 5 V, D0-D13 com PWM em 3 5 6 9 10 11 (490 Hz, 980 Hz em 5 e 6), A0-A5 num ADC de 10 bits com referência de 5 V, I2C em A4 e A5 (também os pinos SDA e SCL do cabeçote), SPI em D10-D13, Serial no USB e em D0 e D1, interrupções em D2 e D3, EEPROM de 1 KB. Alimente com o campo usb, 5 V no pino 5V ou 6,5 a 20 V no VIN (o regulador não alimenta 5V e 3V3 a partir do VIN neste modelo; 3V3 é uma saída de 50 mA com a placa ligada). Esta peça NÃO emula o chip: não há núcleo AVR/ARM/Xtensa, bootloader nem registradores de periféricos. O sketch é compilado para WebAssembly contra ArduinoCore-API + dotcore (o núcleo Arduino da bancada), então os pinos, tensões, API Arduino e tempo em milissegundos são reais, o tempo de instrução não é. Código que mexe em registradores (PORTB, DDRB, TCCR1A, acesso direto ao hardware) não compila.",
+    "es": "Arduino Uno R3 (formato del ATmega328P): lógica de 5 V, D0-D13 con PWM en 3 5 6 9 10 11 (490 Hz, 980 Hz en 5 y 6), A0-A5 en un ADC de 10 bits con referencia de 5 V, I2C en A4 y A5 (también los pines SDA y SCL del cabezal), SPI en D10-D13, Serial por USB y en D0 y D1, interrupciones en D2 y D3, EEPROM de 1 KB. Aliméntala con el campo usb, 5 V en el pin 5V o 6,5 a 20 V en VIN (el regulador no alimenta 5V y 3V3 desde VIN en este modelo; 3V3 es una salida de 50 mA con la placa encendida). Esta pieza NO emula el chip: no hay núcleo AVR/ARM/Xtensa, bootloader ni registros de periféricos. El sketch se compila a WebAssembly contra ArduinoCore-API + dotcore (el núcleo Arduino del banco), así que los pines, tensiones, API Arduino y tiempo en milisegundos son reales, el tiempo de instrucción no. El código que toca registros (PORTB, DDRB, TCCR1A, acceso directo al hardware) no compila."
+  },
+  "category": "mcu",
+  "tags": [
+    "arduino",
+    "uno",
+    "atmega328p",
+    "5v",
+    "avr"
+  ],
+  "keywords": {
+    "en": [
+      "arduino",
+      "uno",
+      "r3",
+      "atmega328p",
+      "avr",
+      "microcontroller",
+      "board",
+      "5v"
+    ],
+    "pt-BR": [
+      "arduino",
+      "uno",
+      "r3",
+      "atmega328p",
+      "microcontrolador",
+      "placa",
+      "5v"
+    ],
+    "es": [
+      "arduino",
+      "uno",
+      "r3",
+      "atmega328p",
+      "microcontrolador",
+      "placa",
+      "5v"
+    ]
+  },
+  "body": {
+    "w_mm": 74.98,
+    "d_mm": 53.34,
+    "h_mm": 15
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 600,
+    "height": 427
+  },
+  "logic_mv": 5000,
+  "vih_pct": 60,
+  "outline": [
+    {
+      "x": 6.4,
+      "y": 0
+    },
+    {
+      "x": 70.916,
+      "y": 0
+    },
+    {
+      "x": 72.44,
+      "y": 1.524
+    },
+    {
+      "x": 72.44,
+      "y": 12.954
+    },
+    {
+      "x": 74.98,
+      "y": 15.494
+    },
+    {
+      "x": 74.98,
+      "y": 48.26
+    },
+    {
+      "x": 72.44,
+      "y": 50.8
+    },
+    {
+      "x": 72.44,
+      "y": 53.34
+    },
+    {
+      "x": 6.4,
+      "y": 53.34
+    }
+  ],
+  "refs": [
+    {
+      "name": "hole1",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 20.37,
+        "y": 50.8,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole2",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 21.64,
+        "y": 2.54,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole3",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 72.44,
+        "y": 17.78,
+        "z": 0
+      }
+    },
+    {
+      "name": "hole4",
+      "kind": "hole",
+      "diameter_mm": 3.2,
+      "mm": {
+        "x": 72.44,
+        "y": 45.72,
+        "z": 0
+      }
+    }
+  ],
+  "pins": [
+    {"name":"SCL","kind":"io","pos":{"x":201.6,"y":20.3},"mm":{"x":25.2,"y":2.54,"z":11.4},"face":"top","label":{"en":"SCL"},"abs_max_mv":5500,"caps":["i2c_scl"]},
+    {"name":"SDA","kind":"io","pos":{"x":221.9,"y":20.3},"mm":{"x":27.74,"y":2.54,"z":11.4},"face":"top","label":{"en":"SDA"},"abs_max_mv":5500,"caps":["i2c_sda"]},
+    {"name":"AREF","kind":"io","pos":{"x":242.2,"y":20.3},"mm":{"x":30.28,"y":2.54,"z":11.4},"face":"top","label":{"en":"AREF"},"abs_max_mv":5500,"caps":["analog"]},
+    {"name":"GND_T","kind":"ground","pos":{"x":262.6,"y":20.3},"mm":{"x":32.82,"y":2.54,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"D13","kind":"io","pos":{"x":282.9,"y":20.3},"mm":{"x":35.36,"y":2.54,"z":11.4},"face":"top","label":{"en":"13 (L)"},"gpio":13,"abs_max_mv":5500,"caps":["digital","spi_sck"]},
+    {"name":"D12","kind":"io","pos":{"x":303.2,"y":20.3},"mm":{"x":37.9,"y":2.54,"z":11.4},"face":"top","label":{"en":"12"},"gpio":12,"abs_max_mv":5500,"caps":["digital","spi_miso"]},
+    {"name":"D11","kind":"io","pos":{"x":323.5,"y":20.3},"mm":{"x":40.44,"y":2.54,"z":11.4},"face":"top","label":{"en":"11"},"gpio":11,"abs_max_mv":5500,"caps":["digital","pwm","spi_mosi"]},
+    {"name":"D10","kind":"io","pos":{"x":343.8,"y":20.3},"mm":{"x":42.98,"y":2.54,"z":11.4},"face":"top","label":{"en":"10"},"gpio":10,"abs_max_mv":5500,"caps":["digital","pwm","spi_ss"]},
+    {"name":"D9","kind":"io","pos":{"x":364.2,"y":20.3},"mm":{"x":45.52,"y":2.54,"z":11.4},"face":"top","label":{"en":"9"},"gpio":9,"abs_max_mv":5500,"caps":["digital","pwm"]},
+    {"name":"D8","kind":"io","pos":{"x":384.5,"y":20.3},"mm":{"x":48.06,"y":2.54,"z":11.4},"face":"top","label":{"en":"8"},"gpio":8,"abs_max_mv":5500,"caps":["digital"]},
+    {"name":"D7","kind":"io","pos":{"x":417,"y":20.3},"mm":{"x":52.12,"y":2.54,"z":11.4},"face":"top","label":{"en":"7"},"gpio":7,"abs_max_mv":5500,"caps":["digital"]},
+    {"name":"D6","kind":"io","pos":{"x":437.3,"y":20.3},"mm":{"x":54.66,"y":2.54,"z":11.4},"face":"top","label":{"en":"6"},"gpio":6,"abs_max_mv":5500,"caps":["digital","pwm"]},
+    {"name":"D5","kind":"io","pos":{"x":457.6,"y":20.3},"mm":{"x":57.2,"y":2.54,"z":11.4},"face":"top","label":{"en":"5"},"gpio":5,"abs_max_mv":5500,"caps":["digital","pwm"]},
+    {"name":"D4","kind":"io","pos":{"x":477.9,"y":20.3},"mm":{"x":59.74,"y":2.54,"z":11.4},"face":"top","label":{"en":"4"},"gpio":4,"abs_max_mv":5500,"caps":["digital"]},
+    {"name":"D3","kind":"io","pos":{"x":498.2,"y":20.3},"mm":{"x":62.28,"y":2.54,"z":11.4},"face":"top","label":{"en":"3"},"gpio":3,"abs_max_mv":5500,"caps":["digital","pwm","interrupt"]},
+    {"name":"D2","kind":"io","pos":{"x":518.6,"y":20.3},"mm":{"x":64.82,"y":2.54,"z":11.4},"face":"top","label":{"en":"2"},"gpio":2,"abs_max_mv":5500,"caps":["digital","interrupt"]},
+    {"name":"D1","kind":"io","pos":{"x":538.9,"y":20.3},"mm":{"x":67.36,"y":2.54,"z":11.4},"face":"top","label":{"en":"1"},"gpio":1,"abs_max_mv":5500,"caps":["digital","uart_tx"]},
+    {"name":"D0","kind":"io","pos":{"x":559.2,"y":20.3},"mm":{"x":69.9,"y":2.54,"z":11.4},"face":"top","label":{"en":"0"},"gpio":0,"abs_max_mv":5500,"caps":["digital","uart_rx"]},
+    {"name":"NC","kind":"nc","pos":{"x":274.7,"y":406.4},"mm":{"x":34.34,"y":50.8,"z":11.4},"face":"top","label":{"en":"NC"}},
+    {"name":"IOREF","kind":"power_out","pos":{"x":295,"y":406.4},"mm":{"x":36.88,"y":50.8,"z":11.4},"face":"top","label":{"en":"IOREF"},"out_mv":5000,"out_ohms":50},
+    {"name":"RESET","kind":"io","pos":{"x":315.4,"y":406.4},"mm":{"x":39.42,"y":50.8,"z":11.4},"face":"top","label":{"en":"RESET"},"abs_max_mv":5500},
+    {"name":"V33","kind":"power_out","pos":{"x":335.7,"y":406.4},"mm":{"x":41.96,"y":50.8,"z":11.4},"face":"top","label":{"en":"3V3"},"out_mv":3300,"out_ohms":10},
+    {"name":"V5","kind":"power_in","pos":{"x":356,"y":406.4},"mm":{"x":44.5,"y":50.8,"z":11.4},"face":"top","label":{"en":"5V"},"min_mv":4500,"max_mv":5500,"typ_ma":50,"supply_group":"pwr","internal":{"mv":5000,"ohms":0.5,"field":"usb"}},
+    {"name":"GND_1","kind":"ground","pos":{"x":376.3,"y":406.4},"mm":{"x":47.04,"y":50.8,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"GND_2","kind":"ground","pos":{"x":396.6,"y":406.4},"mm":{"x":49.58,"y":50.8,"z":11.4},"face":"top","label":{"en":"GND"}},
+    {"name":"VIN","kind":"power_in","pos":{"x":417,"y":406.4},"mm":{"x":52.12,"y":50.8,"z":11.4},"face":"top","label":{"en":"VIN"},"min_mv":6500,"max_mv":20000,"typ_ma":50,"supply_group":"pwr"},
+    {"name":"A0","kind":"io","pos":{"x":457.6,"y":406.4},"mm":{"x":57.2,"y":50.8,"z":11.4},"face":"top","label":{"en":"A0"},"gpio":14,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A1","kind":"io","pos":{"x":477.9,"y":406.4},"mm":{"x":59.74,"y":50.8,"z":11.4},"face":"top","label":{"en":"A1"},"gpio":15,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A2","kind":"io","pos":{"x":498.2,"y":406.4},"mm":{"x":62.28,"y":50.8,"z":11.4},"face":"top","label":{"en":"A2"},"gpio":16,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A3","kind":"io","pos":{"x":518.6,"y":406.4},"mm":{"x":64.82,"y":50.8,"z":11.4},"face":"top","label":{"en":"A3"},"gpio":17,"abs_max_mv":5500,"caps":["analog","digital"]},
+    {"name":"A4","kind":"io","pos":{"x":538.9,"y":406.4},"mm":{"x":67.36,"y":50.8,"z":11.4},"face":"top","label":{"en":"A4"},"gpio":18,"abs_max_mv":5500,"caps":["analog","digital","i2c_sda"]},
+    {"name":"A5","kind":"io","pos":{"x":559.2,"y":406.4},"mm":{"x":69.9,"y":50.8,"z":11.4},"face":"top","label":{"en":"A5"},"gpio":19,"abs_max_mv":5500,"caps":["analog","digital","i2c_scl"]}
+  ],
+  "groups": [
+    {"pins":["A4","SDA"]},
+    {"pins":["A5","SCL"]},
+    {"pins":["GND_T","GND_1","GND_2"]}
+  ],
+  "fields": [
+    {
+      "name": "usb",
+      "type": "boolean",
+      "label": {
+        "en": "Powered over USB",
+        "pt-BR": "Alimentada por USB",
+        "es": "Alimentada por USB"
+      },
+      "default": true
+    },
+    {
+      "name": "blink_ms",
+      "type": "integer",
+      "label": {
+        "en": "Blink half-period",
+        "pt-BR": "Meio período do pisca",
+        "es": "Medio período del parpadeo"
+      },
+      "min": 20,
+      "max": 2000,
+      "step": 10,
+      "unit": "ms",
+      "default": 500,
+      "ui": "slider"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "led",
+      "type": "number",
+      "label": {
+        "en": "User LED (0 to 1)",
+        "pt-BR": "LED do usuário (0 a 1)",
+        "es": "LED del usuario (0 a 1)"
+      }
+    },
+    {
+      "name": "tx",
+      "type": "number",
+      "label": {
+        "en": "Serial bytes sent",
+        "pt-BR": "Bytes seriais enviados",
+        "es": "Bytes seriales enviados"
+      }
+    },
+    {
+      "name": "rx",
+      "type": "number",
+      "label": {
+        "en": "Serial bytes received",
+        "pt-BR": "Bytes seriais recebidos",
+        "es": "Bytes seriales recibidos"
+      }
+    },
+    {
+      "name": "crashed",
+      "type": "boolean",
+      "label": {
+        "en": "Stopped (crashed)",
+        "pt-BR": "Parada (travou)",
+        "es": "Detenida (falló)"
+      }
+    }
+  ],
+  "visuals": [
+    {
+      "id": "led",
+      "effect": "glow",
+      "x": 299,
+      "y": 64,
+      "r": 7,
+      "color": "#f5c518",
+      "source": {
+        "gpio": 13
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "wasm",
+    "entry": "behaviour.wasm",
+    "abi": 1,
+    "core": "uno-r3",
+    "memory_kb": 1024,
+    "stack_kb": 64,
+    "sources": [
+      "src/main.ino"
+    ]
+  }
+}

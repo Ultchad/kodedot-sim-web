@@ -1,0 +1,63 @@
+{
+  "name": "default sketch blinks the on-board LED",
+  "steps": [
+    {
+      "comment": "powered over USB (field usb is on): the first toggle comes after blink_ms (500 ms)",
+      "advance_ms": 400
+    },
+    {
+      "expect_visual": {
+        "id": "led",
+        "value": 0
+      }
+    },
+    {
+      "advance_ms": 150
+    },
+    {
+      "expect_visual": {
+        "id": "led",
+        "value": 1
+      }
+    },
+    {
+      "expect_serial": "LED on"
+    },
+    {
+      "advance_ms": 500
+    },
+    {
+      "expect_visual": {
+        "id": "led",
+        "value": 0
+      }
+    },
+    {
+      "set_field": {
+        "blink_ms": 100
+      }
+    },
+    {
+      "advance_ms": 120
+    },
+    {
+      "expect_visual": {
+        "id": "led",
+        "value": 1
+      }
+    },
+    {
+      "comment": "the heart is on the matrix while the LED is on",
+      "expect_output": {
+        "name": "matrix0",
+        "value": 830776388
+      }
+    },
+    {
+      "expect_output": {
+        "name": "matrix2",
+        "value": 269090880
+      }
+    }
+  ]
+}

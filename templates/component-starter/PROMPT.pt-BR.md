@@ -115,7 +115,58 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
       "description": "SPDX license expression, e.g. MIT, GPL-3.0-or-later, CC-BY-4.0, LicenseRef-Proprietary."
     },
     "description": {"$ref": "#/$defs/localizedLong"},
-    "category": {"enum": ["sensor", "actuator", "display", "input", "mcu", "wireless", "module", "other"], "default": "other"},
+    "category": {"enum": ["sensor", "actuator", "display", "input", "mcu", "wireless", "module", "kode-module", "passive", "power", "prototyping", "other"], "default": "other"},
+    "keywords": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/locale"},
+      "additionalProperties": {"type": "array", "maxItems": 24, "items": {"type": "string", "minLength": 1, "maxLength": 32}},
+      "description": "Search words per language (en, pt-BR, es) for the library search, besides the name and tags."
+    },
+    "body": {
+      "type": "object",
+      "required": ["w_mm", "d_mm", "h_mm"],
+      "additionalProperties": false,
+      "properties": {
+        "w_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000},
+        "d_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000},
+        "h_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000},
+        "estimate": {"type": "boolean", "default": false, "description": "true: the size and the terminal positions of this part are estimates read from pictures (the 2.54 mm header pitch aside), not from a drawing. A 3D model should not be trusted to the millimetre."}
+      },
+      "description": "Physical size in millimetres: w along x (picture left to right), d along y (picture top to bottom), h along z (up from the table). The picture is the top view of this footprint, so the picture's width and height are w_mm and d_mm to scale. pins[].mm positions use the same origin: the top-left corner of the footprint seen from above, on the table."
+    },
+    "groups": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "required": ["pins"],
+        "additionalProperties": false,
+        "properties": {"pins": {"type": "array", "minItems": 2, "maxItems": 64, "items": {"$ref": "#/$defs/pinName"}}}
+      },
+      "description": "Terminals joined inside the part (a breadboard's terminal strips and power rails): every pin of a group is one net, always, powered or not."
+    },
+    "mount": {
+      "type": "object",
+      "required": ["pins"],
+      "additionalProperties": false,
+      "properties": {
+        "via": {"enum": ["direct", "interposer"], "default": "direct", "description": "direct: a right-angle 2x10 connector straight onto the Dot's J3 (Maker, Robotics, Camera). interposer: through the passive KDINT001 board (Mesh, hacking module); the case fixes the orientation."},
+        "orientations": {"type": "array", "items": {"enum": ["upright", "turned"]}, "minItems": 1, "uniqueItems": true, "default": ["upright", "turned"], "description": "Which ways the module can be plugged in. Turned maps header position p to 15 - p (rails stay)."},
+        "pins": {
+          "type": "array", "maxItems": 14,
+          "items": {"type": "object", "required": ["pin", "gpio"], "additionalProperties": false, "properties": {
+            "pin": {"$ref": "#/$defs/pinName"},
+            "gpio": {"enum": [8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16], "description": "The ESP32-P4 GPIO this module pin meets when mounted upright (SDK positions 1..14 are GPIO 8 9 10 11 12 13 14 21 19 20 17 18 15 16)."},
+            "source": {"enum": ["documented", "assumed"], "default": "documented", "description": "assumed: not established by a public source; the table is data and can be corrected."}}}
+        },
+        "connector": {"type": "object", "required": ["seat_mm", "pin_dir", "pin_length_mm"], "additionalProperties": false, "properties": {"cols": {"const": 10}, "rows": {"const": 2}, "pitch_mm": {"const": 2.54}, "seat_mm": {"type": "object", "required": ["x", "y", "z"], "additionalProperties": false, "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}, "description": "Centre of the 2x10 pin block where the pins leave the part (the seating plane), part frame."}, "pin_dir": {"enum": ["+y", "-z"], "description": "Part-frame direction in which the pins point (into the Dot)."}, "pin_length_mm": {"type": "number"}, "odd_row": {"enum": ["low_z", "high_y"], "description": "Where pins 1,3,..19 of the connector sit: the row with the lower z (flat modules) or the larger y (standing modules). Assumed."}, "source": {"enum": ["documented", "assumed"]}}, "description": "The physical 2x10 mating connector. The 20 pins are in the pin list (ref says which position), terminal mm is the middle of the exposed pin."},
+      "placement": {"type": "object", "required": ["anchor_dot_mm", "upright"], "additionalProperties": false, "properties": {"anchor_dot_mm": {"type": "object", "required": ["x", "y", "z"], "additionalProperties": false, "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}, "description": "Where connector.seat_mm lands in the Dot's frame (X right, Y up, Z out of the screen, origin the centre of the Dot's bounding box): the middle of the top-wall connector."}, "upright": {"type": "object", "required": ["x", "y", "z"], "additionalProperties": false, "properties": {"x": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}, "y": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}, "z": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}}, "description": "Direction in the Dot's frame of the part's +x, +y, +z when plugged in upright."}, "turned": {"type": "object", "required": ["x", "y", "z"], "additionalProperties": false, "properties": {"x": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}, "y": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}, "z": {"enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}}, "description": "The same plugged in turned (a half turn about the Dot's Y axis)."}, "source": {"enum": ["documented", "assumed"]}}, "description": "How a page places a mounted module in 3D. Components are mapped one by one (the part frame is left handed: x right, y down, z up), so the matrix has determinant -1."},
+      "rails": {"type": "array", "maxItems": 16, "items": {"type": "object", "required": ["pin", "rail"], "additionalProperties": false, "properties": {"pin": {"$ref": "#/$defs/pinName"}, "rail": {"enum": ["V5", "V33", "GND"]}}}}
+      },
+      "description": "The part plugs onto the Dot's J3 header as a whole: bench.mountPart(instance, orientation) joins every listed pin to its header position and every rail pin to the rail, in one action."
+    },
+    "vih_pct": {"type": "integer", "minimum": 30, "maximum": 90, "description": "Input high threshold as a percentage of the logic supply (default 75). An ATmega328P reads 3.0 V as high on 5 V (60), so a 3.3 V Dot can drive an Uno R3 directly."},
+    "logic_mv": {"type": "integer", "minimum": 500, "maximum": 60000, "description": "A board with an on-board regulator: the logic high level of its pins, whatever voltage its supply pin sees."},
     "tags": {"type": "array", "maxItems": 12, "items": {"type": "string", "pattern": "^[a-z0-9-]{1,24}$"}},
     "picture": {
       "type": "object",
@@ -128,6 +179,9 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
       },
       "description": "width/height define the coordinate space used by every pos, region and visual in this manifest."
     },
+    "outline": {"type": "array", "minItems": 3, "maxItems": 64, "items": {"type": "object", "required": ["x", "y"], "additionalProperties": false, "properties": {"x": {"type": "number"}, "y": {"type": "number"}}}, "description": "Non-electrical: the board outline as a polygon in millimetres (same frame as the pins), for the picture and for 3D models. Absent: the body rectangle."},
+    "refs": {"type": "array", "maxItems": 32, "items": {"type": "object", "required": ["name", "kind", "mm"], "additionalProperties": false, "properties": {"name": {"type": "string", "maxLength": 24}, "kind": {"enum": ["antenna_sma", "hole", "other"]}, "mm": {"$ref": "#/$defs/pin/properties/mm"}, "diameter_mm": {"type": "number", "exclusiveMinimum": 0, "description": "hole: diameter."},
+        "length_mm": {"type": "number", "minimum": 0, "description": "antenna_sma: length of the antenna standing on this base, base included, along +z."}, "note": {"type": "string", "maxLength": 200}}}, "description": "Non-electrical reference points of the body (antenna bases, mounting holes), same millimetre frame as the pins. A model may place geometry on them; estimates when body.estimate is true."},
     "model": {
       "type": "object",
       "required": ["file"],
@@ -141,7 +195,7 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
         }
       }
     },
-    "pins": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/pin"}},
+    "pins": {"type": "array", "minItems": 1, "maxItems": 1024, "items": {"$ref": "#/$defs/pin"}},
     "wireless": {"type": "array", "maxItems": 4, "items": {"$ref": "#/$defs/wirelessPort"}},
     "fields": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/field"}},
     "controls": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/control"}},
@@ -177,7 +231,7 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
       "type": "object",
       "required": ["en"],
       "propertyNames": {"$ref": "#/$defs/locale"},
-      "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 1000},
+      "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 2000},
       "description": "en is required; pt-BR and es are expected by the Make your own checklist."
     },
     "pinName": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,23}$"},
@@ -244,7 +298,35 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
           "minimum": 0,
           "description": "power_in: typical current, shown against the 5 V budget (0.5 A on the Kode Dot)."
         },
-        "out_mv": {"type": "integer", "description": "power_out: the voltage it supplies."}
+        "out_mv": {"type": "integer", "description": "power_out: the voltage it supplies while the part is powered."},
+        "out_ohms": {"type": "number", "minimum": 0.001, "description": "power_out: output resistance (default 5)."},
+        "supply_group": {"type": "string", "maxLength": 16, "description": "power_in: pins with the same group are alternatives (VIN or 5V); the part runs when one of them is in range. Pins without a group are all required."},
+        "internal": {
+          "type": "object",
+          "required": ["mv"],
+          "additionalProperties": false,
+          "properties": {
+            "mv": {"type": "integer", "minimum": 0, "maximum": 60000},
+            "ohms": {"type": "number", "minimum": 0.001},
+            "field": {"$ref": "#/$defs/fieldName", "description": "A boolean field (for example usb); the pin is driven only while it is true."}
+          },
+          "description": "The pin is driven by the part's own supply (a board on USB): a source of mv, and the part's ground pins become a 0 V reference."
+        },
+        "mm": {
+          "type": "object",
+          "required": ["x", "y"],
+          "additionalProperties": false,
+          "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number", "description": "Height of the contact point above the table. Default: the face's own height (top: body.h_mm, bottom: 0)."}},
+          "description": "Terminal position in millimetres on the footprint (origin top-left, x right, y down, see body)."
+        },
+        "caps": {
+          "type": "array", "maxItems": 12, "uniqueItems": true,
+          "items": {"enum": ["digital", "pwm", "analog", "dac", "interrupt", "i2c_sda", "i2c_scl", "spi_sck", "spi_miso", "spi_mosi", "spi_ss", "uart_rx", "uart_tx", "touch", "boot_strap", "input_only"]},
+          "description": "What the pin can do on the real board (a board part: pin capabilities for the page and the sketch editor). Informational: the part still decides what its sketch does."
+        },
+        "aliases": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/pinName"}, "description": "Old or alternative names of this terminal: bench.connect, wireOf and net accept them and mean this pin (a renamed pin keeps its old name working)."},
+        "ref": {"type": "string", "maxLength": 24, "description": "Non-electrical: the board designator and pin number of this terminal on the real part (J401.17)."},
+        "face": {"enum": ["top", "bottom", "left", "right", "front", "back"], "default": "top", "description": "Which face the terminal is on: top (header pins, screw terminals), bottom (leads that plug into a breadboard), left/right (x edges), front (y = d_mm) and back (y = 0)."}
       },
       "allOf": [
         {
@@ -459,6 +541,7 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
         "type": {"const": "wasm"},
         "entry": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]{1,80}\\.wasm$"},
         "abi": {"const": 1},
+        "core": {"enum": ["esp32", "esp32-s3", "uno-r3", "uno-r4-minima", "uno-r4-wifi"], "default": "esp32", "description": "Which dotcore variant the sketch is compiled against: pin names and numbers, analogRead and analogWrite resolution, PWM pins, default Wire and SPI pins."},
         "memory_kb": {"type": "integer", "minimum": 256, "maximum": 8192, "default": 1024},
         "stack_kb": {"type": "integer", "minimum": 16, "maximum": 512, "default": 64},
         "wasm_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
@@ -702,6 +785,143 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
               "description": "Name of an outputs[] entry that receives the sounding frequency in Hz (0 = silent)."
             }
           }
+        },
+        {
+          "type": "object",
+          "required": ["type", "a", "b", "ohms"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "resistor"},
+            "a": {"$ref": "#/$defs/pinName"}, "b": {"$ref": "#/$defs/pinName"},
+            "ohms": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "object", "required": ["field"], "additionalProperties": false, "properties": {"field": {"$ref": "#/$defs/fieldName"}, "scale": {"type": "number"}}}]},
+            "rated_mw": {"type": "number", "exclusiveMinimum": 0, "description": "Power rating; above it the bench shows an overpower hazard."},
+            "overpower_output": {"$ref": "#/$defs/fieldName", "description": "A boolean output: true while the power is above rated_mw."},
+            "current_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A resistor between two terminals, solved with the nets (it loads them)."
+        },
+        {
+          "type": "object",
+          "required": ["type", "a", "b", "farads"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "capacitor"},
+            "a": {"$ref": "#/$defs/pinName"}, "b": {"$ref": "#/$defs/pinName"},
+            "farads": {"$ref": "#/$defs/expr", "description": "Capacitance in farads (use {field, scale} to edit it in microfarads)."},
+            "esr_ohms": {"type": "number", "minimum": 0},
+            "polarity": {
+              "type": "object", "required": ["plus"], "additionalProperties": false,
+              "properties": {"plus": {"$ref": "#/$defs/pinName"}, "reverse_mv": {"type": "number", "default": 1000}},
+              "description": "An electrolytic: the plus terminal. Reverse voltage above reverse_mv for 40 ms bursts it (open circuit until repaired)."
+            },
+            "max_mv": {"type": "number", "description": "Voltage rating; above it the capacitor fails."},
+            "voltage_output": {"$ref": "#/$defs/fieldName"}, "failed_output": {"$ref": "#/$defs/fieldName"}, "reversed_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A capacitor with its own voltage in virtual time (backward Euler)."
+        },
+        {
+          "type": "object",
+          "required": ["type", "anode", "cathode"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "diode"},
+            "anode": {"$ref": "#/$defs/pinName"}, "cathode": {"$ref": "#/$defs/pinName"},
+            "vf_mv": {"type": "number", "minimum": 0, "maximum": 5000, "default": 700},
+            "rs_ohms": {"type": "number", "minimum": 0.001, "default": 10, "description": "Dynamic resistance above the knee."},
+            "max_ma": {"type": "number", "exclusiveMinimum": 0, "description": "Above 105 % of it: overcurrent hazard; for burn_ms (default 60) of virtual time: the part burns out (open circuit until repaired)."},
+            "burn_ms": {"type": "number", "minimum": 0},
+            "full_ma": {"type": "number", "exclusiveMinimum": 0, "default": 10, "description": "Current at which brightness is 1."},
+            "output": {"$ref": "#/$defs/fieldName", "description": "Brightness 0..1."},
+            "current_output": {"$ref": "#/$defs/fieldName"}, "overcurrent_output": {"$ref": "#/$defs/fieldName"}, "burnt_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A diode or LED that conducts above vf_mv; it loads its nets (unlike the older `led` element)."
+        },
+        {
+          "type": "object",
+          "required": ["type", "pos", "neg", "mv"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "cell"},
+            "pos": {"$ref": "#/$defs/pinName"}, "neg": {"$ref": "#/$defs/pinName"},
+            "mv": {"$ref": "#/$defs/expr"},
+            "ohms": {"type": "number", "minimum": 0.001, "default": 1.5},
+            "max_ma": {"type": "number", "exclusiveMinimum": 0, "description": "Above it an overcurrent hazard is shown."},
+            "current_output": {"$ref": "#/$defs/fieldName"},
+            "overload_output": {"$ref": "#/$defs/fieldName", "description": "A boolean output: true while the current is above max_ma or plus is wired to minus."}
+          },
+          "description": "A floating voltage source (battery, bench supply): + at `pos`, `mv` above `neg`; its minus is 0 V when nothing else defines the reference."
+        },
+        {
+          "type": "object",
+          "required": ["type", "a", "b"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "motor"},
+            "a": {"$ref": "#/$defs/pinName"}, "b": {"$ref": "#/$defs/pinName"},
+            "ohms": {"type": "number", "minimum": 0.1, "default": 8, "description": "Winding resistance: the motor loads its nets (no back-EMF, no inductance)."},
+            "rated_mv": {"type": "number", "default": 6000}, "start_mv": {"type": "number", "default": 500, "description": "Below this voltage it does not turn."},
+            "rpm": {"type": "number", "default": 200, "description": "Speed at rated_mv, no load."},
+            "max_ma": {"type": "number", "description": "Stall current: above it an overcurrent hazard is shown."},
+            "speed_output": {"$ref": "#/$defs/fieldName", "description": "-1..1 (sign = direction), 1 at rated_mv; a PWM-driven motor follows the average voltage."},
+            "rpm_output": {"$ref": "#/$defs/fieldName"}, "current_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A brushed DC motor: a winding resistance and a speed that follows the voltage across it."
+        },
+        {
+          "type": "object",
+          "required": ["type", "in", "out", "vs"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "half_bridge"},
+            "in": {"$ref": "#/$defs/pinName"}, "out": {"$ref": "#/$defs/pinName"}, "vs": {"$ref": "#/$defs/pinName", "description": "The motor supply pin; the output swings between it (minus drop_mv) and 0 V."},
+            "en": {"$ref": "#/$defs/pinName", "description": "Enable: low (and not PWM) leaves the output high impedance; a PWM enable chops the output."},
+            "drop_mv": {"type": "number", "default": 1400}, "ohms": {"type": "number", "default": 2},
+            "output": {"$ref": "#/$defs/fieldName", "description": "Output level as a fraction of vs, 0..1."}
+          },
+          "description": "One leg of an H-bridge driving its `out` pin (a real source on the net, unlike the older h_bridge element)."
+        },
+        {
+          "type": "object",
+          "required": ["type", "in1", "in2", "in3", "in4"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "stepper_unipolar"},
+            "in1": {"$ref": "#/$defs/pinName"}, "in2": {"$ref": "#/$defs/pinName"}, "in3": {"$ref": "#/$defs/pinName"}, "in4": {"$ref": "#/$defs/pinName"},
+            "steps_per_rev": {"type": "integer", "default": 4096, "description": "Half steps per output-shaft revolution (28BYJ-48: 4096)."},
+            "max_sps": {"type": "number", "default": 1000, "description": "Half steps per second above which the rotor skips (stalled)."},
+            "position_output": {"$ref": "#/$defs/fieldName"}, "angle_output": {"$ref": "#/$defs/fieldName"}, "stalled_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A unipolar stepper behind a ULN2003: the energised-coil pattern on in1..in4 moves the shaft one half step per phase."
+        },
+        {
+          "type": "object",
+          "required": ["type", "step", "dir"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "stepper_step_dir"},
+            "step": {"$ref": "#/$defs/pinName"}, "dir": {"$ref": "#/$defs/pinName"}, "en": {"$ref": "#/$defs/pinName"},
+            "ms1": {"$ref": "#/$defs/pinName"}, "ms2": {"$ref": "#/$defs/pinName"}, "ms3": {"$ref": "#/$defs/pinName"},
+            "rst": {"$ref": "#/$defs/pinName"}, "slp": {"$ref": "#/$defs/pinName"},
+            "steps_per_rev": {"type": "integer", "default": 200, "description": "Full steps per revolution (NEMA 17: 200)."},
+            "max_sps": {"type": "number", "default": 2000, "description": "Full steps per second above which the rotor skips."},
+            "position_output": {"$ref": "#/$defs/fieldName", "description": "Position in 1/16 full steps (the finest A4988 microstep)."},
+            "angle_output": {"$ref": "#/$defs/fieldName"}, "stalled_output": {"$ref": "#/$defs/fieldName"}, "microstep_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A bipolar stepper behind an A4988-style step/dir driver: each rising STEP edge moves 1, 1/2, 1/4, 1/8 or 1/16 full step by the MS pins, in the DIR direction, while EN is low and RST and SLP are high."
+        },
+        {
+          "type": "object",
+          "required": ["type", "in", "com", "no", "nc"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "relay"},
+            "in": {"$ref": "#/$defs/pinName"},
+            "active": {"oneOf": [{"enum": ["low", "high"]}, {"type": "object", "required": ["field", "op", "value"], "additionalProperties": false, "properties": {"field": {"$ref": "#/$defs/fieldName"}, "op": {"enum": ["eq", "ne", "gt", "ge", "lt", "le"]}, "value": {"type": ["number", "boolean", "string"]}}}], "default": "low"},
+            "com": {"$ref": "#/$defs/pinName"}, "no": {"$ref": "#/$defs/pinName"}, "nc": {"$ref": "#/$defs/pinName"},
+            "coil_ms": {"type": "number", "default": 8, "description": "Virtual time the contact takes to move."},
+            "energized_output": {"$ref": "#/$defs/fieldName"}, "closed_output": {"$ref": "#/$defs/fieldName"}
+          },
+          "description": "A relay: COM joins NC at rest, NO when the coil is energised (module powered and IN at its active level). With the module unpowered COM-NC still conducts."
         }
       ]
     }

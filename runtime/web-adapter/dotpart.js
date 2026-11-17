@@ -4,7 +4,7 @@
 import SCHEMA from "./dotpart-schema.js";
 import { readZip } from "./zip.js";
 
-export const LIMITS = { entries: 64, totalBytes: 8 << 20, ratio: 100, manifest: 128 << 10, wasm: 2 << 20, picture: 1 << 20, model: 4 << 20, nameLen: 120 };
+export const LIMITS = { entries: 64, totalBytes: 8 << 20, ratio: 100, manifest: 256 << 10, wasm: 2 << 20, picture: 1 << 20, model: 4 << 20, nameLen: 120 };
 export const SCHEMA_ID = SCHEMA.$id;
 const dec = new TextDecoder();
 
@@ -101,7 +101,7 @@ export function checkWasmModule(mod) {
 
 // ------------------------------------------------------------------------------ semantic lint (what `dotbench part check` adds to the schema)
 const ELEM_PIN_KEYS = { switch: ["a", "b"], bridge: ["a", "b"], divider: ["top", "bottom", "wiper"], source: ["pin"], drive: ["pin"], i2c_slave: ["sda", "scl"],
-  h_bridge: ["in1", "in2", "enable"], servo: ["pin"], led: ["anode", "cathode"], buzzer: ["pin", "ref"] };
+  h_bridge: ["in1", "in2", "enable"], servo: ["pin"], led: ["anode", "cathode"], buzzer: ["pin", "ref"], resistor: ["a", "b"], capacitor: ["a", "b"], diode: ["anode", "cathode"], cell: ["pos", "neg"], motor: ["a", "b"], half_bridge: ["in", "out", "vs", "en"], stepper_unipolar: ["in1", "in2", "in3", "in4"], stepper_step_dir: ["step", "dir", "en", "ms1", "ms2", "ms3", "rst", "slp"], relay: ["in", "com", "no", "nc"] };
 /** Cross references and bounds. Returns {errors:[{path,message}], warnings:[{path,message}]} (schema errors are NOT repeated here). */
 export function lintManifest(m, files = null, opts = {}) {
   const errors = [], warnings = [];
@@ -114,11 +114,24 @@ export function lintManifest(m, files = null, opts = {}) {
     if (p.pos && (p.pos.x > pic.width || p.pos.y > pic.height)) E(`/pins/${i}/pos`, `${p.name} at (${p.pos.x}, ${p.pos.y}) is outside the ${pic.width}x${pic.height} picture`);
     if (p.pull_rail && !pins.has(p.pull_rail) && !(m.pins ?? []).some((q) => q.name === p.pull_rail)) E(`/pins/${i}/pull_rail`, `pull_rail ${p.pull_rail} is not a pin of this part`);
   });
+  { const all = new Set((m.pins ?? []).map((p) => p.name)); (m.pins ?? []).forEach((p, i) => (p.aliases ?? []).forEach((a) => { if (all.has(a)) E(`/pins/${i}/aliases`, `alias ${a} is also a pin name`); })); }
+  if (m.mount) {
+    const seen = new Set();
+    for (const [i, e] of (m.mount.pins ?? []).entries()) { if (!pins.has(e.pin)) E(`/mount/pins/${i}/pin`, `unknown pin ${e.pin}`); if (seen.has(e.gpio)) E(`/mount/pins/${i}/gpio`, `GPIO${e.gpio} is used twice`); seen.add(e.gpio); }
+    for (const [i, e] of (m.mount.rails ?? []).entries()) if (!pins.has(e.pin)) E(`/mount/rails/${i}/pin`, `unknown pin ${e.pin}`);
+    if (m.mount.via === "interposer" && (m.mount.orientations ?? []).includes("turned")) E("/mount/orientations", "a module on the interposer cannot be turned: the case fixes its orientation");
+  }
+  (m.groups ?? []).forEach((g, i) => { for (const n of g.pins) if (!pins.has(n)) E(`/groups/${i}/pins`, `unknown pin ${n}`); });
+  if (m.body) {
+    (m.pins ?? []).forEach((p, i) => { if (p.mm && (p.mm.x < -0.01 || p.mm.y < -0.01 || p.mm.x > m.body.w_mm + 0.01 || p.mm.y > m.body.d_mm + 0.01)) E(`/pins/${i}/mm`, `${p.name} at (${p.mm.x}, ${p.mm.y}) mm is outside the ${m.body.w_mm} x ${m.body.d_mm} mm body`); });
+    if (m.picture && Math.abs(m.picture.width / m.picture.height - m.body.w_mm / m.body.d_mm) > 0.02) Wn("/picture", "the picture's aspect ratio differs from body.w_mm / body.d_mm: the 3D model stretches it");
+  } else if (opts.builtin) Wn("/body", "no body size: the page cannot build a 3D model to scale");
   const gpios = new Map();
   (m.pins ?? []).forEach((p, i) => { if (p.gpio !== undefined) { if (gpios.has(p.gpio)) E(`/pins/${i}/gpio`, `gpio ${p.gpio} is used by ${gpios.get(p.gpio)} and ${p.name}`); gpios.set(p.gpio, p.name); } });
   (m.fields ?? []).forEach((f, i) => { if (fields.has(f.name)) E(`/fields/${i}/name`, `duplicate field ${f.name}`); fields.set(f.name, f);
     if (f.type === "enum" && !f.values.some((v) => v.value === f.default)) E(`/fields/${i}/default`, `default is not one of the values`);
     if ((f.type === "number" || f.type === "integer") && ((f.min !== undefined && f.default < f.min) || (f.max !== undefined && f.default > f.max))) E(`/fields/${i}/default`, `default is outside min..max`); });
+  (m.pins ?? []).forEach((p, i) => { if (p.internal?.field && !(m.fields ?? []).some((f) => f.name === p.internal.field && f.type === "boolean")) E(`/pins/${i}/internal/field`, `${p.internal.field} must be a boolean field`); });
   (m.outputs ?? []).forEach((o, i) => { if (outputs.has(o.name)) E(`/outputs/${i}/name`, `duplicate output ${o.name}`); outputs.add(o.name); });
   (m.controls ?? []).forEach((c, i) => { if (!fields.has(c.field)) E(`/controls/${i}/field`, `unknown field ${c.field}`);
     if (c.region && (c.region.x + c.region.w > pic.width || c.region.y + c.region.h > pic.height)) Wn(`/controls/${i}/region`, "region reaches outside the picture"); });
@@ -135,7 +148,8 @@ export function lintManifest(m, files = null, opts = {}) {
   if (b.type === "declarative") {
     (b.elements ?? []).forEach((el, i) => {
       for (const k of ELEM_PIN_KEYS[el.type] ?? []) if (el[k] !== undefined && !pins.has(el[k])) E(`/behaviour/elements/${i}/${k}`, `unknown pin ${el[k]}`);
-      if (el.output !== undefined && !outputs.has(el.output)) E(`/behaviour/elements/${i}/output`, `unknown output ${el.output}`);
+      for (const [k, v] of Object.entries(el)) if ((k === "output" || k.endsWith("_output")) && typeof v === "string" && !outputs.has(v)) E(`/behaviour/elements/${i}/${k}`, `unknown output ${v}`);
+      if (el.type === "capacitor" && el.polarity && el.polarity.plus !== el.a && el.polarity.plus !== el.b) E(`/behaviour/elements/${i}/polarity/plus`, `polarity.plus must be ${el.a} or ${el.b}`);
       const walk = (x, p) => { if (x && typeof x === "object") { if (typeof x.field === "string" && !fields.has(x.field)) E(p + "/field", `unknown field ${x.field}`); for (const [k, v] of Object.entries(x)) if (k !== "field") walk(v, p + "/" + k); } };
       for (const [k, v] of Object.entries(el)) if (typeof v === "object") walk(v, `/behaviour/elements/${i}/${k}`);
       if (el.type === "wireless" && !(m.wireless ?? []).some((w) => w.name === el.port)) E(`/behaviour/elements/${i}/port`, `unknown wireless port ${el.port}`);

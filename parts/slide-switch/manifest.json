@@ -25,36 +25,54 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 150,
-    "height": 110
+    "width": 146,
+    "height": 61
   },
   "pins": [
     {
       "name": "A",
       "kind": "io",
       "pos": {
-        "x": 30,
-        "y": 94
+        "x": 29.9,
+        "y": 30.6
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 1.76,
+        "y": 1.8,
+        "z": 0
+      },
+      "face": "bottom"
     },
     {
       "name": "COM",
       "kind": "io",
       "pos": {
-        "x": 75,
-        "y": 94
+        "x": 73.1,
+        "y": 30.6
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 4.3,
+        "y": 1.8,
+        "z": 0
+      },
+      "face": "bottom"
     },
     {
       "name": "B",
       "kind": "io",
       "pos": {
-        "x": 120,
-        "y": 94
+        "x": 116.3,
+        "y": 30.6
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 6.84,
+        "y": 1.8,
+        "z": 0
+      },
+      "face": "bottom"
     }
   ],
   "fields": [
@@ -91,10 +109,10 @@
     {
       "field": "position",
       "region": {
-        "x": 25,
-        "y": 20,
-        "w": 100,
-        "h": 40
+        "x": 24.3,
+        "y": 11.1,
+        "w": 97.3,
+        "h": 22.2
       },
       "mode": "toggle"
     }
@@ -103,10 +121,10 @@
     {
       "id": "knob",
       "effect": "fill",
-      "x": 30,
-      "y": 28,
-      "w": 30,
-      "h": 24,
+      "x": 29.2,
+      "y": 15.5,
+      "w": 29.2,
+      "h": 13.3,
       "color": "#e8eef5",
       "source": {
         "field": "position"
@@ -139,6 +157,30 @@
         },
         "bounce_ms": 2
       }
+    ]
+  },
+  "body": {
+    "w_mm": 8.6,
+    "d_mm": 3.6,
+    "h_mm": 8.5
+  },
+  "keywords": {
+    "en": [
+      "switch",
+      "slide",
+      "toggle",
+      "input"
+    ],
+    "pt-BR": [
+      "chave",
+      "deslizante",
+      "interruptor",
+      "entrada"
+    ],
+    "es": [
+      "interruptor",
+      "deslizante",
+      "entrada"
     ]
   }
 }

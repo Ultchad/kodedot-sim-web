@@ -1,0 +1,222 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.kode-camera-shape",
+  "name": {
+    "en": "Kode Camera module (shape only)",
+    "pt-BR": "Kode Camera module (só a forma)",
+    "es": "Kode Camera module (solo la forma)"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "SHAPE ONLY: it mounts on the header and passes the rails and the 14 signal terminals through, and does nothing else. The OV5640 camera (SCCB, DVP frames) is not simulated: no behaviour, no chip, no bus device. The pin names follow the published pin map and the 20 pins sit in the real 2x10 connector.",
+    "pt-BR": "SÓ A FORMA: encaixa no cabeçalho e repassa os trilhos e os 14 terminais de sinal, e nada mais. The OV5640 camera (SCCB, DVP frames) não é simulado: sem comportamento, sem chip, sem dispositivo de barramento. Os nomes dos pinos seguem o mapa publicado e os 20 pinos ficam no conector 2x10 real.",
+    "es": "SOLO LA FORMA: encaja en el cabezal y pasa los rieles y los 14 terminales de señal, y nada más. The OV5640 camera (SCCB, DVP frames) no se simula: sin comportamiento, sin chip, sin dispositivo de bus. Los nombres de los pines siguen el mapa publicado y los 20 pines están en el conector 2x10 real."
+  },
+  "category": "kode-module",
+  "tags": [
+    "kode",
+    "module",
+    "shape-only",
+    "camera",
+    "ov5640"
+  ],
+  "keywords": {
+    "en": [
+      "camera",
+      "ov5640",
+      "kode",
+      "module",
+      "shape only"
+    ],
+    "pt-BR": [
+      "câmera",
+      "ov5640",
+      "kode",
+      "módulo",
+      "só a forma"
+    ],
+    "es": [
+      "cámara",
+      "ov5640",
+      "kode",
+      "módulo",
+      "solo la forma"
+    ]
+  },
+  "body": {
+    "w_mm": 46.6,
+    "d_mm": 53.5,
+    "h_mm": 12,
+    "estimate": true
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 373,
+    "height": 428
+  },
+  "mount": {
+    "via": "direct",
+    "orientations": [
+      "upright",
+      "turned"
+    ],
+    "pins": [
+      {
+        "pin": "SCL",
+        "gpio": 8
+      },
+      {
+        "pin": "SDA",
+        "gpio": 9
+      },
+      {
+        "pin": "VSYNC",
+        "gpio": 10
+      },
+      {
+        "pin": "PWDN",
+        "gpio": 11
+      },
+      {
+        "pin": "HSYNC",
+        "gpio": 12
+      },
+      {
+        "pin": "D9",
+        "gpio": 13
+      },
+      {
+        "pin": "D8",
+        "gpio": 14
+      },
+      {
+        "pin": "D7",
+        "gpio": 21
+      },
+      {
+        "pin": "PCLK",
+        "gpio": 19
+      },
+      {
+        "pin": "D6",
+        "gpio": 20
+      },
+      {
+        "pin": "D2",
+        "gpio": 17
+      },
+      {
+        "pin": "D5",
+        "gpio": 18
+      },
+      {
+        "pin": "D3",
+        "gpio": 15
+      },
+      {
+        "pin": "D4",
+        "gpio": 16
+      }
+    ],
+    "rails": [
+      {
+        "pin": "V5",
+        "rail": "V5"
+      },
+      {
+        "pin": "V33",
+        "rail": "V33"
+      },
+      {
+        "pin": "GND",
+        "rail": "GND"
+      },
+      {
+        "pin": "GND_2",
+        "rail": "GND"
+      },
+      {
+        "pin": "V33_2",
+        "rail": "V33"
+      },
+      {
+        "pin": "V5_2",
+        "rail": "V5"
+      }
+    ],
+    "connector": {
+      "seat_mm": {
+        "x": 23.3,
+        "y": 45.5,
+        "z": 4.14
+      },
+      "pin_dir": "+y",
+      "pin_length_mm": 8,
+      "odd_row": "low_z",
+      "source": "assumed"
+    },
+    "placement": {
+      "anchor_dot_mm": {
+        "x": 0,
+        "y": 38.5,
+        "z": 0
+      },
+      "upright": {
+        "x": "-X",
+        "y": "-Y",
+        "z": "-Z"
+      },
+      "turned": {
+        "x": "+X",
+        "y": "-Y",
+        "z": "+Z"
+      },
+      "source": "assumed"
+    }
+  },
+  "pins": [
+    {"name":"V5","kind":"io","pos":{"x":277.8,"y":396},"mm":{"x":34.73,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"V5"},"abs_max_mv":60000,"ref":"J401.19"},
+    {"name":"V33","kind":"io","pos":{"x":277.8,"y":396},"mm":{"x":34.73,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"V33"},"abs_max_mv":60000,"ref":"J401.20"},
+    {"name":"SCL","kind":"io","pos":{"x":257.5,"y":396},"mm":{"x":32.19,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"SCL"},"abs_max_mv":3600,"ref":"J401.17"},
+    {"name":"SDA","kind":"io","pos":{"x":257.5,"y":396},"mm":{"x":32.19,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"SDA"},"abs_max_mv":3600,"ref":"J401.18"},
+    {"name":"VSYNC","kind":"io","pos":{"x":237.2,"y":396},"mm":{"x":29.65,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"VSYNC"},"abs_max_mv":3600,"ref":"J401.15"},
+    {"name":"PWDN","kind":"io","pos":{"x":237.2,"y":396},"mm":{"x":29.65,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"PWDN"},"abs_max_mv":3600,"ref":"J401.16"},
+    {"name":"HSYNC","kind":"io","pos":{"x":216.9,"y":396},"mm":{"x":27.11,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"HSYNC"},"abs_max_mv":3600,"ref":"J401.13"},
+    {"name":"D9","kind":"io","pos":{"x":216.9,"y":396},"mm":{"x":27.11,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"D9"},"abs_max_mv":3600,"ref":"J401.14"},
+    {"name":"D8","kind":"io","pos":{"x":196.6,"y":396},"mm":{"x":24.57,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"D8"},"abs_max_mv":3600,"ref":"J401.11"},
+    {"name":"GND","kind":"io","pos":{"x":196.6,"y":396},"mm":{"x":24.57,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"GND"},"abs_max_mv":60000,"ref":"J401.12"},
+    {"name":"GND_2","kind":"io","pos":{"x":176.2,"y":396},"mm":{"x":22.03,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"GND_2"},"abs_max_mv":60000,"ref":"J401.9"},
+    {"name":"D7","kind":"io","pos":{"x":176.2,"y":396},"mm":{"x":22.03,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"D7"},"abs_max_mv":3600,"ref":"J401.10"},
+    {"name":"PCLK","kind":"io","pos":{"x":155.9,"y":396},"mm":{"x":19.49,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"PCLK"},"abs_max_mv":3600,"ref":"J401.7"},
+    {"name":"D6","kind":"io","pos":{"x":155.9,"y":396},"mm":{"x":19.49,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"D6"},"abs_max_mv":3600,"ref":"J401.8"},
+    {"name":"D2","kind":"io","pos":{"x":135.6,"y":396},"mm":{"x":16.95,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"D2"},"abs_max_mv":3600,"ref":"J401.5"},
+    {"name":"D5","kind":"io","pos":{"x":135.6,"y":396},"mm":{"x":16.95,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"D5"},"abs_max_mv":3600,"ref":"J401.6"},
+    {"name":"D3","kind":"io","pos":{"x":115.3,"y":396},"mm":{"x":14.41,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"D3"},"abs_max_mv":3600,"ref":"J401.3"},
+    {"name":"D4","kind":"io","pos":{"x":115.3,"y":396},"mm":{"x":14.41,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"D4"},"abs_max_mv":3600,"ref":"J401.4"},
+    {"name":"V33_2","kind":"io","pos":{"x":95,"y":396},"mm":{"x":11.87,"y":49.5,"z":2.87},"face":"bottom","label":{"en":"V33_2"},"abs_max_mv":60000,"ref":"J401.1"},
+    {"name":"V5_2","kind":"io","pos":{"x":95,"y":396},"mm":{"x":11.87,"y":49.5,"z":5.41},"face":"bottom","label":{"en":"V5_2"},"abs_max_mv":60000,"ref":"J401.2"}
+  ],
+  "groups": [
+    {"pins":["V5","V5_2"]},
+    {"pins":["V33","V33_2"]},
+    {"pins":["GND","GND_2"]}
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "resistor",
+        "a": "V33",
+        "b": "GND",
+        "ohms": 1000000000
+      }
+    ]
+  }
+}

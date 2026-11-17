@@ -1,0 +1,106 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.diode",
+  "name": {
+    "en": "Diode (1N4007)",
+    "pt-BR": "Diodo (1N4007)",
+    "es": "Diodo (1N4007)"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A silicon rectifier diode: conducts from anode (A) to cathode (K, the banded end) above 0.75 V and blocks the other way. Piecewise linear model (0.75 V knee, 0.3 ohm); rated 1 A, over it an overcurrent hazard. No reverse breakdown, no recovery time.",
+    "pt-BR": "Um diodo retificador de silício: conduz do anodo (A) ao catodo (K, a ponta com faixa) acima de 0,75 V e bloqueia no sentido contrário. Modelo linear por partes (joelho de 0,75 V, 0,3 ohm); 1 A nominal, acima disso aparece um aviso de sobrecorrente. Sem ruptura reversa, sem tempo de recuperação.",
+    "es": "Un diodo rectificador de silicio: conduce del ánodo (A) al cátodo (K, el extremo con banda) por encima de 0,75 V y bloquea al revés. Modelo lineal por tramos (rodilla de 0,75 V, 0,3 ohm); 1 A nominal, por encima aparece un aviso de sobrecorriente. Sin ruptura inversa, sin tiempo de recuperación."
+  },
+  "category": "passive",
+  "tags": [
+    "diode",
+    "rectifier",
+    "1n4007",
+    "passive"
+  ],
+  "keywords": {
+    "en": [
+      "diode",
+      "rectifier",
+      "1n4007",
+      "1n4148",
+      "flyback",
+      "protection"
+    ],
+    "pt-BR": [
+      "diodo",
+      "retificador",
+      "1n4007",
+      "1n4148",
+      "proteção",
+      "flyback"
+    ],
+    "es": [
+      "diodo",
+      "rectificador",
+      "1n4007",
+      "1n4148",
+      "protección",
+      "flyback"
+    ]
+  },
+  "body": {
+    "w_mm": 12.7,
+    "d_mm": 3.2,
+    "h_mm": 3.2
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 127,
+    "height": 32
+  },
+  "pins": [
+    {"name":"A","kind":"io","pos":{"x":12.7,"y":16},"mm":{"x":1.27,"y":1.6,"z":0},"face":"bottom","label":{"en":"A"},"abs_max_mv":60000},
+    {"name":"K","kind":"io","pos":{"x":114.3,"y":16},"mm":{"x":11.43,"y":1.6,"z":0},"face":"bottom","label":{"en":"K"},"abs_max_mv":60000}
+  ],
+  "outputs": [
+    {
+      "name": "current_ma",
+      "type": "number",
+      "unit": "mA",
+      "label": {
+        "en": "Current",
+        "pt-BR": "Corrente",
+        "es": "Corriente"
+      }
+    },
+    {
+      "name": "overcurrent",
+      "type": "boolean",
+      "label": {
+        "en": "Overcurrent",
+        "pt-BR": "Sobrecorrente",
+        "es": "Sobrecorriente"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "diode",
+        "anode": "A",
+        "cathode": "K",
+        "vf_mv": 750,
+        "rs_ohms": 0.3,
+        "max_ma": 1000,
+        "burn_ms": 1000000,
+        "current_output": "current_ma",
+        "overcurrent_output": "overcurrent"
+      }
+    ]
+  }
+}

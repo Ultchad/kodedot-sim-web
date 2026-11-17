@@ -14,9 +14,9 @@
     "es": "Servo de hobby (clase SG90)"
   },
   "description": {
-    "en": "A 180 degree hobby servo: 5 V on V5, GND, and a 50 Hz PWM signal on SIG (1 ms is 0 degrees, 2 ms is 180). Needs the 5 V rail switched on.",
-    "pt-BR": "Um servo hobby de 180 graus: 5 V em V5, GND e um sinal PWM de 50 Hz em SIG (1 ms é 0 grau, 2 ms é 180). Precisa do trilho de 5 V ligado.",
-    "es": "Un servo de hobby de 180 grados: 5 V en V5, GND y una señal PWM de 50 Hz en SIG (1 ms es 0 grados, 2 ms es 180). Necesita el riel de 5 V encendido."
+    "en": "A 180 degree hobby servo: 5 V on V5, GND, and a 50 Hz PWM signal on SIG. The horn follows the pulse width the way the Arduino Servo library drives it: 544 us is 0 degrees, 2400 us is 180 (so Servo.write(90) lands at 90). Needs the 5 V rail switched on.",
+    "pt-BR": "Um servo hobby de 180 graus: 5 V em V5, GND e um sinal PWM de 50 Hz em SIG. O eixo segue a largura de pulso como a biblioteca Servo do Arduino a gera: 544 us é 0 grau, 2400 us é 180 (então Servo.write(90) chega a 90). Precisa do trilho de 5 V ligado.",
+    "es": "Un servo de hobby de 180 grados: 5 V en V5, GND y una señal PWM de 50 Hz en SIG. El eje sigue el ancho de pulso como lo genera la biblioteca Servo de Arduino: 544 us es 0 grados, 2400 us es 180 (así Servo.write(90) llega a 90). Necesita el riel de 5 V encendido."
   },
   "category": "actuator",
   "tags": [
@@ -26,37 +26,55 @@
   ],
   "picture": {
     "file": "picture.svg",
-    "width": 200,
-    "height": 150
+    "width": 418,
+    "height": 320
   },
   "pins": [
     {
       "name": "GND",
       "kind": "ground",
       "pos": {
-        "x": 55,
-        "y": 134
-      }
+        "x": 0,
+        "y": 140.5
+      },
+      "mm": {
+        "x": 0,
+        "y": 17.56,
+        "z": 4
+      },
+      "face": "left"
     },
     {
       "name": "V5",
       "kind": "power_in",
       "pos": {
-        "x": 100,
-        "y": 134
+        "x": 0,
+        "y": 160.8
       },
       "min_mv": 4000,
       "max_mv": 6000,
-      "typ_ma": 150
+      "typ_ma": 150,
+      "mm": {
+        "x": 0,
+        "y": 20.1,
+        "z": 4
+      },
+      "face": "left"
     },
     {
       "name": "SIG",
       "kind": "io",
       "pos": {
-        "x": 145,
-        "y": 134
+        "x": 0,
+        "y": 181.1
       },
-      "abs_max_mv": 5500
+      "abs_max_mv": 5500,
+      "mm": {
+        "x": 0,
+        "y": 22.64,
+        "z": 4
+      },
+      "face": "left"
     }
   ],
   "outputs": [
@@ -77,9 +95,9 @@
     {
       "id": "horn",
       "effect": "rotate",
-      "x": 100,
-      "y": 60,
-      "r": 40,
+      "x": 248,
+      "y": 160,
+      "r": 80,
       "source": {
         "output": "angle"
       },
@@ -103,10 +121,39 @@
         "type": "servo",
         "pin": "SIG",
         "output": "angle",
-        "min_us": 1000,
-        "max_us": 2000,
+        "min_us": 544,
+        "max_us": 2400,
         "range_deg": 180
       }
+    ]
+  },
+  "body": {
+    "w_mm": 52.3,
+    "d_mm": 40,
+    "h_mm": 31.8
+  },
+  "keywords": {
+    "en": [
+      "servo",
+      "sg90",
+      "motor",
+      "angle",
+      "pwm",
+      "arduino servo"
+    ],
+    "pt-BR": [
+      "servo",
+      "sg90",
+      "motor",
+      "ângulo",
+      "pwm"
+    ],
+    "es": [
+      "servo",
+      "sg90",
+      "motor",
+      "ángulo",
+      "pwm"
     ]
   }
 }

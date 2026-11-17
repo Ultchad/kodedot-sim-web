@@ -28,8 +28,11 @@ function run(cmd, cwd) {
   const r = spawnSync("bash", ["-c", pre + cmd], { cwd, encoding: "utf8", maxBuffer: 64 << 20 });
   return { code: r.status, out: (r.stdout || "") + (r.stderr || "") };
 }
-const FLAGS = (api, extra = []) => ["-Os", "-std=gnu++17", "-fno-exceptions", "-fno-rtti", "-ffunction-sections", "-fdata-sections", "-I", CORE_DIR, "-I", api,
-  "-DARDUINO=10819", "-DARDUINO_ARCH_ESP32", "-DESP32", "-DHOST", "-Wno-main", ...extra].map(sh).join(" ");
+export const CORES = { "esp32": ["-DARDUINO_ARCH_ESP32", "-DESP32"], "esp32-s3": ["-DARDUINO_ARCH_ESP32", "-DESP32", "-DARDUINO_ESP32S3_DEV"],
+  "uno-r3": ["-DARDUINO_AVR_UNO"], "uno-r4-minima": ["-DARDUINO_MINIMA", "-DARDUINO_ARCH_RENESAS_UNO"], "uno-r4-wifi": ["-DARDUINO_UNOR4_WIFI", "-DARDUINO_ARCH_RENESAS_UNO"] };
+const coreOf = (m) => { const c = m?.behaviour?.core ?? "esp32"; if (!CORES[c]) throw new Error(`behaviour.core "${c}" is not a dotcore variant (${Object.keys(CORES).join(", ")})`); return c; };
+const FLAGS = (api, core, extra = []) => ["-Os", "-std=gnu++17", "-fno-exceptions", "-fno-rtti", "-ffunction-sections", "-fdata-sections", "-I", path.join(CORE_DIR, "variants", core), "-I", CORE_DIR, "-I", api, "-I", path.join(api, "api/deprecated-avr-comp"),
+  "-DARDUINO=10819", ...CORES[core], "-DHOST", "-Wno-main", ...extra].map(sh).join(" ");
 
 /** generated header: FIELD_<NAME> and OUTPUT_<NAME> indexes, in manifest order. */
 export function fieldsHeader(m) {
@@ -42,23 +45,24 @@ export function fieldsHeader(m) {
 }
 
 /** The core archive, built once per (core sources, API sources, emcc) and cached. */
-export function ensureCore(log = () => {}) {
+export function ensureCore(log = () => {}, core = "esp32") {
   const { api, cache } = env();
   const srcs = [path.join(CORE_DIR, "dotcore.cpp"), ...["Print", "Stream", "String", "IPAddress", "Common"].map((n) => path.join(api, "api", n + ".cpp"))];
   for (const s of srcs) if (!fs.existsSync(s)) throw new Error(`missing ${s}; set DOTBENCH_ARDUINO_API to a checkout of arduino/ArduinoCore-API`);
   const h = createHash("sha256");
-  for (const f of [...fs.readdirSync(CORE_DIR).sort().map((n) => path.join(CORE_DIR, n)), ...srcs, ...fs.readdirSync(path.join(api, "api")).sort().filter((n) => n.endsWith(".h")).map((n) => path.join(api, "api", n))]) h.update(fs.readFileSync(f));
+  for (const f of [...fs.readdirSync(CORE_DIR).sort().map((n) => path.join(CORE_DIR, n)).filter((p) => fs.statSync(p).isFile()), ...fs.readdirSync(path.join(CORE_DIR, "variants", core)).sort().map((n) => path.join(CORE_DIR, "variants", core, n)), ...srcs, ...fs.readdirSync(path.join(api, "api")).sort().filter((n) => n.endsWith(".h")).map((n) => path.join(api, "api", n))]) h.update(fs.readFileSync(f));
   const ver = run("em++ --version | head -1", process.cwd());
   if (ver.code !== 0) throw new Error("Emscripten (em++) not found. Set DOTBENCH_EMSDK to your emsdk folder.\n" + ver.out);
   h.update(ver.out);
-  const dir = path.join(cache, "dotcore-" + h.digest("hex").slice(0, 16)), lib = path.join(dir, "libdotcore.a");
+  h.update(core);
+  const dir = path.join(cache, "dotcore-" + core + "-" + h.digest("hex").slice(0, 16)), lib = path.join(dir, "libdotcore.a");
   if (fs.existsSync(lib)) return lib;
   log("building dotcore (once, cached in " + dir + ")");
   fs.mkdirSync(dir, { recursive: true });
   const objs = [];
   for (const s of srcs) {
     const o = path.join(dir, path.basename(s, ".cpp") + ".o");
-    const r = run(`em++ ${FLAGS(api)} -c ${sh(s)} -o ${sh(o)}`, dir);
+    const r = run(`em++ ${FLAGS(api, core)} -c ${sh(s)} -o ${sh(o)}`, dir);
     if (r.code !== 0) throw new Error("dotcore does not compile:\n" + r.out);
     objs.push(o);
   }
@@ -88,7 +92,7 @@ export function compileWasm(dir, m, log = () => {}) {
   dir = path.resolve(dir);
   const { api } = env(), b = m.behaviour, outDir = path.join(dir, "build");
   fs.mkdirSync(path.join(outDir, "gen"), { recursive: true }); fs.mkdirSync(path.join(outDir, "obj"), { recursive: true });
-  const lib = ensureCore(log);
+  const core = coreOf(m), lib = ensureCore(log, core);
   fs.writeFileSync(path.join(outDir, "gen", "dotbench_fields.h"), fieldsHeader(m));
   const sources = b.sources ?? ["src/main.ino"], ino = [], objs = [], incs = new Set([path.join(outDir, "gen")]);
   for (const s of sources) {
@@ -108,7 +112,7 @@ export function compileWasm(dir, m, log = () => {}) {
   const incFlags = [...incs].flatMap((i) => ["-I", i]);
   const compileOne = (src, name, lang) => {
     const o = path.join(outDir, "obj", name + ".o");
-    const r = run(`em++ ${FLAGS(api, incFlags)} ${lang ? "-x " + lang : ""} -c ${sh(src)} -o ${sh(o)}`, dir);
+    const r = run(`em++ ${FLAGS(api, core, incFlags)} ${lang ? "-x " + lang : ""} -c ${sh(src)} -o ${sh(o)}`, dir);
     if (r.code !== 0) throw new Error(`compile error in ${path.relative(dir, src)}:\n${r.out}`);
     if (r.out.trim()) log(r.out.trim());
     objs.push(o);
