@@ -126,6 +126,8 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
   const live = useRef({ active, size, deps, storePose, camera });
   live.current = { active, size, deps, storePose, camera };
   const cancel = useRef<(() => void) | null>(null);
+  /** The pointer that last went down on the Dot's shell (not its glass, not a button). */
+  const dotPress = useRef(-1);
   const proxy = useRef<Mesh>(null);
   const handle = useRef<Group>(null);
   const tools = useMemo(() => ({ ray: new Raycaster(), ndc: new Vector2(), a: new Vector3(), b: new Vector3() }), []);
@@ -520,7 +522,10 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       camLook: world.rig.look,
       dotQuat: world.dotQuat,
       dotPos: world.dotPos,
-      dotDown: (e) => cameraDrag(e, () => live.current.deps.select.only(DOT_ID)),
+      dotDown: (e) => {
+        dotPress.current = e.nativeEvent.pointerId;
+        cameraDrag(e, () => live.current.deps.select.only(DOT_ID));
+      },
       dotDouble: () => {
         world.rig.focusDot(aspect());
         invalidate();
@@ -604,11 +609,13 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       if (dot !== null && (!body || dot <= body.distance)) return DOT_ID;
       return body && body.id !== SD_ID ? body.id : null;
     };
-    const openMenu = (clientX: number, clientY: number): boolean => {
+    const openMenu = (clientX: number, clientY: number, heldBy = -1): boolean => {
       const { bus, select } = live.current.deps;
       if (bus.tool === 'wire') return false;
       const target = thingAt(clientX, clientY);
       if (!target) return false;
+      // a finger held on the Dot's glass or on one of its buttons is for the Dot's own software: only its shell opens the menu
+      if (target === DOT_ID && heldBy >= 0 && dotPress.current !== heldBy) return false;
       cancel.current?.();
       select.only(target);
       bus.openMenu({ x: clientX, y: clientY, target });
@@ -629,7 +636,8 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
       endHold();
       if (!e.isPrimary) return;
       const x = e.clientX, y = e.clientY;
-      hold = { id: e.pointerId, x, y, timer: setTimeout(() => (hold = null, openMenu(x, y)), LONG_PRESS_MS) };
+      const id = e.pointerId;
+      hold = { id, x, y, timer: setTimeout(() => (hold = null, openMenu(x, y, id)), LONG_PRESS_MS) };
     };
     const moveMenu = (e: PointerEvent) => {
       if (hold && e.pointerId === hold.id && Math.abs(e.clientX - hold.x) + Math.abs(e.clientY - hold.y) > CLICK_SLOP_PX * 2) endHold();

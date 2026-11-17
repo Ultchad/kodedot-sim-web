@@ -177,13 +177,6 @@ export function restingQuat(frame: PoseFrame, tilt: Quaternion | null, headingDe
   if (rest !== 0) out.multiply(qr.setFromAxisAngle(frame.axis, rest));
   return out;
 }
-/** As `restingQuat` for the lying Dot with the hand's tilt and turn in one rotation (kept for what only knows lying). */
-export function lyingQuat(user: Quaternion | null, rest: number, out: Quaternion): Quaternion {
-  out.copy(LYING);
-  if (user) out.multiply(user);
-  if (rest !== 0) out.multiply(qr.setFromAxisAngle(poseFrame('lying').axis, rest));
-  return out;
-}
 /** The height of the lowest of some points of the Dot's frame when the Dot is turned by `quat` about its centre. */
 export function lowestY(pts: Float32Array, quat: Quaternion): number {
   let low = Infinity;
