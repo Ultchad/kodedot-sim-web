@@ -35,6 +35,7 @@ lap(`headers: kept ${inc.size} sysroot files, dropped ${(dropped / 1e6).toFixed(
 const orig = await import(path.join(YW, "bundle.js"));
 const coreTree = {}; for (const [p, d] of dotInc) { const parts = p.split("/"); let t = coreTree; for (const s of parts.slice(0, -1)) t = t[s] ??= {}; t[parts.at(-1)] = d; }
 coreTree.dotcore.src = { "dotcore.cpp": fs.readFileSync(path.join(CORE, "dotcore.cpp")) };
+coreTree.dotcore.src["wasi_shim.cpp"] = fs.readFileSync(path.join(HERE, "core/wasi_shim.cpp"));      // browser flavour only, see the file
 for (const n of ["Print", "Stream", "String", "IPAddress", "Common"]) coreTree.dotcore.src[n + ".cpp"] = fs.readFileSync(path.join(API, "api", n + ".cpp"));
 const objs = [];
 for (const n of Object.keys(coreTree.dotcore.src)) {
@@ -66,6 +67,8 @@ js = js.slice(0, a) + `var modules = async (fetch3) => globalThis.__CC_ASSETS__.
 js = js.replace(/var totalSize = \d+;/, "var totalSize = 1;");
 if (js.includes('new URL("./llvm.core.wasm"') || js.includes("llvm-resources.tar\"")) throw new Error("patch incomplete");
 fs.writeFileSync(path.join(OUT, "clang-runtime.js"), js);
-for (const f of ["cc-driver.js", "pack.js"]) fs.copyFileSync(path.join(HERE, "lib", f), path.join(OUT, f));
+for (const f of ["cc-driver.js", "pack.js", "compiler.js", "assets.js", "cc-worker.js"]) fs.copyFileSync(path.join(HERE, "lib", f), path.join(OUT, f));
+fs.copyFileSync(path.join(ROOT, "tools/dblib/part/ino2cpp.mjs"), path.join(OUT, "ino2cpp.js"));     // the very file `part build` uses
+fs.copyFileSync(path.join(HERE, "lib/part-glue.mjs"), path.join(OUT, "part-glue.js"));
 lap("done");
 for (const f of fs.readdirSync(OUT)) console.log(String(fs.statSync(path.join(OUT, f)).size).padStart(10), f);
