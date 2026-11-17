@@ -1,0 +1,41 @@
+{
+  "name": "supply voltages",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "NEG",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "POS",
+        "mv_min": 4900,
+        "mv_max": 5100
+      }
+    },
+    {
+      "set_field": {
+        "mv": 3300
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "POS",
+        "mv_min": 3200,
+        "mv_max": 3400
+      }
+    },
+    {
+      "set_field": {
+        "mv": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "POS",
+        "mv_max": 100
+      }
+    }
+  ]
+}

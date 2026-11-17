@@ -1,0 +1,50 @@
+{
+  "name": "buzzer reports its pitch",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "N",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "P",
+        "level": 1
+      }
+    },
+    {
+      "comment": "a steady level is not a tone",
+      "expect_output": {
+        "name": "hz",
+        "value": 0
+      }
+    },
+    {
+      "pwm": {
+        "pin": "P",
+        "hz": 440,
+        "duty_pct": 50
+      }
+    },
+    {
+      "expect_output": {
+        "name": "hz",
+        "value": 440
+      }
+    },
+    {
+      "pwm": {
+        "pin": "P",
+        "hz": 880,
+        "duty_pct": 50
+      }
+    },
+    {
+      "expect_output": {
+        "name": "hz",
+        "value": 880
+      }
+    }
+  ]
+}

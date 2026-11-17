@@ -1,0 +1,48 @@
+{
+  "name": "on-board LED blinks every blink_ms",
+  "steps": [
+    {
+      "comment": "boot at 0 ms; the first toggle comes after blink_ms (500 ms)",
+      "advance_ms": 400
+    },
+    {
+      "expect_visual": {
+        "id": "led",
+        "value": 0
+      }
+    },
+    {
+      "advance_ms": 150
+    },
+    {
+      "expect_visual": {
+        "id": "led",
+        "value": 1
+      }
+    },
+    {
+      "advance_ms": 500
+    },
+    {
+      "expect_visual": {
+        "id": "led",
+        "value": 0
+      }
+    },
+    {
+      "comment": "a shorter half-period is read on the next pass",
+      "set_field": {
+        "blink_ms": 100
+      }
+    },
+    {
+      "advance_ms": 120
+    },
+    {
+      "expect_visual": {
+        "id": "led",
+        "value": 1
+      }
+    }
+  ]
+}

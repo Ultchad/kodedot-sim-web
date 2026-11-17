@@ -1,0 +1,328 @@
+{
+ "_about": "Kode module pin tables. Source: /home/claude/research/06-official-modules-spec.md (docs.kode.diy pages, read 2026-11-17). 'gpio' is the ESP32-P4 GPIO the module pin meets when mounted upright (screen side). source: documented | assumed. Edit this file and run `node parts/gen/gen-parts.mjs` to correct a mapping: no code changes.",
+ "maker": {
+  "sockets": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   21,
+   20,
+   19,
+   18,
+   17,
+   16,
+   15
+  ],
+  "_note": "sockets 1..14; sockets 9 to 14 are GPIO20, 19, 18, 17, 16, 15 (docs order; an earlier note had it wrong)"
+ },
+ "robotics": {
+  "pins": [
+   {
+    "pin": "SCL",
+    "gpio": 8,
+    "fn": "I2C port SCL (J403 pin 4)",
+    "source": "documented"
+   },
+   {
+    "pin": "SDA",
+    "gpio": 9,
+    "fn": "I2C port SDA (J403 pin 3)",
+    "source": "documented"
+   },
+   {
+    "pin": "GPIO10",
+    "gpio": 10,
+    "fn": "spare (J403 pin 2)",
+    "source": "documented"
+   },
+   {
+    "pin": "SERVO",
+    "gpio": 11,
+    "fn": "servo signal (J402 pin 3)",
+    "source": "documented"
+   },
+   {
+    "pin": "NFAULT",
+    "gpio": 12,
+    "fn": "AT8833CQ nFAULT, 10 kohm pull-up",
+    "source": "documented"
+   },
+   {
+    "pin": "BIN1",
+    "gpio": 13,
+    "fn": "AT8833CQ BIN1",
+    "source": "documented"
+   },
+   {
+    "pin": "BIN2",
+    "gpio": 14,
+    "fn": "AT8833CQ BIN2",
+    "source": "documented"
+   },
+   {
+    "pin": "AIN2",
+    "gpio": 21,
+    "fn": "AT8833CQ AIN2",
+    "source": "documented"
+   },
+   {
+    "pin": "NSLEEP",
+    "gpio": 19,
+    "fn": "AT8833CQ nSLEEP (driver asleep until high)",
+    "source": "documented"
+   },
+   {
+    "pin": "AIN1",
+    "gpio": 20,
+    "fn": "AT8833CQ AIN1",
+    "source": "documented"
+   },
+   {
+    "pin": "S17",
+    "gpio": 17,
+    "fn": "sensor header (J404 pin 4), analog when upright",
+    "source": "documented"
+   },
+   {
+    "pin": "S18",
+    "gpio": 18,
+    "fn": "sensor header (J404 pin 5), analog when upright",
+    "source": "documented"
+   },
+   {
+    "pin": "S15",
+    "gpio": 15,
+    "fn": "sensor header (J404 pin 2)",
+    "source": "documented"
+   },
+   {
+    "pin": "S16",
+    "gpio": 16,
+    "fn": "sensor header (J404 pin 3), analog when upright",
+    "source": "documented"
+   }
+  ],
+  "driver": {
+   "source": "assumed",
+   "note": "AT8833CQ is taken to behave like a DRV8833: AIN1 drives AOUT1, AIN2 AOUT2, BIN1 BOUT1, BIN2 BOUT2, both inputs high brakes. The AT8833CQ pinout and truth table are not published.",
+   "drop_mv": 300,
+   "ohms": 0.4,
+   "outputs": {
+    "AIN1": "MOTA_1",
+    "AIN2": "MOTA_2",
+    "BIN1": "MOTB_1",
+    "BIN2": "MOTB_2"
+   }
+  },
+  "stepper_header": {
+   "source": "assumed",
+   "note": "J503 carries the same four driver outputs; the order of its four pins is not published.",
+   "map": {
+    "STP_1": "MOTA_1",
+    "STP_2": "MOTA_2",
+    "STP_3": "MOTB_1",
+    "STP_4": "MOTB_2"
+   }
+  },
+  "nfault_pullup": {
+   "ohms": 10000,
+   "rail": "V33",
+   "source": "assumed",
+   "note": "the docs give the 10 kohm pull-up but not the rail; 3.3 V assumed"
+  },
+  "i2c_pullup_ohms": 2200,
+  "not_modelled": [
+   "overcurrent chop at about 0.4 A and trip at 2.2 to 3 A (nFAULT is never asserted)",
+   "servo pulse range (assumed 50 Hz, the Servo library range) and stepper sequences",
+   "the 7 pull-resistor lines the SDK uses to identify the module"
+  ]
+ },
+ "camera": {
+  "pins": [
+   [
+    "SCL",
+    8
+   ],
+   [
+    "SDA",
+    9
+   ],
+   [
+    "VSYNC",
+    10
+   ],
+   [
+    "PWDN",
+    11
+   ],
+   [
+    "HSYNC",
+    12
+   ],
+   [
+    "D9",
+    13
+   ],
+   [
+    "D8",
+    14
+   ],
+   [
+    "D3",
+    15
+   ],
+   [
+    "D4",
+    16
+   ],
+   [
+    "D2",
+    17
+   ],
+   [
+    "D5",
+    18
+   ],
+   [
+    "PCLK",
+    19
+   ],
+   [
+    "D6",
+    20
+   ],
+   [
+    "D7",
+    21
+   ]
+  ],
+  "orientations": [
+   "upright",
+   "turned"
+  ]
+ },
+ "mesh": {
+  "pins": [
+   [
+    "GNSS_RESET",
+    8
+   ],
+   [
+    "GNSS_TX",
+    9
+   ],
+   [
+    "GNSS_PPS",
+    10
+   ],
+   [
+    "GNSS_RX",
+    11
+   ],
+   [
+    "LORA_RESET",
+    12
+   ],
+   [
+    "LORA_IRQ",
+    13
+   ],
+   [
+    "LORA_DIO8",
+    14
+   ],
+   [
+    "I2C_SCL",
+    15
+   ],
+   [
+    "I2C_SDA",
+    16
+   ],
+   [
+    "LORA_MOSI",
+    17
+   ],
+   [
+    "LORA_BUSY",
+    18
+   ],
+   [
+    "LORA_MISO",
+    19
+   ],
+   [
+    "LORA_CS",
+    20
+   ],
+   [
+    "LORA_SCK",
+    21
+   ]
+  ]
+ },
+ "fck": {
+  "pins": [
+   [
+    "C5_EN",
+    8
+   ],
+   [
+    "C5_BOOT",
+    9
+   ],
+   [
+    "C5_RX",
+    10
+   ],
+   [
+    "CC1101_MISO",
+    11
+   ],
+   [
+    "C5_TX",
+    12
+   ],
+   [
+    "CC1101_SCLK",
+    13
+   ],
+   [
+    "CC1101_MOSI",
+    14
+   ],
+   [
+    "I2C_SCL",
+    15
+   ],
+   [
+    "I2C_SDA",
+    16
+   ],
+   [
+    "CC1101_GDO0",
+    17
+   ],
+   [
+    "EXP_INT",
+    18
+   ],
+   [
+    "CC1101_CS",
+    19
+   ],
+   [
+    "NRF_RX",
+    20
+   ],
+   [
+    "NRF_TX",
+    21
+   ]
+  ]
+ }
+}

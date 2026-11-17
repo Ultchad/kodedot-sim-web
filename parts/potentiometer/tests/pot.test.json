@@ -1,0 +1,53 @@
+{
+  "name": "potentiometer divides the supply",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "T",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "B",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "W",
+        "level": null
+      }
+    },
+    {
+      "comment": "midpoint of two header outputs through their resistors: about half of 3.3 V",
+      "expect_pin": {
+        "pin": "W",
+        "mv_min": 1500,
+        "mv_max": 1800
+      }
+    },
+    {
+      "set_field": {
+        "position": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "W",
+        "mv_min": 3000
+      }
+    },
+    {
+      "set_field": {
+        "position": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "W",
+        "mv_max": 300
+      }
+    }
+  ]
+}

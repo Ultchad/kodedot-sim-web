@@ -1,0 +1,165 @@
+{
+  "name": "coil patterns move the shaft",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "IN1",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN2",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN3",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN4",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "position",
+        "value": 0
+      }
+    },
+    {
+      "advance_ms": 3
+    },
+    {
+      "set_pin": {
+        "pin": "IN2",
+        "level": 1
+      }
+    },
+    {
+      "comment": "1000 to 1100: one half step forward",
+      "expect_output": {
+        "name": "position",
+        "value": 1
+      }
+    },
+    {
+      "advance_ms": 3
+    },
+    {
+      "set_pin": {
+        "pin": "IN1",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "position",
+        "value": 2
+      }
+    },
+    {
+      "advance_ms": 3
+    },
+    {
+      "set_pin": {
+        "pin": "IN3",
+        "level": 1
+      }
+    },
+    {
+      "advance_ms": 3
+    },
+    {
+      "set_pin": {
+        "pin": "IN2",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "position",
+        "value": 4
+      }
+    },
+    {
+      "advance_ms": 3
+    },
+    {
+      "set_pin": {
+        "pin": "IN2",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "IN3",
+        "level": 0
+      }
+    },
+    {
+      "comment": "0100 to 0010 is two half steps back, whatever the order of the two writes",
+      "expect_output": {
+        "name": "position",
+        "value": 2
+      }
+    },
+    {
+      "advance_ms": 3
+    },
+    {
+      "set_pin": {
+        "pin": "IN1",
+        "level": 1
+      }
+    },
+    {
+      "comment": "0010 to 0011: one half step back",
+      "expect_output": {
+        "name": "position",
+        "value": 1
+      }
+    },
+    {
+      "advance_ms": 3
+    },
+    {
+      "set_pin": {
+        "pin": "IN2",
+        "level": 0
+      }
+    },
+    {
+      "expect_output": {
+        "name": "position",
+        "value": 0
+      }
+    },
+    {
+      "comment": "a half step 0.4 ms after the last one is 2500 per second: the rotor skips",
+      "advance_ms": 0.4
+    },
+    {
+      "set_pin": {
+        "pin": "IN2",
+        "level": 1
+      }
+    },
+    {
+      "expect_output": {
+        "name": "stalled",
+        "value": true
+      }
+    },
+    {
+      "expect_output": {
+        "name": "position",
+        "value": 0
+      }
+    }
+  ]
+}
