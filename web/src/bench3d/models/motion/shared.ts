@@ -2,7 +2,10 @@
  * Shared builders of the motion family (motors, drivers, things that move). Everything here is built in code at real
  * dimensions (millimetres) and adds to a Shape, like the kit's own parts.ts; the ones marked KIT are candidates for it.
  */
-import { Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, glowing, roundCorners, roundedRectLoop, type Finish, type ManifestBody, type ManifestPin, type Object3D, type Pt, type V3 } from '../../index';
+import {
+  Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, glowing, roundCorners, roundedRectLoop,
+  type Finish, type ManifestBody, type ManifestPin, type Object3D, type PartState, type Pt, type V3,
+} from '../../index';
 
 export const TAU = Math.PI * 2;
 export const DEG = Math.PI / 180;
@@ -16,6 +19,7 @@ export interface MotionManifest {
   picture: { width: number; height: number };
   pins: ManifestPin[];
   visuals?: { id: string; x: number; y: number; r?: number }[];
+  behaviour?: { elements?: { type: string; steps_per_rev?: number }[] };
 }
 export const asManifest = (m: unknown): MotionManifest => m as MotionManifest;
 /** Where a pin of the manifest is, in the model frame. */
@@ -40,6 +44,27 @@ export const num = (v: unknown, d = 0): number => {
 /** Moves `cur` towards `target` by at most `step`. */
 export const approach = (cur: number, target: number, step: number): number => (Math.abs(target - cur) <= step ? target : cur + Math.sign(target - cur) * step);
 
+/**
+ * Degrees of a stepper's shaft from its live state: the part's unbounded `position` (in `unitsPerTurn` per turn) when
+ * it is published, so that the shaft never has to guess which way round a wrapped angle went; else `angle`.
+ */
+export function stepperDegrees(st: PartState, unitsPerTurn: number): number {
+  const p = st.outputs.position;
+  return typeof p === 'number' && Number.isFinite(p) ? (p / unitsPerTurn) * 360 : num(st.outputs.angle);
+}
+/**
+ * Eases the number kept under `key` of a copy's `userData` towards `target` (time constant 1 / `rate` seconds) and
+ * returns it; the first call starts on the target. No allocation: for `animate`.
+ */
+export function follow(u: Record<string, unknown>, key: string, target: number, dt: number, rate = 24): number {
+  const was = u[key];
+  let cur = typeof was === 'number' ? was : target;
+  const d = target - cur;
+  cur = Math.abs(d) < 0.02 ? target : cur + d * Math.min(1, dt * rate);
+  u[key] = cur;
+  return cur;
+}
+
 // ------------------------------------------------------------------------------------------------------- frames
 /** A frame whose local +Y runs along +X of the model (local X is down, local Z is Z): prisms and lathes lie along X. */
 export const alongX = (x: number, y: number, z = 0): Matrix4 => new Matrix4().makeTranslation(x, y, z).multiply(new Matrix4().makeRotationZ(-Math.PI / 2));
@@ -53,7 +78,7 @@ export const turnY = (quarter: number): Matrix4 => new Matrix4().makeRotationY((
 export const WIRE = { red: '#c8242c', black: '#1c1c1f', brown: '#6b3f22', orange: '#ee7a1b', yellow: '#f0c419', blue: '#1b66c9', green: '#1f9d55', pink: '#e2679a', white: '#eceae4' } as const;
 /** KIT: an insulated hook-up wire along `pts` (corners rounded). */
 export function wire(s: Shape, colour: string, pts: V3[], o: { d?: number; bend?: number; seg?: number } = {}): void {
-  s.tube('gloss', colour, roundCorners(pts, o.bend ?? 1.6, 4), (o.d ?? 1.2) / 2, o.seg ?? 6);
+  s.tube('matte', colour, roundCorners(pts, o.bend ?? 1.6, 4), (o.d ?? 1.2) / 2, o.seg ?? 6);
 }
 
 /**
