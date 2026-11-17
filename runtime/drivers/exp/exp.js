@@ -9,12 +9,13 @@
 //   attach() / detach()           tell the firmware a bench serves (an unattached J3 answers nothing: no I2C ACK, no levels)
 //   readPins() -> [{mode, pull, level, hz, duty}] x14    what the firmware does with each position (mode: z in out pwm adc)
 //   v5Boost() -> bool             the PMIC's boost bit (the 5 V rail)
+//   v33Pulse() -> bool            C5_EN was driven low (the C5 let go of J3's 3V3 enable: the no-link way to switch the rail on)
 //   writeInputs(levels, mv)       the level (0/1) and the millivolts on each position, then wake the firmware's interrupt pump
 //   takeRequest() -> null | {kind, p, w, rlen, seq}      one bus request (I2C/SPI/UART) the firmware waits on
 //   reply(req, result, bytes?)    answer it (result: 0 ok, 1 nack address, 2 nack data, 3 stuck, 4 timeout, 5 refused)
 //   rxPush(bytes) -> dropped      bytes into the firmware's UART receive ring (1024, overflow drops)
 //   onDoorbell(cb) -> off         cb() when the firmware changed a pin, the boost bit or posted a request
-const POS = 14, W = { MAGIC: 0, ABI: 1, ATTACHED: 2, BELL: 3, IN_SEQ: 4, V5: 5, RX_WAKE: 6, RX_HEAD: 7, RX_TAIL: 8, RX_DROP: 9, PIN: 16, LEVEL: 128, MV: 144,
+const POS = 14, W = { MAGIC: 0, ABI: 1, ATTACHED: 2, BELL: 3, IN_SEQ: 4, V5: 5, RX_WAKE: 6, RX_HEAD: 7, RX_TAIL: 8, RX_DROP: 9, V33P: 10, PIN: 16, LEVEL: 128, MV: 144,
   RQ_STATE: 160, RQ_SEQ: 161, RQ_KIND: 162, RQ_P: 163, RQ_WLEN: 169, RQ_RLEN: 170, RQ_RESULT: 171, RQ_RDONE: 172 };
 const B = { RQ_W: 704, RQ_R: 1728, RX: 2752 };
 const MODES = ["z", "in", "out", "pwm", "adc"], PULLS = ["none", "up", "down"];
@@ -60,6 +61,7 @@ export default function create(ctx) {
     detach() { Atomics.store(A(), W.ATTACHED, 0); Atomics.add(A(), W.IN_SEQ, 1); Atomics.notify(A(), W.IN_SEQ); },
     readPins() { const out = []; for (let i = 0; i < POS; i++) out.push(readPin(i)); return out; },
     v5Boost() { return Atomics.load(A(), W.V5) !== 0; },
+    v33Pulse() { return Atomics.load(A(), W.V33P) !== 0; },
     writeInputs(levels, mv) {
       const a = A();
       for (let i = 0; i < POS; i++) { Atomics.store(a, W.LEVEL + i, levels[i] ? 1 : 0); Atomics.store(a, W.MV + i, Math.max(0, Math.min(0x7fffffff, Math.round(mv[i] ?? 0)))); }

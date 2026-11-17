@@ -19,7 +19,8 @@ typedef struct {
 typedef struct {
     uint32_t magic, abi;
     volatile uint32_t attached, doorbell, in_seq, v5_boost, rx_wake, rx_head, rx_tail, rx_drop;
-    uint32_t pad0[6];
+    volatile uint32_t v33_pulse;                  /* word 10: the C5 was reset (C5_EN low) so it let go of J3's 3V3 enable */
+    uint32_t pad0[5];
     dbx_pin_t pin[DBX_POS];                       /* word 16 */
     volatile int32_t level_in[16];                /* word 128 */
     volatile int32_t mv_in[16];                   /* word 144 */
@@ -74,6 +75,13 @@ void dbx_pin_set(uint8_t gpio, dbx_mode_t mode, int pull, int level, uint32_t hz
     p->mode = (uint32_t)mode; p->pull = (uint32_t)pull; p->level = level ? 1u : 0u; p->hz = hz; p->duty = duty_q16; p->gen++;
     __atomic_store_n(&p->seq, s + 2, __ATOMIC_SEQ_CST);
     pthread_mutex_unlock(&g_pin_mu);
+    ring_bell();
+}
+
+void dbx_set_v33_pulse(bool on)
+{
+    if ((uint32_t)on == g.v33_pulse) return;
+    __atomic_store_n(&g.v33_pulse, on ? 1u : 0u, __ATOMIC_RELEASE);
     ring_bell();
 }
 

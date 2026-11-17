@@ -44,6 +44,7 @@ export class Bench {
     this.version = 0;
     this.link = null;
     this.rails = { V33: false, V5: false };
+    this._lastPulse = false;
     this.devicePins = Array.from({ length: POS }, () => ({ mode: "z", pull: "none", level: 0, hz: 0, duty: 0 }));
     this.masters = { i2c: null, spi: null, uart: null };
     this.events = [];                 // last bus warnings and diagnostics
@@ -391,6 +392,7 @@ export class Bench {
     this._unlink();
     this.masters = { i2c: null, spi: null, uart: null };
     this.rails = { V33: false, V5: false };
+    this._lastPulse = false;
     this.devicePins = Array.from({ length: POS }, () => ({ mode: "z", pull: "none", level: 0, hz: 0, duty: 0 }));
     this._lastIn = "";
     this.link = link || null;
@@ -412,6 +414,7 @@ export class Bench {
         this._serviceAgain = false;
         this.devicePins = link.readPins();
         const v5 = link.v5Boost(); if (v5 !== this.rails.V5) this.rails.V5 = v5;
+        const pl = !!link.v33Pulse?.(); if (pl && !this._lastPulse) this.rails.V33 = true; this._lastPulse = pl;     // an edge: a later hosted io 5 low overrides it
         this._touch();
         let req;
         while ((req = link.takeRequest())) this._request(req);

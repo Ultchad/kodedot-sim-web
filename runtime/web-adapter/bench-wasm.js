@@ -20,7 +20,8 @@ let workerConfig = { url: null, source: null };
 export function configureWorker(o) { workerConfig = { ...workerConfig, ...o }; }
 
 async function spawn() {
-  if (typeof Worker !== "undefined") {
+  // Emscripten defines a global Worker in Node (worker_threads' own class, which has no onmessage): Node always takes the worker_threads path
+  if (typeof Worker !== "undefined" && !globalThis.process?.versions?.node) {
     let url = workerConfig.url ?? new URL(WORKER_SOURCE_URL, import.meta.url);
     if (workerConfig.source) url = URL.createObjectURL(new Blob([workerConfig.source], { type: "text/javascript" }));
     const w = new Worker(url, { type: "module" });

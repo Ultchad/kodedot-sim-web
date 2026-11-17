@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <string.h>
 #include "khal_gpio.h"
+#include "kbsp.h"
 #include "dotbench_board.h"
 #include "dotbench_exp.h"   /* J3 positions publish their drive state to the bench model (runtime/drivers/exp) */
 
@@ -88,6 +89,7 @@ kode_status_t khal_gpio_output(uint8_t pin, bool level)
     g_pin[pin].out = level;
     UNLOCK();
     dbx_pin_set(pin, DBX_OUT, DBX_PULL_NONE, level, 0, 0);
+    if (pin == KBSP_PIN_C5_EN && !level) dbx_set_v33_pulse(true);   /* the C5 reset lets go of J3's 3V3 enable */
     return KODE_OK;
 }
 kode_status_t khal_gpio_write(uint8_t pin, bool level)
