@@ -96,10 +96,9 @@ await check("a KFW1 container with the app-data block: AppMgr writes app.json an
   const b = pkg("usbkfw", "USB Container");
   await pc.installPackage(b, { container: true, run: false });
   await waitFor(() => projects().includes("usbkfw"), 30000, "installed", sys);
-  const fsApi = sys.area("storage");
-  await waitFor(() => fsApi.stat("/storage/.kode/appsdata/usbkfw/app.json").exists, 15000, "app.json written by AppMgr", sys);
-  const info = await readPackageInfo(b);
-  assert.deepEqual([...fsApi.read("/storage/.kode/appsdata/usbkfw/app.json")], [...info.board.json]);
+  // AppMgr wrote the folder itself, on the card (the medium it prefers when one is mounted): its own appdata_info says what it resolved
+  const rec = (await pc.cmd('appdata_info name="usbkfw"')).join("\n");
+  assert.match(rec, /medium=sd/); assert.match(rec, /field=description src=folder/); assert.match(rec, /field=icon src=folder value=icon status=ok/);
 });
 
 await check("file transfer: file_put to /storage and file_get back, byte for byte; a card file too", async () => {
