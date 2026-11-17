@@ -28,6 +28,17 @@ export function About() {
   return (
     <p className="m-0 text-[13px] leading-snug text-ink2" data-testid="about">
       <strong className="font-semibold text-ink">{PRODUCT_NAME}</strong> · {t('app.descriptor')}
+      <span className="mt-1 block xl:hidden">{t('app.unofficial')}</span>
+    </p>
+  );
+}
+
+/** A quiet line in the top bar's empty middle: this is a community project, not Kode's (the owner asked for it there). */
+export function Unofficial({ className = '' }: { className?: string }) {
+  const { t } = useI18n();
+  return (
+    <p className={`m-0 min-w-0 truncate text-center text-[12.5px] leading-snug text-ink2 ${className}`} data-testid="unofficial">
+      {t('app.unofficial')}
     </p>
   );
 }
@@ -138,7 +149,9 @@ export function TopBar() {
       <div className="w-1 shrink-0" />
       <AppPicker />
       <RunButtons />
-      <div className="min-w-0 flex-1" />
+      <div className="flex min-w-0 flex-1 justify-center px-3">
+        <Unofficial className="hidden xl:block" />
+      </div>
       <GuideButton />
       <DeviceMenu />
       <SettingsMenu />
