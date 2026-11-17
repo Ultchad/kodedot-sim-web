@@ -30,13 +30,21 @@ async function run() {
   const { page, D } = b;
   try {
     await b.ready();
-    const box = await page.$eval('canvas', (c) => {
-      const r = c.getBoundingClientRect();
-      return { x: r.x, y: r.y, width: r.width, height: r.height };
-    });
+    // the canvas's place on the page (it changes when a banner comes or goes: read again for every picture)
+    const box = { x: 0, y: 0, width: 0, height: 0 };
+    const readBox = async () =>
+      Object.assign(
+        box,
+        await page.$eval('canvas', (c) => {
+          const r = c.getBoundingClientRect();
+          return { x: r.x, y: r.y, width: r.width, height: r.height };
+        }),
+      );
+    await readBox();
     const shot = async (name) => {
       await b.settled();
       await sleep(700);
+      await readBox();
       await page.screenshot({ path: join(out, `${name}.png`), clip: box });
       console.log(`shot  ${name}`);
       if (b.problems.length) console.log('  page problems:', b.problems.splice(0).join('\n  '));
@@ -160,6 +168,7 @@ async function run() {
       await page.mouse.click(c.x, c.y, { button: 'right' });
       await page.waitForSelector('[data-testid=wb-menu]', { timeout: 5000 });
       await sleep(300);
+      await readBox();
       await page.screenshot({ path: join(out, 'dot-menu.png'), clip: box });
       console.log('shot  dot-menu');
       await page.click('[data-testid=dot-pose-standing]');
@@ -227,6 +236,7 @@ async function run() {
         if (name === 'hacking') console.log('screen, Device view, hacking module mounted:', JSON.stringify(await screen()));
         await D(() => window.__dotbench3d.setPoseDebug({ pitch: 6, roll: 28, heading: 0 }));
         await sleep(900);
+        await readBox();
         await page.screenshot({ path: join(out, `device-${name}.png`), clip: box });
         console.log(`shot  device-${name}`);
         await D(() => window.__dotbench3d.setPoseDebug({ pitch: 0, roll: 90, heading: 0 }));
