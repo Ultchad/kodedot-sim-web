@@ -22,7 +22,7 @@ import { Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, type Finish, ty
 export interface KodeManifest {
   id: string;
   body: ManifestBody;
-  pins: readonly ManifestPin[];
+  pins: readonly (ManifestPin & { abs_max_mv?: number })[];
   mount?: { via: string; orientations: readonly string[]; pins: readonly { pin: string; gpio: number }[]; rails: readonly { pin: string; rail: string }[] };
 }
 /** A JSON import as the manifest type (JSON widens `face` to string). */
@@ -144,7 +144,7 @@ export function outlineBoard(s: Shape, o: { loop: Pt[]; y?: number; thick?: numb
  * pins leave along +Z in two layers and turn down into the board behind the plastic. `n` pins per row along X,
  * centred on `x`. Returns the middle of the pin field at the tips.
  */
-export function rightAngleHeader(s: Shape, o: { x: number; y: number; z: number; n: number; length?: number; pins?: Finish }): V3 {
+export function rightAngleHeader(s: Shape, o: { x: number; y: number; z: number; n: number; length?: number; pins?: Finish; legs?: boolean }): V3 {
   const len = o.length ?? 6, pins = o.pins ?? PAL.tin, a = 0.32;
   s.at(o.x, o.y, o.z, () => {
     // the strip is notched between pins, like the straight one
@@ -153,6 +153,11 @@ export function rightAngleHeader(s: Shape, o: { x: number; y: number; z: number;
       const px = (i - (o.n - 1) / 2) * PITCH;
       for (let r = 0; r < 2; r++) {
         const py = PITCH / 2 + r * PITCH, back = -PITCH - 1.3 - r * PITCH;
+        // `legs: false`: something stands right behind the plastic (the Maker's breadboard) and hides the bends
+        if (o.legs === false) {
+          s.with(LYING, () => s.prism(...pins, square(px, -py, a), 0, len, 0.16, { ao: 1 }));
+          continue;
+        }
         s.with(LYING, () => s.prism(...pins, square(px, -py, a), back - a, len, 0.16, { ao: 1 }));
         s.prism(...pins, square(px, back, a), -2.6, py + a, 0.1, { ao: 0.95 });
       }
