@@ -40,9 +40,21 @@ if (typeof window !== 'undefined') {
 
 const urlWith = (hash: string): string => `${location.pathname}${location.search}${hash}`;
 
-/** Opens the guide (on `section`, or where the visitor left it this visit), or moves an open guide to `section`. */
-export function openGuide(section?: SectionId): void {
+/** What was pressed to open the guide: closing gives focus back to it (a click does not focus a button in every browser). */
+let opener: HTMLElement | null = null;
+export function takeOpener(): HTMLElement | null {
+  const o = opener;
+  opener = null;
+  return o;
+}
+
+/**
+ * Opens the guide (on `section`, or where the visitor left it this visit), or moves an open guide to `section`.
+ * `from` is the control that was pressed, when there is one.
+ */
+export function openGuide(section?: SectionId, from?: HTMLElement | null): void {
   const to = section ?? state.section;
+  if (!state.open) opener = from ?? null;
   if (state.open) history.replaceState(history.state, '', urlWith(guideHash(to)));
   else {
     history.pushState(history.state, '', urlWith(guideHash(to)));

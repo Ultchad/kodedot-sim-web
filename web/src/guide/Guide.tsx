@@ -17,7 +17,7 @@ import { Inline } from './inline';
 import { guideHash, SECTION_IDS, type SectionId } from './route';
 import { SECTIONS, sectionOf, type Block, type Step } from './sections';
 import { BOARD_NAMES, SKETCH_FAMILIES, SKETCH_SUPPORTED, SKETCH_UNSUPPORTED, sketchText, type SketchItem } from './sketchData';
-import { closeGuide, openGuide, useGuideRoute } from './store';
+import { closeGuide, openGuide, takeOpener, useGuideRoute } from './store';
 
 type Tx = (key: GuideKey, extra?: Record<string, string>) => string;
 
@@ -230,7 +230,7 @@ function GuideDialog({ section }: { section: SectionId }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const tx: Tx = (key, extra) => guideText(locale, key, extra);
-  const text = (key: GuideKey) => <Inline text={tx(key)} onSection={openGuide} newTab={tx('ui.opensNew')} />;
+  const text = (key: GuideKey) => <Inline text={tx(key)} onSection={(id) => openGuide(id)} newTab={tx('ui.opensNew')} />;
   const cur = sectionOf(section);
   const index = SECTION_IDS.indexOf(cur.id);
   const prev = SECTIONS[index - 1];
@@ -244,9 +244,11 @@ function GuideDialog({ section }: { section: SectionId }) {
     return () => root?.removeAttribute('inert');
   }, []);
   useLayer(true, closeGuide, dialog, { autoFocus: false, dismissOutside: false });
-  // Opened from a link (nothing on the page had focus): closing leaves focus on the guide's own button.
+  // Closing gives focus back to what opened the guide; opened from a link (nothing was pressed), to the guide's own button.
   useEffect(
     () => () => {
+      const from = takeOpener();
+      if (from?.isConnected && from.getClientRects().length) return from.focus({ preventScroll: true });
       const a = document.activeElement;
       if (a && a !== document.body) return;
       for (const el of document.querySelectorAll<HTMLElement>('[data-guide-entry]')) {
@@ -368,7 +370,7 @@ function GuideDialog({ section }: { section: SectionId }) {
               </ScrollArea>
             </nav>
           )}
-          <ScrollArea innerRef={scroller} className={`min-h-0 min-w-0 flex-1 [container:guide/inline-size] ${compact ? 'px-4 pb-5' : 'px-6 pb-6'}`} label={tx(cur.title)} data-testid="guide-scroll">
+          <ScrollArea innerRef={scroller} className={`min-h-0 min-w-0 flex-1 [container:guide/inline-size] ${compact ? 'px-4 pb-5 pt-2' : 'px-6 pb-6 pt-1'}`} label={tx(cur.title)} data-testid="guide-scroll">
             <article className="guide-prose" data-testid="guide-section">
               <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
                 <h2 ref={heading} tabIndex={-1} className="min-w-0 flex-1 basis-[14rem] text-[28px] leading-[1.15] outline-none" data-testid="guide-heading">

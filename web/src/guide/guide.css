@@ -47,7 +47,7 @@
     font-size: 0.86em;
     background: var(--raised-soft);
     border-radius: 7px;
-    padding: 2px 6px;
+    padding: 1px 5px;
     overflow-wrap: anywhere;
   }
   .guide-prose kbd {
@@ -164,6 +164,9 @@
   .guide-fig-wide {
     width: min(100%, 34rem);
     height: auto;
+  }
+  .guide-figure[data-fig='controls'] .guide-fig-wide {
+    width: min(100%, 25rem);
   }
 
   /* rows with a name and a description (keys, apps, boards) */

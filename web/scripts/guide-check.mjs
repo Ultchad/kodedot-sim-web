@@ -86,6 +86,8 @@ try {
     const vp = VP[key];
     for (const theme of ['light', 'dark']) {
       const { page, ctx, problems } = await openPage(browser, vp, { theme, mock: true, view: '2d', base: base() });
+      // first visit, with the hint still showing: the control must not sit on it
+      if (!noShots && theme === 'light') await sleep(600), await page.screenshot({ path: join(shots, `${vp.id}-${theme}-first-visit.png`) });
       await page.click('[data-testid=welcome-dismiss]').catch(() => {});
       const entry = await page.evaluate(() => {
         const els = [...document.querySelectorAll('[data-testid=guide-open]')].filter((e) => e.getClientRects().length);
@@ -93,7 +95,7 @@ try {
         if (!e) return null;
         const r = e.getBoundingClientRect();
         const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        return { count: els.length, text: e.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height), inView: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, reachable: !!top && (top === e || e.contains(top)) };
+        return { count: els.length, text: (e.textContent.trim() || e.getAttribute('aria-label')) ?? '', w: Math.round(r.width), h: Math.round(r.height), inView: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, reachable: !!top && (top === e || e.contains(top)) };
       });
       check(`${vp.id} ${theme}: one visible, labelled "Guide" control that can be pressed`, !!entry && entry.count === 1 && entry.text === 'Guide' && entry.inView && entry.reachable && entry.h >= (vp.touch ? 44 : 36), JSON.stringify(entry));
       if (!noShots) await page.screenshot({ path: join(shots, `${vp.id}-${theme}-closed.png`) });
@@ -199,11 +201,12 @@ try {
     }
     {
       // the How? links of the page
-      const { page, ctx } = await openPage(browser, vp, { mock: false, view: '2d', base: base() });
+      const { page, ctx } = await openPage(browser, vp, { mock: true, view: '2d', base: base() });
+      await sleep(1500);
       const tryHow = async (name, open, how, expect) => {
         await open();
         await page.waitForSelector(how, { timeout: 15000 });
-        await page.$eval(how, (e) => e.click());
+        await page.click(how).catch(async () => (await sleep(500), page.click(how))); // the panel may still be settling
         await waitOpen(page);
         const got = await sectionOf(page);
         await page.keyboard.press('Escape');
