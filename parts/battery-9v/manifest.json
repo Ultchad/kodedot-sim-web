@@ -60,8 +60,8 @@
     "height": 175
   },
   "pins": [
-    {"name":"POS","kind":"io","pos":{"x":70,"y":87.5},"mm":{"x":7,"y":8.75},"face":"top","label":{"en":"+"},"abs_max_mv":60000},
-    {"name":"NEG","kind":"io","pos":{"x":197,"y":87.5},"mm":{"x":19.7,"y":8.75},"face":"top","label":{"en":"-"},"abs_max_mv":60000}
+    {"name":"POS","kind":"io","pos":{"x":70,"y":87.5},"mm":{"x":7,"y":8.75,"z":48.5},"face":"top","label":{"en":"+"},"abs_max_mv":60000},
+    {"name":"NEG","kind":"io","pos":{"x":197,"y":87.5},"mm":{"x":19.7,"y":8.75,"z":48.5},"face":"top","label":{"en":"-"},"abs_max_mv":60000}
   ],
   "fields": [
     {
@@ -89,6 +89,15 @@
         "en": "Current",
         "pt-BR": "Corrente",
         "es": "Corriente"
+      }
+    },
+    {
+      "name": "overload",
+      "type": "boolean",
+      "label": {
+        "en": "Overload (above 500 mA or shorted)",
+        "pt-BR": "Sobrecarga (acima de 500 mA ou em curto)",
+        "es": "Sobrecarga (por encima de 500 mA o en corto)"
       }
     }
   ],
@@ -118,7 +127,8 @@
         },
         "ohms": 2,
         "max_ma": 500,
-        "current_output": "current_ma"
+        "current_output": "current_ma",
+        "overload_output": "overload"
       }
     ]
   }

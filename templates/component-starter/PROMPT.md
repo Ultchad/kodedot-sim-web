@@ -793,6 +793,7 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
             "a": {"$ref": "#/$defs/pinName"}, "b": {"$ref": "#/$defs/pinName"},
             "ohms": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "object", "required": ["field"], "additionalProperties": false, "properties": {"field": {"$ref": "#/$defs/fieldName"}, "scale": {"type": "number"}}}]},
             "rated_mw": {"type": "number", "exclusiveMinimum": 0, "description": "Power rating; above it the bench shows an overpower hazard."},
+            "overpower_output": {"$ref": "#/$defs/fieldName", "description": "A boolean output: true while the power is above rated_mw."},
             "current_output": {"$ref": "#/$defs/fieldName"}
           },
           "description": "A resistor between two terminals, solved with the nets (it loads them)."
@@ -843,7 +844,8 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
             "mv": {"$ref": "#/$defs/expr"},
             "ohms": {"type": "number", "minimum": 0.001, "default": 1.5},
             "max_ma": {"type": "number", "exclusiveMinimum": 0, "description": "Above it an overcurrent hazard is shown."},
-            "current_output": {"$ref": "#/$defs/fieldName"}
+            "current_output": {"$ref": "#/$defs/fieldName"},
+            "overload_output": {"$ref": "#/$defs/fieldName", "description": "A boolean output: true while the current is above max_ma or plus is wired to minus."}
           },
           "description": "A floating voltage source (battery, bench supply): + at `pos`, `mv` above `neg`; its minus is 0 V when nothing else defines the reference."
         },

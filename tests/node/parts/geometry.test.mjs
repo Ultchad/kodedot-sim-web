@@ -20,6 +20,8 @@ await test(`geometry of every part (${dirs.length})`, async () => {
       if (Math.abs(p.pos.x - p.mm.x * sx) > 0.6 || Math.abs(p.pos.y - p.mm.y * sy) > 0.6) bad.push(`${p.name} pos (${p.pos.x},${p.pos.y}) != mm*scale (${(p.mm.x * sx).toFixed(1)},${(p.mm.y * sy).toFixed(1)})`);
       if (p.mm.x < -0.001 || p.mm.x > b.w_mm + 0.001 || p.mm.y < -0.001 || p.mm.y > b.d_mm + 0.001 || (p.mm.z ?? 0) < -0.001 || (p.mm.z ?? 0) > b.h_mm + 0.001) bad.push(`${p.name} outside the body (${p.mm.x}, ${p.mm.y}, ${p.mm.z ?? "-"}) in ${b.w_mm} x ${b.d_mm} x ${b.h_mm}`);
     }
+    const noz = m.pins.filter((p) => typeof p.mm.z !== "number").map((p) => p.name);
+    check(noz.length === 0, `${d}: every pin has an explicit contact height mm.z (no terminal above the body: z <= ${b.h_mm})`, noz.slice(0, 4));
     check(bad.length === 0, `${d}: every pin's picture position is its mm times the scale and lies inside the body`, bad.slice(0, 4));
     const leg = m.pins.filter((p) => (p.face ?? "top") === "bottom" && p.kind !== "nc");
     if (m.category !== "board" && m.category !== "kode-module" && m.category !== "breadboard" && leg.length > 1) {

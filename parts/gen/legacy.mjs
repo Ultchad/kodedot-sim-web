@@ -26,8 +26,8 @@ const SPEC = {
   hdc1080: { body: [20, 12, 6], pins: row(["VCC", "GND", "SDA", "SCL"], 6.19, 10.5, 2.54), kw: K(["hdc1080", "temperature", "humidity", "i2c", "sensor"], ["hdc1080", "temperatura", "umidade", "i2c", "sensor"], ["hdc1080", "temperatura", "humedad", "i2c", "sensor"]) },
   potentiometer: { body: [14.5, 11, 16], pins: row(["T", "W", "B"], 2.19, 10, 5.08), kw: K(["potentiometer", "knob", "analog", "resistor", "dial"], ["potenciômetro", "botão giratório", "analógico", "resistor"], ["potenciómetro", "perilla", "analógico", "resistencia"]) },
   "push-button": { body: [6, 6, 5], pins: { A: { x: 0.46, y: 3, face: "bottom" }, B: { x: 5.54, y: 3, face: "bottom" } }, kw: K(["button", "switch", "push", "input"], ["botão", "chave", "pressionar", "entrada"], ["botón", "pulsador", "interruptor", "entrada"]) },
-  "rgb-led": { body: [8.6, 5.8, 9], pins: row(["R", "COM", "G", "B"], 0.5, 2.9, 2.54), kw: K(["rgb", "led", "color", "light"], ["rgb", "led", "cor", "luz"], ["rgb", "led", "color", "luz"]) },
-  servo: { body: [22.5, 12.2, 22.7], pins: { GND: { x: 0, y: 3.66, face: "left" }, V5: { x: 0, y: 6.2, face: "left" }, SIG: { x: 0, y: 8.74, face: "left" } }, kw: K(["servo", "sg90", "motor", "angle", "pwm", "arduino servo"], ["servo", "sg90", "motor", "ângulo", "pwm"], ["servo", "sg90", "motor", "ángulo", "pwm"]) },
+  "rgb-led": { body: [8.6, 5.8, 13], pins: row(["R", "COM", "G", "B"], 0.5, 2.9, 2.54), kw: K(["rgb", "led", "color", "light"], ["rgb", "led", "cor", "luz"], ["rgb", "led", "color", "luz"]) },
+  servo: { body: [32.3, 12.2, 31.8], pins: { GND: { x: 0, y: 3.66, face: "left", z: 4 }, V5: { x: 0, y: 6.2, face: "left", z: 4 }, SIG: { x: 0, y: 8.74, face: "left", z: 4 } }, kw: K(["servo", "sg90", "motor", "angle", "pwm", "arduino servo"], ["servo", "sg90", "motor", "ângulo", "pwm"], ["servo", "sg90", "motor", "ángulo", "pwm"]) },
   "slide-switch": { body: [8.6, 3.6, 8.5], pins: row(["A", "COM", "B"], 1.76, 1.8, 2.54), kw: K(["switch", "slide", "toggle", "input"], ["chave", "deslizante", "interruptor", "entrada"], ["interruptor", "deslizante", "entrada"]) },
 };
 SPEC["esp32-button-led"] = { ...SPEC["esp32-blink-echo"] }; SPEC["esp32-i2c-slave"] = { ...SPEC["esp32-blink-echo"] };
@@ -41,7 +41,7 @@ const ESP_J3 = ["GND_2", "IO23", "IO22", "TXD0", "RXD0", "IO21", "GND_3", "IO19"
 const ESP_ALIAS = { GND_1: ["GND"], IO17: ["TX"], IO16: ["RX"], IO21: ["SDA"], IO22: ["SCL"] }, ESP_FLASH = { IO6: "CLK", IO7: "SD0", IO8: "SD1", IO9: "SD2", IO10: "SD3", IO11: "CMD" }, ESP_GPIO = { TXD0: 1, RXD0: 3 };
 function esp32Classic(m) {
   const mk = (n, x, y) => {
-    const at = { x: Math.round(x * 100) / 100, y }, o = { mm: at, pos: { x: Math.round(x * ESP_SCALE * 10) / 10, y: Math.round(y * ESP_SCALE * 10) / 10 }, face: "bottom" };
+    const at = { x: Math.round(x * 100) / 100, y, z: 0 }, o = { mm: at, pos: { x: Math.round(x * ESP_SCALE * 10) / 10, y: Math.round(y * ESP_SCALE * 10) / 10 }, face: "bottom" };
     if (n === "V33") return { name: n, kind: "power_in", label: { en: "3V3" }, min_mv: 3000, max_mv: 3600, typ_ma: 60, supply_group: "pwr", ...o };
     if (n === "V5") return { name: n, kind: "power_in", label: { en: "5V" }, min_mv: 4500, max_mv: 5500, typ_ma: 60, supply_group: "pwr", ...o };
     if (n.startsWith("GND")) return { name: n, kind: "ground", label: { en: "GND" }, ...(ESP_ALIAS[n] ? { aliases: ESP_ALIAS[n] } : {}), ...o };
@@ -77,7 +77,7 @@ export function legacy() {
     const m = JSON.parse(fs.readFileSync(f, "utf8"));
     m.body = { w_mm: s.body[0], d_mm: s.body[1], h_mm: s.body[2] };
     if (dir.startsWith("esp32")) esp32Classic(m);
-    else for (const p of m.pins) { const g = s.pins[p.name]; if (g) { p.mm = { x: g.x, y: g.y }; p.face = g.face; } }
+    else for (const p of m.pins) { const g = s.pins[p.name]; if (g) { p.mm = { x: g.x, y: g.y, z: g.z ?? 0 }; p.face = g.face; } }
     m.keywords = s.kw;
     if (!dir.startsWith("esp32")) picture(dir, s, m);
     if (dir.startsWith("esp32")) m.behaviour.core ??= "esp32";

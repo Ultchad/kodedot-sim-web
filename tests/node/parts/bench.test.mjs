@@ -166,4 +166,17 @@ await test(".dotpart: validation of the shipped parts and of broken input", asyn
   const v2 = validateManifest(evil, null, { builtin: true }); check(v2.ok === false || v2.errors?.length > 0, "a wasm entry that climbs out of the package is rejected", v2);
 });
 
+await test("hazard outputs: a supply and a battery say overload, a resistor says overpower", async () => {
+  const b = await mk(), sup = b.addPart("dotbench.supply", { fields: { mv: 5000 } }), bat = b.addPart("dotbench.battery-9v"), r = b.addPart("dotbench.resistor", { fields: { ohms: 10 } }), r2 = b.addPart("dotbench.resistor", { fields: { ohms: 10000 } });
+  const o = (i, n) => b.parts.get(i).outputs[n];
+  b.advance(1000); await b.ready?.();
+  check(o(sup, "overload") === false && o(bat, "overload") === false && o(r, "overpower") === false, "idle: no overload, no overpower");
+  b.connect(sup + ".POS", r + ".A"); b.connect(sup + ".NEG", r + ".B"); b.connect(r2 + ".A", bat + ".POS"); b.connect(r2 + ".B", bat + ".NEG");
+  await b.advance(50000);
+  check(o(r, "overpower") === true && o(sup, "overload") === false, "5 V across 10 ohm is 2.5 W: the resistor says overpower (the supply gives 500 mA, under its 1 A)", [o(r, "overpower"), o(sup, "current_ma")]);
+  b.connect(bat + ".POS", bat + ".NEG"); await b.advance(50000);
+  check(o(bat, "overload") === true, "a battery with plus wired to minus says overload");
+  b.dispose();
+});
+
 process.exit(finish("bench"));
