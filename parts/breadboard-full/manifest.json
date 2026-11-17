@@ -51,7 +51,13 @@
   "body": {
     "w_mm": 165,
     "d_mm": 55,
-    "h_mm": 8.5
+    "h_mm": 8.5,
+    "overhang_mm": {
+      "left": 1.2,
+      "right": 1.2,
+      "back": 1.2,
+      "front": 1.2
+    }
   },
   "picture": {
     "file": "picture.svg",

@@ -27,7 +27,7 @@ const SPEC = {
   potentiometer: { body: [14.5, 11, 16], pins: row(["T", "W", "B"], 2.19, 10, 5.08), kw: K(["potentiometer", "knob", "analog", "resistor", "dial"], ["potenciômetro", "botão giratório", "analógico", "resistor"], ["potenciómetro", "perilla", "analógico", "resistencia"]) },
   "push-button": { body: [6, 6, 5], pins: { A: { x: 0.46, y: 3, face: "bottom" }, B: { x: 5.54, y: 3, face: "bottom" } }, kw: K(["button", "switch", "push", "input"], ["botão", "chave", "pressionar", "entrada"], ["botón", "pulsador", "interruptor", "entrada"]) },
   "rgb-led": { body: [8.6, 5.8, 13], pins: row(["R", "COM", "G", "B"], 0.5, 2.9, 2.54), kw: K(["rgb", "led", "color", "light"], ["rgb", "led", "cor", "luz"], ["rgb", "led", "color", "luz"]) },
-  servo: { body: [52.3, 40, 31.8], art: (k) => `<rect x="${20 * k}" y="${13.9 * k}" width="${32.3 * k}" height="${12.2 * k}" rx="2" fill="#2a63b8" stroke="#16386a" stroke-width="2"/><circle cx="${31 * k}" cy="${20 * k}" r="${20 * k}" fill="none" stroke="#9aa6b2" stroke-dasharray="6 4"/><circle cx="${31 * k}" cy="${20 * k}" r="${3 * k}" fill="#e8eef5" stroke="#555" stroke-width="2"/><path d="M${3 * k} ${20.1 * k}H${20 * k}" stroke="#aeb7c2" stroke-width="3"/>`, pins: { GND: { x: 0, y: 17.56, face: "left", z: 4 }, V5: { x: 0, y: 20.1, face: "left", z: 4 }, SIG: { x: 0, y: 22.64, face: "left", z: 4 } }, kw: K(["servo", "sg90", "motor", "angle", "pwm", "arduino servo"], ["servo", "sg90", "motor", "ângulo", "pwm"], ["servo", "sg90", "motor", "ángulo", "pwm"]) },
+  servo: { body: [52.3, 40, 31.8], art: (k) => `<rect x="${20 * k}" y="${13.9 * k}" width="${32.3 * k}" height="${12.2 * k}" rx="2" fill="#2a63b8" stroke="#16386a" stroke-width="2"/><circle cx="${31 * k}" cy="${20 * k}" r="${20 * k}" fill="none" stroke="#9aa6b2" stroke-dasharray="6 4"/><circle cx="${31 * k}" cy="${20 * k}" r="${3 * k}" fill="#e8eef5" stroke="#555" stroke-width="2"/><path d="M${3 * k} ${20.1 * k}H${20 * k}" stroke="#aeb7c2" stroke-width="3"/>`, pins: { GND: { x: 0, y: 17.56, face: "left", z: 1.27 }, V5: { x: 0, y: 20.1, face: "left", z: 1.27 }, SIG: { x: 0, y: 22.64, face: "left", z: 1.27 } }, kw: K(["servo", "sg90", "motor", "angle", "pwm", "arduino servo"], ["servo", "sg90", "motor", "ângulo", "pwm"], ["servo", "sg90", "motor", "ángulo", "pwm"]) },
   "slide-switch": { body: [8.6, 3.6, 8.5], pins: row(["A", "COM", "B"], 1.76, 1.8, 2.54), kw: K(["switch", "slide", "toggle", "input"], ["chave", "deslizante", "interruptor", "entrada"], ["interruptor", "deslizante", "entrada"]) },
 };
 SPEC["esp32-button-led"] = { ...SPEC["esp32-blink-echo"] }; SPEC["esp32-i2c-slave"] = { ...SPEC["esp32-blink-echo"] };
@@ -35,7 +35,7 @@ SPEC["esp32-button-led"] = { ...SPEC["esp32-blink-echo"] }; SPEC["esp32-i2c-slav
 // ---- the three classic ESP32 boards model the ESP32-DevKitC V4 (ESP32-WROOM-32): 2 x 19 pins, rows 25.4 mm apart, board 54.4 x 27.94 mm. Laid out with the 3V3 end
 // (antenna) on the left and the USB end on the right: J2 (3V3 ... 5V) is the front row (y = 26.67), J3 (GND ... CLK) the back row (y = 1.27). x from 3.4 mm.
 // Old names survive as aliases: GND (= GND_1), TX (= IO17, UART2 TX), RX (= IO16), SDA (= IO21), SCL (= IO22); the real UART0 pins are TXD0 (GPIO1) and RXD0 (GPIO3).
-const ESP_W = 54.4, ESP_D = 27.94, ESP_X0 = 3.4, ESP_SCALE = 9;
+const ESP_W = 55.1, ESP_D = 27.94, ESP_X0 = 3.4, ESP_SCALE = 9;
 const ESP_J2 = ["V33", "EN", "IO36", "IO39", "IO34", "IO35", "IO32", "IO33", "IO25", "IO26", "IO27", "IO14", "IO12", "GND_1", "IO13", "IO9", "IO10", "IO11", "V5"];
 const ESP_J3 = ["GND_2", "IO23", "IO22", "TXD0", "RXD0", "IO21", "GND_3", "IO19", "IO18", "IO5", "IO17", "IO16", "IO4", "IO0", "IO2", "IO15", "IO8", "IO7", "IO6"];
 const ESP_ALIAS = { GND_1: ["GND"], IO17: ["TX"], IO16: ["RX"], IO21: ["SDA"], IO22: ["SCL"] }, ESP_FLASH = { IO6: "CLK", IO7: "SD0", IO8: "SD1", IO9: "SD2", IO10: "SD3", IO11: "CMD" }, ESP_GPIO = { TXD0: 1, RXD0: 3 };
@@ -54,7 +54,7 @@ function esp32Classic(m) {
   m.groups = [{ pins: ["GND_1", "GND_2", "GND_3"] }];
   m.body = { w_mm: ESP_W, d_mm: ESP_D, h_mm: 13 };
   m.picture = { file: "picture.svg", width: Math.round(ESP_W * ESP_SCALE), height: Math.round(ESP_D * ESP_SCALE) };
-  const k = ESP_SCALE, led = { x: 48, y: 14 }, count = { x: 24, y: 17 };
+  const k = ESP_SCALE, led = { x: 38, y: 14 }, count = { x: 24, y: 17 };
   m.visuals = m.visuals.map((v) => v.id === "led" ? { ...v, x: Math.round(led.x * k), y: Math.round(led.y * k) } : { ...v, x: Math.round(count.x * k), y: Math.round(count.y * k), w: 110, h: 20 });
   m.outputs = [...m.outputs.filter((o) => !["led", "tx", "rx", "crashed"].includes(o.name)), ...LIFE_OUT];
   const W = m.picture.width, H = m.picture.height, px = (v) => Math.round(v * k * 10) / 10;
