@@ -328,7 +328,7 @@ Other checks after the Workbench landed (the older scripts ask for Device mode a
 all passed (25), `bench-check.mjs` 20 passed (the bench is driven through the new list, palette and inspector, in Device mode
 with the 2D view: the bench works without the table), `settings-check.mjs` all passed (18; run before the default names and
 the toolbar thresholds changed), `AUDIT=off headless-check.mjs` 169/169 (run before the last toolbar threshold change),
-unit tests 220/220, `npm run build` green. Layout audit (`layout-audit.mjs`, with new scenes `bench-objects`, `bench-list`,
+unit tests 214/214, `npm run build` green. After main took the merge of the parts engine, USB and Bluetooth, `workbench-check.mjs` passed again on a fresh build (the other scripts were not run again after that merge). Layout audit (`layout-audit.mjs`, with new scenes `bench-objects`, `bench-list`,
 `object-menu`, `workbench`): 1280x720 and 390x844 clean in both themes and three languages; 820x1180 and 1024x768 clean (12/12)
 after the toolbar labels were made to collapse earlier (the Spanish and Portuguese toolbar overlapped its neighbours on a tablet).
 
