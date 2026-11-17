@@ -30,17 +30,27 @@ WORK IN PROGRESS. Nothing is fixed yet. This file records what is known; the thr
 - bench-check (load 4-5): run 1 freeze (ProtocolError), run 2 20 PASS.
 - Overall settings-check about 30 to 40 % failure, consistent with the brief.
 
-## Uncommitted diagnostics in this worktree (to be removed or turned into a permanent aid before the final commit)
-- runtime/rtos/src/rtos.c: `dotbench_rtos_queue_peek_ptrs`, `dotbench_rtos_thread_desc` (read the queued event pointers of an AO queue; name the current thread).
-- runtime/drivers/system/khal_system_web.c: `panic_dump()` called from `khal_panic`: prints each non-empty AO queue (prio, task, used/len, signals) and the panicking thread.
-- runtime/bridge/kweb_bridge.c: TEMPORARY debug thread that console-logs when the page stops draining the text ring. Remove.
+## What changed (committed)
+- `runtime/drivers/ble/ble_host.c`: every page-facing export (`ble_in`, `ble_out_pop`, `ble_cfg`, `ble_cfg_get`, `ble_stat`, `ble_set_addr`,
+  `ble_info`, `ble_gatt_json`, `ble_bond_inject`, `ble_reset_counters`) takes `g_mu` through `page_lock(budget_ms)`: a bounded
+  `pthread_mutex_trylock` loop (5 ms for polls, 50 ms for config writes). On failure the export answers "busy" (`ble_in` -3, pops/info 0).
+  The page asks again at its next poll. Rule: the page's thread never waits unboundedly for a lock a firmware thread can hold.
+- `runtime/web-adapter/dotbench-device.js`: `_teardown` marks the instance dead first and disposes every area glue (ble.js has timers: a 10 ms
+  scan interval, `later()` timeouts) and `ctx.call` returns 0 for a dead instance. Before, those timers kept calling into a module whose
+  workers had just been terminated, possibly while one held a lock: the main thread then spun forever (100 % CPU, protocol timeouts).
+- `runtime/drivers/system/khal_system_web.c` (+ two helpers in rtos.c): `panic_dump()` at every panic prints each AO queue with its queued signals and the
+  panicking thread, so a "queue full" assert names the victim next time.
+- `tests/node/ble/page_lock.test.mjs`: a hook (`ble_test_orphan_lock`) makes a thread take g_mu and exit holding it (what a terminated worker leaves),
+  then calls the page exports on the main thread. Before the fix the child hangs (killed after 60 s: FAIL, verified), after it every call
+  answers busy in < 100 ms (PASS). Deterministic, no timing.
 
-## Process notes
-- A `pkill -f chromium-1243` run twice early on may have killed other engineers' Chrome processes. Sorry; it was not repeated.
-- Chrome tracing with the V8 CPU profiler drove load to 40+; abandoned.
-
-## Next
-1. Capture which lock and holder in a main thread freeze (diagnostic thread printing `g_mu` raw owner, g_k owner, thread census).
-2. Reproduce deterministically (test hook holding the lock), fix by making page-facing exports try-lock / lock-free.
-3. Identify the panic victim with panic-dump; fix (back-pressure on the QP tick when an AO queue is nearly full, or similar).
-4. Regression tests; 20 consecutive settings-check runs; kodeos/boot/persist/BLE suites; bench-check.
+## Honest state of the evidence
+- Orphaned/held lock freeze: the mechanism is demonstrated (test above) and the code path exists in the page (stale glue timers after stop/restart).
+  I did NOT capture a live freeze showing which lock and holder (Debugger.pause and a diagnostic thread both failed to report: the stuck call was
+  not seen from the page). So I cannot claim the settings-check hangs are this bug; see the after-fix rates below.
+- Panic: the poster is the esp_timer/tick thread, the victim AO is not identified. Stalling any single AO for up to 4 s by a test hook (not committed)
+  did NOT reproduce the assert, so a simple stall of one AO is not enough; it needs a sustained flood into one queue. Unresolved.
+- Audit of other page-facing exports taking firmware-held locks with an unbounded wait (NOT changed): rfid_bench.c, haptic_aw86233.c,
+  power_model.c, radio_host.c, khal_nvs_web.c (dbnvs_*), usb_cable.c, motion_model.c, exp_link.c, khal_console_web.c (`kweb_console_input`, used by
+  settings-check's `config`), audio_bench.c; `kweb_text_drain` (spin lock on the text ring). storage/vfs.c already uses a bounded try. The same
+  `page_lock` helper applies to each; the holders there only hold for short memory work, so they were not changed without evidence.
