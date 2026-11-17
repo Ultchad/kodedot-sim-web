@@ -97,16 +97,9 @@ async function setZoom(page, z) {
 }
 async function ensureMotionObject(page, vp) {
   await showBench(page, vp);
-  await clickIf(page, '[data-testid=area-motion]');
-  await sleep(150);
-  if (!(await has(page, '[data-testid=bench-object]'))) {
-    await clickIf(page, '[data-testid="area-motion"]');
-    await clickIf(page, '[data-testid="add-motion.pose"]');
-    await sleep(200);
-  }
-  const active = await page.$eval('[data-testid=bench-object]', (e) => e.dataset.active === 'true').catch(() => true);
-  if (!active) await clickIf(page, '[data-testid=toggle-near]');
-  await sleep(150);
+  // tilt and shake live in the Dot's own card: select the Dot in the list
+  await clickIf(page, '[data-testid=row-dot] [data-testid=row-select]');
+  await sleep(200);
 }
 
 // shaped like the 3D code's store: a built-in choice, the state of the bundled file, a performance switch
@@ -203,10 +196,50 @@ export function scenesFor(vp) {
   });
   if (kind === 'wide') add('console-collapsed', async (p) => (await clickIf(p, '[data-testid=console-collapse]')) || setPanel(p, 'console', false));
   // scenes that only exist since the review pass (no "before" twin)
+  // a few things on the bench, one of them selected: the inspector, the list and the palette together
+  const withObjects = (p, pick) =>
+    p.evaluate((kind) => {
+      const b = window.__dotbench.bench;
+      if (!b.getState().objects.some((o) => o.kind === 'wifi.router')) for (const k of ['nfc.tag', 'wifi.router', 'ir.remote', 'rfid.reader']) b.add(k, k.replace('.', ' '));
+      const o = b.getState().objects.find((x) => x.kind === kind);
+      if (o) window.__dotbench.select.only(o.id);
+      else window.__dotbench.select.clear();
+    }, pick);
+  add('bench-objects', async (p) => {
+    await showBench(p, vp);
+    await withObjects(p, 'wifi.router');
+    await sleep(300);
+  }, { newUi: true, textHeavy: true });
+  add('bench-list', async (p) => {
+    await showBench(p, vp);
+    await withObjects(p, null);
+    await sleep(300);
+  }, { newUi: true, textHeavy: true });
   add('object-menu', async (p) => {
-    await ensureMotionObject(p, vp);
+    await showBench(p, vp);
+    await withObjects(p, 'nfc.tag');
+    await sleep(300);
     await clickIf(p, '[data-testid=object-menu]');
   }, { newUi: true, textHeavy: true });
+  // the Workbench: its toolbar, the table, the panel beside it
+  S.push({
+    id: 'workbench',
+    newUi: true,
+    enter: async (p) => {
+      await withObjects(p, 'ir.remote');
+      await p.evaluate(() => window.__dotbench.ui.setMode('workbench'));
+      await p.waitForSelector('[data-testid=webgl-canvas]', { timeout: 20000 }).catch(() => {});
+      await sleep(1800);
+    },
+    leave: async (p, v) => {
+      await p.evaluate(() => {
+        window.__dotbench.ui.setMode('device');
+        window.__dotbench.select.clear();
+      });
+      await sleep(400);
+      await neutral(p, v);
+    },
+  });
   if (!phone) {
     add('settings-menu', async (p) => clickIf(p, '[data-testid=settings-menu]'), { newUi: true, textHeavy: true });
     add('details', async (p) => clickIf(p, '[data-testid=status-details-toggle]'), { newUi: true, textHeavy: true });

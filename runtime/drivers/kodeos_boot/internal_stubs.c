@@ -3,8 +3,8 @@
  * declared in a public khal/kdrv header (gen_stubs.py only sees public headers) but that other compiled SDK files
  * call. Same policy as the generated stubs: log once, return failure.
  *
- * Replaced by: the radio engineer (kdrv_ble_app_host_bytes) and the exp/station engineer
- * (kdrv_station_i2c_*) when they take over the superseded kdrv_radio_*, kdrv_ble and kdrv_station_i2c files. */
+ * Replaced by: the exp/station engineer (kdrv_station_i2c_*) when they take over kdrv_station_i2c.c.
+ * (The radio and BLE stand-ins are gone: the real radio stack and runtime/drivers/ble define those functions.) */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -15,20 +15,6 @@
  * needs no such notice, so this succeeds (it used to be a logged failure while kdrv_radio was stubbed). */
 int bus_inform_slave_host_power_save_start(void) { return 0; }
 int bus_inform_slave_host_power_save_stop(void) { return 0; }
-
-/* kdrv_ble.c: size of the BLE host's share of the app-data block (kdrv_ble_app.c). 0: no host state. */
-size_t kdrv_ble_app_host_bytes(void)
-{
-    DOTBENCH_UNIMPLEMENTED(kdrv_ble_app_host_bytes);
-    return 0;
-}
-
-/* kdrv_ble.c, the bond store: kodeOS's factory reset (AO_Radio's wipe, step 2 "BLE") asks the radio worker to forget every bonded peer
- * (kdrv_ble_unpair). There is no BLE host here, so no peer was ever bonded and nothing can be left over: the true answer is "done,
- * nothing to do", not a "not implemented" failure (that stopped the whole reset half way: "Partly done"). This lives in the stub layer
- * of the role, next to the file it stands in for (kdrv_ble.c is superseded by this area); a BLE area would replace it with the real call.
- * kdrv_ble_bonds() keeps the generated stub's answer, 0, which agrees. */
-kode_status_t kdrv_ble_unpair(void) { return KODE_OK; }
 
 /* kdrv_station_i2c.c: the E5 station's private I2C bus, used by kdrv_pcf8574.c and kdrv_ads1115.c */
 kode_status_t kdrv_station_i2c_write(uint8_t addr, const uint8_t *tx, size_t n)

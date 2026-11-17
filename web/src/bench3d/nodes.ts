@@ -5,7 +5,7 @@
  * A model's `build` makes a TEMPLATE. Nodes made here are marked "per instance": every copy gets its own material
  * (and canvas), so one router's lamp can be on while its neighbour's is off. Everything else is shared.
  */
-import { CanvasTexture, Color, IcosahedronGeometry, Mesh, MeshBasicMaterial, MeshStandardMaterial, SRGBColorSpace, type BufferGeometry, type Material, type Object3D } from 'three';
+import { AdditiveBlending, CanvasTexture, Color, IcosahedronGeometry, Mesh, MeshBasicMaterial, MeshStandardMaterial, SRGBColorSpace, type BufferGeometry, type Material, type Object3D } from 'three';
 import type { V3 } from '../device3d/meshBuilder';
 import { asDecal } from '../device3d/decal';
 import { quadGeometry, type Quad } from './print';
@@ -20,13 +20,53 @@ const LENS_OFF = 0x2a2a2c;
  * body with a Shape and pass it to `glowing`.
  */
 export function lamp(name: string, pos: V3, size: V3 | number): Mesh {
-  lens ??= new IcosahedronGeometry(1, 2);
+  lens ??= new IcosahedronGeometry(1, 1); // 80 triangles: a lamp is small on the table
   const m = new Mesh(lens, new MeshStandardMaterial({ color: LENS_OFF, roughness: 0.3, metalness: 0, emissive: new Color(0), emissiveIntensity: 0 }));
   m.name = name;
   m.position.set(...pos);
   if (typeof size === 'number') m.scale.setScalar(size);
   else m.scale.set(...size);
   m.userData.bench3d = 'lamp';
+  m.userData.perInstance = true;
+  return m;
+}
+
+/**
+ * The leanest lamp: a flat lit patch (two triangles) for an SMD LED's top, a light window, a pixel of a matrix.
+ * `quad` as for a print (`topQuad`, `frontQuad`). Driven by `setLamp` like any lamp.
+ */
+export function flatLamp(name: string, quad: Quad): Mesh {
+  const m = new Mesh(quadGeometry(quad), asDecal(new MeshStandardMaterial({ color: LENS_OFF, roughness: 0.35, emissive: new Color(0), emissiveIntensity: 0 }), 0.2));
+  m.name = name;
+  m.userData.bench3d = 'lamp';
+  m.userData.perInstance = true;
+  return m;
+}
+
+let haloMap: CanvasTexture | null = null;
+/**
+ * The soft light a lamp throws on what is round it: a flat disc of radius `r` lying at `pos` (put it on the board
+ * or the table under and round the LED), added to the picture. Invisible until `setLamp(obj, name, colour, level)`.
+ */
+export function halo(name: string, pos: V3, r: number): Mesh {
+  if (!haloMap && typeof document !== 'undefined') {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    haloMap = new CanvasTexture(c);
+  }
+  const mat = asDecal(new MeshBasicMaterial({ map: haloMap, transparent: true, blending: AdditiveBlending, toneMapped: false, opacity: 0 }), 0.25);
+  const m = new Mesh(quadGeometry({ c: pos, u: [r, 0, 0], v: [0, 0, -r] }), mat);
+  m.name = name;
+  m.visible = false;
+  m.renderOrder = 4;
+  m.userData.bench3d = 'halo';
   m.userData.perInstance = true;
   return m;
 }
@@ -57,6 +97,13 @@ export function setLamp(obj: Object3D, name: string, colour: number, level = 1):
   const key = level <= 0 ? -1 : colour * 64 + Math.round(Math.min(4, level) * 15);
   if (n.userData.lampKey === key) return;
   n.userData.lampKey = key;
+  if (n.userData.bench3d === 'halo') {
+    const hm = (n as Mesh).material as MeshBasicMaterial;
+    n.visible = level > 0;
+    hm.color.setHex(colour);
+    hm.opacity = Math.min(1, level * 0.75);
+    return;
+  }
   const one = (mesh: Mesh, simple: boolean) => {
     const m = mesh.material as MeshStandardMaterial;
     m.emissive.setHex(level > 0 ? colour : 0);

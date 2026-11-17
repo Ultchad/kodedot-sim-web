@@ -100,13 +100,13 @@ try {
   const up = await kodeosUp();
   check('a fresh profile boots kodeOS to its lock screen', up >= 0, `${Date.now() - t0} ms from navigation`);
   check('the page names what runs: kodeOS in the status bar and on the Apps button', (await statusApp()) === 'kodeOS' && (await menuRunning()) === 'kodeOS', `${await statusApp()} / ${await menuRunning()}`);
-  await until(async () => (await appNames()).length === 9, 20000, 200);
-  check('the factory apps are installed: Kody Kart, the six starter apps, Display, Buttons + LED', (await appNames()).join('|') === 'Kody Kart|Light|NFC|RFID|Level|Files|Sound|Display|Buttons + LED', (await appNames()).join('|'));
+  await until(async () => (await appNames()).length === 13, 20000, 200);
+  check('the factory apps are installed: Kody Kart, the ten starter apps, Display, Buttons + LED', (await appNames()).join('|') === 'Kody Kart|Light|NFC|RFID|IR Remote|Wi-Fi|Bluetooth|GPIO|Level|Files|Sound|Display|Buttons + LED', (await appNames()).join('|'));
   const hint = await page.$eval('[data-testid=welcome]', (e) => e.textContent).catch(() => '');
   check('first run: the hint says how to unlock, open the app list, tap an app and come back', /unlock/.test(hint) && /app list/.test(hint) && /tap an app/.test(hint) && /bottom button/.test(hint) && /kodeOS/.test(hint), hint);
   await openManager();
   const rows = await page.$$eval('[data-testid=app-list] li', (els) => els.map((e) => e.dataset.app));
-  check('the Apps menu is the app manager: running now, the installed apps, install, factory reset', rows.join('|') === 'kody_kart|light|nfc_kit|rfid_kit|level|files|sound|display_lvgl|buttons_led' && (await page.$eval('[data-testid=apps-running]', (e) => e.textContent)) === 'kodeOS' && !!(await page.$('[data-testid=open-file]')) && !!(await page.$('[data-testid=factory-reset]')) && !(await page.$('[data-testid=apps-home]')), rows.join('|'));
+  check('the Apps menu is the app manager: running now, the installed apps, install, factory reset', rows.join('|') === 'kody_kart|light|nfc_kit|rfid_kit|ir_kit|wifi_kit|ble_kit|gpio_kit|level|files|sound|display_lvgl|buttons_led' && (await page.$eval('[data-testid=apps-running]', (e) => e.textContent)) === 'kodeOS' && !!(await page.$('[data-testid=open-file]')) && !!(await page.$('[data-testid=factory-reset]')) && !(await page.$('[data-testid=apps-home]')), rows.join('|'));
   await sleep(400);
   await page.screenshot({ path: join(shots, 'system-1-app-manager.png') });
   await closeManager();
@@ -164,7 +164,7 @@ try {
     await openManager();
     const input = await page.$('[data-testid=file-input]');
     await input.uploadFile(extra);
-    const inst = await until(async () => (await appNames()).length === 10 && (await program())?.kind === 'app', 120000, 300);
+    const inst = await until(async () => (await appNames()).length === 14 && (await program())?.kind === 'app', 120000, 300);
     const names = await appNames();
     const now = await program();
     check('installing a .dotbench from the page: it appears in the list and opens', inst >= 0 && now?.name === names[names.length - 1], `${names.join('|')}; running ${JSON.stringify(now)}`);
@@ -182,7 +182,7 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__dotbench, { timeout: 30000 });
     const again = await kodeosUp();
-    await until(async () => (await appNames()).length === 10, 20000, 200);
+    await until(async () => (await appNames()).length === 14, 20000, 200);
     check('a reload keeps everything: kodeOS boots with the ten apps', again >= 0 && (await appNames()).join('|') === names.join('|'), (await appNames()).join('|'));
     check('the first-run hint stays gone', !(await page.$('[data-testid=welcome]')));
 
@@ -199,8 +199,8 @@ try {
     await del.click();
     await sleep(200);
     await del.click(); // asks first: the second press removes
-    const gone = await until(async () => (await appNames()).length === 9, 60000, 300);
-    check('removing the installed app (after a confirmation) takes it off the Dot', gone >= 0 && (await appNames()).join('|') === 'Kody Kart|Light|NFC|RFID|Level|Files|Sound|Display|Buttons + LED', (await appNames()).join('|'));
+    const gone = await until(async () => (await appNames()).length === 13, 60000, 300);
+    check('removing the installed app (after a confirmation) takes it off the Dot', gone >= 0 && (await appNames()).join('|') === 'Kody Kart|Light|NFC|RFID|IR Remote|Wi-Fi|Bluetooth|GPIO|Level|Files|Sound|Display|Buttons + LED', (await appNames()).join('|'));
     await kodeosUp(60000);
     await dismissNotice();
   }
@@ -209,14 +209,14 @@ try {
   await del2.click();
   await sleep(200);
   await del2.click();
-  await until(async () => (await appNames()).length === 8, 60000, 300);
+  await until(async () => (await appNames()).length === 12, 60000, 300);
   await kodeosUp(60000);
   await dismissNotice();
   await openManager();
   await page.click('[data-testid=factory-reset]');
   const armed = await page.$eval('[data-testid=factory-reset]', (e) => e.textContent);
   await page.click('[data-testid=factory-reset]');
-  const reset = await until(async () => (await appNames()).join('|') === 'Kody Kart|Light|NFC|RFID|Level|Files|Sound|Display|Buttons + LED' && (await isOs()), 120000, 300);
+  const reset = await until(async () => (await appNames()).join('|') === 'Kody Kart|Light|NFC|RFID|IR Remote|Wi-Fi|Bluetooth|GPIO|Level|Files|Sound|Display|Buttons + LED' && (await isOs()), 120000, 300);
   check('factory reset asks first, then the Dot starts like new with its factory apps', /Erase everything/.test(armed) && reset >= 0, `${armed}; ${(await appNames()).join('|')}`);
   await kodeosUp(60000);
   await closeManager();

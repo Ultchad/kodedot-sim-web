@@ -1,6 +1,6 @@
 // kodeOS's OWN factory reset (Settings -> About -> Factory reset), by touch, end to end (docs/STATUS-boot.md "Factory reset from kodeOS"):
 //   the wipe runs every step (vault, BLE keys, BLE bonds, apps, files, settings), the board restarts, and the adapter plays the factory
-//   image: the nine factory apps are back, the user's app is gone, settings are gone. Screenshots: docs/boot-shots/reset-*.png
+//   image: the factory apps are back, the user's app is gone, settings are gone. Screenshots: docs/boot-shots/reset-*.png
 import assert from "node:assert/strict";
 import path from "node:path";
 import { makeSystem, tmpDir, sleep, shot, tap, swipeLeft, waitFor, root, FULL_FACTORY, fullFactoryJson, pkgFile, renamePackage } from "./lib.mjs";
@@ -22,7 +22,7 @@ const drag = async (x0, y0, x1, y1, steps = 8) => {
 const tapAt = async (x, y) => { await tap(sys, x, y); await sleep(2500); };
 const scrollUp = () => drag(200, 420, 200, 100);
 
-await check("setup: a used device (nine factory apps, one of them removed, a user app, settings and files)", async () => {
+await check("setup: a used device (factory apps, one of them removed, a user app, settings and files)", async () => {
   await sys.start();
   await waitFor(() => osFrames() > 0 && sys.program?.kind === "os", 120000, "kodeOS first frame", sys);
   await waitFor(() => /'buttons_led' copied to/.test(log()), 90000, "AppMgr finished its copies", sys);
@@ -70,7 +70,7 @@ await check("Settings -> About -> Factory reset by touch: every wipe step passes
   shot(sys, path.join(shots, "reset-4-fresh-kodeos.png"));
 });
 
-await check("after the reset: the nine factory apps are back, the user's app and the removed-app state are gone, settings are gone", async () => {
+await check("after the reset: the factory apps are back, the user's app and the removed-app state are gone, settings are gone", async () => {
   await sys.settled();
   await waitFor(() => sys.area("storage")?.mounted("storage") && sys.area("nvs"), 30000, "areas", sys);
   assert.deepEqual(sys.list().map((a) => a.project), FULL_FACTORY, "factory set, in list order");
@@ -83,8 +83,8 @@ await check("after the reset: the nine factory apps are back, the user's app and
   await waitFor(() => fs.stat("/storage/.kode/appsdata/kody_kart/app.json").exists && fs.stat("/storage/.kode/appsdata/nfc_kit/icon.k64").exists, 30000, "the factory apps' board files are rewritten", sys);
   // what kodeOS's reset does NOT erase is a file outside the apps' data folders (it wipes settings, apps, their images and data folders; it does not format)
   assert.equal(fs.stat("/storage/dbtest/note.txt").exists, true);
-  assert.equal(sys.lastUpdate.installed.length, 9, "the factory image was put back as a first boot");
-  // kodeOS's own list: the nine apps (screenshots of the first page of "All")
+  assert.equal(sys.lastUpdate.installed.length, FULL_FACTORY.length, "the factory image was put back as a first boot");
+  // kodeOS's own list: the factory apps (screenshots of the first page of "All")
   await swipeLeft(sys); await sleep(5000);
   await tap(sys, 200, 72); await sleep(3000);
   shot(sys, path.join(shots, "reset-5-apps-back.png"));

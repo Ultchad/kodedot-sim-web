@@ -324,7 +324,7 @@ bool kit_pad_active(kit_t const *kit);
  * @brief The text a name page edits and what it does when done.
  */
 typedef struct {
-    char     text[32];                          /**< The name being typed, NUL terminated. */
+    char     text[72];                          /**< The name being typed, NUL terminated. */
     uint8_t  max;                               /**< The most characters. */
     uint8_t  mode;                              /**< Which keys are shown. */
     void   (*done)(void *user, const char *text); /**< Called with the name when the answer is tapped. */
@@ -332,6 +332,9 @@ typedef struct {
     const char *title;                          /**< The bar's words. */
     const char *answer;                         /**< The button's word. */
     lv_obj_t *field;                            /**< The label that shows the text. */
+    bool     secret;                            /**< A password: shown as stars until the field is tapped. */
+    bool     reveal;                            /**< The stars are lifted. */
+    const char *hint;                           /**< What an empty field says; NULL for "Type a name". */
 } kit_name_t;
 
 /**
