@@ -22,8 +22,8 @@ const [M1, M2] = [pinAt(M, 'M1'), pinAt(M, 'M2')];
 const X_BELL = M1[0] + 1.3, X_CAN = X_BELL + 5.2, X_FACE = X_BELL + 23.6, X_BOSS = X_FACE + 1.5;
 const X_PROP = visualAt(M, 'rotor')[0];
 const PROP_R = Math.min(FLAT, R) - 0.45;
-/** Zinc-plated steel: brighter than the kit's steel, which reads as gunmetal on a big curved can. */
-const CAN: Finish = ['metal', '#e4e6ea'];
+/** Zinc-plated steel. */
+const CAN: Finish = ['metal', '#c6c9cf'];
 /** Turns a second of the propeller at speed 1 (the real 6000 rpm would only alias on a screen). */
 const TURNS = 5;
 
@@ -61,7 +61,7 @@ export default defineModel<PartState>({
       for (const sz of [-1, 1]) s.disc('matte', '#17171a', 0, sz * 6.6, 1.0, X_FACE - X_CAN, X_FACE - X_CAN + 0.03, 0, 10, { ao: 1 });
     });
     // the seam where the can is crimped over the end bell, and the two crimp lugs on the flats
-    s.with(alongX(X_CAN - 0.25, AY), () => s.prism('metal', '#8d9097', section(R - 0.12, FLAT - 0.12, seg), 0, 0.5, 0, { ao: 1 }));
+    s.with(alongX(X_CAN - 0.25, AY), () => s.prism('metal', '#7d8087', section(R - 0.12, FLAT - 0.12, seg), 0, 0.5, 0, { ao: 1 }));
     for (const sy of [0, 1]) s.box(...CAN, X_CAN - 0.5, 0, 1.3, 3.6, sy ? H - 0.42 : 0.3, sy ? H : 0.72, 0.2, 0.1, { cap: true, ao: 1 });
     // ---- the end bell, its back towards -X, with the rear bushing
     s.with(alongNegX(X_CAN - 0.25, AY), () => {

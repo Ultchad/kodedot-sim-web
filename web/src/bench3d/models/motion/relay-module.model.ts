@@ -10,7 +10,7 @@
  */
 import manifest from '../../../../../parts/relay-module/manifest.json';
 import {
-  INK, PAL, Shape, defineModel, footprintOf, lamp, part, partState, pcb, pinHeader, print, screwTerminal, setLamp, silkBox, terminalsFromManifest, text, topQuad,
+  INK, PAL, Shape, defineModel, footprintOf, halo, lamp, markControl, part, partState, pcb, pinHeader, print, screwTerminal, setLamp, silkBox, terminalsFromManifest, text, topQuad,
   PITCH, type PartState,
 } from '../../index';
 import { approach, asManifest, chip, dip, jumperCap, pinAt, smdDiode, smdLedBody, sot23, visualAt } from './shared';
@@ -32,6 +32,7 @@ const SWING = Math.atan2(THROW.dz, THROW.dx);
 const LED = visualAt(M, 'led');
 const PWR: [number, number] = [LED[0], LED[1] + 3.3];
 const JUMPER = { x: -14.4, z: 9.2 };
+const ACTIVE = (manifest.fields.find((f) => f.name === 'active')?.values ?? []).map((v) => v.value);
 const RED = 0xff3b30, GREEN = 0x35d06a, AMBER = 0xffac00;
 
 export default defineModel<PartState>({
@@ -44,11 +45,11 @@ export default defineModel<PartState>({
     const top = pcb(s, { w: W, d: D, y: BOARD_Y, r: 1.6, finish: PAL.pcbBlue, holes: [{ x: -W / 2 + 3, z: D / 2 - 3, d: 3 }, { x: W / 2 - 3, z: D / 2 - 3, d: 3 }] });
     // control header (pins up) and the load terminals, where the manifest puts them
     pinHeader(s, { x: VCC[0], z: (VCC[2] + IN[2]) / 2, y: top, n: 3, turn: 1 });
-    screwTerminal(s, { x: COM[0] - 3.8, z: (COM[2] + NC[2]) / 2, y: top, n: 3, turn: 3, finish: PAL.plasticGreen });
+    screwTerminal(s, { x: COM[0] - 3.8, z: (COM[2] + NC[2]) / 2, y: top, n: 3, turn: 3, finish: ['matte', '#178a4a'] });
     // the relay
     s.box(...PAL.plasticBlack, RELAY.x, RELAY.z, RELAY.w - 0.5, RELAY.d - 0.5, top, top + 1.2, 0.7, 0, { ao: 0.9 });
-    s.box('gloss', '#1c66cc', RELAY.x, RELAY.z, RELAY.w, RELAY.d, top + 0.7, LID, 0.9, 0.75, { cap: true, ao: 0.86 });
-    s.disc('gloss', '#1c66cc', RELAY.x - RELAY.w / 2 + 2.2, RELAY.z - RELAY.d / 2 + 2.2, 0.75, LID, LID + 0.3, 0.15, ctx.seg(10), { ao: 1 }); // the vent nib
+    s.box('gloss', '#1a5cc2', RELAY.x, RELAY.z, RELAY.w, RELAY.d, top + 0.7, LID, 0.9, 0.75, { cap: true, ao: 0.86 });
+    s.disc('gloss', '#1a5cc2', RELAY.x - RELAY.w / 2 + 2.2, RELAY.z - RELAY.d / 2 + 2.2, 0.75, LID, LID + 0.3, 0.15, ctx.seg(10), { ao: 1 }); // the vent nib
     s.disc(...PAL.tin, PIVOT[0], PIVOT[1], 0.62, LID, LID + 0.1, 0.05, ctx.seg(12), { ao: 1 });
     // optocoupler, driver transistor, flyback diode, the LEDs with their resistors
     dip(s, { x: -15.2, z: 3.4, y: top, pins: 4, turn: 1 });
@@ -117,6 +118,7 @@ export default defineModel<PartState>({
       }),
       lamp('led', [LED[0], top + 0.55, LED[1]], [0.72, 0.3, 0.5]),
       lamp('pwr', [PWR[0], top + 0.55, PWR[1]], [0.72, 0.3, 0.5]),
+      halo('led-halo', [LED[0], top + 0.05, LED[1]], 3.4),
       // the fixed contacts light up when the arm rests on them
       lamp('no', [PIVOT[0] + THROW.dx, LID + 0.06, PIVOT[1] - THROW.dz], [0.62, 0.16, 0.62]),
       lamp('nc', [PIVOT[0] + THROW.dx, LID + 0.06, PIVOT[1] + THROW.dz], [0.62, 0.16, 0.62]),
@@ -134,6 +136,8 @@ export default defineModel<PartState>({
     jumperCap(j, { x: 0, z: 0, y: 0, finish: PAL.plasticAmber });
     const cap = j.toObject('jumper');
     cap.position.set(JUMPER.x - PITCH / 2, top + 2.5, JUMPER.z);
+    // a click on the cap moves it: the part's `active` field (the manifest lists its values)
+    markControl(cap, { field: 'active', mode: 'toggle', values: ACTIVE });
     root.add(arm, cap);
     return root;
   },
@@ -142,6 +146,7 @@ export default defineModel<PartState>({
     const on = st.power.on;
     setLamp(obj, 'pwr', GREEN, on ? 1 : 0);
     setLamp(obj, 'led', RED, on && st.outputs.energized ? 1 : 0);
+    setLamp(obj, 'led-halo', RED, on && st.outputs.energized ? 0.8 : 0);
     // the contact: -1 on NC, +1 on NO; the throw takes a few frames so the click can be seen
     const want = st.outputs.closed ? 1 : -1;
     const at = approach(typeof u.arm === 'number' ? u.arm : want, want, env.dt * 26);

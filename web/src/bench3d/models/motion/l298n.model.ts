@@ -11,10 +11,10 @@
  */
 import manifest from '../../../../../parts/l298n/manifest.json';
 import {
-  INK, PAL, PITCH, Shape, circleLoop, defineModel, electrolytic, footprintOf, frontQuad, partState, pcb, pinHeader, print, screwTerminal, setLamp, silkBox,
-  terminalsFromManifest, text, topQuad, type PartState, type Pt,
+  INK, PAL, PITCH, Shape, circleLoop, defineModel, electrolytic, flatLamp, footprintOf, frontQuad, halo, partState, pcb, pinHeader, print, screwTerminal, setLamp, silkBox,
+  terminalsFromManifest, text, topQuad, type Finish, type PartState, type Pt,
 } from '../../index';
-import { asManifest, brick, chip, dpak, finnedHeatsink, jumperCap, num, pinAt, smdDiode, smdLedBody, smdLedLens, towardsZ, visualAt } from './shared';
+import { BOARD_RED, asManifest, brick, chip, dpak, finnedHeatsink, jumperCap, num, pinAt, smdDiode, smdLedBody, towardsZ, visualAt } from './shared';
 
 const M = asManifest(manifest);
 const terminals = terminalsFromManifest(M);
@@ -31,6 +31,8 @@ const PWR: [number, number] = [-9.6, 13.5];
 const SINK = { x: 0, z0: -D / 2 + 0.6, z1: -5, w: 23 };
 const CHIP = { w: 19.6, t: 5, foot: TOP + 4.2, body: 10.7, tab: 17.6 };
 const REG = { x: -17.2, z: 10.3 };
+/** The blue of these boards' terminal blocks (the kit's blue is lighter). */
+const TERMINAL_BLUE: Finish = ['matte', '#1763b4'];
 const YELLOW = 0xffcc00, RED = 0xff3b30;
 
 export default defineModel<PartState>({
@@ -41,15 +43,15 @@ export default defineModel<PartState>({
   build(ctx) {
     const s = new Shape();
     const hole = W / 2 - 2.9;
-    const top = pcb(s, { w: W, d: D, y: BOARD_Y, r: 2, finish: PAL.pcbRed, holes: [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => ({ x: sx * hole, z: sz * hole, d: 3.2 })) });
+    const top = pcb(s, { w: W, d: D, y: BOARD_Y, r: 2, finish: BOARD_RED, holes: [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => ({ x: sx * hole, z: sz * hole, d: 3.2 })) });
     // ---- connectors, where the manifest has them
     pinHeader(s, { x: (IN1[0] + ENB[0]) / 2, z: IN1[2], y: top, n: HEADER.length });
-    screwTerminal(s, { x: OUT1[0] + 3.8, z: (OUT1[2] + OUT2[2]) / 2, y: top, n: 2, turn: 1 });
-    screwTerminal(s, { x: OUT3[0] - 3.8, z: (OUT3[2] + OUT4[2]) / 2, y: top, n: 2, turn: 3 });
-    screwTerminal(s, { x: (VS[0] + V5[0]) / 2, z: VS[2] + 0.6, y: top, n: 3 }); // its screws are the terminals
+    screwTerminal(s, { x: OUT1[0] + 3.8, z: (OUT1[2] + OUT2[2]) / 2, y: top, n: 2, turn: 1, finish: TERMINAL_BLUE });
+    screwTerminal(s, { x: OUT3[0] - 3.8, z: (OUT3[2] + OUT4[2]) / 2, y: top, n: 2, turn: 3, finish: TERMINAL_BLUE });
+    screwTerminal(s, { x: (VS[0] + V5[0]) / 2, z: VS[2] - 3.8, y: top, n: 3, finish: TERMINAL_BLUE }); // its wire mouths, on the board's front edge, are the terminals
     // the 5 V pins behind ENA and ENB, with the two enable jumpers parked on them (turned away from the header)
     pinHeader(s, { x: (ENA[0] + ENB[0]) / 2, z: ENA[2] - PITCH, y: top, n: 2 });
-    for (const t of [ENA, ENB]) jumperCap(s, { x: t[0], z: t[2] - 1.5 * PITCH, y: top + 2.5, turn: 1 });
+    for (const t of [ENA, ENB]) jumperCap(s, { x: t[0], z: t[2] - 1.5 * PITCH, y: top + 2.5, turn: 1, finish: TERMINAL_BLUE });
     // ---- heatsink and the L298N
     finnedHeatsink(s, { x: SINK.x, z: (SINK.z0 + SINK.z1) / 2, y: top + 1.2, w: SINK.w, d: SINK.z1 - SINK.z0, h: H - top - 1.2, fins: 8 });
     const tabTop = CHIP.foot + CHIP.tab, bodyTop = CHIP.foot + CHIP.body;
@@ -94,9 +96,9 @@ export default defineModel<PartState>({
           // beside each screw, in the gap between the terminal blocks and the heatsink
           for (const [label, t] of [['OUT1', OUT1], ['OUT2', OUT2]] as const) text(g, label, t[0] + 8.75, t[2], 0.95, { weight: 700, angle: -Math.PI / 2 });
           for (const [label, t] of [['OUT3', OUT3], ['OUT4', OUT4]] as const) text(g, label, t[0] - 8.75, t[2], 0.95, { weight: 700, angle: Math.PI / 2 });
-          text(g, '+12V', VS[0], VS[2] + 5.7, 1.05, { weight: 800 });
-          text(g, 'GND', pin('GND')[0] - 0.2, VS[2] + 5.7, 1.05, { weight: 800 });
-          text(g, '+5V', V5[0] - 1.5, VS[2] + 5.7, 1.05, { weight: 800, align: 'right' });
+          text(g, '+12V', VS[0], VS[2] - 8.8, 1.05, { weight: 800 });
+          text(g, 'GND', pin('GND')[0], VS[2] - 8.8, 1.05, { weight: 800 });
+          text(g, '+5V', V5[0], VS[2] - 8.8, 1.05, { weight: 800 });
           LED_AT.forEach(([x, z], i) => text(g, String(i + 1), x, z - 1.7, 0.95, { weight: 700 }));
           text(g, 'PWR', PWR[0] - 2.9, PWR[1], 0.95, { weight: 700 });
           text(g, 'U2', REG.x + 4.6, REG.z - 1, 0.95);
@@ -114,18 +116,20 @@ export default defineModel<PartState>({
         ppm: 16,
         draw(g) {
           g.fillStyle = '#c9c9c4';
-          text(g, 'L298N', 0, -1.2, 3.4, { weight: 700, spacing: 0.25 });
-          text(g, '2431', 0, 2.6, 1.5, { weight: 600, spacing: 0.15 });
+          text(g, 'L298N', 0, 0.2, 3.6, { weight: 700, spacing: 0.25 });
         },
       }),
-      smdLedLens('pwr', { x: PWR[0], z: PWR[1], y: top }),
-      ...IN_LEDS.map((id, i) => smdLedLens(id, { x: LED_AT[i][0], z: LED_AT[i][1], y: top, turn: 1 })),
+      // the LEDs' tops (the kit's two-triangle lamp) and the light the power LED throws on the board
+      flatLamp('pwr', topQuad(PWR[0], PWR[1], top + 0.47, 0.6, 0.5)),
+      halo('pwr-halo', [PWR[0], top + 0.05, PWR[1]], 3.2),
+      ...IN_LEDS.map((id, i) => flatLamp(id, topQuad(LED_AT[i][0], LED_AT[i][1], top + 0.47, 0.5, 0.6))),
     );
     return root;
   },
   animate(st, obj) {
     const on = st.power.on;
     setLamp(obj, 'pwr', RED, on ? 1 : 0);
+    setLamp(obj, 'pwr-halo', RED, on ? 0.7 : 0);
     for (let i = 0; i < IN_LEDS.length; i++) {
       const id = IN_LEDS[i];
       setLamp(obj, id, YELLOW, on ? num(st.visuals[id], st.pins[HEADER[i]]?.level ?? 0) : 0);

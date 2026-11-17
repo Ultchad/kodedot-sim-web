@@ -1,6 +1,6 @@
 /**
  * NEMA 17 stepper with its A4988 driver carrier, one part as the manifest has it (parts/stepper-a4988): the carrier in
- * the back left corner, the motor filling the right of the footprint with its shaft up, four leads between them.
+ * the front left corner, the motor filling the right of the footprint with its shaft up, four leads between them.
  *
  * Motor: a NEMA 17 at real size (42.3 mm square, 40 mm long, 31 mm hole pattern, 22 mm pilot boss, 5 mm shaft with a
  * flat reaching 24 mm above the body: the manifest's 64 mm). Black end caps with cut corners, the lamination stack
@@ -16,7 +16,7 @@ import {
   INK, PAL, PITCH, Shape, circleLoop, defineModel, footprintOf, frontQuad, heatsink, lamp, part, partState, pcb, pinHeader, print, roundPolygon, roundedRectLoop, setLamp,
   shaft, terminalsFromManifest, text, topQuad, type Finish, type PartState, type Pt, type V3,
 } from '../../index';
-import { DEG, TAU, WIRE, asManifest, brick, chip, crimpHousing, follow, pinAt, stepperDegrees, wire } from './shared';
+import { BOARD_RED, DEG, TAU, WIRE, asManifest, brick, chip, crimpHousing, follow, pinAt, stepperDegrees, wire } from './shared';
 
 const M = asManifest(manifest);
 const terminals = terminalsFromManifest(M);
@@ -30,7 +30,7 @@ const FRAME = Math.min(42.3, D);
 const MX = W / 2 - FRAME / 2, MZ = 0;
 const SHAFT = 24; // above the body, boss included
 const BODY = Math.min(40, H - SHAFT), CAP = Math.min(9.6, BODY / 3), BOSS = 2, SHAFT_TOP = BODY + SHAFT;
-const BLACK: Finish = ['matte', '#1f1f22'];
+const BLACK: Finish = ['matte', '#18181a'];
 // ---- the carrier: its two rows are the manifest's
 const [EN, DIR, VMOT] = [pin('EN'), pin('DIR'), pin('VMOT')];
 const ROW_A = ['EN', 'MS1', 'MS2', 'MS3', 'RST', 'SLP', 'STEP', 'DIR'];
@@ -48,7 +48,7 @@ export default defineModel<PartState>({
   build(ctx) {
     const s = new Shape();
     // ================================================================ the carrier
-    const top = pcb(s, { w: BOARD.w, d: BOARD.d, x: BOARD.x, z: BOARD.z, y: BOARD.y, r: 0.6, finish: PAL.pcbRed });
+    const top = pcb(s, { w: BOARD.w, d: BOARD.d, x: BOARD.x, z: BOARD.z, y: BOARD.y, r: 0.6, finish: BOARD_RED });
     pinHeader(s, { x: BOARD.x, z: EN[2], y: top, n: 8 });
     pinHeader(s, { x: BOARD.x, z: VMOT[2], y: top, n: 8 });
     // the chip under its heatsink, the trimmer, sense resistors and decoupling
@@ -71,9 +71,9 @@ export default defineModel<PartState>({
     const bolt = 15.5; // half the 31 mm hole pattern
     const holes = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => circleLoop(MX + sx * bolt, MZ + sz * bolt, 1.5, 10));
     s.prism(...BLACK, cap, 0, CAP, 0, { ao: 0.8 });
-    s.prism('metal', '#c9ccd1', roundedRectLoop(MX, MZ, FRAME - 0.3, FRAME - 0.3, 3.2, 4), CAP, BODY - CAP, 0, { ao: 0.9 });
+    s.prism('metal', '#b2b5bb', roundedRectLoop(MX, MZ, FRAME - 0.3, FRAME - 0.3, 3.2, 4), CAP, BODY - CAP, 0, { ao: 0.9 });
     // two laminations picked out: the stack is not one block
-    for (let y = CAP + 3; y < BODY - CAP - 1; y += 3.6) s.prism('metal', '#7b7e85', roundedRectLoop(MX, MZ, FRAME - 0.2, FRAME - 0.2, 3.2, 4), y, y + 0.22, 0, { ao: 1 });
+    for (let y = CAP + 3; y < BODY - CAP - 1; y += 3.6) s.prism('metal', '#6f7279', roundedRectLoop(MX, MZ, FRAME - 0.2, FRAME - 0.2, 3.2, 4), y, y + 0.22, 0, { ao: 1 });
     s.prism(...BLACK, cap, BODY - CAP, BODY, 0.7, { ao: 0.95, holes });
     // the tapped mounting holes: dark bottoms
     for (const h of holes) s.prism('matte', '#09090a', h, BODY - 3, BODY - 2.6, 0, { ao: 1 });
@@ -82,15 +82,16 @@ export default defineModel<PartState>({
     s.disc(...BLACK, MX, MZ, 11, BODY, BODY + BOSS, 0.5, ctx.seg(36), { ao: 0.9 });
     s.prism(...PAL.steel, circleLoop(MX, MZ, 5.6, ctx.seg(22)), BODY + BOSS, BODY + BOSS + 0.05, 0, { ao: 1, holes: [circleLoop(MX, MZ, 3.3, ctx.seg(16))] });
     s.disc('matte', '#0b0b0c', MX, MZ, 3.3, BODY + BOSS, BODY + BOSS + 0.03, 0, ctx.seg(16), { ao: 1 });
-    // the lead socket in the rear cap, facing the carrier
-    const sx = MX - half;
-    s.box(...PAL.plasticWhite, sx - 0.3, MZ - 4, 2.2, 13, 0.9, 5.7, 0.4, 0.3, { cap: true, ao: 0.95 });
-    brick(s, ['matte', '#101012'], sx - 1.42, MZ - 4, 0.06, 10.6, 1.9, 4.7);
+    // the lead socket in the rear cap, on the side that faces the carrier
+    const sx = MX - half, sz = BOARD.z - 0.5;
+    s.box(...PAL.plasticWhite, sx - 0.3, sz, 2.2, 9, 0.9, 5.7, 0.4, 0.3, { cap: true, ao: 0.95 });
+    brick(s, ['matte', '#101012'], sx - 1.42, sz, 0.06, 7.6, 1.9, 4.7);
     // ================================================================ the four leads: a crimp housing on the coil pins, over to the socket
     const outs = crimpHousing(s, { x: (COILS[0][0] + COILS[3][0]) / 2, z: VMOT[2], y: top + 2.5, n: 4, h: 13 });
     outs.forEach((o, i) => {
-      const z = MZ - 0.4 - i * 2.4, arch = o[1] + 2.6;
-      wire(s, LEADS[i], [[o[0], o[1] - 0.5, o[2]], [o[0], arch, o[2]], [o[0], arch, z], [o[0], 3.3, z], [sx - 1.2, 3.3, z]], { d: 1.25, bend: 2.6 });
+      // nested, so that they do not cross: the way nearest the motor goes to the socket's front pin
+      const z = sz + (i - 1.5) * 2, arch = o[1] + 2.4 + (3 - i) * 0.5;
+      wire(s, LEADS[i], [[o[0], o[1] - 0.5, o[2]], [o[0], arch, o[2]], [sx - 1.5, arch, z], [sx - 1.5, 3.3, z], [sx + 0.2, 3.3, z]], { d: 1.25, bend: 2.4 });
     });
     const root = s.toObject();
 
@@ -144,7 +145,7 @@ export default defineModel<PartState>({
           g.fillStyle = INK.silkDark;
           text(g, 'NEMA 17', -11.6, -3.9, 3.0, { weight: 800, align: 'left', spacing: 0.2 });
           text(g, '1.8°  ·  200 steps / rev', -11.6, 0.1, 1.55, { weight: 600, align: 'left' });
-          text(g, '12 V   1.0 A   2 phase', -11.6, 2.7, 1.55, { weight: 600, align: 'left' });
+          text(g, '2 phase  ·  bipolar', -11.6, 2.7, 1.55, { weight: 600, align: 'left' });
           text(g, `42 × 42 × ${BODY}`, -11.6, 5.2, 1.3, { weight: 500, align: 'left' });
         },
       }),
@@ -152,7 +153,7 @@ export default defineModel<PartState>({
 
     // ---- what turns: the shaft and the pointer clamped on it, about the motor's axis
     const r = new Shape();
-    shaft(r, { x: 0, z: 0, y0: BODY + BOSS - 0.6, y1: SHAFT_TOP - 0.05, d: 5, flat: 0.5, finish: ['metal', '#dcdee2'] });
+    shaft(r, { x: 0, z: 0, y0: BODY + BOSS - 0.6, y1: SHAFT_TOP - 0.05, d: 5, flat: 0.5, finish: ['metal', '#cdd0d5'] });
     const clampY = BODY + BOSS + 7;
     r.prism(...PAL.plasticAmber, circleLoop(0, 0, 5.2, ctx.seg(22)), clampY, clampY + 5, 0.6, { cap: true, ao: 0.95 });
     // the pointer: towards -Z (up the part's picture) at 0 degrees

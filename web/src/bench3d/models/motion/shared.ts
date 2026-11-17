@@ -3,11 +3,13 @@
  * dimensions (millimetres) and adds to a Shape, like the kit's own parts.ts; the ones marked KIT are candidates for it.
  */
 import {
-  Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, glowing, roundCorners, roundedRectLoop,
-  type Finish, type ManifestBody, type ManifestPin, type Object3D, type PartState, type Pt, type V3,
+  Matrix4, PAL, PITCH, Shape, circleLoop, fromManifestMm, roundCorners, roundedRectLoop,
+  type Finish, type ManifestBody, type ManifestPin, type PartState, type Pt, type V3,
 } from '../../index';
 
 export const TAU = Math.PI * 2;
+/** The deep red solder mask of the common motor-driver boards (the kit's `pcbRed` is lighter). */
+export const BOARD_RED: Finish = ['pcb', '#8e1a22'];
 export const DEG = Math.PI / 180;
 
 // ------------------------------------------------------------------------------------------------- the manifest
@@ -75,7 +77,7 @@ export const towardsZ = (x: number, y: number, z: number): Matrix4 => new Matrix
 export const turnY = (quarter: number): Matrix4 => new Matrix4().makeRotationY((-quarter * Math.PI) / 2);
 
 // ------------------------------------------------------------------------------------------------------- wiring
-export const WIRE = { red: '#c8242c', black: '#1c1c1f', brown: '#8b5a2e', orange: '#ee7a1b', yellow: '#f0c419', blue: '#1b66c9', green: '#1f9d55', pink: '#e2679a', white: '#eceae4' } as const;
+export const WIRE = { red: '#c8242c', black: '#1c1c1f', brown: '#6b3f22', orange: '#ee7a1b', yellow: '#f0c419', blue: '#1b66c9', green: '#1f9d55', pink: '#e2679a', white: '#eceae4' } as const;
 /** KIT: an insulated hook-up wire along `pts` (corners rounded). */
 export function wire(s: Shape, colour: string, pts: V3[], o: { d?: number; bend?: number; seg?: number } = {}): void {
   s.tube('matte', colour, roundCorners(pts, o.bend ?? 1.6, 4), (o.d ?? 1.2) / 2, o.seg ?? 6);
@@ -130,21 +132,12 @@ export function chip(s: Shape, o: { x: number; z: number; y: number; turn?: numb
     for (const sx of [-1, 1]) brick(s, PAL.tin, sx * (l / 2 - 0.2), 0, 0.42, w + 0.04, 0, h + 0.02);
   });
 }
-/** KIT: the white body of an SMD LED (0805) lying along X; put a `lamp` of radii about [0.75, 0.3, 0.5] at y + 0.55 over it. */
+/** KIT: the white body of an SMD LED (0805) lying along X; put the kit's `flatLamp` (or a `lamp`) on its top, at y + 0.47. */
 export function smdLedBody(s: Shape, o: { x: number; z: number; y: number; turn?: number }): void {
   s.with(new Matrix4().makeTranslation(o.x, o.y, o.z).multiply(turnY(o.turn ?? 0)), () => {
     brick(s, ['matte', '#e9e4d6'], 0, 0, 1.5, 1.2, 0, 0.45, 0.05);
     brick(s, PAL.tin, 0, 0, 2.2, 1.25, 0, 0.3); // its two pads in one piece
   });
-}
-/**
- * KIT: the lens of an SMD LED as a part that lights up (`setLamp(obj, name, colour, level)`): 18 triangles, where a
- * `lamp()` costs 320. Put it on `smdLedBody` at the same place.
- */
-export function smdLedLens(name: string, o: { x: number; z: number; y: number; turn?: number }): Object3D {
-  const s = new Shape();
-  s.with(new Matrix4().makeTranslation(o.x, o.y + 0.45, o.z).multiply(turnY(o.turn ?? 0)), () => brick(s, ['matte', '#d9d3bf'], 0, 0, 1.25, 1.0, 0, 0.42, 0.14));
-  return glowing(name, s);
 }
 /** KIT: an SMA / SOD rectifier diode lying along X, cathode bar towards -X. */
 export function smdDiode(s: Shape, o: { x: number; z: number; y: number; turn?: number; l?: number; w?: number; h?: number }): void {
