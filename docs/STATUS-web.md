@@ -880,6 +880,20 @@ pictures in `web/screenshots/workbench2/`), and for the parts `tests/node/parts/
   0 (touch), 2.13 (Alt); the Dot's turn 60 -> 3 short of 90: 90, Alt 87; Device view 17 -> 3 short of the side: 90 (mouse), 90
   (touch), 87.2 (Alt).
 
+### What was run to the end (second batch)
+- `npm test`: 438 passed, 32 files, on the final code. `npm run build`: passed on the final code.
+- `tests/node/parts/run.sh`: once, as described under 4 (all steps passed; the modules step on a second run).
+- `wires-mount-shots.mjs`: every scene once on the code of its item (61 pictures, each looked at); the `poses` pictures were
+  taken before the script read the canvas's place for every picture and are cut 110 px short at the bottom (nothing is missing in
+  them); the magnet numbers above are from its `magnet` scene.
+- `workbench-proof.mjs`: one full run after all five items, 36 passed, 1 failed: again (g) "the AI prompt is there with a copy
+  button" (the Make tab's button did not change to "Copied": `navigator.clipboard.writeText` in headless Chrome; this branch does
+  not touch it; it failed the same way before this batch). Frame time in that run: 427 ms with 60 parts and 40 wires, 184 draw
+  calls, 199,610 triangles.
+- After that run two small changes were made without another page run: an unused helper removed from `rest.ts`, and a finger held
+  on the Dot's glass or buttons no longer opens the menu (only its shell does). To confirm by hand on a touch device, or:
+  `npm run build && UX_PORT=4398 node scripts/wires-mount-shots.mjs --only poses`.
+
 ### Weak or not done (second batch)
 - The motion sensors still report only the hand's tilt, relative to how the Dot is put down (as before, when lying was zero).
 - A mounted module keeps its lying footprint as the rectangle other things stay clear of; wires use its true box.
