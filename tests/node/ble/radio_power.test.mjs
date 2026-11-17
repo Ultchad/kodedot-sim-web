@@ -24,7 +24,7 @@ check(!st.adv.on && !st.scan.on, "power off: nothing is advertising", st);
 const stranger = a.ble.addPhone({ name: "Other" });
 const look = await stranger.scan(400);
 check(!look.sees, "power off: a Phone does not see the Dot", look);
-const c = await stranger.connect();
+const c = await stranger.connect({ wait: 300 });
 check(!c.ok, "power off: connecting fails", c);
 check(a.ble.info().bonds === 1, "the bond survives the power cut (it is in the Dot's own store)", a.ble.info().bonds);
 check(a.ble.info().up === 0 || a.ble.info().synced === 0, "the Dot's host is down or unsynced with the radio off", a.ble.info());

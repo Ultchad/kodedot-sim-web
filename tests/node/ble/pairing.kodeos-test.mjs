@@ -44,7 +44,7 @@ const B = a.ble.addPhone({ name: "Bob's phone", pairing: "auto" });
 await a.waitFor(() => a.ble.state().adv.on, 15000, "advertising after A left");
 look = await B.scan(1200);
 check(!look.sees && look.hidden, "a board with a bond hides from a phone it does not know", look);
-check(!(await B.connect()).ok, "B cannot connect to a hidden Dot");
+check(!(await B.connect({ wait: 300 })).ok, "B cannot connect to a hidden Dot");
 look = await A.scan(1200);
 check(look.sees && look.bonded && !look.discoverable, "but the bonded phone still finds it (hidden, no name)", look);
 check((await A.connect()).ok && await A.whenSecure(4000), "A reconnects and encrypts with its key, no passkey needed");

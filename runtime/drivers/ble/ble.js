@@ -262,10 +262,11 @@ export default function (ctx) {
       return { sees: true, name: rs.name ?? ad.name, address: dot.addr ?? null, rssi: this.rssi, discoverable: a.discoverable, hidden: !a.discoverable, bonded: known,
         uuids: [...ad.uuids128, ...rs.uuids128], connectable: a.connectable };
     }
-    async connect() {
+    /** Connect to the Dot. Like a phone that is scanning, it keeps looking for up to `wait` ms (an advert may be restarting) before it gives up. */
+    async connect({ wait = 2500 } = {}) {
       if (this.connected) return { ok: true, conn: this.conn, reason: "already connected" };
       if (!this.inRange) return { ok: false, reason: "the phone is out of range" };
-      const look = this._look();
+      const look = await this.scan(wait);
       if (!look.sees) return { ok: false, reason: look.hidden ? "the Dot is hidden to a phone that has no bond with it" : "the phone does not see the Dot advertising" };
       const p = new Promise((res) => { this._connWait = res; later(() => { if (this._connWait === res) { this._connWait = null; res({ ok: false, reason: "timeout" }); } }, 5000); });
       send(new W().u8(IN.CONNECT).u8(1).bytes(addrToBytes(this.address)).u16(this.mtu));
