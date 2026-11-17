@@ -74,7 +74,8 @@ export function makeFormatters(locale: Locale) {
     bytes: (n: number) => {
       if (n < 1024) return `${new Intl.NumberFormat(locale).format(n)} B`;
       if (n < 1024 * 1024) return `${num.format(n / 1024)} KB`;
-      return `${num2.format(n / 1024 / 1024)} MB`;
+      if (n < 1024 * 1024 * 1024) return `${num2.format(n / 1024 / 1024)} MB`;
+      return `${num2.format(n / 1024 / 1024 / 1024)} GB`;
     },
   };
 }

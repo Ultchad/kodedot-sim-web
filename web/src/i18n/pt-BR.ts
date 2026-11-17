@@ -414,6 +414,8 @@ export const ptBR: Messages = {
   'sd.addFailed': 'Não deu para adicionar {name}: {why}',
   'sd.removed': '{name} foi apagado',
   'sd.full': '{name} não cabe: o cartão está cheio',
+  'sd.kept': 'Guardado neste navegador: {stored} (cabem cerca de {bound} de arquivos neste cartão)',
+  'sd.browserFull': '{name} não cabe: este navegador guarda cerca de {why} de arquivos por cartão',
   'bench.needActive': 'Aproxime do Dot primeiro.',
   'bench.addFirst': 'Pôr na bancada',
   'mode.label': 'Modo',

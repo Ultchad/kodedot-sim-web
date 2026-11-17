@@ -6,7 +6,7 @@ import { Icon, IconTile } from '../Glyphs';
 import { useConfirm } from '../ui';
 import { StatusPill } from './Feedback';
 
-type Say = { key: 'sd.added' | 'sd.addFailed' | 'sd.removed' | 'sd.full'; name: string; why?: string } | null;
+type Say = { key: 'sd.added' | 'sd.addFailed' | 'sd.removed' | 'sd.full' | 'sd.browserFull'; name: string; why?: string } | null;
 
 /** The card in the Dot's slot: not a bench object (the card belongs to the Dot and keeps its files), so it draws its own panel. */
 export function SdPanel() {
@@ -62,7 +62,7 @@ export function SdPanel() {
         setSay({ key: 'sd.added', name });
       } catch (e) {
         const why = String((e as Error).message ?? e);
-        setSay(/ENOSPC/.test(why) ? { key: 'sd.full', name: f.name } : { key: 'sd.addFailed', name: f.name, why });
+        setSay(/ENOSPC/.test(why) ? { key: 'sd.full', name: f.name } : /EIO/.test(why) && snap.kept ? { key: 'sd.browserFull', name: f.name, why: fmt.bytes(snap.kept.bound) } : { key: 'sd.addFailed', name: f.name, why });
       }
     }
     refresh();
@@ -115,6 +115,11 @@ export function SdPanel() {
               <div className="h-full rounded-full bg-[var(--tile-blue)]" style={{ width: `${Math.max(usedPct, snap.usage.used ? 2 : 0)}%` }} />
             </div>
             <span className="text-[13px] text-ink2">{t('sd.used', { used: fmt.bytes(snap.usage.used), total: fmt.bytes(snap.usage.total) })}</span>
+            {snap.kept && (
+              <span className="text-[12.5px] text-ink2" data-testid="sd-kept">
+                {t('sd.kept', { stored: fmt.bytes(snap.kept.stored), bound: fmt.bytes(snap.kept.bound) })}
+              </span>
+            )}
           </div>
         )}
 

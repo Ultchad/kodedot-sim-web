@@ -34,6 +34,8 @@ export interface SdSnapshot {
   writeProtect: boolean;
   mounted: boolean;
   usage: { total: number; free: number; used: number } | null;
+  /** Large cards keep only what was written: bytes really kept in this browser, and how much it can keep. */
+  kept: { stored: number; bound: number } | null;
   path: string;
   entries: { name: string; type: 'file' | 'dir'; size: number }[];
   error: string | null;
@@ -63,7 +65,13 @@ export const parentPath = (p: string): string => (p === SD_ROOT ? SD_ROOT : p.sl
 
 export function snapshot(sd: SdAreaApi, fs: StorageApi, path: string): SdSnapshot {
   const s = sd.state();
-  const out: SdSnapshot = { inserted: s.inserted, capacityMb: s.capacityMb, writeProtect: s.writeProtect, mounted: s.mounted, usage: null, path, entries: [], error: null };
+  const out: SdSnapshot = { inserted: s.inserted, capacityMb: s.capacityMb, writeProtect: s.writeProtect, mounted: s.mounted, usage: null, kept: null, path, entries: [], error: null };
+  try {
+    const st = sd.stats?.();
+    if (st && st.known && st.layout === 'sparse') out.kept = { stored: st.storedBytes, bound: st.boundBytes };
+  } catch {
+    /* an older package without stats */
+  }
   if (!s.inserted || !s.mounted) return out;
   try {
     out.usage = fs.usage('sdcard');

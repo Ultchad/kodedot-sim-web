@@ -414,6 +414,8 @@ export const es: Messages = {
   'sd.addFailed': 'No se pudo añadir {name}: {why}',
   'sd.removed': '{name} se borró',
   'sd.full': '{name} no cabe: la tarjeta está llena',
+  'sd.kept': 'Guardado en este navegador: {stored} (caben unos {bound} de archivos en esta tarjeta)',
+  'sd.browserFull': '{name} no cabe: este navegador guarda unos {why} de archivos por tarjeta',
   'bench.needActive': 'Acércalo al Dot primero.',
   'bench.addFirst': 'Añadir al banco',
   'mode.label': 'Modo',

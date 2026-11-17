@@ -413,6 +413,8 @@ export const en = {
   'sd.addFailed': 'Could not add {name}: {why}',
   'sd.removed': '{name} was removed',
   'sd.full': '{name} does not fit: the card is full',
+  'sd.kept': 'Kept in this browser: {stored} (it has room for about {bound} of files on this card)',
+  'sd.browserFull': '{name} does not fit: this browser can keep about {why} of files on a card',
   'bench.needActive': 'Bring it near the Dot first.',
   'bench.addFirst': 'Add to the bench',
   'mode.label': 'Mode',
