@@ -2,6 +2,7 @@
 #include "kweb_bridge.h"
 
 #include <emscripten.h>
+#include <emscripten/console.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -48,7 +49,32 @@ static void state_init(void)
     __atomic_store_n(&g_state.magic, KWEB_MAGIC, __ATOMIC_RELEASE);
 }
 
-__attribute__((constructor(102))) static void kweb_ctor(void) { state_init(); }
+#include <pthread.h>
+#include <unistd.h>
+/* TEMPORARY DIAGNOSTIC: reports when the page stops draining the text ring (a hung main thread). */
+static void *dbg_thread(void *a)
+{
+    (void)a;
+    uint32_t last_tail = 0, stuck = 0;
+    for (;;) {
+        sleep(1);
+        uint32_t h = __atomic_load_n(&g_state.text_head, __ATOMIC_ACQUIRE), t = __atomic_load_n(&g_state.text_tail, __ATOMIC_ACQUIRE);
+        if (t == last_tail && h != t) stuck++; else stuck = 0;
+        last_tail = t;
+        if (stuck >= 3 && (stuck % 3) == 0) {
+            char b[200];
+            snprintf(b, sizeof b, "DBGHANG ring not drained for %us: head=%u tail=%u lock=%u dropped=%u events=%u", stuck, h, t, g_state.text_lock, g_state.text_dropped, g_state.events);
+            emscripten_console_log(b);
+        }
+    }
+    return NULL;
+}
+__attribute__((constructor(102))) static void kweb_ctor(void)
+{
+    state_init();
+    pthread_t th; pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED); pthread_attr_setstacksize(&at, 64 * 1024);
+    pthread_create(&th, &at, dbg_thread, NULL);
+}
 
 EMSCRIPTEN_KEEPALIVE kweb_state_t *kweb_state(void)
 {

@@ -19,8 +19,33 @@ void khal_restart(void)
     kweb_restart(KWEB_RESET_SOFTWARE, "");
 }
 
+#include "qpc.h"
+int dotbench_rtos_queue_peek_ptrs(QueueHandle_t h, void **out, int max);
+const char *dotbench_rtos_thread_desc(char *buf, int cap);
+/* The state of every AO queue at a panic: a "queue full" assert names the victim only in the thread's name. */
+static void panic_dump(void)
+{
+    char line[400];
+    char desc[96];
+    kweb_text_printf(KWEB_CH_LOG, "panic-dump: thread %s\n", dotbench_rtos_thread_desc(desc, sizeof desc));
+    for (uint_fast8_t prio = 1U; prio <= QF_MAX_ACTIVE; ++prio) {
+        QActive const *a = QF_aoFromPrio(prio);
+        if (a == NULL || a->eQueue == NULL) continue;
+        uint16_t len = QF_queueLen(prio);
+        uint16_t fre = QActive_getQueueFree(prio);
+        void *items[64];
+        int n = dotbench_rtos_queue_peek_ptrs(a->eQueue, items, 64);
+        int w = snprintf(line, sizeof line, "panic-dump: AO prio=%u %s used=%u/%u sigs:", (unsigned)prio, a->thread ? pcTaskGetName(a->thread) : "?", (unsigned)(len - fre), (unsigned)len);
+        for (int i = 0; i < n && w < (int)sizeof line - 12; i++) {
+            w += snprintf(line + w, sizeof line - (size_t)w, " %u", (unsigned)((QEvt const *)items[i])->sig);
+        }
+        if ((unsigned)(len - fre) * 4U >= len || n > 0) kweb_text_printf(KWEB_CH_LOG, "%s\n", line);
+    }
+}
+
 void khal_panic(const char *why)
 {
+    panic_dump();
     kweb_text_printf(KWEB_CH_LOG, "PANIC: %s\n", why ? why : "(null)");
     kweb_restart(KWEB_RESET_PANIC, "");
 }

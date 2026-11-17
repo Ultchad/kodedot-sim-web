@@ -867,6 +867,25 @@ void *xQueueGetMutexHolder(QueueHandle_t h)
     return holder;
 }
 
+/* Diagnostics (panic dump): copies up to `max` queued items (oldest first) of a queue whose items are pointers. */
+int dotbench_rtos_queue_peek_ptrs(QueueHandle_t h, void **out, int max)
+{
+    Queue_t *q = h;
+    if (q == NULL || q->item_size != sizeof(void *)) return 0;
+    pthread_mutex_lock(&g_k);
+    int n = 0;
+    for (UBaseType_t i = 0; i < q->waiting && n < max; i++) {
+        memcpy(&out[n++], q->buf + (size_t)((q->head + i) % q->length) * q->item_size, sizeof(void *));
+    }
+    pthread_mutex_unlock(&g_k);
+    return n;
+}
+const char *dotbench_rtos_thread_desc(char *buf, int cap)
+{
+    tcb_t *t = self();
+    snprintf(buf, (size_t)cap, "%s id=%u adopted=%d th=%lx", t->name, (unsigned)t->id, t->adopted, (unsigned long)t->th);
+    return buf;
+}
 UBaseType_t uxQueueMessagesWaiting(const QueueHandle_t h)
 {
     Queue_t *q = h;
