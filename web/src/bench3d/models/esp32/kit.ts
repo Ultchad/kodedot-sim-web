@@ -3,7 +3,7 @@
  * board rides on its housing and plugs into a breadboard), the radio module with its antenna end, the small SMD
  * parts of a dev board. Millimetres, same conventions as parts.ts (`turn` = quarter turns clockwise seen from above).
  * Candidates for the kit: `legRow`, `radioModule`, `smdButton`, `chip`, `sot23`, `sot223`, `sod123`, `ledChip`,
- * `rgbLed`, `qfnLean` and `faces` (flat marks without walls).
+ * `rgbLed` and `faces` (upright flat marks; lying ones are the kit's `Shape.rect`).
  */
 import { PAL, PITCH, Shape, place, type Finish, type V3 } from '../../index';
 
@@ -28,8 +28,6 @@ export function faces(s: Shape, finish: Finish, quads: readonly (readonly [V3, V
   });
   s.add(finish[0], finish[1], m);
 }
-/** A rectangle lying at height `y`, as a quad for `faces`. */
-const lying = (x0: number, x1: number, z0: number, z1: number, y: number): [V3, V3, V3, V3] => [[x0, y, z0], [x0, y, z1], [x1, y, z1], [x1, y, z0]];
 
 interface At {
   x: number;
@@ -42,8 +40,8 @@ interface At {
 /** Body colours of chip passives: thick-film resistors are black, ceramic capacitors tan. */
 export const RES: Finish = ['matte', '#1c1c1f'];
 /** Moulded chip packages: a shade lighter than the black solder mask they sit on, as epoxy is. */
-export const EPOXY: Finish = ['matte', '#2c2c31'];
-export const MLCC: Finish = ['matte', '#a98a63'];
+export const EPOXY: Finish = ['matte', '#232327'];
+export const MLCC: Finish = ['matte', '#94734a'];
 
 /**
  * A male header soldered pins-DOWN through a board, one pin per point (x, z): the housing hangs under the board from
@@ -96,17 +94,17 @@ export function radioModule(s: Shape, o: RadioModuleOptions): RadioModuleOut {
   // the shield: a soldered rim, then the drawn can a step inside it
   const canLen = len - ant - 1.4, canWid = wid - 2.0;
   const canX = o.x + ant + 0.7 + canLen / 2;
-  s.box(...PAL.tin, canX, o.z, canLen, canWid, y1, y1 + 0.45, 0.5, 0.12, { ao: 0.8 });
-  s.box(...PAL.tin, canX, o.z, canLen - 0.5, canWid - 0.5, y1 + 0.45, y1 + canH, 1.0, 0.38, { ao: 0.86 });
+  s.box(...CAN, canX, o.z, canLen, canWid, y1, y1 + 0.45, 0.5, 0.12, { ao: 0.8 });
+  s.box(...CAN, canX, o.z, canLen - 0.5, canWid - 0.5, y1 + 0.45, y1 + canH, 1.0, 0.38, { ao: 0.86 });
   // castellations: half-holes plated in gold, seen on the edge and on top (plating only: faces, not solids)
   const nSide = o.sidePads ?? 14, nEnd = o.endPads ?? 10;
-  const tops: [V3, V3, V3, V3][] = [], yp = y1 + 0.03;
+  const yp = y1 + 0.03;
   for (const side of [-1, 1]) {
     const edge: [V3, V3, V3, V3][] = [];
     const ze = o.z + side * (wid / 2 + 0.03);
     for (let i = 0; i < nSide; i++) {
       const px = o.x + len - 1.5 - i * 1.27;
-      tops.push(lying(px - 0.36, px + 0.36, ze - side * 0.8, ze, yp));
+      s.rect(...PAL.gold, px, ze - side * 0.4, 0.72, 0.8, yp);
       edge.push([[px - 0.36, y0 + 0.04, ze], [px + 0.36, y0 + 0.04, ze], [px + 0.36, yp, ze], [px - 0.36, yp, ze]]);
     }
     faces(s, PAL.gold, edge, [0, 0, side], 0.9);
@@ -115,11 +113,10 @@ export function radioModule(s: Shape, o: RadioModuleOptions): RadioModuleOut {
   const xe = o.x + len + 0.03;
   for (let i = 0; i < nEnd; i++) {
     const pz = o.z + (i - (nEnd - 1) / 2) * 1.27;
-    tops.push(lying(xe - 0.8, xe, pz - 0.36, pz + 0.36, yp));
+    s.rect(...PAL.gold, xe - 0.4, pz, 0.8, 0.72, yp);
     end.push([[xe, y0 + 0.04, pz - 0.36], [xe, y0 + 0.04, pz + 0.36], [xe, yp, pz + 0.36], [xe, yp, pz - 0.36]]);
   }
   faces(s, PAL.gold, end, [1, 0, 0], 0.9);
-  faces(s, PAL.gold, tops);
   // the antenna: feed and short at one side, then a square meander across the width
   const teeth = o.teeth ?? 5;
   const uNear = 1.0, uFar = ant - 1.9, v0 = -wid / 2 + 2.3, step = (wid - 3.6) / (2 * teeth);
@@ -131,19 +128,19 @@ export function radioModule(s: Shape, o: RadioModuleOptions): RadioModuleOut {
     near = !near;
     if (i < 2 * teeth - 1) pts.push([near ? uNear : uFar, v]);
   }
-  const t = 0.26, trace: [V3, V3, V3, V3][] = [];
   for (let i = 1; i < pts.length; i++) {
     const [u1, w1] = pts[i - 1], [u2, w2] = pts[i];
-    trace.push(lying(o.x + Math.min(u1, u2) - t, o.x + Math.max(u1, u2) + t, o.z + Math.min(w1, w2) - t, o.z + Math.max(w1, w2) + t, y1 + 0.03));
+    s.rect(...ANTENNA, o.x + (u1 + u2) / 2, o.z + (w1 + w2) / 2, Math.abs(u2 - u1) + 0.52, Math.abs(w2 - w1) + 0.52, y1 + 0.03);
   }
-  faces(s, ANTENNA, trace);
   // the matching network between the can and the feed
   chip(s, { x: o.x + ant - 0.25, z: o.z + v0 + 2.2, y: y1, len: 1.0, wid: 0.5, h: 0.35, body: MLCC, turn: 1 });
   chip(s, { x: o.x + ant - 0.25, z: o.z + v0 + 3.6, y: y1, len: 1.0, wid: 0.5, h: 0.35, body: MLCC, turn: 1 });
   return { canTop: y1 + canH, canX, canZ: o.z, canHalfLen: (canLen - 0.5) / 2, canHalfWid: (canWid - 0.5) / 2 };
 }
-/** Copper under black solder mask, as the antenna trace of a module shows. */
-const ANTENNA: Finish = ['pcb', '#8a7442'];
+/** Copper under black solder mask, as the antenna trace of a module shows: a shade off the board, no more. */
+const ANTENNA: Finish = ['pcb', '#3a362c'];
+/** The shield of a module: satin nickel silver, duller than fresh solder. */
+const CAN: Finish = ['metal', '#9fa3a9'];
 
 /** A chip resistor or capacitor (0603 by default) lying along X: tinned ends, coloured body. */
 export function chip(s: Shape, o: At & { len?: number; wid?: number; h?: number; body?: Finish }): void {
@@ -152,31 +149,6 @@ export function chip(s: Shape, o: At & { len?: number; wid?: number; h?: number;
     s.box(...PAL.tin, 0, 0, len, wid, 0, h * 0.9, 0, 0.08, { ao: 0.9 });
     s.box(...(o.body ?? RES), 0, 0, len * 0.56, wid + 0.03, 0, h, 0, 0.08, { ao: 0.9 });
   });
-}
-
-/**
- * QFN as a dev board needs it: the kit's `qfn` spends 22 triangles on each pad, this one draws a pad as the two faces
- * that show (its end on the package's wall, its toe on the board).
- */
-export function qfnLean(s: Shape, o: At & { size: number; perSide: number; pitch?: number; seg?: number }): void {
-  const pitch = o.pitch ?? 0.5, h = o.size / 2;
-  const m = place(o.x, o.y, o.z, o.turn);
-  s.with(m, () => {
-    s.box(...EPOXY, 0, 0, o.size, o.size, 0.03, 0.85, 0.15, 0.1, { ao: 0.95 });
-    s.disc('matte', '#4a4a50', -h + 0.75, h - 0.75, 0.33, 0.85, 0.87, 0, o.seg ?? 8, { ao: 1 });
-  });
-  for (let q = 0; q < 4; q++) {
-    const ends: [V3, V3, V3, V3][] = [], toes: [V3, V3, V3, V3][] = [];
-    for (let i = 0; i < o.perSide; i++) {
-      const a = (i - (o.perSide - 1) / 2) * pitch - pitch * 0.27, b = a + pitch * 0.54;
-      ends.push([[a, 0, h + 0.012], [b, 0, h + 0.012], [b, 0.36, h + 0.012], [a, 0.36, h + 0.012]]);
-      toes.push([[a, 0.03, h], [a, 0.03, h + 0.22], [b, 0.03, h + 0.22], [b, 0.03, h]]);
-    }
-    s.with(place(o.x, o.y, o.z, (o.turn ?? 0) + q), () => {
-      faces(s, PAL.tin, ends, [0, 0, 1], 0.92);
-      faces(s, PAL.tin, toes);
-    });
-  }
 }
 
 /** SOT-23: two leads towards +Z, one towards -Z. */
@@ -207,13 +179,17 @@ export function sod123(s: Shape, o: At): void {
  * The small SMD tactile switch of a dev board (4.2 x 3.2 x 2.2 mm): a stamped metal cover on a black base, a low
  * round plunger, two solder tabs at the ends (along X before `turn`).
  */
-export function smdButton(s: Shape, o: At & { seg?: number; cap?: Finish }): void {
+export function smdButton(s: Shape, o: At & { seg?: number; cap?: Finish; noPlunger?: boolean }): void {
   s.with(place(o.x, o.y, o.z, o.turn), () => {
     s.box(...PAL.plasticBlack, 0, 0, 4.2, 3.2, 0, 0.9, 0.25, 0.1, { ao: 0.85 });
-    s.box(...PAL.tin, 0, 0, 4.0, 3.0, 0.9, 1.6, 0.35, 0.18, { ao: 0.92 });
-    s.disc(...(o.cap ?? PAL.plasticBlack), 0, 0, 0.9, 1.6, 2.2, 0.16, o.seg ?? 10, { ao: 0.85 });
+    s.box(...PAL.steel, 0, 0, 4.0, 3.0, 0.9, 1.6, 0.35, 0.18, { ao: 0.92 });
     for (const sx of [-1, 1]) s.box(...PAL.tin, sx * 2.45, 0, 0.9, 1.5, 0, 0.55, 0, 0.08, { ao: 0.9 });
   });
+  if (!o.noPlunger) smdPlunger(s, o);
+}
+/** The plunger of `smdButton` alone: into the body, or into a Shape of its own when the switch is a control. */
+export function smdPlunger(s: Shape, o: At & { seg?: number; cap?: Finish }): void {
+  s.disc(...(o.cap ?? PAL.plasticBlack), o.x, o.z, 0.9, o.y + 1.6, o.y + 2.2, 0.16, o.seg ?? 10, { ao: 0.85 });
 }
 
 /**
