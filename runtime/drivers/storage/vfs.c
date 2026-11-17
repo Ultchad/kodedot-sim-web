@@ -755,6 +755,11 @@ EMSCRIPTEN_KEEPALIVE int dbsd_page_set_inserted(int i) { return dbsd_set_inserte
 EMSCRIPTEN_KEEPALIVE int dbsd_page_new_card(int mb, int format) { return dbsd_new_card(mb, format); }
 /* stats: [stored lo, stored hi, bound lo, bound hi, layout (1 sparse, 2 dense), known, pool bytes, 0] into scratch data */
 EMSCRIPTEN_KEEPALIVE int dbsd_page_stats(void) { dbsd_stats((uint32_t *)(void *)(s_scr + SCR_DATA)); return 0; }
+/* Raw sectors from the page (tests, a future "load a card image"): write != 0 stores `count` sectors from `buf`. 0 or -EIO. */
+EMSCRIPTEN_KEEPALIVE int dbsd_page_sectors(int write, uint32_t first, uint32_t count, void *buf)
+{
+    return (write ? dbd_sd_write(first, count, buf) : dbd_sd_read(first, count, buf)) == 0 ? 0 : -EIO;
+}
 EMSCRIPTEN_KEEPALIVE int dbsd_page_set_wp(int wp) { return dbsd_set_write_protect(wp); }
 /* state: [inserted, capacity_mb, serial, write_protect, generation, mounted] into scratch data */
 EMSCRIPTEN_KEEPALIVE int dbsd_page_state(void)

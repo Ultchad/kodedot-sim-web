@@ -14,7 +14,8 @@
     "dbsd_page_new_card",
     "dbsd_page_set_wp",
     "dbsd_page_state",
-    "dbsd_page_stats"
+    "dbsd_page_stats",
+    "dbsd_page_sectors"
   ],
   "test_apps": [
     "sdk:examples/storage"
