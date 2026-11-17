@@ -8,7 +8,6 @@
     "components/kdrv/compose/src/kdrv_compose.c": "stubbed in the kodeos role: PPA blend engine (needs driver/ppa.h); owner: display/compose",
     "components/kdrv/mirror/src/kdrv_jpeg.c": "stubbed in the kodeos role: JPEG encoder engine (driver/jpeg_encode.h); owner: mirror/console",
     "components/kdrv/mirror/src/kdrv_ppa.c": "stubbed in the kodeos role: PPA engine for the mirror; owner: mirror/console",
-    "components/kdrv/radio/src/kdrv_ble.c": "stubbed in the kodeos role: NimBLE host over esp-hosted; owner: radio",
     "components/kdrv/ov5640/src/kdrv_ov5640.c": "stubbed in the kodeos role: station camera on J3 (driver/gpio.h); owner: exp (stage 5)",
     "components/kdrv/station/src/kdrv_station_i2c.c": "stubbed in the kodeos role: E5 station I2C (driver/i2c_master.h); owner: exp (stage 5)",
     "components/kdrv/station/src/kdrv_dock_loop.c": "stubbed in the kodeos role: E5 dock loop (driver/gpio.h); owner: exp (stage 5)"

@@ -11,7 +11,7 @@ import { viewOf } from './views';
 /** One bench object: who it is, what it is doing with the Dot, and the near/away switch. The body is the kind's own view. */
 export function ObjectCard({ obj }: { obj: BenchObject }) {
   const { t } = useI18n();
-  const { bench, device, live } = useHost();
+  const { bench, device, live, select } = useHost();
   const kind = getKind(obj.kind)!;
   const area = getArea(obj.area);
   const [renaming, setRenaming] = useState(false);
@@ -21,6 +21,7 @@ export function ObjectCard({ obj }: { obj: BenchObject }) {
   const presence = kind.presence && kind.presence !== 'none' ? kind.presence : kind.presence === 'none' ? null : area.presence;
 
   const commitRename = () => {
+    bench.checkpoint();
     bench.rename(obj.id, inputRef.current?.value ?? obj.name);
     setRenaming(false);
   };
@@ -48,8 +49,8 @@ export function ObjectCard({ obj }: { obj: BenchObject }) {
             testid="object-menu"
             entries={[
               { id: 'rename', label: t('bench.rename'), icon: 'pencil', onSelect: () => setRenaming(true) },
-              ...(kind.single ? [] : [{ id: 'duplicate', label: t('bench.duplicate'), icon: 'copy' as const, onSelect: () => bench.duplicate(obj.id, t('bench.copy')) }]),
-              { id: 'delete', label: t('bench.delete'), icon: 'trash', danger: true, onSelect: () => bench.remove(obj.id) },
+              ...(kind.single ? [] : [{ id: 'duplicate', label: t('bench.duplicate'), icon: 'copy' as const, onSelect: () => (bench.checkpoint(), select.only(bench.duplicate(obj.id, t('bench.copy'))?.id ?? obj.id)) }]),
+              { id: 'delete', label: t('bench.delete'), icon: 'trash', danger: true, onSelect: () => (bench.checkpoint(), bench.remove(obj.id)) },
             ]}
           />
         </div>
@@ -68,7 +69,7 @@ export function ObjectCard({ obj }: { obj: BenchObject }) {
           {presence && (
             <label className="flex cursor-pointer items-center gap-2.5 text-[14px] font-semibold">
               <span data-testid="near-state">{t(obj.near ? presence.on : presence.off)}</span>
-              <input type="checkbox" className="switch" checked={obj.near} data-testid="toggle-near" onChange={() => bench.setNear(obj.id, !obj.near)} />
+              <input type="checkbox" className="switch" checked={obj.near} data-testid="toggle-near" onChange={() => (bench.checkpoint(), bench.setNear(obj.id, !obj.near))} />
             </label>
           )}
         </div>
