@@ -159,7 +159,7 @@ export async function dropOverlay(page, on = true) {
   await sleep(250);
 }
 
-/** Uploads user apps (copies of a real example with long and short names). Leaves the last one running. */
+/** Installs packages picked from disk (copies of a factory app under other file names: same package, so the list does not grow). Leaves the app open. */
 export async function addUserApps(page, reopen = async () => {}, names = ['weather_station_dashboard_with_a_very_long_file_name_v2.dotbench', 'blink.dotbench']) {
   const src = join(root, 'public/apps/buttons_led.dotbench');
   mkdirSync('/tmp/ux-apps', { recursive: true });
@@ -170,7 +170,9 @@ export async function addUserApps(page, reopen = async () => {}, names = ['weath
     const input = await page.$('[data-testid=file-input]');
     if (!input) throw new Error('file input not found (open the apps list first)');
     await input.uploadFile(p);
-    await until(async () => (await page.evaluate(() => window.__dotbench.device().status.get())) === 'running', 20000);
+    // installed into kodeOS (it restarts once), then opened: wait until the app itself runs
+    await sleep(800);
+    await until(() => page.evaluate(() => window.__dotbench.device().status.get() === 'running' && window.__dotbench.device().program?.get()?.kind === 'app' && !document.querySelector('[data-testid=apps-manager][data-busy=true]')), 60000);
     await sleep(300);
   }
 }

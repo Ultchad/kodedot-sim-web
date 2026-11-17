@@ -14,7 +14,6 @@ import { DeviceStatusCard } from './DeviceStatusCard';
 import { Icon } from './Glyphs';
 import { ModelOffer } from './ModelControls';
 import { NoticeBanner } from './Notice';
-import { useSystemRunning } from './TopBar';
 
 const Device3D = lazy(() => import('./Device3D'));
 
@@ -227,19 +226,15 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
 }
 
 /**
- * First visit only: says that the device is live, how to run an app of one's own and where the bench is. It never
+ * First visit only: says that the Dot is live and how to use it: unlock kodeOS, open its app list, tap an app, hold
+ * the bottom button to come back, and how to install one's own. It never
  * covers the device: under it on desktop, on top of the bottom bar on a phone, inside the side panel in phone landscape.
- * Gone for good with "Got it", or once an own app was loaded.
+ * Gone for good with "Got it", or once an own app was installed.
  */
 export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | 'panel' }) {
   const { t } = useI18n();
-  const { welcome, dismissWelcome, requestApps, bundles, device } = useHost();
-  // the Dot starts with its system: the hint then says how to get past the lock screen
-  const os = useSystemRunning();
+  const { welcome, dismissWelcome, requestApps, device } = useHost();
   const status = useObservable(device.status);
-  useEffect(() => {
-    if (welcome && bundles.length > 0) dismissWelcome();
-  }, [welcome, bundles.length, dismissWelcome]);
   // "This Dot is live" is only true while it runs; a stopped or crashed Dot has its own card on the stage
   if (!welcome || status === 'idle' || status === 'crashed') return null;
   if (variant !== 'desk') {
@@ -247,7 +242,7 @@ export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | '
       <aside className={`anim-rise shrink-0 ${variant === 'panel' ? 'px-3 pb-2' : 'px-3'}`} aria-label={t('welcome.title')} data-testid="welcome">
         <div className="inner flex items-center gap-2 py-1.5 pl-4 pr-1.5">
           <p className="m-0 min-w-0 flex-1 text-[13.5px] leading-snug">
-            <strong className="font-semibold">{t('welcome.title')}</strong> {t(variant === 'panel' ? (os ? 'welcome.body.os.side' : 'welcome.body.side') : os ? 'welcome.body.os.phone' : 'welcome.body.phone')}
+            <strong className="font-semibold">{t('welcome.title')}</strong> {t(variant === 'panel' ? 'welcome.body.side' : 'welcome.body.phone')}
           </p>
           <button type="button" className="btn btn-sm btn-primary shrink-0" onClick={dismissWelcome} data-testid="welcome-dismiss">
             {t('welcome.dismiss')}
@@ -260,7 +255,7 @@ export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | '
     <aside className="anim-rise shrink-0 pb-1 pt-2" aria-label={t('welcome.title')} data-testid="welcome">
       <div className="inner mx-auto flex max-w-[44rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <p className="m-0 min-w-[14rem] flex-1 text-[14px] leading-snug">
-          <strong className="font-semibold">{t('welcome.title')}</strong> {t(os ? 'welcome.body.os' : 'welcome.body')}
+          <strong className="font-semibold">{t('welcome.title')}</strong> {t('welcome.body')}
         </p>
         <div className="flex shrink-0 gap-2">
           <button type="button" className="btn btn-sm" onClick={requestApps} data-testid="welcome-open">

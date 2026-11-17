@@ -15,5 +15,12 @@ for t in browser persist audio; do
   echo "== tests/browser/$t.test.mjs"
   node "$here/$t.test.mjs" || rc=1
 done
+# apps inside kodeOS (DotbenchSystem), when its packages are built (tests/node/boot/run.sh)
+if [ -f "${DOTBENCH_BUILD:-$here/../../build}/apps/kodeos/kodeos.dotbench" ]; then
+  echo "== tests/browser/boot/run.sh"
+  "$here/boot/run.sh" || rc=1
+else
+  echo "== tests/browser/boot: skipped (run tests/node/boot/run.sh first)"
+fi
 [ $rc -eq 0 ] && echo "BROWSER TESTS PASSED" || echo "BROWSER TESTS FAILED"
 exit $rc

@@ -16,7 +16,7 @@ const IDLE = new Atom<StatusDetail>({ status: 'idle' });
  */
 export function DeviceStatusCard() {
   const { t } = useI18n();
-  const { device, restart, launching, requestApps, setUseMock } = useHost();
+  const { device, restart, launching, setUseMock } = useHost();
   const status = useObservable(device.status);
   const name = useCurrentAppName();
   const detail = useObservable(isRealDevice(device) ? device.detail : IDLE);
@@ -66,7 +66,8 @@ export function DeviceStatusCard() {
     );
   }
   if (status === 'booting' || (status === 'idle' && launching)) {
-    const text = status === 'idle' ? t('overlay.loading') : detail.restarting ? t('overlay.booting.restart', { reason: detail.reason ?? '' }) : t('overlay.booting', { app: name ?? '' });
+    // which program comes up is the Dot's business (kodeOS, or the app it was asked to open): the pill only says it is starting
+    const text = status === 'booting' && detail.restarting ? t('overlay.booting.restart', { reason: detail.reason ?? '' }) : t('overlay.loading');
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center px-3" data-testid="device-booting">
         <span className="pill anim-rise max-w-full !bg-[#191919]/85 !text-white" role="status">
@@ -77,23 +78,17 @@ export function DeviceStatusCard() {
     );
   }
   if (status === 'idle') {
+    // the Dot is off: one thing to do, switch it on (kodeOS boots; what it stored is kept)
     return (
       <div className={wrap} data-testid="device-idle">
         <div className={card} {...layer} {...stop}>
           <ScrollArea className="min-h-0 flex-1 p-5">
             <h3 className="text-[19px] leading-snug">{t('device.overlay.idle')}</h3>
-            <p className="mb-3 mt-1 text-[13.5px] leading-snug text-ink2">{t(name ? 'overlay.idle.hint' : 'overlay.idle.none', { app: name ?? '' })}</p>
-            <div className="flex flex-wrap gap-2">
-              {name && (
-                <button type="button" className="btn btn-primary" onClick={() => void restart()} data-testid="idle-start">
-                  <Icon name="play" />
-                  {t('top.start')}
-                </button>
-              )}
-              <button type="button" className={`btn ${name ? '' : 'btn-primary'}`} onClick={requestApps} data-testid="idle-apps">
-                {t('overlay.idle.choose')}
-              </button>
-            </div>
+            <p className="mb-3 mt-1 text-[13.5px] leading-snug text-ink2">{t('overlay.idle.hint')}</p>
+            <button type="button" className="btn btn-primary" onClick={() => void restart()} data-testid="idle-start">
+              <Icon name="play" />
+              {t('top.start')}
+            </button>
           </ScrollArea>
         </div>
       </div>

@@ -162,8 +162,8 @@ S3
 - Link preview: `node scripts/og/make-og.mjs` writes `web/screenshots/og-device.png` (the Kode model with kodeOS's lock screen, 2x, on #C2BAB3) and `web/public/og.png` from `scripts/og/og.html`.
 
 ### Review fixes in this pass
-- The system reads "kodeOS" everywhere (App menu, status bar, cards); it has its own "System" section at the top of the App menu, apart from "Your apps" and "Built-in apps" (room for "install into the Dot").
-- First run speaks about an operating system: "This Dot is live. It runs kodeOS: swipe sideways on the screen to unlock…"; idle, crash, console-empty, mock and unsupported-browser texts no longer assume a demo app (en, pt-BR, es; typed, tested for equal keys and variables). The hint hides while the Dot is stopped or crashed.
+- The system reads "kodeOS" everywhere (Apps menu, status bar, cards).
+- First run speaks about an operating system (the wording was replaced again when apps moved inside kodeOS, see the next section); idle, crash, console-empty, mock and unsupported-browser texts no longer assume a demo app (en, pt-BR, es; typed, tested for equal keys and variables). The hint hides while the Dot is stopped or crashed.
 - 2D <-> 3D: the 3D view stays mounted (hidden, drawing nothing) once shown on desktop and tablet, so going back is one frame instead of a new WebGL context; the view fades in.
 - A selected chip under the pointer was white text on white (hover overrode the selected look): fixed; hover looks now apply only to pointers that can hover, so nothing stays "hovered" after a tap on a phone.
 - Cut off: the Spanish "add to the bench" button ran out of its card at 1024 px (label shortened, the button now wraps inside the card); the 3D device touched both edges of a phone screen (more side margin); the ground shadow ended in a hard line at the stage edge (it fades).
@@ -176,5 +176,54 @@ S3
 - No real phone or GPU: frame rate, iOS sensor permission, vibration, wake lock, safe areas remain unverified.
 - A user who loads Kode's ORIGINAL file as "My own…" sees the bezel round the glass grey: its colours come from a palette texture, which the page's "glossy black" detection cannot read (the bundled file has plain materials and is right).
 - kodeOS prints many "dotbench: kdrv_… not implemented" lines at boot: they fill the console on first run (runtime side, not the page).
-- The before/after set in `web/screenshots/ux/`: `before-*` (earlier reviewer, 370 shots), `after-*` (this pass).
+
+## Apps inside kodeOS (2026-11-16, after the system layer was merged)
+
+The page no longer runs one program at a time. It holds one `DotbenchSystem` (runtime/web-adapter) through `web/src/device/wasm.ts` (`SystemDevice`): the Dot always boots kodeOS, apps are installed into it and opened from its own list, and the system layer plays the bootloader between programs. The page never handles a restart: it listens to `program` (what runs) and `apps` (what is installed) and keeps reading frames, outputs and logs from the same object.
+
+- Persistence: `IdbBackend` with its own database, `kodedot-system` (settings, files, installed apps and their packages survive a reload).
+- `web/scripts/prepare-apps.mjs` is data-driven: `web/scripts/factory-apps.json` (`{"os": "kodeos", "factory": ["kody_kart", "display_lvgl", "buttons_led"]}`) names the packages under `../build/apps/<name>/<name>.dotbench`; it copies them to `public/apps/` and writes `public/apps/factory.json` (`{"format":1,"apps":[...]}`), which the page hands to the system layer for the first boot of an empty Dot. One more factory app = build it, add its name to the list. `public/apps/index.json` is gone.
+- The top-bar "Apps" menu (phone: the Apps tab) is the Dot's app manager: what runs now (kodeOS or the app) with Home, the installed apps (open, remove after a confirmation), "Install a .dotbench…" (file picker, or drop the file anywhere: install, then open), and a factory reset behind a confirmation. Restart is a reset of the Dot (kodeOS comes up), Stop switches it off.
+- Removed: the "default built-in app" (`lib/builtins.ts`, `pickStartApp`), the page's own store of saved bundles (`lib/bundles.ts`; packages saved by the old page are not migrated: install them again), the legacy region export (`lib/devicefile.ts`; Export/Import device now uses the system's whole-device file, apps included).
+- First-run hint: unlock by swiping sideways, open the app list, tap an app, hold the bottom button to come back, drop a .dotbench to install (en, pt-BR, es).
+- Checked by `npm run build && node scripts/system-check.mjs` (headless Chrome, a fresh profile, the real page; screenshots `web/screenshots/system-*.png`): kodeOS boots with Kody Kart, Display and Buttons + LED; a tap on Kody Kart in kodeOS's own list opens it and its title screen shows; holding the bottom button returns to kodeOS; a package installed from the page appears and opens; a reload keeps the four apps; open from the manager, Home, remove, factory reset, Stop/Start and the 3D view work; no page errors.
+
+Last runs with the app manager in place: unit tests 156/156; `scripts/system-check.mjs` all pass; `AUDIT=off node scripts/headless-check.mjs` 169/169; layout audit at 1280x720, 820x1180, 390x844 and 844x390 in both themes and three languages: 386 scene audits, 25/25 combinations clean (the other four viewports were audited before the app manager: 796 audits, clean after the audit learned to wait for the theme). Whole-device export, remove an app, import: the app is back, also after a reload. Review screenshots: `web/screenshots/ux/before-*` (370, earlier state) and `after-*` (100: light, English, those four viewports).
+
+Rough edges (known, not the page's to fix):
+- kodeOS's own details card shows a tiny size for an app (the image in the apps region is synthesised).
+- Installing or removing an app restarts kodeOS once (it re-reads its directory).
+- Holding the bottom button returned to kodeOS after about 1.8 to 2.2 s of wall time in headless Chrome, not 3.0 s (the Node suite measures 3.0 s); the same through the mouse, the keyboard and the API, so it is below the page.
+- Back from an app, kodeOS shows its app list, not the lock screen.
+
+## Printed labels on the model (2026-11-17)
+
+Reported: the pin names printed next to the expansion header (3V3, IO9 … 5V / 5V, IO8 … 3V3) flickered, showed a moire or vanished depending on the angle.
+Cause: the label is a see-through textured quad lying exactly in the shell's top surface (0.9 µm above it in Kode's file, 0 after quantisation), so the depth buffer could not order the two: classic depth fighting, different at every angle.
+Fix (`web/src/device3d/decal.ts`, used by `prepare.ts` for every model file and by `Device3D.tsx`):
+- print on a surface (a flat sheet with a picture that is see-through in places, or a small flat textured patch) is drawn as a decal: in the vertex shader it is pulled 0.3 mm towards the camera along its own line of sight (its place on screen does not change, only its depth, by the same amount at every angle and zoom), it does not write depth, is drawn after the surface, and has a constant polygon offset on top. The same pull (0.12 and 0.18 mm) is on the live picture and its gloss over the glass, for all three models.
+- the camera's near and far planes now hug the model (they were 20 and 1500 mm), which alone improves depth resolution about tenfold; a 16-bit depth buffer resolves about 0.01 mm at the device.
+- the label's texture keeps its full 2048 px and gets anisotropic filtering (it is the one texture that is read); the optimiser keeps the shell under the print exactly as modelled. Bundled model now: 49,562 triangles, 445 kB.
+- the only printed part in Kode's model is this label (the mark on the back is geometry); the rule is generic, so a user's own model gets the same treatment.
+Check (permanent): `node scripts/model-shots.mjs --kode --labels` (also `--custom <file> --labels`, and without `--kode` for the simple model). 11 views of the labels (straight, 30, 60, 80 degrees, turned, near and far zoom): each is compared with a reference drawn without a depth test and must match within 1 % of the print's pixels, at the real depth precision and with a 256 times coarser one (near plane 256 times closer: what a 16-bit buffer gives where this machine has 24 bits); plus 6 general views that must not change with the coarse depth. All pass for the Kode model, the original file loaded as "My own…" and the simple model; with the fix switched off the 60-degree views lose 1,400 to 5,200 of 8,700 print pixels. Screenshots: `web/screenshots/model-labels-*.png`, `model-kode-depth-*.png`.
+
+## What is kept between visits (2026-11-17)
+
+Checked end to end by `npm run build && node scripts/settings-check.mjs` (headless Chrome, a fresh profile, the real page, settings changed by touch in kodeOS and read back with kodeOS's console command `config`; screenshots `web/screenshots/settings-*.png`). All pass:
+fresh profile has nothing stored and the lock screen asks for a time zone; brightness and time zone changed, reload after 2 s: kept; vibration changed, reload after 2 s: all three kept, the lock screen no longer asks, the page shows the stored brightness; tab closed right after a change; Stop right after a change, then Start; Restart right after a change (and a reload after it); tab crashed 1.5 s after a change; page hidden right after a change and then killed: the change is there every time, and the time zone question never comes back.
+
+Found on the way: nothing was lost on reload, close, Stop/Start or Restart (the system layer saves on page-hide and when a program stops), but a tab that crashed or was killed within about 5 s of a change lost it. Cause: `PersistManager.tick` (runtime/web-adapter/persist.js) saves once the firmware has been quiet for 0.8 s, and kodeOS never is: its dirty-generation counter moves about 1,750 times a second while it idles on the lock screen, so only the 5 s upper limit ever fires (measured: one commit every 5.0 s, most of them empty). Fixed in the page, not in the runtime: `SystemDevice` (web/src/device/wasm.ts) calls the system's `flushPersist()` 150 and 700 ms after every release of the screen or a button, and once a second while the Dot runs (it writes only what changed). Nothing was changed outside `web/`. For the runtime's owner: either that counter should not move for writes that change nothing (or for the retained `keep` region), or `tick` should not wait for quiet.
+
+kodeOS has no language setting in this build (Settings: Wi-Fi, Bluetooth, Battery, Time, Sleep after, Turn off after, Kody's scene, Vibration, While charging, Header 3.3 V, Header 5 V, Self-test, About), so the three settings checked are time zone, brightness and vibration.
+
+| What | Where it is kept | Kept |
+|---|---|---|
+| kodeOS settings (time zone, brightness, vibration, sleep, volume, Wi-Fi list ...), its files and clock | IndexedDB `kodedot-system`, through the system layer | yes (checked) |
+| Installed apps and their packages | same | yes (system-check) |
+| Page language, theme, 3D/2D (desktop and phone apart), 2D zoom | localStorage `dotbench.*` | yes (checked) |
+| Collapsed bench/console cards and their widths, bench area tab, bench objects | localStorage | yes (collapsed card checked) |
+| Bench/Components side tab | localStorage `dotbench.left` | yes, new in this pass (checked) |
+| Chosen 3D model (Kode/Simple), lighter materials; the user's own model file | localStorage; IndexedDB `dotbench-custom-model` | yes (choice checked) |
+| Dismissed first-run hint, test device switch, keep-screen-awake | localStorage | yes (hint checked) |
+| 3D view angle and zoom, tilt link, phone sheet position, phone sensors switch | not kept, on purpose (sensors need a fresh permission tap) | no |
 

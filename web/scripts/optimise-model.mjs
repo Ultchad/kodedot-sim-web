@@ -25,7 +25,8 @@
 //      light guide, the inlays, the side window and the back cover with its
 //      debossed mark keep every triangle; the controls lose few; the shell's
 //      vertices next to the glass, the controls, the light guide and the side
-//      window stay in place, so every outline is as modelled);
+//      window, and under the printed pin labels, stay in place, so every
+//      outline is as modelled and the print stays in its surface);
 //   6. replaces clear coat / anisotropy / specular / IOR by plain
 //      metallic-roughness materials with the maker's colours; turns the shared
 //      colour palette into one plain material per colour (no texture look-up);
@@ -183,7 +184,9 @@ const copyInfo = (from, to) => to && from && to.setWrapS(from.getWrapS()).setWra
  * The body's baked normal maps cover the whole shell in one sheet: 1024 px.
  * The buttons' maps hold only a fine grain: 256 px. The pin labels: 1024 px wide.
  */
-const TEXTURE_SIDE = { front_body: 1024, back_body: 1024, 'left buttom': 256, 'right button': 256, 'Frame 2147223613': 1024 };
+const TEXTURE_SIDE = { front_body: 1024, back_body: 1024, 'left buttom': 256, 'right button': 256 };
+/** Print (the pin labels): the one texture that is read. It keeps its size; the saving would be 30 kB. */
+const PRINT_SIDE = 2048;
 
 /**
  * Palette materials: several parts of the original take their colour, metalness and roughness from one tiny shared
@@ -224,7 +227,7 @@ async function material(srcMat, role, paletteKey = null) {
   const m = doc.createMaterial(srcMat.getName());
   m.setBaseColorFactor(srcMat.getBaseColorFactor()).setMetallicFactor(srcMat.getMetallicFactor()).setRoughnessFactor(srcMat.getRoughnessFactor());
   m.setAlphaMode(srcMat.getAlphaMode()).setAlphaCutoff(srcMat.getAlphaCutoff());
-  const side = (t) => TEXTURE_SIDE[t?.getName()] ?? 1024;
+  const side = (t) => TEXTURE_SIDE[t?.getName()] ?? (srcMat.getAlphaMode() === 'OPAQUE' ? 1024 : PRINT_SIDE);
   if (paletteKey && role !== 'glass') {
     const [x, y] = paletteKey.split(',').map(Number);
     const at = (tex) => tex.data.subarray((y * tex.w + x) * 4, (y * tex.w + x) * 4 + 4);
@@ -355,6 +358,19 @@ for (const kind of ['glass', 'led', 'top', 'bottom', 'dpad']) for (const e of gr
 for (const e of groups.static) if (e.matName === 'side_window_glass') {
   const a = e.prim.getAttribute('POSITION').getArray();
   for (let i = 0; i < a.length; i += 3) windowCells.add(cellOf(a[i], a[i + 1], a[i + 2]));
+}
+// Print (a see-through sheet with a picture, like the pin labels on the top wall) lies exactly in the shell's
+// surface. The page draws it so that it cannot fight that surface for depth (src/device3d/decal.ts); here the
+// surface under it is kept exactly as modelled, so the sheet stays in it everywhere.
+const isPrint = (e) => e.prim.getMaterial().getAlphaMode() !== 'OPAQUE' && !!e.prim.getMaterial().getBaseColorTexture();
+for (const e of groups.static) if (isPrint(e)) {
+  const a = e.prim.getAttribute('POSITION').getArray();
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < a.length; i++) {
+    lo[i % 3] = Math.min(lo[i % 3], a[i]);
+    hi[i % 3] = Math.max(hi[i % 3], a[i]);
+  }
+  for (let x = lo[0] - SEAM_MM; x <= hi[0] + SEAM_MM; x += SEAM_MM) for (let y = lo[1] - SEAM_MM; y <= hi[1] + SEAM_MM; y += SEAM_MM) for (let z = lo[2] - SEAM_MM; z <= hi[2] + SEAM_MM; z += SEAM_MM) windowCells.add(cellOf(x, y, z));
 }
 function seamLock(prim) {
   const a = prim.getAttribute('POSITION').getArray();
@@ -522,7 +538,8 @@ loads and draws quickly in a web page:
   in place;
 - materials: plain metallic-roughness materials with Kode's colours; the
   shared colour palette becomes one material per colour;
-- textures: the pin labels and the back cover's normal map, at 1024 px;
+- textures: the pin labels at their full 2048 px, the back cover's normal map
+  at 1024 px;
 - compression: meshopt; ${(statSync(resolve(input)).size / 1024).toFixed(0)} kB become ${(bytes.byteLength / 1024).toFixed(0)} kB.
 `;
   writeFileSync(join(dirname(outFile), 'NOTICE-model.md'), notice);

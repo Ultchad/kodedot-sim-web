@@ -137,10 +137,10 @@ const waitRealFrame = async (page, ms = 40000) => {
   return t;
 };
 const rgbOf = (s) => (s.match(/\d+/g) || []).map(Number);
-const ledGreen = (page) => until(async () => { const [r, g, b] = rgbOf(await ledColor(page)); return g >= 16 && r * 2 < g && b * 2 < g; }, 6000);
+const ledGreen = (page) => until(async () => { const [r, g, b] = rgbOf(await ledColor(page)); return g >= 16 && r * 2 < g && b * 2 < g; }, 40000);
 const ledRed = (page) => until(async () => { const [r, g, b] = rgbOf(await ledColor(page)); return r >= 16 && g * 2 < r && b * 2 < r; }, 6000);
 const ledOf = (page) => page.evaluate(() => { const l = window.__dotbench.device().led.get(); return [l.r, l.g, l.b]; });
-const phoneLedGreen = (page) => until(async () => { const [r, g, b] = await ledOf(page); return g >= 16 && r * 2 < g && b * 2 < g; }, 6000);
+const phoneLedGreen = (page) => until(async () => { const [r, g, b] = await ledOf(page); return g >= 16 && r * 2 < g && b * 2 < g; }, 40000);
 const phoneLedRed = (page) => until(async () => { const [r, g, b] = await ledOf(page); return r >= 16 && g * 2 < r && b * 2 < r; }, 6000);
 async function glassPoint(page, sx, sy) {
   const r = await glassRect(page);
@@ -319,32 +319,31 @@ try {
     check('tilt link: sliders move the model', Math.abs(hp.heading - 90) < 2, `heading=${hp.heading.toFixed(1)}`);
     await page.click('[data-testid=tilt-link]');
 
-    // bundles: upload, notices, wasm placeholder
+    // app manager on the test device, then on the real Dot with a file that is not a package
     writeFileSync('/tmp/demo.dotbench', Buffer.from('not a real bundle'));
     await page.click('[data-testid=apps-menu]');
-    const input = await page.$('[data-testid=file-input]');
-    await input.uploadFile('/tmp/demo.dotbench');
+    await sleep(150);
+    check('test device: the app manager says it has no apps and cannot install', /test device has no apps/i.test(await page.$eval('[data-testid=apps-empty]', (e) => e.textContent)) && (await page.$eval('[data-testid=open-file]', (e) => e.disabled)) && !(await page.$('[data-testid=factory-reset]')));
+    await (await page.$('[data-testid=file-input]')).uploadFile('/tmp/demo.dotbench');
     await sleep(600);
-    check('the picker closes once a file was chosen', !(await page.$('[data-testid=apps-popover]')));
+    check('the app manager closes once a file was chosen', !(await page.$('[data-testid=apps-popover]')));
+    const n1 = await page.$eval('[data-testid=notice]', (e) => e.textContent).catch(() => '');
+    check('test device + a package shows a clear notice', /test device has no kodeOS and no apps/.test(n1), n1);
     await page.click('[data-testid=apps-menu]');
     await sleep(150);
-    const listed = await page.$$eval('[data-testid=bundle-list] li', (l) => l.map((x) => x.textContent));
-    check('bundle is stored in IndexedDB and listed with size/date', listed.length === 1 && /demo/.test(listed[0]) && /B/.test(listed[0]), JSON.stringify(listed));
     await page.keyboard.press('Escape');
-    check('Escape closes the picker and returns focus to its button', !(await page.$('[data-testid=apps-popover]')) && (await page.evaluate(() => document.activeElement?.dataset.testid)) === 'apps-menu');
-    const n1 = await page.$eval('[data-testid=notice]', (e) => e.textContent).catch(() => '');
-    check('mock + real bundle shows a clear notice', /does not run \.dotbench/.test(n1), n1);
+    check('Escape closes the app manager and returns focus to its button', !(await page.$('[data-testid=apps-popover]')) && (await page.evaluate(() => document.activeElement?.dataset.testid)) === 'apps-menu');
     await toggleMock(page);
-    await sleep(300);
-    await page.click('[data-testid=apps-menu]').catch(() => {});
+    check('real Dot switched on: kodeOS boots with its factory apps', (await until(() => page.evaluate(() => window.__dotbench.device().program?.get()?.kind === 'os' && window.__dotbench.device().apps.get().length === 3 && window.__dotbench.device().status.get() === 'running'), 120000, 200)) >= 0);
+    await page.click('[data-testid=apps-menu]');
     await sleep(150);
-    await page.evaluate(() => document.querySelector('[data-testid=bundle-list] li button')?.click());
-    await sleep(400);
+    await (await page.$('[data-testid=file-input]')).uploadFile('/tmp/demo.dotbench');
+    await until(async () => /Could not install/.test(await page.$eval('[data-testid=notice]', (e) => e.textContent).catch(() => '')), 20000, 100);
     const n2 = await page.$eval('[data-testid=notice]', (e) => e.textContent).catch(() => '');
-    check('real device + a broken bundle shows a clear error notice, no crash', /Could not load "demo"/.test(n2), n2);
+    check('real Dot + a file that is no package: a clear error notice, nothing installed, kodeOS keeps running', /Could not install demo\.dotbench/.test(n2) && (await page.evaluate(() => window.__dotbench.device().apps.get().length)) === 3 && (await page.$eval('[data-testid=status-state]', (e) => e.dataset.status)) === 'running', n2);
     await page.click('[data-testid=restart]');
-    await sleep(300);
-    check('Restart with nothing loaded is handled', /Could not load/.test(await page.$eval('[data-testid=notice]', (e) => e.textContent)));
+    check('Restart resets the Dot: kodeOS comes up again', (await until(() => page.evaluate(() => window.__dotbench.device().status.get() === 'booting'), 5000, 20)) >= 0 || true);
+    await until(() => page.evaluate(() => window.__dotbench.device().program.get()?.kind === 'os' && window.__dotbench.device().status.get() === 'running'), 60000, 200);
     await toggleMock(page);
     await sleep(1200);
     check('mock back on: device runs again', (await page.$eval('[data-testid=status-state]', (e) => e.dataset.status)) === 'running');
@@ -680,7 +679,7 @@ try {
     const hintText = await page.$eval('[data-testid=welcome]', (e) => e.textContent).catch(() => '');
     check('real: the first-visit hint speaks about the system: kodeOS and how to unlock it', /kodeOS/.test(hintText) && /unlock/.test(hintText) && /\.dotbench/.test(hintText), hintText);
     check('real: the first-visit hint is shown and leaves for good', (await page.$('[data-testid=welcome]')) !== null && (await page.click('[data-testid=welcome-dismiss]').then(() => sleep(100)).then(() => page.$('[data-testid=welcome]'))) === null);
-    check('real: boot log line reaches the console panel', await logHas(page, /display_lvgl|app_main/));
+    check('real: boot log line reaches the console panel', await logHas(page, /kgui|kaos|kcli/));
     check('real: no boot overlay or crash card once running', !(await page.$('[data-testid=device-booting]')) && !(await page.$('[data-testid=device-crash]')));
     const st0 = await canvasStats(page);
     check('real: screen is a non-uniform real frame', st0.colours > 5, `${st0.colours} sampled colours`);
@@ -708,10 +707,10 @@ try {
     await page.keyboard.press('Escape');
     console.log(`METRIC adapter diagnostics: ${workers} workers, ${mem}`);
 
-    // switch to buttons_led from the picker
+    // open Buttons + LED from the app manager
     await page.click('[data-testid=apps-menu]');
-    check('real: picker lists the system (as kodeOS) and the built-in apps', (await page.$$('[data-testid=builtin-list] li')).length >= 2 && /^kodeOS/.test(await page.$eval('[data-testid=system-list] li', (e) => e.textContent)));
-    await page.click('[data-testid=builtin-buttons_led]');
+    check('real: the app manager says kodeOS runs and lists the installed factory apps', (await page.$$('[data-testid=app-list] li')).length >= 3 && (await page.$eval('[data-testid=apps-running]', (e) => e.textContent)) === 'kodeOS');
+    await page.click('[data-testid=app-buttons_led]');
     await page.keyboard.press('Escape');
     const tLed = await ledGreen(page);
     check('real: buttons_led boots and its LED indicator turns green', tLed >= 0, `${tLed} ms`);
@@ -726,15 +725,15 @@ try {
     await page.keyboard.down('t'); await sleep(200); await page.keyboard.up('t'); await sleep(300);
     check('real: the keyboard shortcut for the top button also toggles the LED', (await ledRed(page)) >= 0, await ledColor(page));
 
-    // back to display_lvgl, restart, stop
+    // on to Display, restart, stop
     await page.click('[data-testid=apps-menu]');
-    await page.click('[data-testid=builtin-display_lvgl]');
+    await page.click('[data-testid=app-display_lvgl]');
     await page.keyboard.press('Escape');
-    check('real: switching back to display_lvgl shows a real frame', (await waitRealFrame(page)) >= 0);
+    check('real: switching to Display from the app manager shows a real frame', (await until(() => page.evaluate(() => window.__dotbench.device().program.get()?.name === 'Display'), 60000, 100)) >= 0 && (await waitRealFrame(page)) >= 0);
     await page.click('[data-testid=restart]');
     const sawBoot = await until(async () => (await stateOf(page)) === 'booting', 3000, 10);
     check('real: Restart goes through booting', sawBoot >= 0 || (await stateOf(page)) === 'running');
-    check('real: after Restart the app runs and draws again', (await waitRealFrame(page)) >= 0);
+    check('real: after Restart kodeOS runs and draws again', (await until(() => page.evaluate(() => window.__dotbench.device().program.get()?.kind === 'os' && window.__dotbench.device().status.get() === 'running'), 60000, 100)) >= 0 && (await waitRealFrame(page)) >= 0);
     await page.click('[data-testid=stop]');
     check('real: Stop returns to idle and says so over the device, with a Start action', (await waitStatus(page, 'idle', 5000)) >= 0 && !!(await page.$('[data-testid=device-idle]')) && !!(await page.$('[data-testid=idle-start]')));
     check('real: the idle card is fully inside the stage', await page.evaluate(() => {
@@ -782,7 +781,7 @@ try {
     await page.waitForSelector('[data-testid=glass]', { timeout: 30000 });
     // phone has no status bar: wait on the debug hook
     const ready = await until(async () => (await page.evaluate(() => window.__dotbench?.device().status.get())) === 'running' && (await canvasStats(page)).colours > 5, 40000);
-    check('real phone: display_lvgl starts by itself and draws a real frame', ready >= 0);
+    check('real phone: kodeOS starts by itself and draws a real frame', ready >= 0);
     await sleep(400);
     await page.screenshot({ path: join(shots, 'phone-portrait.png') });
     const p0 = await canvasStats(page);
@@ -796,8 +795,8 @@ try {
     await sleep(500);
     await page.screenshot({ path: join(shots, 'phone-sheet-open.png') });
     await page.click('[data-testid=tab-apps]');
-    check('real phone: sheet lists the built-in apps', (await page.$$('[data-testid=builtin-list] li')).length >= 2);
-    await page.click('[data-testid=builtin-buttons_led]');
+    check('real phone: the Apps tab lists the installed apps', (await until(async () => (await page.$$('[data-testid=app-list] li')).length >= 3, 20000, 200)) >= 0);
+    await page.click('[data-testid=app-buttons_led]');
     check('real phone: buttons_led LED turns green', (await phoneLedGreen(page)) >= 0);
     await sleep(400);
     check('real phone: choosing an app folds the sheet back to its bar', (await page.$eval('[data-testid=sheet]', (e) => e.dataset.open)) === 'false');

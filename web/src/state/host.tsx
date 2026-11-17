@@ -3,11 +3,11 @@ import { applyPoseToBench, syncBench } from '../bench/sync';
 import { BenchStore } from '../bench/store';
 import { createDevice, type DeviceKind } from '../device';
 import type { KodeDevice } from '../device/types';
-import { UnsupportedRuntimeError, isRealDevice } from '../device/wasm';
+import { Atom } from '../device/observable';
+import { isRealDevice, type InstalledApp, type Program, type RealDevice } from '../device/wasm';
 import { useI18n, type TKey } from '../i18n';
 import type { Vars } from '../i18n/core';
-import { BundleStore, type BundleMeta } from '../lib/bundles';
-import { builtinKey, displayAppName, fetchBuiltinBytes, isBuiltinKey, loadBuiltins, pickStartApp, type BuiltinApp } from '../lib/builtins';
+import { displayAppName } from '../lib/dotapps';
 import { InputController } from '../lib/input';
 import { isEditableTarget, keyToButton, ownsArrowKeys } from '../lib/keys';
 import { isPhone, useLayoutMode, type LayoutMode } from '../lib/layout';
@@ -37,12 +37,21 @@ export interface Host {
   painter: ScreenPainter;
   bench: BenchStore;
 
-  bundles: BundleMeta[];
-  builtins: BuiltinApp[];
-  selectedId: string | null;
-  addBundleFile(file: File): Promise<void>;
-  runBundle(id: string): Promise<void>;
-  removeBundle(id: string): Promise<void>;
+  /** What runs on the Dot: kodeOS (kind 'os') or one of its apps; null while it is off (and on the test device). */
+  program: Program | null;
+  /** The apps installed in kodeOS. */
+  apps: readonly InstalledApp[];
+  /** Install a .dotbench into kodeOS, then open it. */
+  installFile(file: File): Promise<void>;
+  /** Open an installed app (the same as tapping it in kodeOS's list). */
+  launchApp(id: string): Promise<void>;
+  removeApp(id: string): Promise<void>;
+  /** Back to kodeOS from the running app (the same as holding the bottom button for 3 s). */
+  goHome(): Promise<void>;
+  /** Erase the Dot: settings, files and apps go, the factory apps come back. */
+  factoryReset(): Promise<void>;
+  /** What the app manager is busy with, for its own progress line. */
+  appBusy: 'install' | 'remove' | 'reset' | null;
   exportDevice(): Promise<void>;
   importDeviceFile(file: File): Promise<void>;
   restart(): Promise<void>;
@@ -50,7 +59,7 @@ export interface Host {
 
   notice: Notice | null;
   dismissNotice(): void;
-  /** True from page load until the first app start was attempted: "nothing runs yet" is then loading, not a stopped app. */
+  /** True from page load until the Dot was powered on for the first time: "nothing runs yet" is then loading, not a stopped Dot. */
   launching: boolean;
   /** Bumped when some part of the page asks for the app list (idle card, welcome hint); the picker or the phone sheet opens it. */
   appsRequest: number;
@@ -94,6 +103,8 @@ export const useHost = (): Host => {
 };
 
 let noticeSeq = 0;
+const NO_PROGRAM = new Atom<Program | null>(null);
+const NO_APPS = new Atom<readonly InstalledApp[]>([]);
 
 /** Display name of an app: a saved bundle's file name without the extension; the system reads kodeOS. */
 export const appLabel = (name: string): string => displayAppName(name.replace(/\.dotbench$/i, ''));
@@ -107,17 +118,9 @@ export function HostProvider({ children }: { children: ReactNode }) {
   tRef.current = t;
 
   // long-lived services ------------------------------------------------------
-  const services = useRef<{ bench: BenchStore; painter: ScreenPainter; bundles: BundleStore | null; model: ModelController } | null>(null);
-  if (!services.current) {
-    let bundles: BundleStore | null = null;
-    try {
-      bundles = typeof indexedDB === 'undefined' ? null : new BundleStore(indexedDB);
-    } catch {
-      bundles = null;
-    }
-    services.current = { bench: new BenchStore(safeLocal()), painter: new ScreenPainter(), bundles, model: new ModelController() };
-  }
-  const { bench, painter, bundles: bundleStore, model } = services.current;
+  const services = useRef<{ bench: BenchStore; painter: ScreenPainter; model: ModelController } | null>(null);
+  services.current ??= { bench: new BenchStore(safeLocal()), painter: new ScreenPainter(), model: new ModelController() };
+  const { bench, painter, model } = services.current;
   // the 3D code's own store; the controller tolerates anything that does not follow the contract
   useEffect(() => {
     if (!model.available && isModelStore(customModel)) model.setStore(customModel);
@@ -127,7 +130,6 @@ export function HostProvider({ children }: { children: ReactNode }) {
   const [device, setDevice] = useState<KodeDevice>(() => createDevice(loadPref<boolean>('dotbench.mock', false) === true ? 'mock' : 'wasm'));
   const deviceRef = useRef(device);
   deviceRef.current = device;
-  const selectedIdRef = useRef<string | null>(null);
   const input = useMemo(() => new InputController(() => deviceRef.current), []);
 
   // notices -----------------------------------------------------------------
@@ -168,144 +170,127 @@ export function HostProvider({ children }: { children: ReactNode }) {
     [input],
   );
 
-  // apps --------------------------------------------------------------------
-  const [bundles, setBundles] = useState<BundleMeta[]>([]);
-  const [bundlesLoaded, setBundlesLoaded] = useState(false);
-  const [builtins, setBuiltins] = useState<BuiltinApp[]>([]);
-  const [builtinsLoaded, setBuiltinsLoaded] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(() => loadPref<string | null>('dotbench.bundle', null));
-  const refresh = useCallback(async () => {
-    if (!bundleStore) return;
-    try {
-      setBundles(await bundleStore.list());
-    } catch (e) {
-      say('error', 'notice.storageFail', { error: String((e as Error).message ?? e) });
-    }
-  }, [bundleStore, say]);
-  useEffect(() => {
-    void refresh().finally(() => setBundlesLoaded(true));
-  }, [refresh]);
-  useEffect(() => {
-    void loadBuiltins().then((b) => {
-      setBuiltins(b);
-      setBuiltinsLoaded(true);
-    });
-  }, []);
-  selectedIdRef.current = selectedId;
-  const buildinsRef = useRef(builtins);
-  buildinsRef.current = builtins;
-
+  // the Dot and its apps -----------------------------------------------------
+  // The Dot always boots kodeOS. Apps live inside it: the system layer installs, lists, opens and removes them, and
+  // plays the bootloader between programs, so the page only ever asks and is told what runs.
+  const real = isRealDevice(device) ? device : null;
+  const program = useObservable(real ? real.program : NO_PROGRAM);
+  const apps = useObservable(real ? real.apps : NO_APPS);
   const [launching, setLaunching] = useState(() => loadPref<boolean>('dotbench.mock', false) !== true);
-  const runBundleInner = useCallback(
-    async (id: string): Promise<boolean> => {
-      let name = id;
-      try {
-        let data: ArrayBuffer;
-        if (isBuiltinKey(id)) {
-          const app = buildinsRef.current.find((b) => builtinKey(b.id) === id);
-          if (!app) return false;
-          name = app.name;
-          data = await fetchBuiltinBytes(app);
-        } else {
-          if (!bundleStore) {
-            say('error', 'notice.storageFail', { error: 'IndexedDB' });
-            return false;
-          }
-          const rec = await bundleStore.get(id);
-          if (!rec) return false;
-          name = rec.meta.name;
-          data = rec.data;
-        }
-        const dev = deviceRef.current;
-        await dev.load(data, { name });
-        setSelectedId(id); // remembered only once it loaded
-        savePref('dotbench.bundle', id);
-        if (!dev.info.runsBundles) {
-          say('info', 'notice.mockIgnores');
-          return false;
-        }
-        await dev.start();
-        setNotice(null);
-        return true;
-      } catch (e) {
-        if (e instanceof UnsupportedRuntimeError) return false; // the stage card explains it
-        if (deviceRef.current.status.get() === 'crashed') return false; // so does the crash card
-        say('error', 'notice.loadFail', { name: appLabel(name), error: String((e as Error).message ?? e) });
-        return false;
-      }
-    },
-    [bundleStore, say],
-  );
-  const runBundle = useCallback(
-    async (id: string) => {
-      try {
-        await runBundleInner(id);
-      } finally {
-        setLaunching(false);
-      }
-    },
-    [runBundleInner],
-  );
+  const [appBusy, setAppBusy] = useState<Host['appBusy']>(null);
+  const errorText = (e: unknown) => String((e as Error)?.message ?? e);
 
-  // first visit (and every time the real device is switched on): start the remembered app, else the demo
-  const autoFor = useRef<KodeDevice | null>(null);
+  // power on: at page load, and every time the real device is switched on
+  const poweredFor = useRef<KodeDevice | null>(null);
   useEffect(() => {
-    if (device.info.kind !== 'wasm' || !builtinsLoaded || !bundlesLoaded || autoFor.current === device) return;
-    autoFor.current = device;
-    if (isRealDevice(device) && device.unsupported.length) return setLaunching(false);
-    const id = pickStartApp(selectedId, builtins, bundles.map((b) => b.id));
-    if (id) void runBundle(id);
-    else setLaunching(false);
-  }, [device, builtinsLoaded, bundlesLoaded, builtins, bundles, selectedId, runBundle]);
+    if (!isRealDevice(device) || poweredFor.current === device) return;
+    poweredFor.current = device;
+    if (device.unsupported.length) return setLaunching(false); // the stage card explains it
+    device
+      .start()
+      .catch(() => {
+        /* shown on the stage as "stopped" with the reason */
+      })
+      .finally(() => setLaunching(false));
+  }, [device]);
 
-  const addBundleFile = useCallback(
+  /** The real Dot, or null after telling why not (test device, unsupported browser). */
+  const dot = useCallback((): RealDevice | null => {
+    const dev = deviceRef.current;
+    if (!isRealDevice(dev)) {
+      say('info', 'notice.mockIgnores');
+      return null;
+    }
+    return dev.unsupported.length ? null : dev;
+  }, [say]);
+
+  const launchApp = useCallback(
+    async (id: string) => {
+      const dev = dot();
+      if (!dev) return;
+      const name = dev.apps.get().find((a) => a.id === id)?.name ?? '';
+      try {
+        await dev.launch(id);
+        setNotice(null);
+      } catch (e) {
+        if (dev.status.get() !== 'crashed') say('error', 'notice.loadFail', { name: appLabel(name), error: errorText(e) });
+      }
+    },
+    [dot, say],
+  );
+
+  const installFile = useCallback(
     async (file: File) => {
       if (!/\.dotbench$/i.test(file.name)) return say('error', 'notice.badExt');
-      if (!bundleStore) return say('error', 'notice.storageFail', { error: 'IndexedDB' });
+      const dev = dot();
+      if (!dev) return;
+      setAppBusy('install');
       try {
-        const meta = await bundleStore.add(file.name, await file.arrayBuffer());
-        await refresh();
-        const ok = await runBundleInner(meta.id);
-        setLaunching(false);
-        // confirm where the file went: it runs now and stays under "Your apps"
-        if (ok) say('info', 'notice.appAdded', { name: appLabel(meta.name) });
+        const id = await dev.install(await file.arrayBuffer());
+        const name = dev.apps.get().find((a) => a.id === id)?.name ?? file.name;
+        await dev.launch(id);
+        // confirm where the file went: it runs now and stays in kodeOS's list
+        say('info', 'notice.appAdded', { name: appLabel(name) });
+        dismissWelcome();
       } catch (e) {
-        say('error', 'notice.storageFail', { error: String((e as Error).message ?? e) });
+        say('error', 'notice.installFail', { name: file.name, error: errorText(e) });
+      } finally {
+        setAppBusy(null);
       }
     },
-    [bundleStore, refresh, runBundleInner, say],
+    [dot, say, dismissWelcome],
   );
 
-  const removeBundle = useCallback(
+  const removeApp = useCallback(
     async (id: string) => {
+      const dev = dot();
+      if (!dev) return;
+      const name = dev.apps.get().find((a) => a.id === id)?.name ?? '';
+      setAppBusy('remove');
       try {
-        await bundleStore?.remove(id);
-        if (selectedId === id) {
-          setSelectedId(null);
-          savePref('dotbench.bundle', null);
-        }
-        await refresh();
+        await dev.removeApp(id);
+        say('info', 'notice.appRemoved', { name: appLabel(name) });
       } catch (e) {
-        say('error', 'notice.storageFail', { error: String((e as Error).message ?? e) });
+        say('error', 'notice.removeFail', { name: appLabel(name), error: errorText(e) });
+      } finally {
+        setAppBusy(null);
       }
     },
-    [bundleStore, refresh, say, selectedId],
+    [dot, say],
   );
+
+  const goHome = useCallback(async () => {
+    const dev = dot();
+    try {
+      await dev?.home();
+    } catch {
+      /* the stage shows what happened */
+    }
+  }, [dot]);
+
+  const factoryReset = useCallback(async () => {
+    const dev = dot();
+    if (!dev) return;
+    input.releaseAll();
+    setAppBusy('reset');
+    try {
+      await dev.factoryReset();
+      say('info', 'notice.factoryReset');
+    } catch (e) {
+      say('error', 'notice.deviceFail', { error: errorText(e) });
+    } finally {
+      setAppBusy(null);
+    }
+  }, [dot, say, input]);
 
   const restart = useCallback(async () => {
     try {
       await deviceRef.current.restart();
       setNotice(null);
-    } catch (e) {
-      if (deviceRef.current.info.kind === 'wasm') {
-        // nothing loaded yet: start the remembered app, else the demo; with no app at all, say so instead of failing
-        const id = selectedIdRef.current ?? pickStartApp(null, buildinsRef.current, []);
-        if (id) return runBundle(id);
-        return say('info', 'notice.nothingLoaded');
-      }
-      say('error', 'notice.loadFail', { name: '', error: String((e as Error).message ?? e) });
+    } catch {
+      /* the stage shows why the Dot could not start */
     }
-  }, [say, runBundle]);
+  }, []);
   const stop = useCallback(() => deviceRef.current.stop(), []);
 
   const exportDevice = useCallback(async () => {
@@ -399,12 +384,12 @@ export function HostProvider({ children }: { children: ReactNode }) {
   const openFile = useCallback(
     (file: File) => {
       const kind = classifyFile(file.name);
-      if (kind === 'app') return void addBundleFile(file);
+      if (kind === 'app') return void installFile(file);
       if (kind === 'other') return say('error', 'notice.dropOther', { name: file.name });
       if (!model.available) return say('info', 'notice.modelUnavailable');
       setModelOffer(file); // a model replaces what the 3D view shows: ask first
     },
-    [addBundleFile, model, say],
+    [installFile, model, say],
   );
   const resolveModelOffer = useCallback(
     (accept: boolean) => {
@@ -574,12 +559,14 @@ export function HostProvider({ children }: { children: ReactNode }) {
     input,
     painter,
     bench,
-    bundles,
-    builtins,
-    selectedId,
-    addBundleFile,
-    runBundle,
-    removeBundle,
+    program,
+    apps,
+    installFile,
+    launchApp,
+    removeApp,
+    goHome,
+    factoryReset,
+    appBusy,
     exportDevice,
     importDeviceFile,
     restart,

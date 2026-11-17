@@ -7,7 +7,9 @@
 //   node scripts/model-shots.mjs --custom <file>  a model loaded through the page's own store, as a user would (add --raw
 //                                                 to show the file untouched, for "before" numbers)
 //   node scripts/model-shots.mjs --glb            the documented node names, on a synthetic GLB made here
-//   options: --no-build (reuse the last build), --shots <dir>, --page (run through the real page; simple model only),
+//   options: --labels (instead of the usual views: the printed pin labels at many angles and the depth checks, see
+//            LABEL_VIEWS; writes <prefix>labels-*.png and <prefix>depth-*.png),
+//            --no-build (reuse the last build), --shots <dir>, --page (run through the real page; simple model only),
 //            a bare word (only the views whose name contains it)
 //
 // Where the pictures go: the simple model's to web/screenshots/model-*.png. Pictures of a model FILE go next to that
@@ -68,6 +70,36 @@ const VIEWS = {
   'model-rear-low': { rot: [deg(-28), deg(140), 0], elevation: 0, expect: {} }, // the taper at the bottom of the back
   'model-controls-close': { rot: [-0.25, 0.5, 0.05], elevation: 0, zoom: 1.9, offsetY: 0.3, close: true, expect: { blue: true, red: true } },
 };
+
+/**
+ * --labels: the printed pin names on the top wall, straight on and at 30, 60 and 80 degrees from straight, with and
+ * without a turn, near and far. Each shot is compared with a reference in which the print is drawn without a depth
+ * test (nothing can hide it): the two must agree, at the real depth precision and at a 256 times coarser one (what
+ * a 16-bit depth buffer gives where this machine has 24 bits). `tilt` is the angle from straight on.
+ */
+const LABEL_VIEWS = {
+  straight: { tilt: 0, turn: 0, zoom: 2.2 },
+  '30': { tilt: 30, turn: 0, zoom: 2.2 },
+  '30-turned': { tilt: 30, turn: 35, zoom: 2.2 },
+  '60': { tilt: 60, turn: 0, zoom: 2.2 },
+  '60-turned': { tilt: 60, turn: -30, zoom: 2.2 },
+  grazing: { tilt: 80, turn: 0, zoom: 2.2 },
+  'grazing-turned': { tilt: 78, turn: 40, zoom: 2.2 },
+  'far-30': { tilt: 30, turn: 20, zoom: 0.6 },
+  'far-60': { tilt: 60, turn: 0, zoom: 0.6 },
+  'far-grazing': { tilt: 80, turn: -25, zoom: 0.6 },
+  'mid-45': { tilt: 45, turn: 15, zoom: 1 },
+};
+/** Views for the general depth check (any model): surfaces that lie on each other must look the same with a coarse depth buffer. */
+const DEPTH_VIEWS = {
+  front: { rot: [0, 0, 0], zoom: 1 },
+  'front-grazing': { rot: [deg(-70), deg(10), 0], zoom: 1.4 },
+  'front-side': { rot: [deg(5), deg(72), 0], zoom: 1.4 },
+  back: { rot: [deg(-10), deg(160), 0], zoom: 1 },
+  'back-grazing': { rot: [deg(65), deg(180), 0], zoom: 1.4 },
+  'far-three-quarter': { rot: [-0.117, 0.663, 0.064], zoom: 0.6 },
+};
+const LABELS = flags.has('--labels');
 
 const PAGE = flags.has('--page');
 const stand = join(root, 'src', 'device3d', 'harness');
@@ -201,6 +233,83 @@ async function stats(page, png) {
   }, Buffer.from(png).toString('base64'), BG);
 }
 
+/** Pixels that differ clearly between two PNGs of the same size (compared in the page). */
+async function differing(page, a, b) {
+  return page.evaluate(async (x, y) => {
+    const load = async (b64) => {
+      const img = new Image();
+      img.src = 'data:image/png;base64,' + b64;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      return g.getImageData(0, 0, c.width, c.height).data;
+    };
+    const p = await load(x), q = await load(y);
+    let n = 0;
+    for (let i = 0; i < p.length; i += 4) if (Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]) > 60) n++;
+    return n;
+  }, Buffer.from(a).toString('base64'), Buffer.from(b).toString('base64'));
+}
+
+async function labelChecks(page, o) {
+  const clip = { x: 0, y: 0, width: W, height: H };
+  const shoot = async () => {
+    await sleep(350);
+    return page.screenshot({ type: 'png', clip });
+  };
+  const depth = await page.evaluate(() => window.__dotbench3d.depth());
+  console.log(`${o.label}: depth buffer ${depth.bits} bits, ${depth.decals} printed part(s) in the model`);
+  /** the same view with the depth range the page uses, and with a near plane 256 times closer (2^8: a 16-bit buffer in place of 24 bits) */
+  const coarse = async (on) => {
+    await page.evaluate((c) => {
+      window.__dotbench3d.setViewDebug({ near: null, far: null });
+      window.__coarse = c;
+    }, on);
+    await sleep(120);
+    if (on) await page.evaluate(() => window.__dotbench3d.setViewDebug({ near: window.__dotbench3d.depth().near / 256 }));
+  };
+  if (depth.decals) {
+    for (const [name, v] of Object.entries(LABEL_VIEWS)) {
+      if (only && !name.includes(only)) continue;
+      const x = 90 - v.tilt;
+      await coarse(false);
+      await page.evaluate((r, z, off) => window.__dotbench3d.setViewDebug({ rotationZXY: r, elevationDeg: 0, zoom: z, offsetY: off }), [deg(x), deg(v.turn), 0], v.zoom, -0.5 * Math.cos(deg(x)));
+      const normal = await shoot();
+      writeFileSync(join(o.dir, `${o.prefix === 'model-kode-' ? 'model-' : o.prefix}labels-${name}.png`), normal);
+      await page.evaluate(() => window.__dotbench3d.setDecalDepthTest(false));
+      const reference = await shoot();
+      await page.evaluate(() => window.__dotbench3d.setDecalVisible(false));
+      const blank = await shoot();
+      await page.evaluate(() => { window.__dotbench3d.setDecalVisible(true); window.__dotbench3d.setDecalDepthTest(true); });
+      const ink = await differing(page, reference, blank);
+      const lost = await differing(page, normal, reference);
+      await coarse(true);
+      const rough = await shoot();
+      const lostCoarse = await differing(page, rough, reference);
+      await coarse(false);
+      const big = v.zoom >= 1;
+      check(`labels ${name}: the print is in the picture`, ink > (big ? 1500 : 150), `${ink} px of print`);
+      check(`labels ${name}: every letter is whole (same as drawn without a depth test)`, lost <= Math.max(6, ink * 0.01), `${lost} of ${ink} px differ`);
+      check(`labels ${name}: the same with a 256 times coarser depth buffer`, lostCoarse <= Math.max(6, ink * 0.01), `${lostCoarse} of ${ink} px differ`);
+    }
+  } else console.log(`${o.label}: no printed parts in this model; only the general depth check applies`);
+  for (const [name, v] of Object.entries(DEPTH_VIEWS)) {
+    if (only && !name.includes(only)) continue;
+    await coarse(false);
+    await page.evaluate((r, z) => window.__dotbench3d.setViewDebug({ rotationZXY: r, elevationDeg: 0, zoom: z, offsetY: 0 }), v.rot, v.zoom);
+    const fine = await shoot();
+    await coarse(true);
+    const rough = await shoot();
+    await coarse(false);
+    writeFileSync(join(o.dir, `${o.prefix}depth-${name}.png`), rough);
+    const d = await differing(page, fine, rough);
+    check(`depth ${name}: nothing flickers with a 256 times coarser depth buffer`, d <= 40, `${d} px differ (of ${W * H})`);
+  }
+  return null;
+}
+
 const failures = [];
 const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
@@ -254,6 +363,11 @@ async function session(browser, base, o) {
   check(`${o.label}: stage fills the shot`, Math.abs(size[0] - W) < 2 && Math.abs(size[1] - H) < 2, size.join('x'));
 
   mkdirSync(o.dir, { recursive: true });
+  if (LABELS) {
+    const result = await labelChecks(page, o);
+    await page.close();
+    return result;
+  }
   for (const [name, v] of Object.entries(VIEWS)) {
     if (only && !name.includes(only)) continue;
     await page.evaluate((v) => window.__dotbench3d.setViewDebug({ rotationZXY: v.rot ?? null, elevationDeg: v.elevation ?? 8, zoom: v.zoom ?? 1, offsetY: v.offsetY ?? 0 }), v);

@@ -1,0 +1,14 @@
+{
+  "os": "kodeos",
+  "factory": [
+    "kody_kart",
+    "light",
+    "nfc_kit",
+    "rfid_kit",
+    "level",
+    "files",
+    "sound",
+    "display_lvgl",
+    "buttons_led"
+  ]
+}

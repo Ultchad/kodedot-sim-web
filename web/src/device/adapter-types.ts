@@ -1,5 +1,5 @@
 /**
- * The part of runtime/web-adapter's `DotbenchDevice` that the page uses, as a structural type so that
+ * The part of runtime/web-adapter's `DotbenchSystem` that the page uses, as a structural type so that
  * tests can pass a fake. The real class is imported lazily from ../generated/web-adapter (copied by
  * scripts/sync-adapter.mjs; never edit that copy).
  */
@@ -23,35 +23,56 @@ export interface AdapterOutputs {
   panelOn: boolean;
 }
 
-export interface AdapterDevice {
+export interface Program {
+  id: string;
+  name: string;
+  kind: 'os' | 'app';
+}
+export interface InstalledApp {
+  /** the package's id (also what `launch` and `remove` take) */
+  id: string;
+  project: string;
+  name: string;
+  version: string;
+  category: string;
+  /** size of the app's entry in the Dot's apps region (not of the package) */
+  size: number;
+  /** false: listed by kodeOS but its package is not on this Dot, so it cannot be opened */
+  hasBundle: boolean;
+}
+
+/** `DotbenchSystem` (runtime/web-adapter/dotbench-system.js): kodeOS plus its installed apps, one object for the page. */
+export interface AdapterSystem {
   on(type: 'status', cb: (s: AdapterStatusDetail) => void): () => void;
+  on(type: 'program', cb: (p: Program) => void): () => void;
+  on(type: 'apps', cb: (list: unknown) => void): () => void;
   on(type: 'log', cb: (l: AdapterLogLine) => void): () => void;
   on(type: 'outputs', cb: (o: AdapterOutputs) => void): () => void;
-  on(type: string, cb: (d: unknown) => void): () => void;
+  on(type: string, cb: (d: never) => void): () => void;
   readonly status: AdapterStatus;
-  readonly statusDetail: AdapterStatusDetail;
-  readonly appName: string | null;
+  readonly program: Program | null;
   readonly workerCount: number;
   readonly wasmMemoryBytes: number;
-  load(bytes: ArrayBuffer | Uint8Array): Promise<void>;
-  start(opts?: { reason?: number }): Promise<void>;
+  start(): Promise<void>;
   stop(): void;
-  restart(opts?: { reason?: number }): Promise<void>;
   dispose(): void;
+  powerOnReset(): Promise<void>;
+  home(): Promise<void>;
+  launch(id: string, opts?: { sticky?: boolean }): Promise<void>;
+  install(bytes: Uint8Array): Promise<{ id: string; project: string }>;
+  list(): (InstalledApp & { offset?: number; seq?: number })[];
+  remove(id: string): Promise<boolean>;
+  factoryReset(): Promise<void>;
   copyFrame(out: Uint8ClampedArray, lastSeq?: number): number;
-  readonly frameSeq: number;
   button(id: number | string, pressed: boolean): void;
   touch(x: number, y: number, down: boolean): void;
   releaseAll(): void;
   outputs(): AdapterOutputs;
-  readonly lines: readonly AdapterLogLine[];
   sendConsole(line: string): void;
   time(): number;
   area(name: string): unknown;
-  readonly areaNames: string[];
-  exportPersist(): Map<string, Uint8Array>;
-  importPersist(map: Map<string, Uint8Array>): void;
-  /** Not in the adapter yet: whole-device export/import (feature-detected). */
-  exportDevice?: () => Promise<Uint8Array | ArrayBuffer | Blob> | Uint8Array | ArrayBuffer | Blob;
-  importDevice?: (data: Uint8Array) => Promise<void> | void;
+  exportDeviceFile(extra?: object): Uint8Array;
+  flushPersist(): Promise<unknown>;
+  /** the one-program device underneath; the page uses it only to import a device file */
+  readonly device: { importDeviceFile(bytes: Uint8Array): Promise<unknown> };
 }

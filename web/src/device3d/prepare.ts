@@ -36,6 +36,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { ButtonId } from '../device/types';
 import { SPEC } from '../lib/geometry';
 import { analyse, geometryFromSpec, transformPoints, type Analysis, type ControlMatch, type PartInput, type Piece } from './analyse';
+import { asDecal, isFlatSheet } from './decal';
 
 export const GEOMETRY = geometryFromSpec(SPEC);
 
@@ -79,6 +80,8 @@ export interface PreparedModel {
   led: Mesh[];
   /** dark, smooth, non-metallic materials: they mirror the darker studio, like the built-in glass */
   glossy: MeshStandardMaterial[];
+  /** print lying on a surface (labels, legends): drawn so that it can never fight the surface for depth (decal.ts) */
+  decals: Mesh[];
   warnings: string[];
   stats: ModelStats;
   dispose(): void;
@@ -184,11 +187,11 @@ function materialKey(m: MeshStandardMaterial): string {
   return [m.color.getHexString(), m.roughness.toFixed(3), m.metalness.toFixed(3), m.emissive.getHexString(), m.emissiveIntensity.toFixed(2), m.transparent, m.opacity, m.alphaTest, m.side, m.vertexColors, m.normalScale.x, ...TEXTURE_SLOTS.map((s) => m[s]?.uuid ?? '-')].join('|');
 }
 
-async function shrinkTextures(materials: Iterable<Material>, max: number): Promise<number> {
+async function shrinkTextures(materials: Iterable<Material>, max: number, keep: Set<Texture> = new Set()): Promise<number> {
   const seen = new Set<Texture>();
   for (const m of materials) for (const slot of TEXTURE_SLOTS) {
     const t = (m as MeshStandardMaterial)[slot];
-    if (t) seen.add(t);
+    if (t && !keep.has(t)) seen.add(t);
   }
   let resized = 0;
   for (const t of seen) {
@@ -273,8 +276,29 @@ export async function prepareScene(scene: Object3D, options: PrepareOptions = {}
   const analysis = analyse(parts.map((p) => p.input), GEOMETRY);
   const A = new Matrix4().fromArray(analysis.matrix);
 
+  // Print on a surface: a flat sheet carrying a picture that is see-through in places (labels, legends, logos), or a
+  // small flat textured patch. It lies in the surface under it, so it gets the decal treatment (decal.ts). Its
+  // picture is the one thing in a model that is read, not just seen: it keeps its full size and gets anisotropic
+  // filtering, so the letters stay crisp at a grazing angle.
+  const isDecal = parts.map((p, i) => {
+    if (i === analysis.screen.part) return false;
+    const m = p.material as MeshStandardMaterial;
+    if (!m.map) return false;
+    const cutOut = m.transparent || m.alphaTest > 0;
+    const triangles = (p.input.indices ? p.input.indices.length : p.world.length / 3) / 3;
+    return (cutOut || triangles <= 200) && isFlatSheet(transformPoints(analysis.matrix, p.world), p.input.indices);
+  });
+  const decalTextures = new Set<Texture>();
+  parts.forEach((p, i) => {
+    const map = (p.material as MeshStandardMaterial).map;
+    if (!isDecal[i] || !map) return;
+    map.anisotropy = 8; // clamped by the renderer to what the GPU offers
+    map.needsUpdate = true;
+    decalTextures.add(map);
+  });
+
   const sourceMaterials = new Set(parts.map((p) => p.material));
-  const texturesResized = await shrinkTextures(sourceMaterials, options.maxTexture ?? (perf ? 1024 : 2048));
+  const texturesResized = await shrinkTextures(sourceMaterials, options.maxTexture ?? (perf ? 1024 : 2048), decalTextures);
 
   // which piece of which part goes where
   type Role = { kind: 'static' } | { kind: 'screen' } | { kind: 'led' } | { kind: 'control'; id: ButtonId | 'dpad' };
@@ -307,6 +331,8 @@ export async function prepareScene(scene: Object3D, options: PrepareOptions = {}
   };
 
   const statics = new Map<Material, BufferGeometry[]>();
+  const decals: Mesh[] = [];
+  const decalMaterials = new Map<Material, Material>();
   const glass: Mesh[] = [];
   const led: Mesh[] = [];
   const controlMeshes: Partial<Record<ButtonId | 'dpad', Mesh[]>> = {};
@@ -329,6 +355,22 @@ export async function prepareScene(scene: Object3D, options: PrepareOptions = {}
           root.add(mesh);
           disposables.push(g);
         } else g.dispose();
+        continue;
+      }
+      if (isDecal[i] && role.kind === 'static') {
+        let dm = decalMaterials.get(part.material);
+        if (!dm) {
+          // seen from its printed side only, where the file's winding allows it
+          dm = asDecal(perf ? cheapMaterial(part.material, windingAgreement(g) > 0.985 ? FrontSide : DoubleSide) : part.material.clone());
+          decalMaterials.set(part.material, dm);
+          disposables.push(dm);
+        }
+        const mesh = new Mesh(g, dm);
+        mesh.name = `decal:${part.material.name || part.mesh.name}`;
+        mesh.renderOrder = 1; // after the surface it is printed on
+        decals.push(mesh);
+        root.add(mesh);
+        disposables.push(g);
         continue;
       }
       const material = materialFor(part, g);
@@ -427,6 +469,7 @@ export async function prepareScene(scene: Object3D, options: PrepareOptions = {}
     hit,
     led,
     glossy,
+    decals,
     warnings: analysis.warnings,
     stats: { sourceTriangles, sourceMeshes: parts.length, sourceMaterials: sourceMaterials.size, triangles, drawCalls, materials: used.size, texturesResized, prepareMs: performance.now() - t0 },
     dispose: () => disposables.forEach((d) => d.dispose()),

@@ -66,6 +66,7 @@ import { ORBIT_LIMITS, ZERO_POSE, clampPose, poseToEuler, samePose } from '../li
 import type { ScreenPainter } from '../lib/screen';
 import { buildBodyMesh } from '../device3d/bodyMesh';
 import { customModel, type ActiveModel } from '../device3d/customModel';
+import { pullTowardsCamera } from '../device3d/decal';
 import type { MeshData } from '../device3d/meshBuilder';
 import { buildButton, buildDpadArm, buildGlass, buildLed, buildPad, buildScreen, buildScrew, buildWindow } from '../device3d/parts';
 import { footprint } from '../device3d/stage';
@@ -93,6 +94,15 @@ const LED_IDLE_GLOW = 0.22;
 const ENV_INTENSITY = 1.0;
 /** How strongly dark glossy parts of a loaded model mirror the (darker) studio. */
 const FILE_GLOSS_REFLECTION = 0.6;
+
+/** The picture is pulled this far towards the camera over the glass it lies on (the gloss a little more). */
+const SCREEN_PULL_MM = 0.12;
+/**
+ * The near and far planes hug the model: everything drawn lies within this distance of the look-at point (the device
+ * is about 46 mm from its centre to a corner; the soft ground shadow reaches further). With the planes this tight a
+ * 16-bit depth buffer still resolves about 0.01 mm at the device, a 24-bit one far less.
+ */
+const DEPTH_REACH_MM = 130;
 
 // ---- staging
 const CAMERA_FOV = 30;
@@ -232,11 +242,12 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
       screenTex,
       textures: [screenTex, ao, grain, shadowTex],
       body: new MeshStandardMaterial({ color: CREAM, map: ao, vertexColors: true, roughness: 0.74, metalness: 0, normalMap: grain, normalScale: new Vector2(0.11, 0.11) }),
-      // the lit picture: unlit, straight sRGB, never tone-mapped
-      screen: new MeshBasicMaterial({ map: screenTex, toneMapped: false }),
+      // the lit picture: unlit, straight sRGB, never tone-mapped. It lies on the glass (as the gloss lies on it): both are
+      // pulled towards the camera so that they can never fight the surface under them for depth (device3d/decal.ts)
+      screen: pullTowardsCamera(new MeshBasicMaterial({ map: screenTex, toneMapped: false }), SCREEN_PULL_MM),
       // black glass under and around the picture, and the same glass's reflection added over the picture
       glass: new MeshStandardMaterial({ color: GLASS_BLACK, roughness: 0.1, metalness: 0, vertexColors: true, envMapIntensity: GLASS_REFLECTION }),
-      gloss: new MeshStandardMaterial({ color: '#000000', roughness: 0.1, metalness: 0, transparent: true, blending: AdditiveBlending, depthWrite: false, envMapIntensity: GLASS_REFLECTION }),
+      gloss: pullTowardsCamera(new MeshStandardMaterial({ color: '#000000', roughness: 0.1, metalness: 0, transparent: true, blending: AdditiveBlending, depthWrite: false, envMapIntensity: GLASS_REFLECTION }), SCREEN_PULL_MM + 0.06),
       window: new MeshStandardMaterial({ color: '#111113', roughness: 0.36, metalness: 0, vertexColors: true, envMapIntensity: 0.1 }),
       dpad: plastic(BLACK_PLASTIC, 0.5),
       button: plastic(BLACK_PLASTIC, 0.44),
@@ -555,7 +566,7 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
   };
 
   // ---- debug hook (headless verification): only with ?debug in the URL
-  const view = useRef<{ elevation: number; distance: number | null; fov: number; rotation: [number, number, number] | null; position: [number, number, number] | null; offsetY: number; shadow: boolean }>({ elevation: CAMERA_ELEVATION, distance: null, fov: CAMERA_FOV, rotation: null, position: null, offsetY: 0, shadow: true });
+  const view = useRef<{ elevation: number; distance: number | null; fov: number; rotation: [number, number, number] | null; position: [number, number, number] | null; offsetY: number; shadow: boolean; near: number | null; far: number | null }>({ elevation: CAMERA_ELEVATION, distance: null, fov: CAMERA_FOV, rotation: null, position: null, offsetY: 0, shadow: true, near: null, far: null });
   const frameMs = useRef<number[]>([]);
   useEffect(() => {
     if (!new URLSearchParams(location.search).has('debug')) return;
@@ -592,8 +603,11 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
         invalidate();
       },
       /** Extras for scripts/model-shots.mjs. */
-      setViewDebug: (v: { elevationDeg?: number; distance?: number | null; fovDeg?: number; zoom?: number; rotationZXY?: [number, number, number] | null; position?: [number, number, number] | null; offsetY?: number; shadow?: boolean }) => {
+      setViewDebug: (v: { elevationDeg?: number; distance?: number | null; fovDeg?: number; zoom?: number; rotationZXY?: [number, number, number] | null; position?: [number, number, number] | null; offsetY?: number; shadow?: boolean; near?: number | null; far?: number | null }) => {
         if (v.shadow !== undefined) view.current.shadow = v.shadow; // ground shadow on/off (silhouette comparisons)
+        // near/far override: a very small `near` wastes depth precision on purpose, to show what a coarser depth buffer would do
+        if (v.near !== undefined) view.current.near = v.near;
+        if (v.far !== undefined) view.current.far = v.far;
         if (v.position !== undefined) view.current.position = v.position; // model position override (mm)
         if (v.offsetY !== undefined) view.current.offsetY = v.offsetY; // look-at point, as a fraction of the body height below the centre
         if (v.rotationZXY !== undefined) view.current.rotation = v.rotationZXY; // radians about X, Y, Z, applied as Rz*Rx*Ry; null = follow the pose
@@ -601,6 +615,21 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
         if (v.distance !== undefined) view.current.distance = v.distance;
         if (v.fovDeg !== undefined) view.current.fov = v.fovDeg;
         if (v.zoom !== undefined) zoom.current.target = zoom.current.display = v.zoom;
+        invalidate();
+      },
+      /** The depth range in use, and what the depth buffer holds. */
+      depth: () => ({ near: (camera as PerspectiveCamera).near, far: (camera as PerspectiveCamera).far, bits: gl.getContext().getParameter(gl.getContext().DEPTH_BITS) as number, decals: prepared?.decals.length ?? 0 }),
+      /** Reference for the label checks: draw print (decals) without a depth test, so nothing can hide any of it. */
+      setDecalDepthTest: (on: boolean) => {
+        for (const d of prepared?.decals ?? []) {
+          const m = d.material as MeshStandardMaterial;
+          m.depthTest = on;
+          m.needsUpdate = true;
+        }
+        invalidate();
+      },
+      setDecalVisible: (on: boolean) => {
+        for (const d of prepared?.decals ?? []) d.visible = on;
         invalidate();
       },
       /** Controls currently held, as the input layer sees them. */
@@ -696,6 +725,13 @@ function Scene({ device, input, painter, storePose, tiltLink, onPose, resetSigna
     const lookY = -view.current.offsetY * M.bodyMm.h;
     camera.position.set(0, lookY + dist * Math.sin(view.current.elevation), dist * Math.cos(view.current.elevation));
     camera.lookAt(0, lookY, 0);
+    const near = view.current.near ?? Math.max(dist * 0.15, dist - DEPTH_REACH_MM);
+    const far = view.current.far ?? dist + DEPTH_REACH_MM + 30;
+    if (Math.abs(cam.near - near) > 0.01 || Math.abs(cam.far - far) > 0.01) {
+      cam.near = near;
+      cam.far = far;
+      cam.updateProjectionMatrix();
+    }
 
     // buttons
     const pr = input.pressed.get();

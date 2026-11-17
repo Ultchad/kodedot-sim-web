@@ -1,59 +1,81 @@
 import { useRef } from 'react';
-import { DEFAULT_BUILTIN_ID, builtinKey, describeBuiltin, type BuiltinApp } from '../lib/builtins';
-import type { BundleMeta } from '../lib/bundles';
+import type { InstalledApp } from '../device/wasm';
 import { useI18n } from '../i18n';
+import { appMeta } from '../lib/dotapps';
 import { appLabel, useHost } from '../state/host';
+import { useObservable } from '../state/hooks';
 import { Icon } from './Glyphs';
 import { useConfirm } from './ui';
 
 /**
- * The app loader body: the system (kodeOS, what the Dot starts with), then "open your own" and the saved apps, then
- * the bundled apps. The system keeps a section of its own: later, apps will be installed into it from here.
- * Used in the top-bar picker and in the phone sheet. `onRun` lets the picker close once an app was chosen.
+ * The Dot's app manager, in the top-bar menu and in the phone sheet. Apps live inside kodeOS: this shows what runs
+ * now (with the way home), what is installed (open, remove), installs a .dotbench and, behind a confirmation, erases
+ * the Dot. Everything here is also possible on the Dot itself; this is the quick way from the page.
+ * `onRun` lets the menu close once something was started. `compact`: the tab above already says "Apps".
  */
 export function AppsList({ onRun, compact = false }: { onRun?: () => void; compact?: boolean }) {
-  const { t, fmt, locale } = useI18n();
-  const { bundles, builtins, selectedId, runBundle, addBundleFile } = useHost();
+  const { t } = useI18n();
+  const { device, program, apps, installFile, launchApp, goHome, factoryReset, appBusy, useMock } = useHost();
+  const status = useObservable(device.status);
   const file = useRef<HTMLInputElement>(null);
-  const run = (id: string) => {
-    void runBundle(id);
-    onRun?.();
-  };
-  const system = builtins.filter((b) => b.id === DEFAULT_BUILTIN_ID);
-  const demos = builtins.filter((b) => b.id !== DEFAULT_BUILTIN_ID);
-  const builtinRow = (b: BuiltinApp) => {
-    const on = builtinKey(b.id) === selectedId;
-    const name = appLabel(b.name);
-    return (
-      <li key={b.id} className={`rounded-2xl ${on ? 'row-on' : 'bg-soft'}`}>
-        <button type="button" className="row-btn" onClick={() => run(builtinKey(b.id))} aria-label={t('apps.run', { name })} aria-current={on} data-testid={`builtin-${b.id}`}>
-          <span className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold">{name}</span>
-            {on && <span className="shrink-0 text-[12px] font-semibold">{t('apps.current')}</span>}
-          </span>
-          <span className={`mt-0.5 block text-[13px] leading-snug ${on ? 'opacity-80' : 'text-ink2'}`}>{describeBuiltin(b, locale)}</span>
-          <span className={`mt-0.5 block text-[12px] ${on ? 'opacity-80' : 'text-ink2'}`}>{t('apps.builtin.meta', { size: fmt.bytes(b.size), sdk: b.sdkCommit })}</span>
-        </button>
-      </li>
-    );
-  };
+  const reset = useConfirm(() => void factoryReset());
+  const inApp = program?.kind === 'app';
+  const running = program ? appLabel(program.name) : null;
+  const busy = appBusy !== null || status === 'booting';
+
   return (
-    <div className="flex flex-col gap-3">
-      {/* compact (phone sheet): the tab right above already says "Apps" */}
+    <div className="flex flex-col gap-3" data-testid="apps-manager" data-busy={busy}>
       <h2 className={compact ? 'sr-only' : 'text-[20px]'}>{t('apps.title')}</h2>
 
-      {system.length > 0 && (
-        <section aria-label={t('apps.system')} className="flex flex-col gap-2">
-          <span className="tag">{t('apps.system')}</span>
-          <ul className="m-0 flex list-none flex-col gap-1.5 p-0" data-testid="system-list">
-            {system.map(builtinRow)}
-          </ul>
-        </section>
-      )}
+      {/* what runs now, and the way back to kodeOS */}
+      <section aria-label={t('apps.running')} className="flex flex-col gap-2">
+        <span className="tag">{t('apps.running')}</span>
+        <div className="inner flex min-h-[52px] items-center gap-2 py-1.5 pl-3.5 pr-1.5">
+          <span aria-hidden className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${running ? (status === 'running' ? 'bg-ok' : 'bg-primary') : 'bg-ink3'}`} />
+          <span className="min-w-0 flex-1 truncate text-[15px] font-semibold" data-testid="apps-running" title={running ?? undefined}>
+            {running ?? t(useMock ? 'status.mock' : 'apps.none')}
+          </span>
+          {inApp && (
+            <button
+              type="button"
+              className="btn btn-sm shrink-0"
+              onClick={() => {
+                void goHome();
+                onRun?.();
+              }}
+              title={t('apps.home.hint')}
+              data-testid="apps-home"
+            >
+              <Icon name="home" size={17} />
+              {t('apps.home')}
+            </button>
+          )}
+        </div>
+      </section>
 
-      <section aria-label={t('apps.yours')} className="flex flex-col gap-2">
-        <span className="tag">{t('apps.yours')}</span>
-        <button type="button" className="btn btn-primary w-full" onClick={() => file.current?.click()} data-testid="open-file">
+      <section aria-label={t('apps.installed')} className="flex flex-col gap-2">
+        <span className="tag">{t('apps.installed')}</span>
+        {apps.length === 0 ? (
+          <p className="m-0 px-1 text-[13.5px] leading-snug text-ink2" data-testid="apps-empty">
+            {t(useMock ? 'apps.mock' : 'apps.empty')}
+          </p>
+        ) : (
+          <ul className="m-0 flex list-none flex-col gap-1.5 p-0" data-testid="app-list">
+            {apps.map((a) => (
+              <AppRow
+                key={a.id}
+                app={a}
+                on={inApp && program?.id === a.id}
+                disabled={busy}
+                onOpen={() => {
+                  void launchApp(a.id);
+                  onRun?.();
+                }}
+              />
+            ))}
+          </ul>
+        )}
+        <button type="button" className="btn btn-primary w-full" disabled={busy || useMock} onClick={() => file.current?.click()} data-testid="open-file">
           <Icon name="open" />
           {t('apps.open')}
         </button>
@@ -67,52 +89,46 @@ export function AppsList({ onRun, compact = false }: { onRun?: () => void; compa
             const f = e.target.files?.[0];
             e.target.value = '';
             if (f) {
-              void addBundleFile(f);
+              void installFile(f);
               onRun?.();
             }
           }}
         />
-        {bundles.length === 0 ? (
-          <p className="m-0 text-[13.5px] leading-snug text-ink2">{t('apps.empty')}</p>
-        ) : (
-          <>
-            <ul className="m-0 flex list-none flex-col gap-1.5 p-0" data-testid="bundle-list">
-              {bundles.map((b) => (
-                <SavedApp key={b.id} meta={b} on={b.id === selectedId} onRun={() => run(b.id)} />
-              ))}
-            </ul>
-            <p className="m-0 text-[12.5px] text-ink2">{t('apps.count', { count: bundles.length })}</p>
-          </>
-        )}
+        <p className="m-0 px-1 text-[13px] leading-snug text-ink2" role="status" data-testid="apps-hint">
+          {appBusy ? t(`apps.busy.${appBusy}` as 'apps.busy.install') : t('apps.install.hint')}
+        </p>
       </section>
 
-      {demos.length > 0 && (
-        <section aria-label={t('apps.builtin')} className="flex flex-col gap-2">
-          <span className="tag">{t('apps.builtin')}</span>
-          <ul className="m-0 flex list-none flex-col gap-1.5 p-0" data-testid="builtin-list">
-            {demos.map(builtinRow)}
-          </ul>
+      {!useMock && (
+        <section aria-label={t('apps.reset')} className="flex flex-col gap-1.5">
+          <span className="tag">{t('apps.reset')}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className={`btn btn-sm ${reset.armed ? 'btn-danger' : ''}`} disabled={appBusy !== null} onClick={reset.press} data-testid="factory-reset" aria-live="polite">
+              {!reset.armed && <Icon name="restart" size={17} />}
+              {t(reset.armed ? 'apps.reset.confirm' : 'apps.reset.action')}
+            </button>
+          </div>
+          <p className="m-0 px-1 text-[13px] leading-snug text-ink2">{t(reset.armed ? 'apps.reset.warn' : 'apps.reset.hint')}</p>
         </section>
       )}
     </div>
   );
 }
 
-function SavedApp({ meta, on, onRun }: { meta: BundleMeta; on: boolean; onRun(): void }) {
-  const { t, fmt } = useI18n();
-  const { removeBundle } = useHost();
-  const name = appLabel(meta.name);
-  const del = useConfirm(() => void removeBundle(meta.id));
+function AppRow({ app, on, disabled, onOpen }: { app: InstalledApp; on: boolean; disabled: boolean; onOpen(): void }) {
+  const { t } = useI18n();
+  const { removeApp } = useHost();
+  const name = appLabel(app.name);
+  const del = useConfirm(() => void removeApp(app.id));
+  const meta = appMeta(app.version, app.category);
   return (
-    <li className={`flex items-center gap-1 rounded-2xl ${on ? 'row-on' : 'bg-soft'}`}>
-      <button type="button" className="row-btn !w-auto flex-1" onClick={onRun} aria-label={t('apps.run', { name })} aria-current={on} title={meta.name}>
+    <li className={`flex items-center gap-1 rounded-2xl ${on ? 'row-on' : 'bg-soft'}`} data-app={app.project}>
+      <button type="button" className="row-btn !w-auto flex-1" onClick={onOpen} disabled={disabled || !app.hasBundle} aria-label={t('apps.run', { name })} aria-current={on} title={app.hasBundle ? undefined : t('apps.noBundle')} data-testid={`app-${app.project}`}>
         <span className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold">{name}</span>
           {on && <span className="shrink-0 text-[12px] font-semibold">{t('apps.current')}</span>}
         </span>
-        <span className={`mt-0.5 block truncate text-[12.5px] ${on ? 'opacity-80' : 'text-ink2'}`}>
-          {fmt.bytes(meta.size)} · {fmt.dateTime(meta.addedAt)}
-        </span>
+        {(meta || !app.hasBundle) && <span className={`mt-0.5 block truncate text-[12.5px] ${on ? 'opacity-80' : 'text-ink2'}`}>{app.hasBundle ? meta : t('apps.noBundle')}</span>}
       </button>
       <button
         type="button"
@@ -120,7 +136,8 @@ function SavedApp({ meta, on, onRun }: { meta: BundleMeta; on: boolean; onRun():
         aria-label={del.armed ? t('apps.confirmDelete', { name }) : t('apps.delete', { name })}
         title={del.armed ? t('apps.confirmDelete', { name }) : t('apps.delete', { name })}
         onClick={del.press}
-        data-testid="bundle-delete"
+        disabled={disabled}
+        data-testid="app-remove"
       >
         {del.armed ? t('bench.confirmDelete') : <Icon name="trash" size={17} />}
       </button>

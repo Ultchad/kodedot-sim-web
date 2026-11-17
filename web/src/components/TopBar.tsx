@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
-import { isSystemName } from '../lib/builtins';
 import { appLabel, useHost } from '../state/host';
 import { useObservable } from '../state/hooks';
 import { AppsList } from './AppsList';
@@ -32,22 +31,19 @@ export function About() {
   );
 }
 
-/** Name shown for what is loaded: the app's own name once it runs, else the saved file's name. */
+/** Name of what runs on the Dot (kodeOS or the open app), or null while it is off. */
 export function useCurrentAppName(): string | null {
-  const { device, selectedId, bundles, builtins } = useHost();
+  const { device } = useHost();
   const app = useObservable(device.appName);
-  const sel = bundles.find((b) => b.id === selectedId) ?? builtins.find((b) => `builtin:${b.id}` === selectedId);
-  const raw = app ?? sel?.name ?? null;
-  return raw ? appLabel(raw) : null;
+  return app ? appLabel(app) : null;
 }
 
-/** True while what is loaded is the system itself (kodeOS), not an app. */
+/** True while what runs is the system itself (kodeOS), not an app. */
 export function useSystemRunning(): boolean {
-  const { device, selectedId } = useHost();
-  const app = useObservable(device.appName);
-  return isSystemName(app ?? selectedId);
+  return useHost().program?.kind === 'os';
 }
 
+/** The Dot's app manager: what runs, what is installed, install, go home, factory reset. */
 function AppPicker() {
   const { t } = useI18n();
   const { appsRequest } = useHost();
@@ -69,12 +65,14 @@ function AppPicker() {
         className="btn min-w-0 !shrink max-w-[19rem]"
         aria-expanded={open}
         aria-haspopup="dialog"
-        title={t('apps.pickerHint', { name: name ?? t('apps.none') })}
+        title={name ? t('apps.pickerHint', { name }) : t('apps.title')}
         onClick={() => setOpen((o) => !o)}
         data-testid="apps-menu"
       >
         <span className="font-medium text-ink2">{t('apps.pickerLabel')}</span>
-        <span className="truncate">{name ?? t('apps.none')}</span>
+        <span className="truncate" data-testid="apps-menu-running">
+          {name ?? t('apps.none')}
+        </span>
         <Icon name="chevronDown" size={16} className="text-ink2" />
       </button>
       <Popover open={open} onClose={() => setOpen(false)} anchor={btn} label={t('apps.title')} width="23rem" testid="apps-popover">
