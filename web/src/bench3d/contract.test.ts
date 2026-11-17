@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { footprintOf, fromManifestMm, inspectModel, makeCtx, terminalsFromManifest, toManifestMm } from './contract';
 import { MODELS } from './registry';
+import { SIZES, modelIdOf } from '../workbench/layout';
 import { Shape } from './shape';
 import { PAL } from './materials';
 import { electrolytic, gear, heatsink, pcb, pinHeader, qfp, screwTerminal, soic, usbC } from './parts';
@@ -25,6 +26,16 @@ describe('Bench3D models', () => {
       for (const st of Object.values(model.states ?? {})) model.animate?.(st, obj, { time: 1.23, dt: 0.016 });
     });
   }
+});
+
+describe('Bench3D and the Workbench', () => {
+  it('every kind with a place on the table has a model of exactly its footprint', () => {
+    for (const [kind, size] of Object.entries(SIZES)) {
+      const m = MODELS.get(modelIdOf(kind));
+      expect(m, kind).toBeTruthy();
+      expect(m!.footprintMm, kind).toEqual(size);
+    }
+  });
 });
 
 describe('Bench3D and the parts manifest', () => {

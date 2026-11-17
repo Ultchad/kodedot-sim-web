@@ -42,21 +42,23 @@ export const GRID_DOTS = 10;
 /** Room kept between two things on the table. */
 export const GAP = 2;
 
-/** Footprint at rotation 0 (w along X, d along Z) and height, per kind. */
+/** Footprint at rotation 0 (w along X, d along Z) and height, per kind: the same numbers as the kind's Bench3D model (checked by a test). */
 export const SIZES: Record<string, { w: number; d: number; h: number }> = {
-  'nfc.tag': { w: 30, d: 30, h: 1.4 },
-  'nfc.card': { w: 85.6, d: 54, h: 1.0 },
-  'nfc.reader': { w: 68, d: 100, h: 13 },
-  'rfid.card': { w: 85.6, d: 54, h: 1.9 },
-  'rfid.tag': { w: 31, d: 46, h: 6 },
+  'nfc.tag': { w: 30, d: 30, h: 1.5 },
+  'nfc.card': { w: 85.6, d: 54, h: 1.1 },
+  'nfc.reader': { w: 68, d: 100, h: 13.5 },
+  'rfid.card': { w: 85.6, d: 54, h: 2 },
+  'rfid.tag': { w: 31, d: 46, h: 6.2 },
   'rfid.reader': { w: 54, d: 46, h: 96 },
-  'wifi.router': { w: 118, d: 78, h: 30 },
+  'wifi.router': { w: 118, d: 78, h: 88 },
   'ir.tv': { w: 150, d: 46, h: 104 },
   'ir.remote': { w: 40, d: 118, h: 12 },
-  'power.charger': { w: 44, d: 44, h: 27 },
-  'power.battery': { w: 36, d: 54, h: 6.5 },
-  [SD_ID]: { w: 11, d: 15, h: 1 },
+  'power.charger': { w: 44, d: 44, h: 26 },
+  'power.battery': { w: 36, d: 54, h: 6.8 },
+  [SD_ID]: { w: 11, d: 15, h: 1.1 },
 };
+/** The Bench3D model that is the body of a kind (the microSD card is a fixture, not a bench kind). */
+export const modelIdOf = (kind: string): string => (kind === SD_ID ? 'sd.card' : kind);
 export const hasBody = (kind: string): boolean => kind in SIZES;
 
 // ----------------------------------------------------------------------------------------------------------- zones
