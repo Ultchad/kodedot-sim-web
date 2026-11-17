@@ -87,7 +87,13 @@ async function run(b) {
     const hi = await lit();
     const st = await b.part(led);
     check('(a) pin 1 driven high in the GPIO app lights the LED', before < 0.01 && on >= 0 && hi > 0.2, `brightness ${before} -> ${hi}, ${st?.outputs?.current_ma} mA`);
+    // close, so that both ends of the two wires show: the header in the Dot's top wall, the holes in the board
+    const bp = await D((i) => window.__dotbench.bench.get(i).pos, board);
+    await b.look(bp.x / 2, (bp.z - 20) / 2, Math.max(260, Math.hypot(bp.x, bp.z) * 1.9), 0.55);
     await shot('a2-led-on');
+    await D(() => window.__dotbenchWb.setView({ x: 0, z: -40, dist: 150, pol: 0.95, az: Math.PI }));
+    await sleep(500);
+    await shot('a3-header-from-behind');
     await b.tap(115, 430); // Low
     const off = await until(async () => (await lit()) < 0.01, 8000, 150);
     check('(a) driven low, the LED goes out', off >= 0, `brightness ${await lit()}`);

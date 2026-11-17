@@ -3,11 +3,11 @@
  * where each part stands, and from the Dot's own header through the Dot's pose; wires are tubes drawn as one mesh.
  * Picking is done on the screen (the nearest terminal or wire to the pointer), so a 2.54 mm header can be hit.
  */
-import { BufferAttribute, BufferGeometry, CatmullRomCurve3, Color, DynamicDrawUsage, Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, SphereGeometry, Vector3, type Camera, type Quaternion } from 'three';
+import { BufferAttribute, BufferGeometry, Color, DynamicDrawUsage, Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, SphereGeometry, Vector3, type Camera, type Quaternion } from 'three';
 import type { BenchStore, Wire } from '../bench/store';
 import { writeTube } from '../bench3d/shape';
-import { deviceTerms, termWorld, type LocalTerm } from '../parts/geometry';
-import { rectOf, sizeOf, type Rot } from './layout';
+import { deviceTerms, termWorld, turn, type DeviceTerm, type LocalTerm } from '../parts/geometry';
+import { DOT, rectOf, sizeOf, type Rot } from './layout';
 
 /** What the wires need from the parts service (absent in tests: then only the Dot has terminals). */
 export interface WireParts {
@@ -22,14 +22,117 @@ export interface TermSpot {
   name: string;
   owner: string;
   pos: Vector3;
+  /** The way a wire leaves it (unit vector). */
+  out: Vector3;
   /** Holes of a board (not drawn as dots: the board shows them). */
   hole: boolean;
 }
 
-const SEG = 26;
+const SEG = 32;
+const END = 8; // pieces of each end's curve (terminal to table)
 const RAD = 6;
-const R_WIRE = 0.62;
+const R_WIRE = 0.75;
 const DEVICE = deviceTerms();
+
+/**
+ * Where a pin of the Dot's header is on the table, and which way a wire leaves it: the pin's place in the Dot's own
+ * frame (parts/geometry.ts) through the Dot's pose, 0.4 mm out of the top wall, leaving along the Dot's +Y.
+ */
+export function deviceTermWorld(d: DeviceTerm, dotPos: Vector3, dotQuat: Quaternion, pos = new Vector3(), out = new Vector3()): { pos: Vector3; out: Vector3 } {
+  pos.set(d.X, d.Y + 0.4, d.Z).applyQuaternion(dotQuat).add(dotPos);
+  out.set(0, 1, 0).applyQuaternion(dotQuat);
+  return { pos, out };
+}
+
+const bez = (a: number, b: number, c: number, d: number, t: number) => {
+  const u = 1 - t;
+  return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
+};
+/**
+ * The line a wire follows, as SEG + 1 points: out of each terminal the way the terminal faces, down to the table in
+ * a curve that cannot dip under it (a Bezier stays inside its control points), then lying on the table, or on whatever
+ * `floorAt` says is under it, bowed sideways by `seed` so that wires side by side stay apart. Short wires arch.
+ */
+export function wirePath(a: Vector3, aOut: Vector3, b: Vector3, bOut: Vector3, seed: number, floorAt: (x: number, z: number) => number, blocked: (x: number, z: number) => boolean = () => false): Vector3[] {
+  const pts: Vector3[] = [];
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 30) {
+    const h = 7 + d * 0.3;
+    for (let i = 0; i <= SEG; i++) {
+      const t = i / SEG;
+      pts.push(new Vector3(bez(a.x, a.x + aOut.x * h, b.x + bOut.x * h, b.x, t), bez(a.y, a.y + aOut.y * h + 2, b.y + bOut.y * h + 2, b.y, t), bez(a.z, a.z + aOut.z * h, b.z + bOut.z * h, b.z, t)));
+    }
+    return pts;
+  }
+  const ux = dx / d, uz = dz / d, nx = -uz, nz = ux;
+  const bow = ((seed % 5) - 2) * 3 + (seed & 1 ? 1 : -1) * Math.min(16, d * 0.06);
+  const reach = Math.min(24, d * 0.3);
+  const lift = R_WIRE + 0.25;
+  // where each end comes down onto the table: toward the other end, but a pin that faces sideways is first left the
+  // way it faces, and when the other end lies behind it the wire comes down beside the body, not through it
+  const down = (p: Vector3, out: Vector3, sx: number, sz: number) => {
+    const oh = Math.hypot(out.x, out.z);
+    if (oh < 0.5) return new Vector3(p.x + sx * reach + nx * bow * 0.3, 0, p.z + sz * reach + nz * bow * 0.3);
+    const ox = out.x / oh, oz = out.z / oh;
+    let rx = sx, rz = sz;
+    if (sx * ox + sz * oz < 0.2) {
+      // sideways only (the part of the run that is square to the pin's facing)
+      const side = sx * -oz + sz * ox >= 0 ? 1 : -1;
+      rx = -oz * side;
+      rz = ox * side;
+    }
+    return new Vector3(p.x + ox * 16 + rx * reach, 0, p.z + oz * 16 + rz * reach);
+  };
+  const t1 = down(a, aOut, ux, uz);
+  const t2 = down(b, bOut, -ux, -uz);
+  t1.y = floorAt(t1.x, t1.z) + lift;
+  t2.y = floorAt(t2.x, t2.z) + lift;
+  const end = (p: Vector3, out: Vector3, t: Vector3, sx: number, sz: number, k: number) => {
+    // control points: out of the terminal, and flat along the wire's run at the touch-down height
+    const h = 9;
+    const c1 = new Vector3(p.x + out.x * h, Math.max(p.y + out.y * h + 1.5, t.y), p.z + out.z * h);
+    const c2 = new Vector3(t.x - sx * h, t.y, t.z - sz * h);
+    const u = k / END;
+    return new Vector3(bez(p.x, c1.x, c2.x, t.x, u), Math.max(bez(p.y, c1.y, c2.y, t.y, u), Math.min(p.y, t.y)), bez(p.z, c1.z, c2.z, t.z, u));
+  };
+  const mid = SEG - 2 * END;
+  // the run between: bowed a little; when it would cross something tall (the Dot, a battery), bowed further until it
+  // goes round, to the side that needs the least
+  const mx = (t1.x + t2.x) / 2, mz = (t1.z + t2.z) / 2;
+  const rl = Math.hypot(t2.x - t1.x, t2.z - t1.z) || 1;
+  const px = -(t2.z - t1.z) / rl, pz = (t2.x - t1.x) / rl;
+  const crosses = (qx: number, qz: number) => {
+    for (let i = 1; i < 12; i++) {
+      const t = i / 12, u = 1 - t;
+      if (blocked(u * u * t1.x + 2 * u * t * qx + t * t * t2.x, u * u * t1.z + 2 * u * t * qz + t * t * t2.z)) return true;
+    }
+    return false;
+  };
+  let cx = mx + px * bow * 1.4, cz = mz + pz * bow * 1.4;
+  if (crosses(cx, cz)) {
+    search: for (let k = 1; k <= 6; k++) {
+      for (const sgn of bow >= 0 ? [1, -1] : [-1, 1]) {
+        const qx = mx + px * sgn * k * 28, qz = mz + pz * sgn * k * 28;
+        if (!crosses(qx, qz)) {
+          cx = qx;
+          cz = qz;
+          break search;
+        }
+      }
+    }
+  }
+  // each end arrives at its touch-down point along the run's own direction there (toward the control point)
+  const d1 = Math.hypot(cx - t1.x, cz - t1.z) || 1, d2 = Math.hypot(cx - t2.x, cz - t2.z) || 1;
+  for (let k = 0; k < END; k++) pts.push(end(a, aOut, t1, (cx - t1.x) / d1, (cz - t1.z) / d1, k));
+  for (let i = 0; i <= mid; i++) {
+    const t = i / mid, u = 1 - t;
+    const x = u * u * t1.x + 2 * u * t * cx + t * t * t2.x, z = u * u * t1.z + 2 * u * t * cz + t * t * t2.z;
+    pts.push(new Vector3(x, i === 0 ? t1.y : i === mid ? t2.y : floorAt(x, z) + lift, z));
+  }
+  for (let k = END - 1; k >= 0; k--) pts.push(end(b, bOut, t2, (cx - t2.x) / d2, (cz - t2.z) / d2, k));
+  return pts;
+}
 
 export class Wires {
   readonly group = new Group();
@@ -103,7 +206,8 @@ export class Wires {
     this.spots = [];
     this.dotM.compose(this.dotPos, this.dotQuat, this.one);
     for (const d of DEVICE) {
-      this.spots.push({ term: d.term, name: d.name, owner: '', pos: new Vector3(d.X, d.Y + 0.4, d.Z).applyMatrix4(this.dotM), hole: false });
+      const w = deviceTermWorld(d, this.dotPos, this.dotQuat);
+      this.spots.push({ term: d.term, name: d.name, owner: '', pos: w.pos, out: w.out, hole: false });
     }
     if (this.parts) {
       for (const o of st.objects) {
@@ -116,12 +220,18 @@ export class Wires {
         const hole = terms.length > 60;
         for (const t of terms) {
           let pos: Vector3;
-          if (mount) pos = new Vector3(t.x, t.y, t.z).applyMatrix4(this.m);
-          else {
+          // a side pin is left sideways, any other upward (in the part's own frame)
+          const out = t.face === 'left' ? new Vector3(-1, 0, 0) : t.face === 'right' ? new Vector3(1, 0, 0) : t.face === 'front' ? new Vector3(0, 0, 1) : t.face === 'back' ? new Vector3(0, 0, -1) : new Vector3(0, 1, 0);
+          if (mount) {
+            pos = new Vector3(t.x, t.y, t.z).applyMatrix4(this.m);
+            out.transformDirection(this.m);
+          } else {
             const w = termWorld(t, o.pos, o.rot as Rot, lift);
             pos = new Vector3(w.x, w.y, w.z);
+            const [ox, oz] = turn(out.x, out.z, o.rot as Rot);
+            out.set(ox, out.y, oz);
           }
-          this.spots.push({ term: `${o.id}.${t.name}`, name: t.name, owner: o.name, pos, hole: hole && t.face === 'top' });
+          this.spots.push({ term: `${o.id}.${t.name}`, name: t.name, owner: o.name, pos, out, hole: hole && t.face === 'top' });
         }
       }
     }
@@ -184,31 +294,6 @@ export class Wires {
   }
 
   // ---- drawing -------------------------------------------------------------------------------------------------
-  private pathOf(a: Vector3, b: Vector3, seed: number, rects: { x0: number; x1: number; z0: number; z1: number; h: number }[]): Vector3[] {
-    const dx = b.x - a.x, dz = b.z - a.z;
-    const d = Math.hypot(dx, dz);
-    const up = 5;
-    const p1 = new Vector3(a.x, a.y + up, a.z), p5 = new Vector3(b.x, b.y + up, b.z);
-    if (d < 26) {
-      const mid = new Vector3((a.x + b.x) / 2, Math.max(a.y, b.y) + up + 3 + d * 0.22, (a.z + b.z) / 2);
-      return [a, p1, mid, p5, b];
-    }
-    // lying on the table (or on what is under it), bowed to one side so that wires side by side stay apart
-    const nx = -dz / d, nz = dx / d;
-    const bow = ((seed % 5) - 2) * 3.2 + (seed & 1 ? 1 : -1) * Math.min(18, d * 0.07);
-    const floor = (x: number, z: number) => {
-      let y = 0;
-      for (const r of rects) if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 && r.h > y) y = r.h;
-      return y + R_WIRE + 0.3;
-    };
-    const at = (t: number, k: number) => {
-      const x = a.x + dx * t + nx * bow * k, z = a.z + dz * t + nz * bow * k;
-      return new Vector3(x, floor(x, z), z);
-    };
-    const e = Math.min(0.3, 16 / d);
-    return [a, p1, at(e, 0.5), at(0.5, 1), at(1 - e, 0.5), p5, b];
-  }
-
   /** Rewrites the wire mesh and the marks when anything they show changed. Returns true when it drew. */
   draw(): boolean {
     const changed = this.refresh();
@@ -221,17 +306,28 @@ export class Wires {
 
     const rects = st.objects.filter((o) => o.area === 'part' && !st.mounts[o.id]).map((o) => {
       const r = rectOf(o.kind, o.pos, o.rot as Rot);
-      return { x0: r.x0 + 1, x1: r.x1 - 1, z0: r.z0 + 1, z1: r.z1 - 1, h: (this.parts?.liftOf(o.id) ?? 0) + sizeOf(o.kind, 0).h };
+      return { id: o.id, x0: r.x0 + 1, x1: r.x1 - 1, z0: r.z0 + 1, z1: r.z1 - 1, h: (this.parts?.liftOf(o.id) ?? 0) + sizeOf(o.kind, 0).h };
     });
-    const list: { id: string; a: Vector3; b: Vector3; color: string; wide: boolean }[] = [];
+    const list: { id: string; a: Vector3; ao: Vector3; b: Vector3; bo: Vector3; color: string; wide: boolean; ia: string; ib: string }[] = [];
+    const UP = new Vector3(0, 1, 0);
+    // what a wire goes round rather than over: the Dot where it lies, and tall parts
+    // (a part is not in the way of its own wires: they start on it; the Dot's leave its top wall, clear of it)
+    const tall = [{ id: '', x0: -DOT.hw - 3, x1: DOT.hw + 3, z0: -DOT.hd - 3, z1: DOT.hd + 3 }, ...rects.filter((r) => r.h > 20).map((r) => ({ id: r.id, x0: r.x0 - 3, x1: r.x1 + 3, z0: r.z0 - 3, z1: r.z1 + 3 }))];
+    const blockedFor = (ia: string, ib: string) => (x: number, z: number) => tall.some((r) => r.id !== ia && r.id !== ib && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+    const floorAt = (x: number, z: number) => {
+      let y = 0;
+      for (const r of rects) if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 && r.h > y) y = r.h;
+      return y;
+    };
     for (const w of st.wires as readonly Wire[]) {
       const a = this.byTerm.get(w.from), b = this.byTerm.get(w.to);
       if (!a || !b) continue;
-      list.push({ id: w.id, a: a.pos, b: b.pos, color: w.color, wide: this.selected.has(w.id) || this.hoverWire === w.id });
+      list.push({ id: w.id, a: a.pos, ao: a.out, b: b.pos, bo: b.out, color: w.color, wide: this.selected.has(w.id) || this.hoverWire === w.id, ia: w.from.split('.')[0], ib: w.to.split('.')[0] });
     }
     const start = this.startTerm ? this.byTerm.get(this.startTerm) : undefined;
-    const end = this.hoverTerm && this.hoverTerm !== this.startTerm ? this.byTerm.get(this.hoverTerm)?.pos : this.loose;
-    if (start && end) list.push({ id: '', a: start.pos, b: end, color: this.color, wide: false });
+    const over = this.hoverTerm && this.hoverTerm !== this.startTerm ? this.byTerm.get(this.hoverTerm) : undefined;
+    const end = over?.pos ?? this.loose;
+    if (start && end) list.push({ id: '', a: start.pos, ao: start.out, b: end, bo: over?.out ?? UP, color: this.color, wide: false, ia: this.startTerm!.split('.')[0], ib: over ? this.hoverTerm!.split('.')[0] : '-' });
 
     const ring = RAD;
     const vPer = (SEG + 1) * ring;
@@ -268,8 +364,7 @@ export class Wires {
     list.forEach((w, n) => {
       let seed = 0;
       for (let i = 0; i < w.id.length; i++) seed = (seed * 31 + w.id.charCodeAt(i)) >>> 0;
-      const curve = new CatmullRomCurve3(this.pathOf(w.a, w.b, seed, rects), false, 'centripetal');
-      const pts = curve.getPoints(SEG);
+      const pts = wirePath(w.a, w.ao, w.b, w.bo, seed, floorAt, blockedFor(w.ia, w.ib));
       const flat = pts.map((p) => [p.x, p.y, p.z]);
       const o = n * vPer * 3;
       writeTube((pos.array as Float32Array).subarray(o, o + vPer * 3), (nor.array as Float32Array).subarray(o, o + vPer * 3), flat, w.wide ? R_WIRE * 1.7 : R_WIRE, RAD);

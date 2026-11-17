@@ -82,12 +82,18 @@ export const DEVICE_LIST: readonly { term: string; name: string; pin: number; al
   { term: 'device.V33', name: 'V33', pin: 2, alt: 19, kind: 'power_out' },
   { term: 'device.GND', name: 'GND', pin: 10, alt: 11, kind: 'ground' },
 ];
-/** J3 in the top wall: 2 x 10 at 2.54 mm, odd pins toward the screen, pin 1 on the right seen from the front (as the modules' connector says). */
+/**
+ * J3 in the top wall: 2 x 10 at 2.54 mm. The Dot's own shell prints the pinout beside the holes (seen from behind, the
+ * Dot face up: 3V3 IO15 IO17 IO19 GND IO14 IO12 IO10 IO8 5V in the row toward the screen, 5V IO16 IO18 IO20 IO21 GND IO13
+ * IO11 IO9 3V3 in the row toward the back), which is: odd pins toward the screen, pin 1 (5 V) at the Dot's left seen
+ * from the front (-X), pin 19 (3V3) at its right. A module's connector is numbered the other way round (it faces the
+ * header), so its V5 pin still meets pin 1.
+ */
 export function deviceTerms(list: readonly { term: string; name: string; pin: number; alt?: number; kind: string }[] = DEVICE_LIST, anchorY = 38.5): DeviceTerm[] {
   const out: DeviceTerm[] = [];
   const at = (t: (typeof list)[number], pin: number) => {
     const col = (pin - 1) >> 1;
-    out.push({ term: t.term, name: t.name === 'V5' ? '5V' : t.name === 'V33' ? '3V3' : t.name, pin, kind: t.kind, X: (4.5 - col) * 2.54, Y: anchorY, Z: pin & 1 ? 1.27 : -1.27 });
+    out.push({ term: t.term, name: t.name === 'V5' ? '5V' : t.name === 'V33' ? '3V3' : t.name, pin, kind: t.kind, X: (col - 4.5) * 2.54, Y: anchorY, Z: pin & 1 ? 1.27 : -1.27 });
   };
   for (const t of list) {
     at(t, t.pin);

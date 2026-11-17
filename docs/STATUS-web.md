@@ -398,14 +398,17 @@ screenshots in `web/screenshots/workbench2/`). Results of the last full run are 
 Wires and terminals (`workbench/wires.ts`, `parts/geometry.ts`, store `wires`)
 - A terminal is `"<instance>.<pin>"` or `device.<name>`. Places come from the manifest (`mm`, `face`, the same mapping as the
   models) through where the part stands, how high (legs in holes) or the mount matrix; the Dot's 20 header pins are terminals in
-  its top wall and follow its pose (2 x 10, 2.54 mm, odd pins toward the screen, pin 1 on the right seen from the front: derived
-  from the modules' connector data, the maker publishes no pin 1 mark).
+  its top wall and follow its pose (2 x 10, 2.54 mm, odd pins toward the screen, pin 1 at the Dot's left seen from the front:
+  read off the pin names the Dot's own shell prints beside the holes; `wires.test.ts` checks every pin against that print).
 - The wire tool (toolbar button or W; eight colours in a strip over the table) shows every terminal as a dot (board holes are not
   dotted: the board shows them). Picking is done on the screen: the nearest terminal within 13 px, so a 2.54 mm header is hit at
   any zoom at which it can be told apart; the name and the owner show in a tooltip. Click a terminal, then another (or press on
   one and let go on the other); Esc lets the wire go; a click on a wire selects it (also from the Wires list), Delete removes it,
   its card changes the colour. Wires are in the bench store with undo, and one mesh in the scene: tubes that rise from each end
-  and lie on the table (or over the bodies under them), bowed sideways by wire so that neighbours stay apart.
+  and lie on the table (or over the bodies under them), bowed sideways by wire so that neighbours stay apart. The line is made
+  of Bezier pieces (`wirePath`): out of each terminal the way it faces (a header pin out of the Dot's top wall, a side pin
+  sideways), down to the table without dipping under it, round the Dot and tall parts. (Until 2026-11-17 it was one spline
+  through a few points, which sank under the table on long runs: only the middle of a wire from the Dot showed.)
 - Legs in holes: a part whose pins are all `bottom` legs, let go over a part with sockets on top (breadboards, an Uno's headers,
   the Maker module), is pulled so that every leg is over a hole (2.2 mm reach), stands at the holes' height and is connected: the
   service keeps one engine wire per leg (`plug_<instance>_<pin>`) for as long as the part stands there. Nothing is stored: it is
@@ -488,7 +491,7 @@ Weak or not done
   the script (the terminal was).
 - A board's EEPROM is not kept across reloads (the compiled sketch is). Wires are not yet drawn red when the engine reports a
   short (the wire's card says so). Hazards show in the part's card, not in the scene.
-- The header's pin 1 side, the coil and port anchors are estimates. Touch and a real GPU were not tried. The editor keeps the
+- The coil and port anchors are estimates. Touch and a real GPU were not tried. The editor keeps the
   light highlight colours in the dark theme.
 - The part names shown in the library ("Arduino Uno R3" ...) are the parts library's data; the models carry no marks.
 
