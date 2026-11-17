@@ -1,6 +1,6 @@
 # STATUS: settings-check intermittent failures (fix/settings-panic)
 
-WORK IN PROGRESS. Nothing is fixed yet. This file records what is known; the three edited C files are DIAGNOSTICS ONLY.
+FINAL STATE (handed back early at the coordinator's request). The settings-check failures are NOT confirmed fixed.
 
 ## Symptoms (three distinct ones, all load dependent)
 1. Firmware panic `QP ASSERT in qf_port:130 (task 'extNN')`.
@@ -54,3 +54,21 @@ WORK IN PROGRESS. Nothing is fixed yet. This file records what is known; the thr
   power_model.c, radio_host.c, khal_nvs_web.c (dbnvs_*), usb_cable.c, motion_model.c, exp_link.c, khal_console_web.c (`kweb_console_input`, used by
   settings-check's `config`), audio_bench.c; `kweb_text_drain` (spin lock on the text ring). storage/vfs.c already uses a bounded try. The same
   `page_lock` helper applies to each; the holders there only hold for short memory work, so they were not changed without evidence.
+
+
+## Update at hand-back
+Worker stacks captured with CDP Debugger.pause on each worker while the main thread was hung (two hangs, same shape): the main thread spins
+in wasm on a lock; one worker is inside `pthreadCreateProxied -> proxyToMainThread` (kodeOS has PTHREAD_POOL_SIZE=48 and 35+ threads, so
+a worker's pthread_create waits for the main thread's event loop). Deadlock: main waits for a lock the blocked worker holds, the worker waits for main.
+The wasm has no name section, so the lock/holder in that worker (call chain func2369<func1858<func600<func366<func364) is NOT named.
+Known pthread_create-under-lock sites: the RTOS timer service (`timer_make`, was under g_k, fixed: claimed under g_k, spawned outside) and
+`ble_host.c start_locked -> ensure_thread()` under g_mu (NOT fixed). Also changed: NFC page exports use a bounded 20 ms try (`nfc_lock_page`, -9 when busy),
+tests/node/nfc/page_lock.test.mjs.
+
+Post-fix measurements (headless Chrome, sequential, load 3-8 for bench-check, 11-29 for settings-check because other engineers and my own SDK rebuild ran):
+- bench-check x6: 4 clean (20 PASS), 1 with 2 UI fails, 1 freeze (only 2 PASS): a freeze remains.
+- settings-check x12: 6 pass, 6 fail (3x "did not report the change", 1 navigation timeout, 2 more same class), 0 panics. Not better than before (2-3 in 5),
+  failures are UI-timing class under load > 11; this is not a valid 20-run verification and I did not do it.
+Node suites (build dir with rebuilt SDK libs): ble, persist, nfc, nvs via tests/node/run.sh: ALL TESTS PASSED; kodeos/run.sh PASSED;
+boot/run.sh FAILED at "a sticky request survives the keep list; BOT+LEFT ..." (timeout waiting for kodeOS, load 29-38; not rerun on main).
+Note: the stale build/lib had to be rebuilt (`tools/dotbench sdk`, 7 min) before app builds linked.
