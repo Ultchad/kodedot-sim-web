@@ -9,7 +9,7 @@ const SITE = path.join(HERE, "build/site/cc/");
 const parts = process.argv.slice(2).length ? process.argv.slice(2) : ["esp32-blink-echo", "esp32-i2c-slave", "esp32-button-led"].map((n) => path.join(ROOT, "parts", n));
 
 const tInit = performance.now();
-const worker = new Worker(path.join(SITE, "cc-worker.js"));
+const worker = new Worker(path.join(SITE, "cc-worker.bundle.js"));
 const pending = new Map(); let readyResolve;
 const ready = new Promise((r) => (readyResolve = r));
 worker.on("message", (m) => { if (m.type === "ready") readyResolve(m); else if (m.id !== undefined) pending.get(m.id)?.(m); else if (m.type === "error") { console.error(m.message); process.exit(2); } });

@@ -67,8 +67,13 @@ js = js.slice(0, a) + `var modules = async (fetch3) => globalThis.__CC_ASSETS__.
 js = js.replace(/var totalSize = \d+;/, "var totalSize = 1;");
 if (js.includes('new URL("./llvm.core.wasm"') || js.includes("llvm-resources.tar\"")) throw new Error("patch incomplete");
 fs.writeFileSync(path.join(OUT, "clang-runtime.js"), js);
-for (const f of ["cc-driver.js", "pack.js", "compiler.js", "assets.js", "cc-worker.js"]) fs.copyFileSync(path.join(HERE, "lib", f), path.join(OUT, f));
+for (const f of ["cc-driver.js", "pack.js", "compiler.js", "assets.js", "cc-worker.js", "zip-stored.js"]) fs.copyFileSync(path.join(HERE, "lib", f), path.join(OUT, f));
 fs.copyFileSync(path.join(ROOT, "tools/dblib/part/ino2cpp.mjs"), path.join(OUT, "ino2cpp.js"));     // the very file `part build` uses
 fs.copyFileSync(path.join(HERE, "lib/part-glue.mjs"), path.join(OUT, "part-glue.js"));
+// ---- 5. one self-contained worker script (a blob: Worker cannot resolve relative imports, and every import would be another request) ----
+const { createRequire } = await import("node:module");
+const rolldown = createRequire(import.meta.url)(process.env.ROLLDOWN || "/home/claude/dotbench/web/node_modules/rolldown");
+await rolldown.build({ input: path.join(OUT, "cc-worker.js"), external: [/^node:/], output: { file: path.join(OUT, "cc-worker.bundle.js"), format: "esm", minify: false }, logLevel: "warn" });
+for (const f of ["cc-driver.js", "pack.js", "compiler.js", "assets.js", "cc-worker.js", "ino2cpp.js", "part-glue.js", "clang-runtime.js"]) fs.rmSync(path.join(OUT, f));   // now inside the bundle
 lap("done");
 for (const f of fs.readdirSync(OUT)) console.log(String(fs.statSync(path.join(OUT, f)).size).padStart(10), f);
