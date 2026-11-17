@@ -26,6 +26,8 @@ export const DEVICE_TERMINALS = [
   { term: "device.V5", name: "V5", pin: 1, alt: 20, kind: "power_out" }, { term: "device.V33", name: "V33", pin: 2, alt: 19, kind: "power_out" },
   { term: "device.GND", name: "GND", pin: 10, alt: 11, kind: "ground" },
 ];
+/** GPIO behind J3 position 1..14 (SDK numbering, kode.h): module tables are written in GPIO, the bench turns them into positions. */
+export const J3_GPIO = [8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16];
 const POS = 14;
 const R = { OK: 0, NACK_ADDR: 1, NACK_DATA: 2, STUCK: 3, TIMEOUT: 4, REFUSED: 5 };
 const K = { I2C_OPEN: 1, I2C_CLOSE: 2, I2C_XFER: 3, I2C_PROBE: 4, SPI_OPEN: 5, SPI_CLOSE: 6, SPI_XFER: 7, UART_OPEN: 8, UART_CLOSE: 9, UART_WRITE: 10 };
@@ -103,6 +105,7 @@ export class Bench {
     const part = { instance, id: m.id, def, label: o.label ?? instance, pos: { x: 0, y: 0, rot: 0, ...(o.pos ?? {}) }, fields, outputs: {}, impl: null, starting: null, startP: null, console: [], consoleTail: "", code: null, storage: null,
       pins: new Map(m.pins.map((p) => [p.name, p])) };
     for (const out of m.outputs ?? []) part.outputs[out.name] = out.type === "boolean" ? false : 0;
+    part.mount = null;
     this.parts.set(instance, part);
     if (m.behaviour.type === "declarative") part.impl = new DeclarativePart(part, this._host(part));
     this._touch(); this._emit("part", { type: "added", instance });
@@ -204,6 +207,7 @@ export class Bench {
     for (const p of this.parts.values()) for (const pin of p.def.manifest.pins) if (pin.kind !== "nc") terms.push(`${p.instance}.${pin.name}`);
     for (const w of this.wires.values()) pairs.push([w.from, w.to]);
     for (const p of this.parts.values()) for (const g of p.def.manifest.groups ?? []) for (let i = 1; i < g.pins.length; i++) pairs.push([`${p.instance}.${g.pins[0]}`, `${p.instance}.${g.pins[i]}`]);
+    for (const p of this.parts.values()) for (const pr of this._mountPairs(p)) pairs.push(pr);
     for (const p of this.parts.values()) { if (power.get(p.instance)) { if (p.impl?.joins) for (const j of p.impl.joins()) pairs.push(j); } else if (p.impl?.joinsUnpowered) for (const j of p.impl.joinsUnpowered()) pairs.push(j); }
     const { netOf, nets } = computeNets(terms, pairs);
     const srcs = nets.map(() => []);
@@ -488,6 +492,8 @@ export class Bench {
 
   // ---------------------------------------------------------------- headless use (tests, `dotbench part test`): no firmware, the caller plays the device
   /** Switch the device's rails without firmware. */
+  /** The Dot on USB: the 5 V rail is there whatever the firmware does with the boost bit (an app on USB never switches it: kode_pin_power_5v is refused). Persists across firmware events. */
+  setUsbPower(on) { this.usbPower = !!on; if (on) this.rails.V5 = true; this._touch(); }
   setRails(r) { Object.assign(this.rails, r); this._touch(); }
   /** Set what "the device" does with one J3 position (index 0..13): {mode: "z"|"in"|"out"|"pwm", pull, level, hz, duty (q16)}. */
   setDevicePin(i, st) { this.devicePins[i] = { mode: "z", pull: "none", level: 0, hz: 0, duty: 0, ...st }; this._touch(); }
@@ -537,7 +543,7 @@ export class Bench {
       do {
         this._serviceAgain = false;
         this.devicePins = link.readPins();
-        const v5 = link.v5Boost(); if (v5 !== this.rails.V5) this.rails.V5 = v5;
+        const v5 = this.usbPower || link.v5Boost(); if (v5 !== this.rails.V5) this.rails.V5 = v5;
         const pl = !!link.v33Pulse?.(); if (pl && !this._lastPulse) this.rails.V33 = true; this._lastPulse = pl;     // an edge: a later hosted io 5 low overrides it
         this._touch();
         let req;
@@ -675,6 +681,34 @@ export class Bench {
     this._touch(); await this._startWasm(part);
   }
 
+  // ---------------------------------------------------------------- modules that plug onto the Dot's J3 header
+  /** The terminal pairs a mounted module adds: every module pin that the manifest's `mount` names meets a header position (or a rail) at once. */
+  _mountPairs(p) {
+    if (!p.mount) return [];
+    const mt = p.def.manifest.mount, turned = p.mount.orientation === "turned", out = [];
+    for (const e of mt.pins ?? []) {
+      const pos = J3_GPIO.indexOf(e.gpio) + 1; if (pos < 1) continue;
+      out.push([`${p.instance}.${e.pin}`, `${DEVICE}.EXP${turned ? 15 - pos : pos}`]);
+    }
+    for (const e of mt.rails ?? []) out.push([`${p.instance}.${e.pin}`, `${DEVICE}.${e.rail}`]);
+    return out;
+  }
+  /**
+   * Plug a module (a part whose manifest has `mount`) onto the header: all its terminals meet the Dot's in one action. Only one module at a time (as on the
+   * hardware). orientation "upright" or "turned"; turned maps position p to 15 - p, rails stay. Mounting an already mounted module changes its orientation.
+   */
+  mountPart(instance, orientation = "upright") {
+    const p = this._part(instance), mt = p.def.manifest.mount;
+    if (!mt) throw new Error(`${p.def.manifest.id} does not mount on the header (no mount table in its manifest)`);
+    if (!(mt.orientations ?? ["upright"]).includes(orientation)) throw new Error(`${p.def.manifest.id} cannot be mounted ${orientation} (${(mt.orientations ?? ["upright"]).join(", ")})`);
+    for (const o of this.parts.values()) if (o !== p && o.mount) throw new Error(`a module is already mounted (${o.instance}); unmount it first`);
+    p.mount = { orientation }; this._touch(); this._emit("part", { type: "mount", instance, orientation });
+    return orientation;
+  }
+  unmountPart(instance) { const p = this._part(instance); if (!p.mount) return false; p.mount = null; this._touch(); this._emit("part", { type: "mount", instance, orientation: null }); return true; }
+  /** The mounted module, if any: {instance, orientation}. */
+  mounted() { for (const p of this.parts.values()) if (p.mount) return { instance: p.instance, orientation: p.mount.orientation }; return null; }
+
   // ---------------------------------------------------------------- code parts (a board carries its own sketch)
   /** What a wasm part runs: {source, wasm, sha256, name, custom}. The package's own sketch and binary until setPartCode replaces them. */
   getPartCode(instance) {
@@ -751,7 +785,7 @@ export class Bench {
       device: { pins: this.devicePins.map((d, i) => ({ ...d, term: posTerm(i), ...pinState(posTerm(i)) })) },
       parts: [...this.parts.values()].map((p) => ({
         instance: p.instance, id: p.id, label: p.label, pos: { ...p.pos }, fields: { ...p.fields }, outputs: { ...p.outputs }, kind: p.def.manifest.behaviour.type,
-        power: { on: !!this._power.get(p.instance), reason: p.powerWhy ?? null }, visuals: this._visuals(p), console: p.console.slice(-50), busy: !!p.impl?.busy, crashed: !!p.impl?.crashed,
+        power: { on: !!this._power.get(p.instance), reason: p.powerWhy ?? null }, mount: p.mount ? { ...p.mount } : null, visuals: this._visuals(p), console: p.console.slice(-50), busy: !!p.impl?.busy, crashed: !!p.impl?.crashed,
         pins: Object.fromEntries(p.def.manifest.pins.filter((x) => x.kind !== "nc" && !this._grouped(p).has(x.name)).map((x) => [x.name, pinState(`${p.instance}.${x.name}`)])),
         groups: (p.def.manifest.groups ?? []).map((g, i) => ({ index: i, pin: g.pins[0], ...pinState(`${p.instance}.${g.pins[0]}`) })),
         failed: p.impl?.failed ? [...p.impl.failed.values()].map((f) => f.text) : [],
@@ -781,7 +815,7 @@ export class Bench {
       format: "dotbench-layout", version: 1, name,
       device: { rails: { V33: "app", V5: "app" }, header: "kode-dot-j3" },
       parts: [...this.parts.values()].map((p) => ({ instance: p.instance, part: { id: p.id, version: p.def.manifest.version, sha256: p.def.sha256 }, label: p.label, pos: { ...p.pos }, fields: { ...p.fields },
-        ...(p.code ? { code: { source: p.code.source, wasm_b64: b64(p.code.wasm), sha256: p.code.sha256, name: p.code.name } } : {}), ...(p.storage ? { storage_b64: b64(p.storage) } : {}) })),
+        ...(p.mount ? { mount: { ...p.mount } } : {}), ...(p.code ? { code: { source: p.code.source, wasm_b64: b64(p.code.wasm), sha256: p.code.sha256, name: p.code.name } } : {}), ...(p.storage ? { storage_b64: b64(p.storage) } : {}) })),
       wires: [...this.wires.values()].map((w) => ({ id: w.id, from: w.from, to: w.to, ...(w.color ? { color: w.color } : {}) })),
     };
   }
@@ -800,6 +834,7 @@ export class Bench {
       const fields = {}; for (const [k, v] of Object.entries(lp.fields ?? {})) { try { this._coerce((def.manifest.fields ?? []).find((f) => f.name === k), v); fields[k] = v; } catch { notes.push(`${lp.instance}: field ${k} dropped`); } }
       this.addPart(lp.part.id, { instance: lp.instance, label: lp.label, pos: lp.pos, fields });
       const np = this.parts.get(lp.instance);
+      if (lp.mount && def.manifest.mount) { try { this.mountPart(lp.instance, lp.mount.orientation); } catch (e) { notes.push(`${lp.instance}: ${e.message}`); } }
       if (lp.code?.wasm_b64 && def.manifest.behaviour.type === "wasm") np.code = { source: String(lp.code.source ?? ""), wasm: unb64(lp.code.wasm_b64), sha256: lp.code.sha256 ?? null, name: lp.code.name ?? "sketch" };     // checked against the ABI 1 allow-list when the part starts
       if (lp.storage_b64 && def.manifest.behaviour.type === "wasm") np.storage = unb64(lp.storage_b64);
     }

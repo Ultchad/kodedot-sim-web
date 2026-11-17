@@ -114,6 +114,12 @@ export function lintManifest(m, files = null, opts = {}) {
     if (p.pos && (p.pos.x > pic.width || p.pos.y > pic.height)) E(`/pins/${i}/pos`, `${p.name} at (${p.pos.x}, ${p.pos.y}) is outside the ${pic.width}x${pic.height} picture`);
     if (p.pull_rail && !pins.has(p.pull_rail) && !(m.pins ?? []).some((q) => q.name === p.pull_rail)) E(`/pins/${i}/pull_rail`, `pull_rail ${p.pull_rail} is not a pin of this part`);
   });
+  if (m.mount) {
+    const seen = new Set();
+    for (const [i, e] of (m.mount.pins ?? []).entries()) { if (!pins.has(e.pin)) E(`/mount/pins/${i}/pin`, `unknown pin ${e.pin}`); if (seen.has(e.gpio)) E(`/mount/pins/${i}/gpio`, `GPIO${e.gpio} is used twice`); seen.add(e.gpio); }
+    for (const [i, e] of (m.mount.rails ?? []).entries()) if (!pins.has(e.pin)) E(`/mount/rails/${i}/pin`, `unknown pin ${e.pin}`);
+    if (m.mount.via === "interposer" && (m.mount.orientations ?? []).includes("turned")) E("/mount/orientations", "a module on the interposer cannot be turned: the case fixes its orientation");
+  }
   (m.groups ?? []).forEach((g, i) => { for (const n of g.pins) if (!pins.has(n)) E(`/groups/${i}/pins`, `unknown pin ${n}`); });
   if (m.body) {
     (m.pins ?? []).forEach((p, i) => { if (p.mm && (p.mm.x < -0.01 || p.mm.y < -0.01 || p.mm.x > m.body.w_mm + 0.01 || p.mm.y > m.body.d_mm + 0.01)) E(`/pins/${i}/mm`, `${p.name} at (${p.mm.x}, ${p.mm.y}) mm is outside the ${m.body.w_mm} x ${m.body.d_mm} mm body`); });

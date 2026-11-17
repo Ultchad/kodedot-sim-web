@@ -115,7 +115,7 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
       "description": "SPDX license expression, e.g. MIT, GPL-3.0-or-later, CC-BY-4.0, LicenseRef-Proprietary."
     },
     "description": {"$ref": "#/$defs/localizedLong"},
-    "category": {"enum": ["sensor", "actuator", "display", "input", "mcu", "wireless", "module", "passive", "power", "prototyping", "other"], "default": "other"},
+    "category": {"enum": ["sensor", "actuator", "display", "input", "mcu", "wireless", "module", "kode-module", "passive", "power", "prototyping", "other"], "default": "other"},
     "keywords": {
       "type": "object",
       "propertyNames": {"$ref": "#/$defs/locale"},
@@ -129,7 +129,8 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
       "properties": {
         "w_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000},
         "d_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000},
-        "h_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000}
+        "h_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000},
+        "estimate": {"type": "boolean", "default": false, "description": "true: the size and the terminal positions of this part are estimates read from pictures (the 2.54 mm header pitch aside), not from a drawing. A 3D model should not be trusted to the millimetre."}
       },
       "description": "Physical size in millimetres: w along x (picture left to right), d along y (picture top to bottom), h along z (up from the table). The picture is the top view of this footprint, so the picture's width and height are w_mm and d_mm to scale. pins[].mm positions use the same origin: the top-left corner of the footprint seen from above, on the table."
     },
@@ -143,6 +144,24 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
         "properties": {"pins": {"type": "array", "minItems": 2, "maxItems": 64, "items": {"$ref": "#/$defs/pinName"}}}
       },
       "description": "Terminals joined inside the part (a breadboard's terminal strips and power rails): every pin of a group is one net, always, powered or not."
+    },
+    "mount": {
+      "type": "object",
+      "required": ["pins"],
+      "additionalProperties": false,
+      "properties": {
+        "via": {"enum": ["direct", "interposer"], "default": "direct", "description": "direct: a right-angle 2x10 connector straight onto the Dot's J3 (Maker, Robotics, Camera). interposer: through the passive KDINT001 board (Mesh, hacking module); the case fixes the orientation."},
+        "orientations": {"type": "array", "items": {"enum": ["upright", "turned"]}, "minItems": 1, "uniqueItems": true, "default": ["upright", "turned"], "description": "Which ways the module can be plugged in. Turned maps header position p to 15 - p (rails stay)."},
+        "pins": {
+          "type": "array", "maxItems": 14,
+          "items": {"type": "object", "required": ["pin", "gpio"], "additionalProperties": false, "properties": {
+            "pin": {"$ref": "#/$defs/pinName"},
+            "gpio": {"enum": [8, 9, 10, 11, 12, 13, 14, 21, 19, 20, 17, 18, 15, 16], "description": "The ESP32-P4 GPIO this module pin meets when mounted upright (SDK positions 1..14 are GPIO 8 9 10 11 12 13 14 21 19 20 17 18 15 16)."},
+            "source": {"enum": ["documented", "assumed"], "default": "documented", "description": "assumed: not established by a public source; the table is data and can be corrected."}}}
+        },
+        "rails": {"type": "array", "maxItems": 16, "items": {"type": "object", "required": ["pin", "rail"], "additionalProperties": false, "properties": {"pin": {"$ref": "#/$defs/pinName"}, "rail": {"enum": ["V5", "V33", "GND"]}}}}
+      },
+      "description": "The part plugs onto the Dot's J3 header as a whole: bench.mountPart(instance, orientation) joins every listed pin to its header position and every rail pin to the rail, in one action."
     },
     "vih_pct": {"type": "integer", "minimum": 30, "maximum": 90, "description": "Input high threshold as a percentage of the logic supply (default 75). An ATmega328P reads 3.0 V as high on 5 V (60), so a 3.3 V Dot can drive an Uno R3 directly."},
     "logic_mv": {"type": "integer", "minimum": 500, "maximum": 60000, "description": "A board with an on-board regulator: the logic high level of its pins, whatever voltage its supply pin sees."},
@@ -207,7 +226,7 @@ Order: edit, `check`, `test`, fix, repeat; then `build`. Finally tell the user t
       "type": "object",
       "required": ["en"],
       "propertyNames": {"$ref": "#/$defs/locale"},
-      "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 1000},
+      "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 2000},
       "description": "en is required; pt-BR and es are expected by the Make your own checklist."
     },
     "pinName": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,23}$"},
