@@ -56,7 +56,7 @@ export default defineModel<PartState>({
     );
 
     const lever = new Shape();
-    lever.box(...PAL.plasticBlack, 0, 0, LEVER_W, LEVER_D, 0, H - LEVER_Y, 0.3, 0.4, { ao: 0.75 });
+    lever.box(...PAL.plasticBlack, 0, 0, LEVER_W, LEVER_D, 0, H - LEVER_Y, 0.3, 0.22, { ao: 0.75 });
     const node = markControl(lever.toObject('lever'), mark);
     node.position.set(X_OF[String(DEFAULT)] ?? -TRAVEL, LEVER_Y, 0);
     root.add(node);
