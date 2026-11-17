@@ -61,8 +61,8 @@
     "height": 152
   },
   "pins": [
-    {"name":"POS","kind":"io","pos":{"x":101.6,"y":76.2},"mm":{"x":10.16,"y":7.62},"face":"top","label":{"en":"+"},"abs_max_mv":60000},
-    {"name":"NEG","kind":"io","pos":{"x":127,"y":76.2},"mm":{"x":12.7,"y":7.62},"face":"top","label":{"en":"-"},"abs_max_mv":60000}
+    {"name":"POS","kind":"io","pos":{"x":101.6,"y":76.2},"mm":{"x":10.16,"y":7.62,"z":12},"face":"top","label":{"en":"+"},"abs_max_mv":60000},
+    {"name":"NEG","kind":"io","pos":{"x":127,"y":76.2},"mm":{"x":12.7,"y":7.62,"z":12},"face":"top","label":{"en":"-"},"abs_max_mv":60000}
   ],
   "fields": [
     {
@@ -108,6 +108,15 @@
         "pt-BR": "Corrente",
         "es": "Corriente"
       }
+    },
+    {
+      "name": "overload",
+      "type": "boolean",
+      "label": {
+        "en": "Overload (above 1 A or shorted)",
+        "pt-BR": "Sobrecarga (acima de 1 A ou em curto)",
+        "es": "Sobrecarga (por encima de 1 A o en corto)"
+      }
     }
   ],
   "behaviour": {
@@ -123,7 +132,8 @@
         },
         "ohms": 0.2,
         "max_ma": 1000,
-        "current_output": "current_ma"
+        "current_output": "current_ma",
+        "overload_output": "overload"
       }
     ]
   }

@@ -58,8 +58,8 @@
     "height": 116
   },
   "pins": [
-    {"name":"A","kind":"io","pos":{"x":32.4,"y":58},"mm":{"x":1.62,"y":2.9},"face":"bottom","label":{"en":"A"},"abs_max_mv":60000},
-    {"name":"K","kind":"io","pos":{"x":83.2,"y":58},"mm":{"x":4.16,"y":2.9},"face":"bottom","label":{"en":"K"},"abs_max_mv":60000}
+    {"name":"A","kind":"io","pos":{"x":32.4,"y":58},"mm":{"x":1.62,"y":2.9,"z":0},"face":"bottom","label":{"en":"A"},"abs_max_mv":60000},
+    {"name":"K","kind":"io","pos":{"x":83.2,"y":58},"mm":{"x":4.16,"y":2.9,"z":0},"face":"bottom","label":{"en":"K"},"abs_max_mv":60000}
   ],
   "outputs": [
     {
