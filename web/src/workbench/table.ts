@@ -114,10 +114,10 @@ function floorShadow(): CanvasTexture {
   const g = cv.getContext('2d')!;
   const OFF = s * 3;
   g.shadowColor = 'rgba(70, 48, 28, 1)';
-  g.shadowBlur = s * 0.1;
+  g.shadowBlur = s * 0.2;
   g.shadowOffsetX = OFF;
   g.beginPath();
-  g.roundRect(s * 0.16 - OFF, s * 0.16, s * 0.68, s * 0.68, s * 0.07);
+  g.roundRect(s * 0.27 - OFF, s * 0.27, s * 0.46, s * 0.46, s * 0.06);
   g.fill();
   const t = new CanvasTexture(cv);
   t.colorSpace = SRGBColorSpace;
@@ -152,11 +152,11 @@ export function buildTable(colours: TableColours): Table {
   const matMesh = new Mesh(matGeo, matMat);
   matMesh.name = 'mat';
 
-  const shadowMat = new MeshBasicMaterial({ transparent: true, depthWrite: false, toneMapped: false, opacity: 0.55 });
+  const shadowMat = new MeshBasicMaterial({ transparent: true, depthWrite: false, toneMapped: false, opacity: 0.4 });
   const shadow = new Mesh(new PlaneGeometry(1, 1), shadowMat);
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.set((DESK.x0 + DESK.x1) / 2, -MAT_THICK - DESK.thick - 60, (DESK.z0 + DESK.z1) / 2 + 30);
-  shadow.scale.set((DESK.x1 - DESK.x0) * 1.5, (DESK.z1 - DESK.z0) * 1.5, 1);
+  shadow.scale.set((DESK.x1 - DESK.x0) * 2.05, (DESK.z1 - DESK.z0) * 2.05, 1);
   shadow.renderOrder = -2;
   const st = floorShadow();
   shadowMat.map = st;

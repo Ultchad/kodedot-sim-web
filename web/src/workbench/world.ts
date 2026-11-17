@@ -7,6 +7,7 @@ import type { MotionPose } from '../device/motion';
 import { bodyDims } from '../lib/bodyModel';
 import { asDecal } from '../device3d/decal';
 import { makeShadowTexture } from '../device3d/textures';
+import { Bodies, type BodiesDeps } from './bodies';
 import { OrbitRig } from './camera';
 import { DOT, type Rect } from './layout';
 import { TABLE_DARK, TABLE_LIGHT, buildTable, type Table } from './table';
@@ -34,10 +35,12 @@ export class BenchWorld {
   private euler = new Euler(0, 0, 0, 'YXZ');
   private q = new Quaternion();
   private v = new Vector3();
-  /** Extra things to step each frame (bodies). */
-  protected steppers: ((dt: number, reduced: boolean) => boolean)[] = [];
+  /** What stands on the table. */
+  readonly bodies: Bodies;
+  /** Where the tilt handle floats: off the Dot's top edge, level with its face (it moves with the Dot). */
+  readonly handlePos = new Vector3();
 
-  constructor(dark: boolean) {
+  constructor(dark: boolean, deps: Omit<BodiesDeps, 'dotQuat' | 'dotPos'>) {
     this.group.name = 'workbench';
     this.table = buildTable(dark ? TABLE_DARK : TABLE_LIGHT);
     this.group.add(this.table.group);
@@ -49,6 +52,8 @@ export class BenchWorld {
     this.dotShadow.raycast = () => {};
     this.dotShadow.renderOrder = 1;
     this.group.add(this.dotShadow);
+    this.bodies = new Bodies({ ...deps, dotQuat: this.dotQuat, dotPos: this.dotPos });
+    this.group.add(this.bodies.group);
     this.placeDot();
   }
 
@@ -69,10 +74,13 @@ export class BenchWorld {
 
   /** The rectangle of the table that holds the Dot with some room round it (the bodies widen it). */
   contentRect(): Rect {
-    return { x0: -DOT.hw - 95, x1: DOT.hw + 95, z0: -DOT.hd - 85, z1: DOT.hd + 60 };
+    const b = this.bodies.bounds();
+    const r = { x0: -DOT.hw - 95, x1: DOT.hw + 95, z0: -DOT.hd - 85, z1: DOT.hd + 60 };
+    if (!b) return r;
+    return { x0: Math.min(r.x0, b.x0 - 12), x1: Math.max(r.x1, b.x1 + 12), z0: Math.min(r.z0, b.z0 - 12), z1: Math.max(r.z1, b.z1 + 12) };
   }
   contentHeight(): number {
-    return DOT.h;
+    return Math.max(DOT.h, this.bodies.bounds()?.h ?? 0);
   }
 
   private placeDot(): void {
@@ -96,6 +104,11 @@ export class BenchWorld {
     this.dotShadow.rotation.z = p.heading * DEG;
     this.dotShadow.scale.set(D.hw * 2 * soft * 1.25, D.hh * 2 * soft * 1.12, 1);
     this.shadowMat.opacity = 0.62 / (1 + lift * 0.05);
+    this.handlePos.set(0, D.hh + 15, D.zf).applyQuaternion(this.dotQuat).add(this.dotPos);
+  }
+  /** The pose shown right now (it glides to the one set). */
+  shownPose(): Readonly<{ pitch: number; roll: number; heading: number }> {
+    return this.pose;
   }
 
   /** Advances the camera, the Dot's tilt and whatever moves on the table. True while something is still moving. */
@@ -122,11 +135,11 @@ export class BenchWorld {
       busy = busy || this.shake > 0;
     }
     this.placeDot();
-    for (const s of this.steppers) busy = s(dt, reduced) || busy;
-    return busy;
+    return this.bodies.step(dt, reduced) || busy;
   }
 
   dispose(): void {
+    this.bodies.dispose();
     this.table.dispose();
     this.shadowTex.dispose();
     this.shadowMat.dispose();
