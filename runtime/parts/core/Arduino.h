@@ -21,6 +21,9 @@ using namespace arduino;
 #define PROGMEM
 #endif
 typedef bool boolean;
+// AVR libc string/number conversions every Arduino core has (Emscripten's and wasi-libc's do not); defined in dotcore.cpp
+extern "C" { char *itoa(int v, char *s, int radix); char *ltoa(long v, char *s, int radix); char *utoa(unsigned v, char *s, int radix);
+  char *ultoa(unsigned long v, char *s, int radix); char *dtostrf(double val, signed char width, unsigned char prec, char *sout); }
 
 // --- analog, as every board's core has them: resolution comes from the board's variant (pins_arduino.h) ---
 void analogReadResolution(uint8_t bits);

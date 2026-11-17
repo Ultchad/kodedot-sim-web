@@ -266,6 +266,24 @@ String Preferences::getString(const char *k, String def) { PrefEnt *e = pref_fin
 
 #endif
 
+// ---- C library gaps: ArduinoCore-API's String.cpp (and every AVR-style sketch) calls these; neither Emscripten's libc nor wasi-libc has them ----
+static char *dp_utoa(unsigned long long v, bool neg, char *out, int radix) {
+  if (radix < 2 || radix > 36) { out[0] = 0; return out; }
+  char tmp[66]; int n = 0, k = 0;
+  do { int d = (int)(v % (unsigned)radix); tmp[n++] = (char)(d < 10 ? '0' + d : 'a' + d - 10); v /= (unsigned)radix; } while (v);
+  if (neg) out[k++] = '-';
+  while (n) out[k++] = tmp[--n];
+  out[k] = 0; return out;
+}
+extern "C" {
+char *itoa(int v, char *s, int r) { return (v < 0 && r == 10) ? dp_utoa((unsigned long long)(-(long long)v), true, s, r) : dp_utoa((unsigned)v, false, s, r); }
+char *ltoa(long v, char *s, int r) { return (v < 0 && r == 10) ? dp_utoa((unsigned long long)(-(long long)v), true, s, r) : dp_utoa((unsigned long)v, false, s, r); }
+char *utoa(unsigned v, char *s, int r) { return dp_utoa(v, false, s, r); }
+char *ultoa(unsigned long v, char *s, int r) { return dp_utoa(v, false, s, r); }
+// AVR libc: a negative width left-justifies; snprintf's "%*.*f" does the same
+char *dtostrf(double val, signed char width, unsigned char prec, char *sout) { snprintf(sout, 64, "%*.*f", (int)width, (int)prec, val); return sout; }
+}
+
 // ---- exports: how the bench reaches into the component ----
 static uint8_t g_scratch[512];
 extern "C" {
