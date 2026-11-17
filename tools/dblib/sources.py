@@ -53,7 +53,8 @@ def sdk_sources(sdk, cfg):
     if on("KODEOS_NFC"):
         k += ["nfc/src/nfc_ao.c"] + (["nfc/src/nfc_verbs.c"] if on("KODEOS_CONSOLE") else [])
     if on("KODE_LOWPOWER"):
-        k += ["lowpower/src/lowpower_ao.c", "lowpower/src/lowpower_last.c", "display/src/display_clock.c"]
+        k += ["lowpower/src/lowpower_ao.c", "lowpower/src/lowpower_last.c", "lowpower/src/lowpower_part.c",
+              "display/src/display_clock.c"]
     else:
         k += ["lowpower/src/lowpower_none.c"]
     k += ["display/src/display_compose.c"] if on("KODE_COMPOSE") else ["display/src/display_compose_none.c"]
@@ -77,7 +78,7 @@ def sdk_sources(sdk, cfg):
     if on("KODEOS_RADIO"):
         k += ["radio/src/radio_ao.c", "radio/src/radio_frames.c", "radio/src/radio_knock.c", "radio/src/radio_knocks.c"]
         if on("KODEOS_BLE"):
-            k += ["radio/src/radio_heard.c"]
+            k += ["radio/src/radio_heard.c", "radio/src/radio_hid.c"]
         if on("KODEOS_CONSOLE"):
             k += ["radio/src/radio_verbs.c"]
         if on("KODEOS_WIFI") and on("KODEOS_NET"):
@@ -117,7 +118,7 @@ def sdk_sources(sdk, cfg):
         if on("KODEOS_BLE"):
             d += ["radio/src/kdrv_ble.c", "radio/src/kdrv_ble_tokens.c", "radio/src/kdrv_ble_bonds.c",
                   "radio/src/kdrv_ble_adv.c", "radio/src/kdrv_ble_heard.c", "radio/src/kdrv_ble_app.c",
-                  "radio/src/kdrv_ble_find.c"]
+                  "radio/src/kdrv_ble_find.c", "radio/src/kdrv_ble_hid.c"]
     else:
         d += ["radio/src/kdrv_c5_hold.c"]
     if on("KODE_TEST_DOT"):
@@ -139,7 +140,7 @@ def sdk_sources(sdk, cfg):
 
     kd = ["kode_audio", "kode_battery", "kode_bus", "kode_button", "kode_entry", "kode_event", "kode_file",
           "kode_haptic", "kode_http", "kode_ir", "kode_ir_capture", "kode_ir_file", "kode_led", "kode_motion",
-          "kode_mqtt", "kode_net", "kode_pin", "kode_pin_power", "kode_rfid", "kode_screen_bright",
+          "kode_mqtt", "kode_net", "kode_pin", "kode_pin_power", "kode_rest", "kode_rfid", "kode_screen_bright",
           "kode_screen_sleep", "kode_setting", "kode_standard_ao", "kode_system", "kode_tag", "kode_touch",
           "kode_wifi", "kode_ble"]
     if on("KODEOS_NFC"):
