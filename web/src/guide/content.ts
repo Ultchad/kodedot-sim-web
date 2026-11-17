@@ -1,4 +1,4 @@
-import type { Locale } from '../i18n/core';
+import { translate, type Locale, type TKey } from '../i18n/core';
 import { APP_PACKAGE_EXT } from '../lib/appPackage';
 import { en } from './content.en';
 import { es } from './content.es';
@@ -20,6 +20,10 @@ export function guideVars(): Record<string, string> {
 
 export const fillVars = (text: string, vars: Record<string, string>): string => text.replace(/\{(\w+)\}/g, (m, name: string) => vars[name] ?? m);
 
+/** The page's own labels named in a text (`{t:nav.bench}`), so the guide calls a button what the page calls it. */
+export const UI_LABEL = /\{t:([\w.-]+)\}/g;
+export const fillLabels = (text: string, locale: Locale): string => text.replace(UI_LABEL, (_m, key: string) => translate(locale, key as TKey));
+
 export function guideText(locale: Locale, key: GuideKey, extra?: Record<string, string>): string {
-  return fillVars(GUIDE_DICTS[locale][key] ?? en[key], { ...guideVars(), ...extra });
+  return fillLabels(fillVars(GUIDE_DICTS[locale][key] ?? en[key], { ...guideVars(), ...extra }), locale);
 }

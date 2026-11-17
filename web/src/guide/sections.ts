@@ -193,7 +193,6 @@ export const SECTIONS: readonly Section[] = [
       { t: 'p', k: 'help.crash' },
       { t: 'h', k: 'help.browser.h' },
       { t: 'p', k: 'help.browser' },
-      { t: 'p', k: 'help.embed' },
       { t: 'h', k: 'help.phone.h' },
       { t: 'p', k: 'help.phone' },
       { t: 'h', k: 'help.slow.h' },
