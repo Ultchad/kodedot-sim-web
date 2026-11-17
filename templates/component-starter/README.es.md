@@ -31,7 +31,7 @@ Necesitas la herramienta de línea de comandos `dotbench` (la misma que compila 
    - Una pieza está **apagada hasta que su pin de alimentación esté en un riel y su pin de tierra esté conectado a GND**. La app del Kode Dot debe encender el riel primero (`kode_pin_power_3v3(true)`).
 5. **Añade campos** para todo lo que quieras cambiar mientras funciona: un control de temperatura, una dirección, un interruptor. Cada uno tiene un `name` (minúsculas), una etiqueta en tres idiomas, un `default` y límites.
 6. **Elige el comportamiento.**
-   - **Sin código**: copia `examples/lm75-declarative.manifest.json` o `examples/button-module.manifest.json` y cámbialo. Elementos disponibles: `switch`, `bridge`, `divider`, `source`, `drive`, `i2c_slave`, `h_bridge`, `servo`, `wireless`. Los valores vienen de tus campos.
+   - **Sin código**: copia `examples/lm75-declarative.manifest.json` o `examples/button-module.manifest.json` y cámbialo. Elementos disponibles: `switch`, `bridge`, `divider`, `source`, `drive`, `i2c_slave`, `h_bridge`, `servo`, `led`, `buzzer`, `wireless` (aceptado, pero la mesa aún no simula medios inalámbricos). Los valores vienen de tus campos.
    - **Código Arduino**: edita `src/main.ino`. Lee un campo con `dotbenchField(FIELD_TEMPERATURE)` y publica un valor en la imagen con `dotbenchOutput(OUTPUT_READS, n)`. La cabecera `dotbench_fields.h` se genera a partir del manifiesto al compilar.
 7. **Haz que la imagen reaccione** con `visuals` (un LED que brilla, un texto con un número) y deja que la gente interactúe con `controls` (un botón que se puede pulsar en la imagen).
 8. **Comprueba y prueba.**
@@ -39,14 +39,14 @@ Necesitas la herramienta de línea de comandos `dotbench` (la misma que compila 
    dotbench part check .     # manifiesto, imagen, referencias de pines y campos, traducciones
    dotbench part test .      # compila tu código y ejecuta tests/*.test.json
    ```
-   Edita `tests/sensor.test.json` para que coincida con tu pieza. Pasos: `advance_ms`, `set_field`, `expect_serial`, `i2c`, `expect_output`.
+   Edita `tests/sensor.test.json` para que coincida con tu pieza. Pasos: `advance_ms`, `set_field`, `press`, `expect_serial`, `serial_in`, `i2c`, `spi`, `set_pin`, `expect_pin`, `uart_send`, `expect_uart`, `expect_output`.
 9. **Genera el archivo de la pieza:** `dotbench part build .` produce `<id>-<version>.dotpart`.
 10. **Pruébalo en el navegador.** Abre dotbench, pestaña **Crea la tuya**, suelta el `.dotpart` en **Comprobar mi pieza**, lee lo que dice el diálogo de importación (qué ejecuta, qué pines, qué no puede hacer) e impórtala. Añádela al banco, conecta `3V3` y `GND`, luego los pines de señal al conector (`EXP1` a `EXP14`), y ejecuta tu app del Kode Dot.
 
 ## Conviene saber
 
 - **Qué hace el Kode Dot en el conector:** entrada y salida digital, PWM de salida (1 a 40000 Hz), lectura analógica en `EXP8` a `EXP12` y `EXP14`, I2C **maestro**, SPI **maestro**, UART 8N1. No puede ser esclavo de I2C ni de SPI, así que tu pieza es el esclavo.
-- **Reglas de Arduino:** escribe un sketch normal. Para un esclavo I2C usa `Wire.begin((uint8_t)direccion, SDA, SCL, 100000)` (con el cast). Soportado: GPIO, interrupciones, `analogRead`, PWM (`analogWrite`, `ledc*`), `millis/delay`, `Serial` (se ve en la consola de la pieza), `Serial1/2`, `Wire`. No soportado: tareas FreeRTOS, WiFi, Bluetooth, SD, NeoPixel y otras bibliotecas con temporización de bits. SPI y `Preferences` están planeados.
+- **Reglas de Arduino:** escribe un sketch normal. Para un esclavo I2C usa `Wire.begin((uint8_t)direccion, SDA, SCL, 100000)` (con el cast). Soportado: GPIO, interrupciones, `analogRead`, PWM (`analogWrite`, `ledc*`), `millis/delay`, `Serial` (se ve en la consola de la pieza), `Serial1/2`, `Wire`, `SPI` como maestro, `dacWrite`, `Preferences` (se guarda en memoria hasta que la pieza pierde energía; no se guarda en disco). No soportado: tareas FreeRTOS, WiFi, Bluetooth, SD, NeoPixel y otras bibliotecas con temporización de bits, SPI como esclavo.
 - **El tiempo es virtual.** `delay()` y `millis()` siguen el reloj del banco, así que pausar o avanzar paso a paso el banco pausa tu sketch.
 - **Bibliotecas:** copia la carpeta de la biblioteca en `libraries/`. Las bibliotecas que tocan registros AVR no funcionan.
 - **Límites de la simulación:** las señales son niveles DC y transacciones de bus. El PWM es frecuencia y ciclo de trabajo, no flancos. Los protocolos por bit-banging, el estiramiento del reloj I2C y la corriente no se simulan.
@@ -63,5 +63,5 @@ Necesitas la herramienta de línea de comandos `dotbench` (la misma que compila 
 | "5 V en un pin de 3,3 V" | un riel de 5 V o una pieza de 5 V alimentando un pin de 3,3 V |
 | `check` dice que una posición está fuera de la imagen | `pos` o una región supera `picture.width/height` |
 | `test` dice "undeclared identifier" para una función | añade un prototipo antes del primer uso |
-| insignia "falló" en la pieza | tu código se detuvo (sin memoria, puntero inválido); se reinicia hasta 3 veces |
+| insignia "falló" en la pieza | tu código se detuvo (sin memoria, puntero inválido); la pieza se detiene y aparece un aviso; reiníciala desde su menú |
 | insignia "bucle ocupado" | `loop()` nunca llama a `delay()` ni a nada que bloquee |

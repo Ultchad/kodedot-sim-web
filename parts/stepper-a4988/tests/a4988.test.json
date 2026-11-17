@@ -1,0 +1,141 @@
+{
+  "name": "STEP edges move the shaft by the microstep setting",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "STEP",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "DIR",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "STEP",
+        "level": 1
+      }
+    },
+    {
+      "comment": "one full step forward = 16 sixteenths",
+      "expect_output": {
+        "name": "position",
+        "value": 16
+      }
+    },
+    {
+      "advance_ms": 2
+    },
+    {
+      "set_pin": {
+        "pin": "STEP",
+        "level": 0
+      }
+    },
+    {
+      "advance_ms": 2
+    },
+    {
+      "set_pin": {
+        "pin": "MS1",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "MS2",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "MS3",
+        "level": 1
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "STEP",
+        "level": 1
+      }
+    },
+    {
+      "comment": "1/16 microstep: one more sixteenth",
+      "expect_output": {
+        "name": "position",
+        "value": 17
+      }
+    },
+    {
+      "expect_output": {
+        "name": "microstep",
+        "value": 16
+      }
+    },
+    {
+      "advance_ms": 2
+    },
+    {
+      "set_pin": {
+        "pin": "STEP",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "DIR",
+        "level": 0
+      }
+    },
+    {
+      "advance_ms": 2
+    },
+    {
+      "set_pin": {
+        "pin": "STEP",
+        "level": 1
+      }
+    },
+    {
+      "comment": "DIR low: backwards",
+      "expect_output": {
+        "name": "position",
+        "value": 16
+      }
+    },
+    {
+      "advance_ms": 2
+    },
+    {
+      "set_pin": {
+        "pin": "STEP",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "EN",
+        "level": 1
+      }
+    },
+    {
+      "advance_ms": 2
+    },
+    {
+      "set_pin": {
+        "pin": "STEP",
+        "level": 1
+      }
+    },
+    {
+      "comment": "EN high: disabled, no move",
+      "expect_output": {
+        "name": "position",
+        "value": 16
+      }
+    }
+  ]
+}

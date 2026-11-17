@@ -1,0 +1,71 @@
+{
+  "name": "nSLEEP gates the bridge (module powered by the tester)",
+  "steps": [
+    {
+      "comment": "driver asleep: AIN1 high does nothing",
+      "set_pin": {
+        "pin": "AIN1",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "MOTA_1",
+        "mv_max": 300
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "NSLEEP",
+        "level": 1
+      }
+    },
+    {
+      "comment": "awake: 5 V minus the assumed 0.3 V drop",
+      "expect_pin": {
+        "pin": "MOTA_1",
+        "mv_min": 4300,
+        "mv_max": 4800
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "MOTA_2",
+        "mv_max": 300
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "AIN1",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "AIN2",
+        "level": 1
+      }
+    },
+    {
+      "comment": "reverse",
+      "expect_pin": {
+        "pin": "MOTA_2",
+        "mv_min": 4300,
+        "mv_max": 4800
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "MOTA_1",
+        "mv_max": 300
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "STP_2",
+        "mv_min": 4300,
+        "mv_max": 4800
+      }
+    }
+  ]
+}
