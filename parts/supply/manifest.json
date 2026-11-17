@@ -1,0 +1,130 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.supply",
+  "name": {
+    "en": "Supply 3.3 V / 5 V",
+    "pt-BR": "Fonte 3,3 V / 5 V",
+    "es": "Fuente 3,3 V / 5 V"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A small regulated supply module: choose off, 3.3 V or 5 V. A floating source with 0.2 ohm output resistance; the minus pin is the 0 V of the circuit it feeds. Above 1 A the bench shows an overload hazard. Use it to power a board, a servo or a motor driver without the Kode Dot.",
+    "pt-BR": "Um módulo de fonte regulada pequeno: escolha desligada, 3,3 V ou 5 V. Fonte flutuante com 0,2 ohm de resistência de saída; o pino negativo é o 0 V do circuito que ela alimenta. Acima de 1 A a bancada mostra aviso de sobrecarga. Use para alimentar uma placa, um servo ou um driver de motor sem o Kode Dot.",
+    "es": "Un pequeño módulo de fuente regulada: elige apagada, 3,3 V o 5 V. Fuente flotante con 0,2 ohm de resistencia de salida; el pin negativo es el 0 V del circuito que alimenta. Por encima de 1 A el banco muestra aviso de sobrecarga. Úsala para alimentar una placa, un servo o un driver de motor sin el Kode Dot."
+  },
+  "category": "power",
+  "tags": [
+    "supply",
+    "power",
+    "5v",
+    "3v3",
+    "regulator"
+  ],
+  "keywords": {
+    "en": [
+      "supply",
+      "power",
+      "regulator",
+      "5v",
+      "3.3v",
+      "psu"
+    ],
+    "pt-BR": [
+      "fonte",
+      "alimentação",
+      "regulador",
+      "5v",
+      "3,3v"
+    ],
+    "es": [
+      "fuente",
+      "alimentación",
+      "regulador",
+      "5v",
+      "3,3v"
+    ]
+  },
+  "body": {
+    "w_mm": 22.86,
+    "d_mm": 15.24,
+    "h_mm": 12
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 229,
+    "height": 152
+  },
+  "pins": [
+    {"name":"POS","kind":"io","pos":{"x":101.6,"y":76.2},"mm":{"x":10.16,"y":7.62},"face":"top","label":{"en":"+"},"abs_max_mv":60000},
+    {"name":"NEG","kind":"io","pos":{"x":127,"y":76.2},"mm":{"x":12.7,"y":7.62},"face":"top","label":{"en":"-"},"abs_max_mv":60000}
+  ],
+  "fields": [
+    {
+      "name": "mv",
+      "type": "enum",
+      "label": {
+        "en": "Output",
+        "pt-BR": "Saída",
+        "es": "Salida"
+      },
+      "default": 5000,
+      "values": [
+        {
+          "value": 0,
+          "label": {
+            "en": "Off",
+            "pt-BR": "Desligada",
+            "es": "Apagada"
+          }
+        },
+        {
+          "value": 3300,
+          "label": {
+            "en": "3.3 V"
+          }
+        },
+        {
+          "value": 5000,
+          "label": {
+            "en": "5 V"
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "current_ma",
+      "type": "number",
+      "unit": "mA",
+      "label": {
+        "en": "Current",
+        "pt-BR": "Corrente",
+        "es": "Corriente"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "cell",
+        "pos": "POS",
+        "neg": "NEG",
+        "mv": {
+          "field": "mv"
+        },
+        "ohms": 0.2,
+        "max_ma": 1000,
+        "current_output": "current_ma"
+      }
+    ]
+  }
+}

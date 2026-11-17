@@ -1,0 +1,49 @@
+{
+  "name": "terminal strips are one net, the channel splits them",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "a1",
+        "level": 1
+      }
+    },
+    {
+      "comment": "same strip: a1 and e1 are joined",
+      "expect_pin": {
+        "pin": "e1",
+        "level": 1
+      }
+    },
+    {
+      "comment": "the other half of column 1 is a different net",
+      "expect_pin": {
+        "pin": "f1",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "a1",
+        "level": null
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "j1",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "f1",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "e1",
+        "level": 0
+      }
+    }
+  ]
+}
