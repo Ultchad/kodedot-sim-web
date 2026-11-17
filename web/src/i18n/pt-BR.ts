@@ -105,6 +105,8 @@ export const ptBR: Messages = {
   'status.device': 'Aparelho',
   'status.isolated': 'Isolada entre origens',
   'status.isolated.hint': 'O software do Dot roda em threads do WebAssembly, que exigem uma página isolada entre origens (SharedArrayBuffer).',
+  'status.privacy': 'Privacidade',
+  'status.privacy.body': 'Este site conta visitas com o Vercel Web Analytics: páginas vistas, país, aparelho, navegador e o site de onde você veio. Sem cookies, nada que identifique você, e um visitante não pode ser seguido de um dia para o outro. O seu Dot, os arquivos dele e a sua bancada ficam neste navegador e nunca são enviados para lugar nenhum.',
   'status.yes': 'sim',
   'status.no': 'não',
   'status.idle': 'Parado',

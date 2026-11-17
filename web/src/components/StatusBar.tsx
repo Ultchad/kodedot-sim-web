@@ -170,6 +170,10 @@ function Details({ isolated }: { isolated: boolean }) {
             </dd>
           </dl>
           <p className="m-0 text-[13px] leading-snug text-ink2">{t('status.isolated.hint')}</p>
+          <div className="flex flex-col gap-1 border-t border-hair pt-3" data-testid="status-privacy">
+            <h3 className="text-[14px]">{t('status.privacy')}</h3>
+            <p className="m-0 text-[13px] leading-snug text-ink2">{t('status.privacy.body')}</p>
+          </div>
         </div>
       </Popover>
     </>

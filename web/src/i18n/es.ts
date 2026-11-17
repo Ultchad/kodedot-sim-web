@@ -105,6 +105,8 @@ export const es: Messages = {
   'status.device': 'Dispositivo',
   'status.isolated': 'Aislada entre orígenes',
   'status.isolated.hint': 'El software del Dot se ejecuta en hilos de WebAssembly, que requieren una página aislada entre orígenes (SharedArrayBuffer).',
+  'status.privacy': 'Privacidad',
+  'status.privacy.body': 'Este sitio cuenta visitas con Vercel Web Analytics: páginas vistas, país, dispositivo, navegador y el sitio del que llegaste. Sin cookies, nada que te identifique, y no se puede seguir a un visitante de un día a otro. Tu Dot, sus archivos y tu banco de pruebas se quedan en este navegador y nunca se envían a ningún sitio.',
   'status.yes': 'sí',
   'status.no': 'no',
   'status.idle': 'Detenido',

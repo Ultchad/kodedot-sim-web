@@ -104,6 +104,8 @@ export const en = {
   'status.device': 'Device',
   'status.isolated': 'Cross-origin isolated',
   'status.isolated.hint': 'The Dot\'s software runs in WebAssembly threads, which need a cross-origin isolated page (SharedArrayBuffer).',
+  'status.privacy': 'Privacy',
+  'status.privacy.body': 'This site counts visits with Vercel Web Analytics: pages seen, country, device, browser and the site you came from. No cookies, nothing that identifies you, and a visitor cannot be followed from one day to the next. Your Dot, its files and your bench stay in this browser and are never sent anywhere.',
   'status.yes': 'yes',
   'status.no': 'no',
   'status.idle': 'Idle',
