@@ -62,7 +62,7 @@ export const sha256Hex = async (bytes) => hex(await globalThis.crypto.subtle.dig
 /**
  * @param {{runLLVM: Function}} rt
  * @param {{id: string, defines: string[], manifest: object, picture?: Uint8Array}} board the loaded board (see assets.js)
- * @param {{files: Record<string,string>, options?: {pch?: "auto"|"light"|"stl"|"none", opt?: string, memoryKb?: number, stackKb?: number, main?: string, manifest?: object, tierAvailable?: (t: string)=>boolean}}} req
+ * @param {{files: Record<string,string>, options?: {pch?: "auto"|"light"|"stl"|"none", opt?: string, memoryKb?: number, stackKb?: number, main?: string, manifest?: object}}} req
  */
 export async function compileSketch(rt, board, req, hooks = {}) {
   const t0 = performance.now(), o = req.options ?? {}, bd = board, timings = {};

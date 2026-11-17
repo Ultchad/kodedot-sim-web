@@ -42,7 +42,10 @@ export async function startWorker(rt) {
           post({ type: "prepared", id: m.id, ms: r.ms, stats: { fromCache: assets.loaded.fromCache, fromNetwork: assets.loaded.fromNetwork, moduleMs: assets.moduleMs, warmMs: assets.warmMs } });
         } else if (m.type === "compile") {
           const t0 = performance.now();
-          const o = m.options ?? {}, wantStl = o.pch === "stl" || (o.pch !== "light" && o.pch !== "none" && chooseTier(Object.values(m.files ?? {}).filter((v) => typeof v === "string")) === "stl");
+          const o = { ...(m.options ?? {}) }, hasStl = !!assets.manifest.boards[m.board]?.pchStl;
+          let tier = o.pch === "none" ? "none" : o.pch === "light" || o.pch === "stl" ? o.pch : chooseTier(Object.values(m.files ?? {}).filter((v) => typeof v === "string"));
+          if (tier === "stl" && !hasStl) tier = "light";      // an asset build made with --no-stl: slower, still correct
+          o.pch = tier; m.options = o; const wantStl = tier === "stl";
           const { board, ms } = await ensure({ board: m.board, stl: wantStl });
           const loadMs = Math.round(performance.now() - t0);
           let r;

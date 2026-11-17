@@ -103,14 +103,14 @@ export function createCompiler({ assetsBaseUrl, onProgress = () => {}, cacheName
     async info() {
       const m = await loadManifest();
       const boards = {};
-      for (const [id, b] of Object.entries(m.boards)) boards[id] = { id, name: b.name, core: b.core, partId: b.partId, defaultSketch: b.defaultSketch, pins: b.pins, capabilities: b.capabilities, supported: b.supported, unsupported: b.unsupported, limits: b.limits, bytes: { board: m.files[b.pack].size, stlPch: m.files[b.pchStl].size } };
+      for (const [id, b] of Object.entries(m.boards)) boards[id] = { id, name: b.name, core: b.core, partId: b.partId, defaultSketch: b.defaultSketch, pins: b.pins, capabilities: b.capabilities, supported: b.supported, unsupported: b.unsupported, limits: b.limits, bytes: { board: m.files[b.pack].size, stlPch: b.pchStl ? m.files[b.pchStl].size : 0 } };
       const toolchain = [...m.wasm.core.chunks, ...m.wasm.others.map((o) => o.file), m.sysroot.inc, m.sysroot.lib, m.sysroot.core, m.worker];
-      const names = [...toolchain, ...Object.values(m.boards).flatMap((b) => [b.pack, b.pchStl])];
+      const names = [...toolchain, ...Object.values(m.boards).flatMap((b) => [b.pack, b.pchStl].filter(Boolean))];
       let cached = new Set();
       if (!isNode && typeof caches !== "undefined") { const c = await caches.open(cacheName); for (const n of names) if (await c.match(new URL(n, base).href)) cached.add(n); } else cached = new Set(names);
       const size = (list) => list.reduce((n, f) => n + m.files[f].size, 0), missing = (list) => size(list.filter((f) => !cached.has(f)));
       return { version: m.version, toolchain: m.toolchain, manifestFromCache, boards, notice: m.notice,
-        download: { toolchainBytes: size(toolchain), toolchainMissingBytes: missing(toolchain), perBoard: Object.fromEntries(Object.entries(m.boards).map(([id, b]) => [id, { bytes: size([b.pack]), missingBytes: missing([b.pack]), stlBytes: size([b.pchStl]), stlMissingBytes: missing([b.pchStl]) }])) },
+        download: { toolchainBytes: size(toolchain), toolchainMissingBytes: missing(toolchain), perBoard: Object.fromEntries(Object.entries(m.boards).map(([id, b]) => [id, { bytes: size([b.pack]), missingBytes: missing([b.pack]), stlBytes: size([b.pchStl].filter(Boolean)), stlMissingBytes: missing([b.pchStl].filter(Boolean)) }])) },
         ready: toolchain.every((f) => cached.has(f)) };
     },
     /** Download (or read from the cache) and start the toolchain, and optionally one board. Resolves when a compile can start at once. */
