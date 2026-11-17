@@ -20,7 +20,7 @@ export default defineModel<PartState>({
   title: 'Kode multi-radio module (shape only)',
   footprintMm: footprintOf(M.body),
   build(ctx) {
-    return buildCasedModule(M, { shell: ['matte', '#3e3e41'] }, ctx);
+    return buildCasedModule(M, { shell: ['matte', '#38383b'] }, ctx);
   },
   terminals: terminalsFromManifest(M),
 });
