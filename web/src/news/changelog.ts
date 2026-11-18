@@ -40,31 +40,30 @@ export const LATEST_NOTE_ID = '2026-11-18';
 /** Hand-written entries, newest first. */
 export const NOTES: NewsEntry[] = [
   {
-    // PLACEHOLDER: the coordinator finalises these texts (and LATEST_NOTE_ID) when the update is published.
     id: LATEST_NOTE_ID,
     title: {
-      en: 'Part pictures, new buttons and PDF export',
-      'pt-BR': 'Fotos das peças, botões novos e exportar em PDF',
-      es: 'Fotos de las piezas, botones nuevos y exportar a PDF',
+      en: 'Part pictures, new buttons and kodeOS 0.1.2',
+      'pt-BR': 'Fotos das peças, botões novos e kodeOS 0.1.2',
+      es: 'Fotos de las piezas, botones nuevos y kodeOS 0.1.2',
     },
     points: {
       en: [
         'The parts library now shows a picture of each part.',
         'The Dot runs kodeOS 0.1.2, and follows new releases by itself.',
-        'New button parts to wire on the workbench.',
-        'Export your project as a PDF.',
+        'Five new buttons and switches: 2-pin, 6x6 and 12x12 tactile, latching, and a toggle switch.',
+        'Lay the Dot flat, stand it up or on its side: right-click it on the workbench.',
       ],
       'pt-BR': [
         'A biblioteca de peças agora mostra uma foto de cada peça.',
         'O Dot roda o kodeOS 0.1.2 e acompanha as novas versões sozinho.',
-        'Novos botões para ligar na bancada.',
-        'Exporte seu projeto em PDF.',
+        'Cinco botões e chaves novos: táctil de 2 pinos, 6x6 e 12x12, com trava, e chave alavanca.',
+        'Deite o Dot, coloque de pé ou de lado: clique com o botão direito nele na mesa.',
       ],
       es: [
         'La biblioteca de piezas ahora muestra una foto de cada pieza.',
         'El Dot ejecuta kodeOS 0.1.2 y sigue las nuevas versiones por sí solo.',
-        'Nuevos botones para conectar en la mesa de trabajo.',
-        'Exporta tu proyecto en PDF.',
+        'Cinco botones e interruptores nuevos: táctil de 2 pines, 6x6 y 12x12, con retención, e interruptor de palanca.',
+        'Acuesta el Dot, ponlo de pie o de lado: haz clic derecho sobre él en la mesa.',
       ],
     },
     guide: 'workbench',
