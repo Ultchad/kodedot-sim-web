@@ -15,6 +15,7 @@ import { ModelControls } from './ModelControls';
 import { About } from './TopBar';
 import { ScrollArea, useTabs } from './ui';
 import { GuideButton } from '../guide/entry';
+import { WhatsNewButton } from '../news/WhatsNew';
 
 type Tab = 'bench' | 'console' | 'apps' | 'settings';
 const TABS: readonly Tab[] = ['bench', 'console', 'apps', 'settings'];
@@ -292,6 +293,7 @@ function Settings() {
         <DeviceActions />
         <MockToggle />
         <About />
+        <WhatsNewButton className="self-start" />
       </div>
     </ScrollArea>
   );

@@ -85,7 +85,7 @@ jobs:
         run: |
           git config user.name "Murilo"
           git config user.email "107654893+murilogpapa@users.noreply.github.com"
-          git add tools/pins.env web/public/apps
+          git add tools/pins.env web/public/apps web/src/news/auto.json
           if git diff --cached --quiet; then echo "Nothing changed: already on $TAG."; exit 0; fi
           git commit -q -m "Update to kode-sdk and KodeOS ${TAG}"
           # a plain push: never forced. If main moved since this run began the push is refused and the run fails (the checks were made on

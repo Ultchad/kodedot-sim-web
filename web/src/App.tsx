@@ -14,6 +14,7 @@ import { StatusBar } from './components/StatusBar';
 import { PRODUCT_NAME, TopBar, useCurrentAppName } from './components/TopBar';
 import { useCoarsePointer } from './components/ui';
 import { GuideButton, GuideHost } from './guide/entry';
+import { WhatsNewHost } from './news/WhatsNew';
 
 /** Accepts .dotbench files dropped anywhere on the window. */
 function useWindowDrop() {
@@ -312,6 +313,7 @@ export default function App() {
       {isPhone(layout) ? <PhoneShell /> : <DeskShell />}
       <StatusAnnouncer />
       <GuideHost />
+      <WhatsNewHost />
       {dragging && <DropOverlay />}
     </>
   );
