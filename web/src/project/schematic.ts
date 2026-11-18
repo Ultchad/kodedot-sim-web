@@ -780,7 +780,9 @@ function frame(g: Pen, text: SheetText, n: number, m: number): void {
   g.circle(x0 + 14, y0 + 18, 4, 'amber', 0);
   g.text(x0 + 23, y0 + 16.5, 'KodeDot Sim', 9, { font: 'display' });
   g.text(x0 + 23, y0 + 26, text.heading, 6.4, { ink: 'soft' });
-  cell(x0 + brandW, y0, text.labels.project, text.title, 11, 'display', TB.w - brandW);
+  // a long title is set smaller before it is cut
+  const room = TB.w - brandW;
+  cell(x0 + brandW, y0, text.labels.project, text.title, textWidth(text.title, 11, 'display') > room - 16 ? 8.6 : 11, 'display', room);
   const cw = [136, 62, TB.w - 198];
   let cx = x0;
   const cells: [string, string][] = [[text.labels.date, text.date], [text.labels.rev, 'A'], [text.labels.sheet, `${n} / ${m}`]];

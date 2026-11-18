@@ -909,8 +909,8 @@ Each library card shows a picture of the part's own 3D model (also the "on the t
 
 ## Project export as a PDF (2026-11-18, branch feat/project-pdf)
 
-Run: `npm test` (the `src/project/*.test.ts` files: 26 tests) and `npm run build && UX_PORT=4397 node scripts/project-pdf-check.mjs`
-(headless Chrome, the real page; last run: all 27 passed; `--no-compile` skips the in-page sketch compile).
+Run: `npm test` (the `src/project/*.test.ts` files: 27 tests) and `npm run build && UX_PORT=4397 node scripts/project-pdf-check.mjs`
+(headless Chrome, the real page; last run: all 29 passed; `--no-compile` skips the in-page sketch compile).
 
 - **Bench panel › Bench file › Export project (PDF)**: a small form (title, default "My project, <date>"), then the PDF is
   made in the page and offered for download. **Open a file** takes that PDF as well as the old `bench.kodedot.json`.
@@ -921,28 +921,37 @@ Run: `npm test` (the `src/project/*.test.ts` files: 26 tests) and `npm run build
   (5V, 3V3, VIN) or a cell's plus (+9V), EXPn, a board's pin name (D9), else N1, N2; a second net wanting a taken name
   gets `_2`. Symbol class from the manifest (behaviour elements, category, pins), reference designators (U, R, C, D, SW,
   RV, BZ, M, K, BT; BB for breadboards, which are listed but not drawn), values (ohms, farads, volts).
-- `src/project/schematic.ts` (pure): net-label schematic as drawing operations on A4 landscape sheets with a title
-  block: symbols for resistor, capacitors, diode, LED, RGB LED, switches from their contact sets (push button, 4-pin
-  tact, SPDT, DPDT), potentiometer, buzzer, motor, cell; the Dot, boards, modules, servo, relay and unknown parts as
-  blocks with only their wired pins (all pins when 8 or fewer). Columns, further sheets when full, a small circuit drawn
-  up to 1.7x.
-- `src/project/pdf.ts` + `exportProject.ts` (one lazy chunk): cover (title, date, the table's picture taken from the
-  canvas at about 2000 px through `WorkbenchBus.capture`, counts, how to rebuild), schematic, connections table with
-  tick boxes, parts list, sketches in Courier with line numbers. The bench file is attached as `bench.kodedot.json`
-  (exactly what Save writes, compiled sketches included) and the bench alone is copied into the XMP metadata
-  (`kodedot:bench`, base64) as a fallback: opened from it, sketches must be uploaded again and the page says so.
-- Library: `@cantoo/pdf-lib` 2.11 (the maintained fork of pdf-lib; no eval, no worker, no network, standard 14 fonts).
-  The lazy chunk `exportProject-*.js` is 596 kB, 259 kB gzip, fetched only on export or when a PDF is opened. The
-  unmaintained original pdf-lib 1.17.1 would be about 435 kB / 180 kB gzip and the code uses nothing the original lacks
-  except its import name.
-- Page pictures looked at: `web/screenshots/project-pdf/` (`led-1..4`, `servo-1..5`, `phone-pt-1..4`, `phone-sheet`).
+- Fonts: the site's own (Outfit 600, DM Sans 400/600, DM Mono 400/500; OFL 1.1), cut to Latin-1 by
+  `scripts/pdf-fonts.py` (fonttools, run by hand; it also draws an ohm sign, which none of the three has) into the
+  committed `src/project/fontdata.ts` (79 kB of TrueType). `fonts.ts` measures with them; `pdf.ts` embeds them as
+  composite TrueType fonts with a ToUnicode table (text can be copied and searched), without a font engine.
+- `src/project/schematic.ts` (pure): the sheet reads left to right. The Dot, boards and modules stand on the left as
+  blocks with only their wired pins; what they drive stands to the right in the order of the pins that drive it; parts
+  in series (resistor then LED) share a row and are joined by a real wire carrying the net's name; every other pin ends
+  in a net tag or the ground or supply symbol. Polarised symbols are turned so a row reads from its source. The drawing
+  is centred and scaled (0.8x to 2.4x) to the largest size that keeps it on one sheet; further sheets only when even
+  0.8x does not fit. Frame with zone markers (1-6, A-D) and a title block (maker's mark, project, date, rev., sheet).
+- `src/project/pdf.ts` + `exportProject.ts` (one lazy chunk): cover (band with title, date and count pills, the table's
+  picture, "built around", contents with page numbers, how to rebuild), schematic, connections table (dark header,
+  cream stripes, tick boxes, net names in the schematic's colours), parts list, sketches on code panels with line
+  numbers, the same running head and foot on every page. The picture comes from `WorkbenchBus.capture`: the scene drawn
+  once at 2400 x 1500 with its own camera framing the box of everything on the table from a three-quarter angle.
+  The bench file is attached as `bench.kodedot.json` (exactly what Save writes, compiled sketches included) and the bench
+  alone is copied into the XMP metadata (`kodedot:bench`, base64) as a fallback: opened from it, sketches must be
+  uploaded again and the page says so.
+- Library: `@cantoo/pdf-lib` 2.11 (the maintained fork of pdf-lib; no eval, no worker, no network). The lazy chunk
+  `exportProject-*.js` is 728 kB, 325 kB gzip (about 66 kB gzip of it the five fonts), fetched only on export or when a
+  PDF is opened.
+- Page pictures looked at (150 dpi): `web/screenshots/project-pdf/` (`led-1..4`, `servo-1..5`, `busy-1..6`,
+  `phone-pt-1..4`, `phone-sheet`, and the three `*-bench.png` of the page).
 
 Weak or not done
-- Text is Helvetica/Courier (the standard fonts), not Outfit/DM Sans: embedding them needs a font engine. Characters
-  outside Latin-1 (other than Greek from Symbol) print as "?" in sketches.
-- The cover picture is the view as it is on the screen (theme included); in Device mode there is no picture.
-- Parts without a symbol of their own (sensors, drivers, steppers) are plain blocks. A block side holds 30 pins, more
-  continue in a second block. When a circuit needs two sheets the sheets are not balanced.
-- Legs standing in holes are in the nets but the hole names are not printed (the checklist says what joins what, not
-  which hole).
-- pdftoppm on this machine draws no micro sign in Helvetica, so it is written from Symbol; not checked in Acrobat or Preview.
+- No kerning (the fonts are embedded without their layout tables). Characters outside Latin-1 print as "?" in sketches.
+- In Device mode there is no picture on the cover (the table is not shown), and the lower half of the cover is empty.
+- Parts without a symbol of their own (sensors, drivers, steppers) are plain blocks. A block side holds 28 pins, more
+  continue in a second block. Rows are not aligned with the pin that drives them, and a row that does not fit its
+  column moves to the next one away from its neighbours.
+- Legs standing in holes are in the nets but the hole names are not printed.
+- "Rev. A" in the title block is fixed: the bench has no revisions.
+- The new button parts (feat/buttons) were not in main: their symbols are tested with look-alike manifests only.
+- Looked at through poppler only, not Acrobat or Preview.

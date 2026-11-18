@@ -230,7 +230,7 @@ class Book {
     const foot = (p: Painter, n: number, section: string) => {
       const y = p.h - 30;
       p.text(M, y, section, 8, { color: C.soft });
-      p.text(p.w / 2, y, SITE, 8, { align: 'center', color: C.soft });
+      p.text(p.w / 2, y, `${this.input.t('project.pdf.made')}  ·  ${SITE}`, 8, { align: 'center', color: C.soft });
       const tw = p.text(p.w - M, y, `${n} / ${total}`, 8, { font: 'strong', align: 'right' });
       p.text(p.w - M - tw - 5, y, this.input.t('project.pdf.page'), 8, { align: 'right', color: C.soft });
     };
@@ -266,7 +266,8 @@ function cover(b: Book, image: PDFImage | null, contents: { name: string; page: 
   const lines = wrap(title, 36, boxW, 'display').slice(0, 2);
   const size = lines.length > 1 ? 30 : 36;
   const titleLines = lines.length > 1 ? wrap(title, size, boxW, 'display').slice(0, 2) : lines;
-  const bandH = 190 + titleLines.length * (size + 5) + (image ? 46 : 0);
+  // under the title: the date (20), the counts (24), then the picture, which stands half on the band
+  const bandH = 108 + size + titleLines.length * (size + 5) + 2 + 18 + 24 + (image ? 18 + 64 : 30);
   p.rect(0, 0, A4.w, bandH, { fill: C.band });
   mark(p, M, 52, 11);
   p.text(A4.w - M, 52, SITE, 9, { align: 'right', color: C.soft });
@@ -293,7 +294,7 @@ function cover(b: Book, image: PDFImage | null, contents: { name: string; page: 
   for (const [value, label] of facts) px += pill(p, px, y, value, label) + 8;
   y += 24;
   // the picture stands half on the band
-  y = bandH - (image ? 46 : 0) + (image ? 0 : 30);
+  y = image ? bandH - 64 : bandH + 30;
   if (image) {
     const k = Math.min(boxW / image.width, 330 / image.height);
     const w = image.width * k, h = image.height * k;
@@ -550,7 +551,7 @@ export async function makeProjectPdf(input: ProjectPdfInput): Promise<Uint8Array
   const all = doc.getPages();
   for (const p of b.sheets) {
     const y = SHEET.h - 9;
-    p.text(22, y, `KodeDot Sim  ·  ${SITE}`, 6.6, { color: C.soft });
+    p.text(22, y, `${t('project.pdf.made')}  ·  ${SITE}`, 6.6, { color: C.soft });
     p.text(SHEET.w - 22, y, `${t('project.pdf.page')} ${all.indexOf(p.page) + 1} / ${all.length}`, 6.6, { align: 'right', color: C.soft });
   }
 

@@ -73,7 +73,7 @@ export async function exportProjectPdf(ctx: ExportContext): Promise<{ bytes: Uin
     const files = own?.length ? own.map((f) => ({ name: f.name, text: f.text })) : running?.source ? [{ name: 'sketch.ino', text: running.source }] : [];
     if (files.length) sketches.push({ board: `${part.ref} ${nameOf(part, locale)}`, files });
   }
-  const shot = bus.capture?.(2000) ?? null;
+  const shot = bus.capture?.(2400, 1500) ?? null;
   const picture = shot ? await jpegOf(shot) : null;
   const file = await benchFileContent(bench, parts);
   const title = ctx.title.trim() || t('benchfile.export.default', { date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date()) });

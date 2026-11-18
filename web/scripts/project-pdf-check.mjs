@@ -104,7 +104,7 @@ function examine(name, bytes, want) {
   const qpdf = run('qpdf', ['--check', pdf]);
   check(`${name}: a valid PDF (${bytes.length} bytes, ${pages} pages) with the bench attached`, bytes.subarray(0, 5).toString() === '%PDF-' && /bench\.kodedot\.json/.test(list) && /No syntax or stream encoding errors/.test(qpdf), qpdf.split('\n').filter((l) => /error|warn/i.test(l)).join(' | ').slice(0, 200));
   check(`${name}: the attachment is the bench as the page holds it`, !!inside && inside.format === 'kodedot-bench' && JSON.stringify(inside.bench) === JSON.stringify(want.bench), inside ? `${inside.bench.objects.length} things, ${inside.bench.wires.length} wires, compiled sketches: ${Object.keys(inside.extras?.code ?? {}).join(',') || 'none'}` : 'no JSON inside');
-  run('pdftoppm', ['-r', '110', '-png', pdf, join(out, name)]);
+  run('pdftoppm', ['-r', '150', '-png', pdf, join(out, name)]);
   return { text, pages, inside, pdf };
 }
 
@@ -145,7 +145,7 @@ try {
   const led = await exportByKeyboard(page, D, 'LED on EXP1');
   check('LED bench: the export button opens its form by keyboard, the title field has the focus and a default with the date', led.focused === 'project-title' && /^My project, /.test(led.offered), `"${led.offered}"; message: ${led.message}`);
   const ledPdf = examine('led', led.bytes, before);
-  check('LED bench: the PDF names the parts, the nets and the value', ['LED on EXP1', 'U1', 'R1', 'D1', '220', 'EXP1', 'N1', 'GND', 'U1.EXP1', 'R1.A', 'D1.K', 'BB1', 'Made with KodeDot Sim', 'kodedot.murilogp.dev'].every((w) => ledPdf.text.includes(w)), ['LED on EXP1', 'U1', 'R1', 'D1', '220', 'EXP1', 'N1', 'GND', 'U1.EXP1', 'R1.A', 'D1.K', 'BB1', 'Made with KodeDot Sim'].filter((w) => !ledPdf.text.includes(w)).join(',') || `${ledPdf.pages} pages`);
+  check('LED bench: the PDF names the parts, the nets and the value', ['LED on EXP1', 'U1', 'R1', 'D1', '220', 'EXP1', 'N1', 'GND', 'U1.EXP1', 'R1.A', 'D1.K', 'BB1', 'Made with KodeDot Sim', 'kodedot.murilogp.dev', 'Contents'].every((w) => ledPdf.text.includes(w)), ['LED on EXP1', 'U1', 'R1', 'D1', '220', 'EXP1', 'N1', 'GND', 'U1.EXP1', 'R1.A', 'D1.K', 'BB1', 'Made with KodeDot Sim'].filter((w) => !ledPdf.text.includes(w)).join(',') || `${ledPdf.pages} pages`);
   check('LED bench: the cover carries a picture of the table', /image|jpeg/i.test(run('pdfimages', ['-list', ledPdf.pdf])), run('pdfimages', ['-list', ledPdf.pdf]).split('\n').slice(2, 3).join(''));
 
   const empty = async () => {
@@ -246,10 +246,79 @@ try {
     }
     check('Servo bench: after the import the Uno runs its sketch without compiling again (the servo sweeps)', angles.size >= 4, `angles ${[...angles].sort((x, y) => x - y).slice(0, 8).join(',')}`);
   }
+  // ---- 3. a busier bench: the Dot with the Robotics module and a motor, an Uno with three LEDs, a button, a switch, a servo, a potentiometer
+  await empty();
+  await D(async () => {
+    const d = window.__dotbench;
+    const put = async (id, at, fields) => {
+      const o = await d.parts.place(`dotbench.${id}`, id, at);
+      if (fields) d.bench.setFields(o.id, fields);
+      return o.id;
+    };
+    const mod = await put('kode-robotics', { x: -150, z: -80 });
+    d.parts.mount(mod, 'upright');
+    const motor = await put('dc-motor', { x: -110, z: 60 });
+    const uno = await put('uno-r3', { x: 130, z: -70 });
+    const bb = await put('breadboard-half', { x: 130, z: 40 });
+    const board = d.bench.get(bb);
+    const stand = async (id, leg, hole, fields) => {
+      const pid = await put(id, { x: 300, z: 150 }, fields);
+      const o = d.bench.get(pid);
+      const h = d.parts.terms(board.kind).find((t) => t.name === hole), l = d.parts.terms(o.kind).find((t) => t.name === leg);
+      d.bench.move(pid, { x: board.pos.x + h.x - l.x, z: board.pos.z + h.z - l.z });
+      return pid;
+    };
+    const wire = (a, b2, c) => d.bench.addWire(a, b2, c);
+    const leds = ['led-red', 'led-yellow', 'led-green'];
+    for (const [i, pin] of ['D3', 'D5', 'D6'].entries()) {
+      const c = 2 + i * 8;
+      await stand('resistor', 'A', `a${c}`, { ohms: 220 });
+      await stand(leds[i], 'A', `b${c + 4}`);
+      wire(`${uno}.${pin}`, `${bb}.e${c}`, ['#d9412b', '#e9b824', '#2f9e5b'][i]);
+    }
+    wire(`${bb}.e7`, `${uno}.GND_1`, '#26282c');
+    wire(`${bb}.d15`, `${bb}.d7`, '#26282c');
+    wire(`${bb}.d23`, `${bb}.d15`, '#26282c');
+    await stand('push-button', 'A', 'c26');
+    wire(`${uno}.D2`, `${bb}.e26`, '#2f6fdb');
+    wire(`${bb}.e28`, `${bb}.c23`, '#26282c');
+    const sw = await put('slide-switch', { x: 250, z: 60 });
+    wire(`${uno}.D4`, `${sw}.COM`, '#8a52c7');
+    wire(`${sw}.A`, `${uno}.V5`, '#d9412b');
+    wire(`${sw}.B`, `${bb}.c7`, '#26282c');
+    const servo = await put('servo', { x: 270, z: -70 });
+    wire(`${uno}.D9`, `${servo}.SIG`, '#e8792a');
+    wire(`${uno}.V5`, `${servo}.V5`, '#d9412b');
+    wire(`${uno}.GND_2`, `${servo}.GND`, '#26282c');
+    const pot = await put('potentiometer', { x: 290, z: 20 });
+    wire(`${uno}.A0`, `${pot}.W`, '#e9b824');
+    wire(`${pot}.T`, `${uno}.V5`, '#d9412b');
+    wire(`${pot}.B`, `${bb}.a7`, '#26282c');
+    wire(`${mod}.MOTA_1`, `${motor}.M1`, '#d9412b');
+    wire(`${mod}.MOTA_2`, `${motor}.M2`, '#26282c');
+    wire('device.EXP3', `${uno}.D0`, '#2f9e5b');
+    wire('device.EXP4', `${uno}.D1`, '#eceae4');
+    wire('device.GND', `${uno}.GND_T`, '#26282c');
+  });
+  await until(async () => (await b.engine()).parts.length === 14 && (await b.engine()).wires.length >= 22 + 14, 30000, 200);
+  await D(() => window.__dotbenchWb.frameAll());
+  await b.settled();
+  await sleep(2000);
+  before = await snap(D);
+  await b.shot('../project-pdf/busy-bench');
+  const busy = await exportByKeyboard(page, D, 'Sorting station: Dot, Robotics module and an Uno');
+  const busyPdf = examine('busy', busy.bytes, before);
+  check('Busy bench: the PDF has the Dot, the module, the Uno and every part on one drawing', ['U1', 'U2', 'U3', 'Kode Robotics', 'R1', 'R2', 'R3', 'D1', 'D2', 'D3', 'SW1', 'SW2', 'RV1', 'M1', 'M2', 'BB1', 'EXP3', 'D9', 'A0'].every((w) => busyPdf.text.includes(w)), ['U1', 'U2', 'U3', 'Kode Robotics', 'R1', 'R2', 'R3', 'D1', 'D2', 'D3', 'SW1', 'SW2', 'RV1', 'M1', 'M2', 'BB1', 'EXP3', 'D9', 'A0'].filter((w) => !busyPdf.text.includes(w)).join(',') || `${busyPdf.pages} pages, ${before.plugs.length} parts in holes, mounted: ${Object.keys(before.bench.mounts)}`);
+  await empty();
+  msg = await openFile(page, busyPdf.pdf);
+  await until(async () => (await b.engine()).parts.length === 14 && (await b.engine()).wires.length === before.engineWires.length, 40000, 250);
+  after = await snap(D);
+  check('Busy bench: the PDF opened again is the same bench (the module on the header, legs in holes, 22 wires)', !same(before, after).length, same(before, after).map((k) => `${k}: ${JSON.stringify(before[k]).slice(0, 160)} -> ${JSON.stringify(after[k]).slice(0, 160)}`).join('; ') || msg);
+
   check('No page errors (the strict CSP included)', b.problems.length === 0, b.problems.slice(0, 4).join(' | '));
   await page.close();
 
-  // ---- 3. Portuguese, on a phone: export and import from the sheet
+  // ---- 4. Portuguese, on a phone: export and import from the sheet
   const phone = await openPage(b.browser, { id: '390x844', w: 390, h: 844, touch: true, phone: true }, { mode: 'workbench', lang: 'pt-BR', prefs: { 'dotbench.welcome': 'seen', 'dotbench.left': 'bench' } });
   const P = (fn, ...a) => phone.page.evaluate(fn, ...a);
   await waitRunning(phone.page, 90000);
@@ -275,7 +344,7 @@ try {
   const pt = await exportByKeyboard(phone.page, P, 'LED no EXP1 (celular)');
   await phone.page.screenshot({ path: join(out, 'phone-sheet.png') });
   const ptPdf = examine('phone-pt', pt.bytes, pbefore);
-  check('Phone: the PDF is in Portuguese', ['Esquema', 'Conexões', 'Lista de peças', 'Como remontar', 'Feito com o KodeDot Sim', 'LED vermelho'].every((w) => ptPdf.text.includes(w)), ['Esquema', 'Conexões', 'Lista de peças', 'Como remontar', 'Feito com o KodeDot Sim', 'LED vermelho'].filter((w) => !ptPdf.text.includes(w)).join(','));
+  check('Phone: the PDF is in Portuguese', ['Esquema', 'Conexões', 'Lista de peças', 'Como remontar', 'Feito com o KodeDot Sim', 'LED vermelho', 'Conteúdo'].every((w) => ptPdf.text.includes(w)), ['Esquema', 'Conexões', 'Lista de peças', 'Como remontar', 'Feito com o KodeDot Sim', 'LED vermelho', 'Conteúdo'].filter((w) => !ptPdf.text.includes(w)).join(','));
   await P(() => {
     const s = window.__dotbench.bench;
     s.removeMany(s.getState().objects.map((o) => o.id));
