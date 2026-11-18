@@ -46,8 +46,8 @@ export interface PartManifest {
   fields?: PartField[];
   controls?: PartControl[];
   picture?: { file: string; width: number; height: number };
-  behaviour: { type: string; core?: string; sources?: string[] };
-  mount?: MountGeo & { via?: string; orientations?: MountSide[] };
+  behaviour: { type: string; core?: string; sources?: string[]; elements?: { type: string; [key: string]: unknown }[] };
+  mount?: MountGeo & { via?: string; orientations?: MountSide[]; pins?: { pin: string; gpio: number }[]; rails?: { pin: string; rail: string }[] };
   groups?: { pins: string[] }[];
 }
 export interface LibraryEntry {
