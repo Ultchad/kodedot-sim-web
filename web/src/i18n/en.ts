@@ -203,6 +203,7 @@ export const en = {
   'welcome.dismiss': 'Got it',
   'app.descriptor': 'A Kode Dot simulator in your browser',
   'app.unofficial': 'Unofficial community project, not made by Kode.',
+  'app.source': 'Source code',
   'nav.bench.short': 'Bench',
   'welcome.body.side': 'Swipe sideways to unlock, open the app list and tap an app. Hold the bottom button for 3 seconds to come back to kodeOS.',
   'drop.app': 'App package (.zip)',

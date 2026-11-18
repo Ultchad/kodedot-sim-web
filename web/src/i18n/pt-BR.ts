@@ -204,6 +204,7 @@ export const ptBR: Messages = {
   'welcome.dismiss': 'Entendi',
   'app.descriptor': 'Um simulador do Kode Dot no seu navegador',
   'app.unofficial': 'Projeto da comunidade, não oficial da Kode.',
+  'app.source': 'Código-fonte',
   'nav.bench.short': 'Bancada',
   'welcome.body.side': 'Deslize para o lado para desbloquear, abra a lista de apps e toque em um app. Segure o botão de baixo por 3 segundos para voltar ao kodeOS.',
   'drop.app': 'Pacote de app (.zip)',

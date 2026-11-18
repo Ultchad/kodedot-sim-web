@@ -204,6 +204,7 @@ export const es: Messages = {
   'welcome.dismiss': 'Entendido',
   'app.descriptor': 'Un simulador del Kode Dot en tu navegador',
   'app.unofficial': 'Proyecto comunitario, no oficial de Kode.',
+  'app.source': 'Código fuente',
   'nav.bench.short': 'Banco',
   'welcome.body.side': 'Desliza hacia un lado para desbloquear, abre la lista de apps y toca una app. Mantén pulsado el botón inferior 3 segundos para volver a kodeOS.',
   'drop.app': 'Paquete de app (.zip)',
