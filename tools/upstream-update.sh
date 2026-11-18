@@ -190,6 +190,9 @@ step stage stage_step
 # ---------------------------------------------------------------- news
 news_step() {   # the visitors' "What's new" card: one line of data, the page writes the texts (web/src/news/changelog.ts)
     [ -n "$TO" ] || { echo "verify only: the changelog stays as it is"; return 0; }
+    # the release the last commit is on: a run forced onto that same release again is not news
+    local was; was="$(git show HEAD:tools/pins.env 2>/dev/null | sed -n 's/^KODEOS_TAG=//p')"
+    [ "$was" != "$TO" ] || { echo "kodeOS is already on $TO: nothing to announce"; return 0; }
     node "$ROOT/tools/news-add.mjs" kodeos "$TO"
 }
 step news news_step
