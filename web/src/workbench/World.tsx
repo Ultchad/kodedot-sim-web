@@ -15,7 +15,7 @@
  */
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { BackSide, BufferGeometry, Group, MeshBasicMaterial, MeshStandardMaterial, Raycaster, Vector2, Vector3, type Intersection, type Mesh, type Quaternion } from 'three';
+import { BackSide, BufferGeometry, Group, MeshBasicMaterial, MeshStandardMaterial, Raycaster, Vector2, Vector3, type Intersection, type Mesh, type PerspectiveCamera, type Quaternion } from 'three';
 import type { MotionPose } from '../device/motion';
 import type { IrRemoteHandle } from '../bench/drivers/ir';
 import { getKind } from '../bench/kinds';
@@ -33,7 +33,8 @@ import { nextValue, turnValueAt } from '../bench3d/controls';
 import type { PartModel } from '../bench3d/contract';
 import { bodyDims } from '../lib/bodyModel';
 import type { Pick } from './bodies';
-import { DOT_ID, GRID, SD_ID, SIZES, clampToMat, hasBody, isFree, isNear, obstacles, settle, snap, zoneOf, type Placed, type Pos } from './layout';
+import { OrbitRig, WB_FOV } from './camera';
+import { DOT, DOT_ID, GRID, SD_ID, SIZES, clampToMat, hasBody, isFree, isNear, obstacles, settle, snap, zoneOf, type Placed, type Pos } from './layout';
 import { KIND_MIME, type Selection, type WorkbenchBus } from './state';
 import { getModel } from '../bench3d/registry';
 import { magnet, magnetRelease, magnetStart, quarterMarks, stepAngle, type MagnetState, type Mark } from '../lib/magnet';
@@ -86,7 +87,7 @@ const TURN_MARKS: Mark[] = quarterMarks();
 const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function World({ deps, active, dark, storePose, onApi }: WorldProps) {
-  const { gl, size, camera, invalidate } = useThree();
+  const { gl, size, camera, invalidate, scene } = useThree();
   const world = useMemo(() => {
     // a part without a model of its own gets a body made from its manifest (once per part id)
     const made = new Map<string, PartModel>();
@@ -549,6 +550,61 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     world.rig.jump();
     invalidate();
   }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- a picture of the table for the project export: only what is on it, from a three-quarter angle, with many pixels
+  useEffect(() => {
+    if (!active) return;
+    const capture = (width = 2400, height = 1500): HTMLCanvasElement | null => {
+      const el = gl.domElement;
+      if (!el.clientWidth || !el.clientHeight) return null;
+      const limit = Math.min(4096, gl.capabilities.maxTextureSize || 4096);
+      const k = Math.min(1, limit / width, limit / height);
+      const w = Math.round(width * k), h = Math.round(height * k);
+      // the box of everything that stands on the table, the Dot included
+      const b = world.bodies.bounds();
+      const box = { x0: Math.min(-DOT.hw - 6, b?.x0 ?? 0), x1: Math.max(DOT.hw + 6, b?.x1 ?? 0), z0: Math.min(-DOT.hd - 6, b?.z0 ?? 0), z1: Math.max(DOT.hd + 6, b?.z1 ?? 0) };
+      const rig = new OrbitRig();
+      rig.frame(box, Math.max(world.contentHeight(), 30), w / h, { pol: (48 * Math.PI) / 180, az: (-24 * Math.PI) / 180, margin: 1.1 });
+      rig.jump();
+      const cam = (live.current.camera as PerspectiveCamera).clone();
+      cam.fov = WB_FOV;
+      cam.aspect = w / h;
+      cam.position.copy(rig.pos);
+      cam.up.set(0, 1, 0);
+      cam.lookAt(rig.look);
+      cam.updateProjectionMatrix();
+      cam.updateMatrixWorld(true);
+      const before = gl.getPixelRatio();
+      const shown = handle.current?.visible ?? false;
+      const out = document.createElement('canvas');
+      try {
+        if (handle.current) handle.current.visible = false;
+        gl.setPixelRatio(1);
+        gl.setSize(w, h, false);
+        gl.render(scene, cam);
+        out.width = w;
+        out.height = h;
+        const c = out.getContext('2d');
+        if (!c) return null;
+        // the canvas is see-through past the desk: the table's own cream goes behind it
+        c.fillStyle = '#ece4d6';
+        c.fillRect(0, 0, w, h);
+        c.drawImage(el, 0, 0, w, h);
+        return out;
+      } catch {
+        return null;
+      } finally {
+        if (handle.current) handle.current.visible = shown;
+        gl.setPixelRatio(before);
+        gl.setSize(live.current.size.width, live.current.size.height, false);
+        invalidate();
+      }
+    };
+    deps.bus.capture = capture;
+    return () => {
+      if (deps.bus.capture === capture) deps.bus.capture = null;
+    };
+  }, [active, gl, scene, world, invalidate, deps.bus]);
 
   // ---- commands from the page
   useEffect(

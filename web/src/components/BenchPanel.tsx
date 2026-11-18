@@ -459,32 +459,78 @@ function SensorControls() {
   );
 }
 
-/** The whole bench (places, wires, parts, code, imported parts) as one file: saved and opened here. */
+/** The whole bench (places, wires, parts, code, imported parts) as one file: saved and opened here; and as a project PDF that opens again too. */
 function BenchFile() {
-  const { t } = useI18n();
-  const { bench, parts, select } = useHost();
+  const { t, locale } = useI18n();
+  const { bench, parts, select, bus } = useHost();
   const input = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const save = async () => {
-    const data = { format: 'kodedot-bench', version: 1, bench: bench.exportData(), extras: await parts.exportExtras() };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  /** The title the project PDF will carry while its small form is open; null when it is closed. */
+  const [title, setTitle] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const exportButton = useRef<HTMLButtonElement>(null);
+  const download = (blob: Blob, name: string) => {
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'bench.kodedot.json';
+    a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
+  const save = async () => {
+    const data = { format: 'kodedot-bench', version: 1, bench: bench.exportData(), extras: await parts.exportExtras() };
+    download(new Blob([JSON.stringify(data)], { type: 'application/json' }), 'bench.kodedot.json');
+  };
+  type FileData = { format?: string; bench?: unknown; extras?: Parameters<typeof parts.importExtras>[0] };
+  const apply = async (data: FileData) => {
+    if (data.format !== 'kodedot-bench' || !data.bench) throw new Error('format');
+    await parts.importExtras(data.extras);
+    select.clear();
+    if (!bench.importData(data.bench)) throw new Error('bench');
+  };
   const open = async (file: File | undefined) => {
     if (!file) return;
+    setMsg(null);
+    const count = () => bench.getState().objects.length;
     try {
-      const data = JSON.parse(await file.text()) as { format?: string; bench?: unknown; extras?: Parameters<typeof parts.importExtras>[0] };
-      if (data.format !== 'kodedot-bench' || !data.bench) throw new Error('format');
-      await parts.importExtras(data.extras);
-      select.clear();
-      if (!bench.importData(data.bench)) throw new Error('bench');
-      setMsg({ ok: true, text: t('benchfile.opened', { count: bench.getState().objects.length }) });
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const pdf = bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; // "%PDF"
+      if (pdf) {
+        // the PDF reader comes with the exporter, fetched only now
+        const { readProjectPdf, ProjectPdfError } = await import('../project/exportProject');
+        try {
+          const got = await readProjectPdf(bytes);
+          await apply(got.data as FileData);
+          setMsg({ ok: true, text: t(got.from === 'attachment' ? 'benchfile.opened' : 'benchfile.pdf.partial', { count: count() }) });
+        } catch (e) {
+          setMsg({ ok: false, text: t(e instanceof ProjectPdfError && e.reason === 'none' ? 'benchfile.pdf.none' : 'benchfile.pdf.bad') });
+        }
+        return;
+      }
+      await apply(JSON.parse(new TextDecoder().decode(bytes)) as FileData);
+      setMsg({ ok: true, text: t('benchfile.opened', { count: count() }) });
     } catch {
       setMsg({ ok: false, text: t('benchfile.bad') });
+    }
+  };
+  const closeForm = () => {
+    setTitle(null);
+    exportButton.current?.focus();
+  };
+  const exportPdf = async () => {
+    if (busy || title === null) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const { exportProjectPdf } = await import('../project/exportProject');
+      const made = await exportProjectPdf({ bench, parts, bus, t, locale, title });
+      download(new Blob([made.bytes as BlobPart], { type: 'application/pdf' }), made.file);
+      setMsg({ ok: true, text: t('benchfile.export.done', { file: made.file }) });
+      setTitle(null);
+    } catch (e) {
+      setMsg({ ok: false, text: t('benchfile.export.fail', { error: String((e as Error)?.message ?? e) }) });
+    } finally {
+      setBusy(false);
     }
   };
   return (
@@ -499,8 +545,52 @@ function BenchFile() {
           <Icon name="folder" size={16} />
           {t('benchfile.open')}
         </button>
-        <input ref={input} type="file" accept=".json,application/json" className="sr-only" tabIndex={-1} onChange={(e) => (void open(e.target.files?.[0]), (e.target.value = ''))} data-testid="bench-file-input" />
+        <button
+          ref={exportButton}
+          type="button"
+          className="btn btn-sm"
+          aria-expanded={title !== null}
+          aria-controls="project-export-form"
+          onClick={() => (title === null ? setTitle(t('benchfile.export.default', { date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date()) })) : setTitle(null))}
+          data-testid="project-export"
+        >
+          <Icon name="file" size={16} />
+          {t('benchfile.export')}
+        </button>
+        <input ref={input} type="file" accept=".json,.pdf,application/json,application/pdf" className="sr-only" tabIndex={-1} onChange={(e) => (void open(e.target.files?.[0]), (e.target.value = ''))} data-testid="bench-file-input" />
       </div>
+      {title !== null && (
+        <form
+          id="project-export-form"
+          className="inner flex flex-col gap-2 p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void exportPdf();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              closeForm();
+            }
+          }}
+          data-testid="project-export-form"
+        >
+          <label className="flex flex-col gap-1 text-[13.5px] font-semibold">
+            {t('benchfile.export.name')}
+            <input className="field-input" type="text" value={title} maxLength={120} autoFocus onFocus={(e) => e.target.select()} onChange={(e) => setTitle(e.target.value)} autoComplete="off" data-testid="project-title" />
+          </label>
+          <p className="m-0 text-[13px] leading-snug text-ink2">{t('benchfile.export.hint')}</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className="btn btn-sm btn-primary" disabled={busy} data-testid="project-export-go">
+              <Icon name="download" size={16} />
+              {t(busy ? 'benchfile.export.busy' : 'benchfile.export.go')}
+            </button>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={closeForm} disabled={busy} data-testid="project-export-cancel">
+              {t('benchfile.export.cancel')}
+            </button>
+          </div>
+        </form>
+      )}
       {msg && (
         <p className={`m-0 text-[13.5px] ${msg.ok ? 'text-ink2' : 'text-[var(--red-text)]'}`} role="status" data-testid="bench-file-message">
           {msg.text}

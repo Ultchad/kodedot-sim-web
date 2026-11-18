@@ -19,6 +19,7 @@
     "check:headless": "node scripts/headless-check.mjs"
   },
   "dependencies": {
+    "@cantoo/pdf-lib": "^2.11.1",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-cpp": "^6.0.3",
     "@codemirror/language": "^6.13.1",

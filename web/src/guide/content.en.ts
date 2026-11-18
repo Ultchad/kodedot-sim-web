@@ -134,7 +134,7 @@ export const en = {
   'wb.reset.h': 'Reset and BOOT',
   'wb.reset': 'A board\'s buttons work: press the switch on the board itself, or hold the button under **{t:parts.buttons}** in its card. Reset (EN on the ESP32 boards) restarts the sketch.',
   'wb.file.h': 'Saving the bench',
-  'wb.file': 'The table is kept in this browser as you work. **{t:benchfile.title}** › **{t:benchfile.save}**, at the bottom of the **{t:nav.bench}** panel, writes all of it to `bench.kodedot.json`: things, places, wires, sketches with their compiled code, and parts you imported. **{t:benchfile.open}** replaces the table with a saved one, and [[Ctrl]]+[[Z]] takes that back.',
+  'wb.file': 'The table is kept in this browser as you work. **{t:benchfile.title}** › **{t:benchfile.save}**, at the bottom of the **{t:nav.bench}** panel, writes all of it to `bench.kodedot.json`: things, places, wires, sketches with their compiled code, and parts you imported. **{t:benchfile.open}** replaces the table with a saved one, and [[Ctrl]]+[[Z]] takes that back. **{t:benchfile.export}** makes a PDF of the project instead: a cover with a picture of the table, the schematic, the connections table, the parts list and the sketches. The bench travels inside that PDF, so **{t:benchfile.open}** takes it too.',
   'wb.ex1.h': 'Worked example: an LED switched by the GPIO app',
   'wb.ex1.1': 'Switch to **{t:mode.workbench}** and open **{t:nav.components}**. From the library, put a **Breadboard, half size**, an **LED red 5 mm** and a **Resistor** on the table.',
   'wb.ex1.2': 'Select the resistor and set **Resistance** to 220 Ω in its card.',
