@@ -1,16 +1,18 @@
 /**
- * The circuit as schematic sheets, in the net-label style: every part is its symbol with its reference and value, and
- * every connected pin ends in a short stub with the name of its net (or the ground or supply symbol), so no wire has
- * to cross the sheet. Pure: it makes drawing operations in points (origin top-left, Y down); project/pdf.ts paints them.
+ * The circuit as schematic sheets. Every part is its symbol with its reference and value; the sheet reads from left to
+ * right: the Dot and the boards stand on the left, what they drive on the right, in the order of the pins that drive
+ * it. Parts in series share a row and are joined by a real wire; every other connected pin ends in the name of its net
+ * (a tag, or the ground or supply symbol), so no long wire crosses the sheet. A small circuit is drawn large.
+ * Pure: it makes drawing operations in points (origin top-left, Y down); project/pdf.ts paints them.
  */
-import type { Project, ProjectPart, ProjectPin } from './nets';
+import { fit, textWidth, type FontId } from './fonts';
+import type { Project, ProjectNet, ProjectPart, ProjectPin } from './nets';
 
-export type Ink = 'ink' | 'soft' | 'faint' | 'net' | 'supply' | 'paper';
-export type Font = 'sans' | 'bold' | 'mono';
+export type Ink = 'ink' | 'soft' | 'faint' | 'line' | 'net' | 'netFill' | 'supply' | 'paper' | 'cream' | 'card' | 'amber';
 export type Op =
   | { t: 'line'; pts: number[]; w?: number; ink?: Ink; fill?: Ink; close?: boolean }
   | { t: 'circle'; x: number; y: number; r: number; w?: number; ink?: Ink; fill?: Ink }
-  | { t: 'text'; x: number; y: number; text: string; size: number; font?: Font; align?: 'left' | 'center' | 'right'; ink?: Ink };
+  | { t: 'text'; x: number; y: number; text: string; size: number; font?: FontId; align?: 'left' | 'center' | 'right'; ink?: Ink };
 
 export interface Placed {
   ref: string;
@@ -21,59 +23,89 @@ export interface Placed {
 }
 export interface Sheet {
   ops: Op[];
-  /** Where each symbol stands (for the tests: nothing overlaps, nothing leaves the frame). */
+  /** Where each symbol stands, its labels included (for the tests: nothing overlaps, nothing leaves the frame). */
   placed: Placed[];
+  /** How much larger than its natural size the drawing is. */
+  scale: number;
 }
 export interface SheetText {
   title: string;
   date: string;
   /** "Schematic". */
   heading: string;
-  /** "Sheet {n} of {m}" with both numbers filled in. */
-  sheet(n: number, m: number): string;
+  /** Captions of the title block. */
+  labels: { project: string; date: string; sheet: string; rev: string };
   /** A part's name in the page language. */
   name(part: ProjectPart): string;
-  /** Shown when nothing is wired. */
+  /** Shown when nothing is on the table. */
   empty: string;
 }
 
 /** A4 landscape, points. */
 export const SHEET = { w: 841.89, h: 595.28 };
-const FRAME = 20;
-const STRIP = 24;
-const AREA = { x0: FRAME + 10, y0: FRAME + 12, x1: SHEET.w - FRAME - 10, y1: SHEET.h - FRAME - STRIP - 10 };
-const GAP = 12;
-const SMALL_W = 196;
-const BLOCK_W = 252;
-const BODY_W = 112;
-const PITCH = 14;
-const MAX_ROWS = 30;
-const STUB = 12;
-const LABEL = 7;
+const EDGE = 22; // paper edge to the outer frame line
+const BAND = 11; // the band of zone markers between the two frame lines
+const INNER = { x0: EDGE + BAND, y0: EDGE + BAND, x1: SHEET.w - EDGE - BAND, y1: SHEET.h - EDGE - BAND };
+const TB = { w: 304, h: 62 };
+const PAD = 16;
+/** Where symbols may stand: inside the frame, above the title block. */
+const AREA = { x0: INNER.x0 + PAD, y0: INNER.y0 + PAD, x1: INNER.x1 - PAD, y1: INNER.y1 - TB.h - PAD };
 
-/** A fair guess of a text's width (Helvetica), for boxes and for cutting long names. */
-export const widthOf = (text: string, size: number, font: Font = 'sans'): number => text.length * size * (font === 'mono' ? 0.6 : font === 'bold' ? 0.58 : 0.52);
-const cut = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+const PITCH = 14;
+const STUB = 14;
+const MAX_ROWS = 28;
+const LABEL = 6.4;
+const cutTo = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
 class Pen {
   ops: Op[] = [];
-  line(pts: number[], w = 0.9, ink: Ink = 'ink'): void {
-    this.ops.push({ t: 'line', pts, w, ink });
+  /** While set, everything is mirrored about this x (a polarised symbol drawn the other way round). */
+  mirror: number | null = null;
+  private mx(x: number): number {
+    return this.mirror === null ? x : 2 * this.mirror - x;
   }
-  shape(pts: number[], fill: Ink | undefined, w = 0.9, ink: Ink = 'ink'): void {
-    this.ops.push({ t: 'line', pts, w, ink, fill, close: true });
+  line(pts: number[], w = 1, ink: Ink = 'ink'): void {
+    this.ops.push({ t: 'line', pts: pts.map((v, i) => (i % 2 ? v : this.mx(v))), w, ink });
   }
-  circle(x: number, y: number, r: number, fill?: Ink, w = 0.9): void {
-    this.ops.push({ t: 'circle', x, y, r, w, fill, ink: 'ink' });
+  shape(pts: number[], fill: Ink | undefined, w = 1, ink: Ink = 'ink'): void {
+    this.ops.push({ t: 'line', pts: pts.map((v, i) => (i % 2 ? v : this.mx(v))), w, ink, fill, close: true });
   }
-  text(x: number, y: number, text: string, size: number, o: { font?: Font; align?: 'left' | 'center' | 'right'; ink?: Ink } = {}): void {
-    if (text) this.ops.push({ t: 'text', x, y, text, size, ...o });
+  circle(x: number, y: number, r: number, fill?: Ink, w = 1, ink: Ink = 'ink'): void {
+    this.ops.push({ t: 'circle', x: this.mx(x), y, r, w, fill, ink });
+  }
+  text(x: number, y: number, text: string, size: number, o: { font?: FontId; align?: 'left' | 'center' | 'right'; ink?: Ink } = {}): void {
+    if (!text) return;
+    const align = this.mirror === null || !o.align || o.align === 'center' ? o.align : o.align === 'left' ? 'right' : 'left';
+    this.ops.push({ t: 'text', x: this.mx(x), y, text, size, ...o, align });
   }
 }
+/** A rectangle with round corners, as points. */
+function roundRect(x: number, y: number, w: number, h: number, r: number): number[] {
+  const pts: number[] = [];
+  const corner = (cx: number, cy: number, a0: number) => {
+    for (let i = 0; i <= 5; i++) {
+      const a = a0 + (Math.PI / 2) * (i / 5);
+      pts.push(cx + r * Math.cos(a), cy + r * Math.sin(a));
+    }
+  };
+  corner(x + w - r, y + r, -Math.PI / 2);
+  corner(x + w - r, y + h - r, 0);
+  corner(x + r, y + h - r, Math.PI / 2);
+  corner(x + r, y + r, Math.PI);
+  return pts;
+}
 
-// ---- where a pin's stub ends: the net's name, or the ground or supply symbol ----------------------------------------
-function netEnd(g: Pen, x: number, y: number, dir: -1 | 1, pin: ProjectPin | undefined): void {
-  const net = pin?.net;
+// ---- where a pin's lead ends: the net's tag, or the ground or supply symbol ----------------------------------------
+const netName = (net: ProjectNet): string => cutTo(net.name, 18);
+/** How far a pin's ending reaches past the pin's end. */
+function endExtent(pin: ProjectPin): number {
+  const net = pin.net;
+  if (!net) return 4;
+  const tw = textWidth(netName(net), LABEL, 'label');
+  return net.kind === 'signal' ? 4 + 4.5 + tw + 5 : 13 + tw;
+}
+function netEnd(g: Pen, x: number, y: number, dir: -1 | 1, pin: ProjectPin): void {
+  const net = pin.net;
   if (!net) {
     // not connected
     g.line([x - 2, y - 2, x + 2, y + 2], 0.7, 'soft');
@@ -81,49 +113,63 @@ function netEnd(g: Pen, x: number, y: number, dir: -1 | 1, pin: ProjectPin | und
     return;
   }
   const align = dir > 0 ? 'left' : 'right';
-  const name = cut(net.name, 16);
+  const name = netName(net);
   if (net.kind === 'ground') {
-    const sx = x + dir * 5;
-    g.line([x, y, sx, y, sx, y + 2.5]);
-    g.line([sx - 4, y + 2.5, sx + 4, y + 2.5], 1.1);
-    g.line([sx - 2.6, y + 4.3, sx + 2.6, y + 4.3], 1.1);
-    g.line([sx - 1.1, y + 6.1, sx + 1.1, y + 6.1], 1.1);
-    g.text(x + dir * 11.5, y + 2.5, name, LABEL, { align, font: 'bold' });
+    const sx = x + dir * 6;
+    g.line([x, y, sx, y, sx, y + 2.6]);
+    g.line([sx - 4.2, y + 2.6, sx + 4.2, y + 2.6], 1.1);
+    g.line([sx - 2.7, y + 4.5, sx + 2.7, y + 4.5], 1.1);
+    g.line([sx - 1.2, y + 6.4, sx + 1.2, y + 6.4], 1.1);
+    g.text(x + dir * 13, y + 2.3, name, LABEL, { align, font: 'label' });
   } else if (net.kind === 'supply') {
-    const sx = x + dir * 5;
-    g.line([x, y, sx, y, sx, y - 4.4], 0.9, 'supply');
-    g.line([sx - 3.6, y - 4.4, sx + 3.6, y - 4.4], 1.3, 'supply');
-    g.text(x + dir * 11.5, y + 2.5, name, LABEL, { align, font: 'bold', ink: 'supply' });
+    const sx = x + dir * 6;
+    g.line([x, y, sx, y, sx, y - 4.6], 1, 'supply');
+    g.line([sx - 3.8, y - 4.6, sx + 3.8, y - 4.6], 1.4, 'supply');
+    g.text(x + dir * 13, y + 2.3, name, LABEL, { align, font: 'label', ink: 'supply' });
   } else {
-    // a small flag, as net labels are drawn
-    const tip = x + dir * 3.2;
-    g.line([x, y, tip, y - 2.6], 0.7, 'net');
-    g.line([x, y, tip, y + 2.6], 0.7, 'net');
-    g.text(x + dir * 5.5, y + 2.5, name, LABEL, { align, font: 'bold', ink: 'net' });
+    // a tag pointing at the pin, as global labels are drawn
+    const tw = textWidth(name, LABEL, 'label');
+    const a = x + dir * 4, b = a + dir * 4.5, c = b + dir * (tw + 5);
+    g.line([x, y, a, y], 1, 'net');
+    g.shape([a, y, b, y - 4.7, c, y - 4.7, c, y + 4.7, b, y + 4.7], 'netFill', 0.7, 'net');
+    g.text(b + dir * 1.6, y + 2.3, name, LABEL, { align, font: 'label', ink: 'net' });
   }
 }
-/** The small name of a pin, above its stub. */
+/** The small name of a pin, above its lead, from the pin's end toward the symbol. */
 function pinName(g: Pen, xEnd: number, y: number, dir: -1 | 1, text: string): void {
-  // from the pin's end toward the symbol (`dir` is the way the pin points)
-  g.text(xEnd - dir * 2.5, y - 2.2, cut(text, 5), 5.4, { align: dir > 0 ? 'right' : 'left', ink: 'soft' });
+  g.text(xEnd - dir * 2, y - 2.4, cutTo(text, 5), 5, { font: 'mono', align: dir > 0 ? 'right' : 'left', ink: 'soft' });
 }
 
-// ---- the small symbols --------------------------------------------------------------------------------------------
-interface Drawn {
+// ---- symbols ------------------------------------------------------------------------------------------------------
+interface Port {
+  pin: ProjectPin;
+  side: -1 | 1;
+  /** From the element's left pin end and its axis. */
+  dx: number;
+  dy: number;
+}
+interface El {
+  part: ProjectPart;
+  /** Pin end to pin end. */
   w: number;
-  h: number;
+  /** Room above and below the axis. */
+  up: number;
+  down: number;
+  /** How wide the texts above and below the symbol are. */
+  textW: number;
+  ports: Port[];
+  /** One pin in, one pin out: can stand in a row with others, joined by wires. */
+  inline: boolean;
   draw(g: Pen, x: number, y: number): void;
 }
-const REACH = 30; // from the middle of a small symbol to the end of its pins
+const SMALL = 60;
+const REF = 9;
+const CAP = 6.6;
 
-function caption(g: Pen, cx: number, yRef: number, yCap: number, part: ProjectPart, text: SheetText): void {
-  g.text(cx, yRef, part.ref, 8.5, { font: 'bold', align: 'center' });
-  g.text(cx, yCap, captionOf(part, text), 6.8, { align: 'center', ink: 'soft' });
-}
 /** What stands under a symbol: its value when the value says it all (a resistor), else its name and value. */
 export function captionOf(part: ProjectPart, text: SheetText): string {
   const pure = part.cls === 'resistor' || part.cls === 'capacitor' || part.cls === 'capacitor-pol';
-  return cut(pure && part.value ? part.value : nameAndValue(part, text), 50);
+  return pure && part.value ? part.value : nameAndValue(part, text);
 }
 /** "LED with resistor, 330 Ω"; a name that already says the value ("Potentiometer 10 kΩ") stands alone. */
 function nameAndValue(part: ProjectPart, text: SheetText): string {
@@ -131,6 +177,11 @@ function nameAndValue(part: ProjectPart, text: SheetText): string {
   const squeeze = (s: string) => s.replace(/[\s,.]/g, '').toLowerCase();
   return part.value && !squeeze(name).includes(squeeze(part.value)) ? `${name}, ${part.value}` : name;
 }
+function titles(g: Pen, cx: number, yRef: number, yCap: number, part: ProjectPart, text: SheetText): void {
+  g.text(cx, yRef, part.ref, REF, { font: 'display', align: 'center' });
+  g.text(cx, yCap, fit(captionOf(part, text), CAP, 150), CAP, { align: 'center', ink: 'soft' });
+}
+const titlesWidth = (part: ProjectPart, text: SheetText): number => Math.max(textWidth(part.ref, REF, 'display'), Math.min(150, textWidth(captionOf(part, text), CAP)));
 
 function arcPts(cx: number, cy: number, r: number, a0: number, a1: number, n = 14): number[] {
   const pts: number[] = [];
@@ -142,7 +193,7 @@ function arcPts(cx: number, cy: number, r: number, a0: number, a1: number, n = 1
 }
 function diodeBody(g: Pen, cx: number, y: number, s: number, light: boolean): void {
   g.shape([cx - s, y - s, cx - s, y + s, cx + s, y], 'paper');
-  g.line([cx + s, y - s, cx + s, y + s], 1.1);
+  g.line([cx + s, y - s, cx + s, y + s], 1.2);
   if (light) {
     for (const k of [0, 1]) {
       const ax = cx - 1 + k * 4.5, ay = y - s - 2;
@@ -151,94 +202,83 @@ function diodeBody(g: Pen, cx: number, y: number, s: number, light: boolean): vo
     }
   }
 }
+const zigzag = (L: number, R: number, cx: number, y: number): number[] => {
+  const pts = [L, y, cx - 14, y];
+  for (let i = 0; i < 6; i++) pts.push(cx - 14 + (i + 0.5) * (28 / 6), y + (i % 2 ? 4.4 : -4.4));
+  pts.push(cx + 14, y, R, y);
+  return pts;
+};
 
-function twoPin(part: ProjectPart, text: SheetText): Drawn {
-  const [a, b] = part.pins;
+/** A two-pin symbol lying on its axis; `first` is the pin drawn on the left. */
+function twoPin(part: ProjectPart, text: SheetText, first: ProjectPin): El {
+  const [p0, p1] = part.pins;
+  const flipped = first !== p0;
+  const tall = part.cls === 'led' || part.cls === 'buzzer';
   return {
-    w: SMALL_W,
-    h: 62,
+    part,
+    w: SMALL,
+    up: tall ? 27 : 24,
+    down: 24,
+    textW: titlesWidth(part, text),
+    inline: true,
+    ports: [
+      { pin: flipped ? p1 : p0, side: -1, dx: 0, dy: 0 },
+      { pin: flipped ? p0 : p1, side: 1, dx: SMALL, dy: 0 },
+    ],
     draw(g, x, y) {
-      const cx = x + SMALL_W / 2, y0 = y + 30;
-      const L = cx - REACH, R = cx + REACH;
-      let refY = y + 13;
+      const L = x, R = x + SMALL, cx = x + SMALL / 2;
+      g.mirror = flipped ? cx : null;
       switch (part.cls) {
-        case 'resistor': {
-          const pts = [L, y0, cx - 14, y0];
-          for (let i = 0; i < 6; i++) pts.push(cx - 14 + (i + 0.5) * (28 / 6), y0 + (i % 2 ? 4.2 : -4.2));
-          pts.push(cx + 14, y0, R, y0);
-          g.line(pts);
+        case 'resistor':
+          g.line(zigzag(L, R, cx, y));
           break;
-        }
         case 'capacitor':
-          g.line([L, y0, cx - 2.4, y0]);
-          g.line([cx + 2.4, y0, R, y0]);
-          g.line([cx - 2.4, y0 - 7, cx - 2.4, y0 + 7], 1.3);
-          g.line([cx + 2.4, y0 - 7, cx + 2.4, y0 + 7], 1.3);
+          g.line([L, y, cx - 2.4, y]);
+          g.line([cx + 2.4, y, R, y]);
+          g.line([cx - 2.4, y - 7, cx - 2.4, y + 7], 1.4);
+          g.line([cx + 2.4, y - 7, cx + 2.4, y + 7], 1.4);
           break;
         case 'capacitor-pol':
-          g.line([L, y0, cx - 2.4, y0]);
-          g.line([cx + 2.2, y0, R, y0]);
-          g.line([cx - 2.4, y0 - 7, cx - 2.4, y0 + 7], 1.3);
-          g.line(arcPts(cx + 13, y0, 10.8, Math.PI - 0.72, Math.PI + 0.72, 10), 1.3);
-          g.text(cx - 8, y0 - 4.5, '+', 7, { align: 'center' });
+          g.line([L, y, cx - 2.4, y]);
+          g.line([cx + 2.2, y, R, y]);
+          g.line([cx - 2.4, y - 7, cx - 2.4, y + 7], 1.4);
+          g.line(arcPts(cx + 13, y, 10.8, Math.PI - 0.72, Math.PI + 0.72, 10), 1.4);
+          g.text(cx - 8, y - 4.5, '+', 7, { align: 'center', font: 'label' });
           break;
         case 'diode':
         case 'led':
-          g.line([L, y0, R, y0]);
-          diodeBody(g, cx, y0, 6, part.cls === 'led');
-          if (part.cls === 'led') refY = y + 10;
+          g.line([L, y, R, y]);
+          diodeBody(g, cx, y, 6, part.cls === 'led');
           break;
         case 'buzzer':
-          g.line([L, y0, cx - 6, y0, cx - 6, y0 - 2]);
-          g.line([R, y0, cx + 6, y0, cx + 6, y0 - 2]);
-          g.shape([...arcPts(cx, y0 - 2, 10, Math.PI, 2 * Math.PI, 16)], 'paper');
-          g.text(cx - 13, y0 - 5, '+', 6.5, { align: 'center' });
-          refY = y + 10;
+          g.line([L, y, cx - 6, y, cx - 6, y - 2]);
+          g.line([R, y, cx + 6, y, cx + 6, y - 2]);
+          g.shape([...arcPts(cx, y - 2, 10, Math.PI, 2 * Math.PI, 16)], 'paper');
+          g.text(cx - 14, y - 5, '+', 6.5, { align: 'center', font: 'label' });
           break;
         case 'motor':
-          g.line([L, y0, cx - 9, y0]);
-          g.line([cx + 9, y0, R, y0]);
-          g.circle(cx, y0, 9, 'paper');
-          g.text(cx, y0 + 3, 'M', 8.5, { font: 'bold', align: 'center' });
-          refY = y + 12;
+          g.line([L, y, cx - 9, y]);
+          g.line([cx + 9, y, R, y]);
+          g.circle(cx, y, 9, 'paper');
           break;
         default: // a cell: the long plate is the positive one
-          g.line([L, y0, cx - 2.4, y0]);
-          g.line([cx + 2.4, y0, R, y0]);
-          g.line([cx - 2.4, y0 - 8, cx - 2.4, y0 + 8], 1);
-          g.line([cx + 2.4, y0 - 4, cx + 2.4, y0 + 4], 2.2);
-          g.text(cx - 8, y0 - 5, '+', 7, { align: 'center' });
+          g.line([L, y, cx - 2.4, y]);
+          g.line([cx + 2.4, y, R, y]);
+          g.line([cx - 2.4, y - 8, cx - 2.4, y + 8], 1.1);
+          g.line([cx + 2.4, y - 4, cx + 2.4, y + 4], 2.4);
+          g.text(cx - 8, y - 5, '+', 7, { align: 'center', font: 'label' });
       }
-      pinName(g, L, y0, -1, a.label);
-      pinName(g, R, y0, 1, b.label);
-      netEnd(g, L, y0, -1, a);
-      netEnd(g, R, y0, 1, b);
-      caption(g, cx, refY, y0 + 21, part, text);
+      g.mirror = null;
+      if (part.cls === 'motor') g.text(cx, y + 3.1, 'M', 9, { font: 'display', align: 'center' });
+      pinName(g, L, y, -1, this.ports[0].pin.label);
+      pinName(g, R, y, 1, this.ports[1].pin.label);
+      titles(g, cx, y - (tall ? 19 : 14), y + 19, part, text);
     },
   };
 }
 
-/** Rows a list of pins takes beside one contact: one pin on the contact's line, two a little above and below it. */
-function fan(g: Pen, pins: ProjectPin[], xContact: number, yc: number, xEnd: number, dir: -1 | 1): void {
-  if (pins.length === 1) {
-    g.line([xContact, yc, xEnd, yc]);
-    pinName(g, xEnd, yc, dir, pins[0].label);
-    netEnd(g, xEnd, yc, dir, pins[0]);
-    return;
-  }
-  const xj = xContact + dir * 7;
-  g.line([xContact, yc, xj, yc]);
-  g.line([xj, yc - 7, xj, yc + 7]);
-  g.circle(xj, yc, 1, 'ink', 0);
-  pins.slice(0, 2).forEach((p, i) => {
-    const yy = yc + (i ? 7 : -7);
-    g.line([xj, yy, xEnd, yy]);
-    pinName(g, xEnd, yy, dir, p.label);
-    netEnd(g, xEnd, yy, dir, p);
-  });
-}
-
-function switchSymbol(part: ProjectPart, text: SheetText): Drawn | null {
+/** A switch from its contact sets. One pole with one pin a side stands in a row like a two-pin part. */
+function switchSymbol(part: ProjectPart, text: SheetText, first?: ProjectPin): El | null {
   const poles = part.poles ?? [];
   const pin = (n: string) => part.pins.find((p) => p.name === n);
   if (!poles.length) return null;
@@ -247,58 +287,94 @@ function switchSymbol(part: ProjectPart, text: SheetText): Drawn | null {
     if (p.throws.length > 2 || lists.some((l) => l.length > 2 || l.some((n) => !pin(n)))) return null;
     if (p.throws.length === 2 && lists.some((l) => l.length > 1)) return null;
   }
+  const simple = poles.length === 1 && poles[0].throws.length === 1 && poles[0].com.length === 1 && poles[0].throws[0].length === 1;
+  const swap = simple && !!first && first.name !== poles[0].com[0];
   const step = 32;
+  const ports: Port[] = [];
+  // where each list of pins meets the symbol: one pin on the contact's line, two a little above and below it
+  const rows = (names: string[], yc: number, side: -1 | 1) => names.slice(0, 2).map((n, i) => ({ pin: pin(n)!, side, dx: side < 0 ? 0 : SMALL, dy: names.length === 1 ? yc : yc + (i ? 7 : -7) }));
+  poles.forEach((pole, i) => {
+    const yi = i * step;
+    const two = pole.throws.length === 2;
+    ports.push(...rows(swap ? pole.throws[0] : pole.com, yi, -1));
+    (swap ? [pole.com] : pole.throws).forEach((th, j) => ports.push(...rows(th, two ? yi + (j ? 7 : -7) : yi, 1)));
+  });
+  const last = (poles.length - 1) * step;
   return {
-    w: SMALL_W,
-    h: 34 + (poles.length - 1) * step + 32,
+    part,
+    w: SMALL,
+    up: 27,
+    down: last + 26,
+    textW: titlesWidth(part, text),
+    inline: simple,
+    ports,
     draw(g, x, y) {
-      const cx = x + SMALL_W / 2, y0 = y + 34;
-      const L = cx - REACH, R = cx + REACH;
+      const L = x, R = x + SMALL, cx = x + SMALL / 2;
+      const fan = (list: Port[], xContact: number, yc: number, xEnd: number, dir: -1 | 1) => {
+        if (list.length === 1) g.line([xContact, yc, xEnd, yc]);
+        else {
+          const xj = xContact + dir * 7;
+          g.line([xContact, yc, xj, yc]);
+          g.line([xj, yc - 7, xj, yc + 7]);
+          g.circle(xj, yc, 1.1, 'ink', 0);
+          for (const p of list) g.line([xj, y + p.dy, xEnd, y + p.dy]);
+        }
+        for (const p of list) pinName(g, xEnd, y + p.dy, dir, p.pin.label);
+      };
+      let at = 0;
       poles.forEach((pole, i) => {
-        const yi = y0 + i * step;
+        const yi = y + i * step;
         const two = pole.throws.length === 2;
-        fan(g, pole.com.map((n) => pin(n)!), cx - 9, yi, L, -1);
-        pole.throws.forEach((th, j) => fan(g, th.map((n) => pin(n)!), cx + 9, two ? yi + (j ? 7 : -7) : yi, R, 1));
+        const nCom = Math.min(2, pole.com.length);
+        fan(ports.slice(at, at + (swap ? 1 : nCom)), cx - 9, yi, L, -1);
+        at += swap ? 1 : nCom;
+        (swap ? [pole.com] : pole.throws).forEach((th, j) => {
+          const n = Math.min(2, th.length);
+          fan(ports.slice(at, at + n), cx + 9, two ? yi + (j ? 7 : -7) : yi, R, 1);
+          at += n;
+        });
         if (!two && part.momentary) {
           // a push button: the bar drops onto both contacts
-          g.line([cx - 11, yi - 5, cx + 11, yi - 5], 1.1);
+          g.line([cx - 11, yi - 5, cx + 11, yi - 5], 1.2);
           g.line([cx, yi - 5, cx, yi - 10.5]);
-          g.line([cx - 4, yi - 10.5, cx + 4, yi - 10.5], 1.1);
-        } else g.line([cx - 9, yi, cx + 8.2, yi - (two ? 6.4 : 6)], 1.1);
-        g.circle(cx - 9, yi, 1.5, 'paper');
-        for (let j = 0; j < pole.throws.length; j++) g.circle(cx + 9, two ? yi + (j ? 7 : -7) : yi, 1.5, 'paper');
+          g.line([cx - 4, yi - 10.5, cx + 4, yi - 10.5], 1.2);
+        } else g.line([cx - 9, yi, cx + 8.2, yi - (two ? 6.4 : 6)], 1.2);
+        g.circle(cx - 9, yi, 1.6, 'paper');
+        for (let j = 0; j < pole.throws.length; j++) g.circle(cx + 9, two ? yi + (j ? 7 : -7) : yi, 1.6, 'paper');
       });
-      caption(g, cx, y + 13, y0 + (poles.length - 1) * step + 24, part, text);
+      titles(g, cx, y - 18, y + last + 21, part, text);
     },
   };
 }
 
-function potentiometer(part: ProjectPart, text: SheetText): Drawn {
+function potentiometer(part: ProjectPart, text: SheetText): El {
   const [top, wiper, bottom] = part.pins;
   return {
-    w: SMALL_W,
-    h: 78,
+    part,
+    w: SMALL,
+    up: 24,
+    down: 40,
+    textW: titlesWidth(part, text),
+    inline: false,
+    ports: [
+      { pin: top, side: -1, dx: 0, dy: 0 },
+      { pin: bottom, side: 1, dx: SMALL, dy: 0 },
+      { pin: wiper, side: 1, dx: SMALL, dy: 16 },
+    ],
     draw(g, x, y) {
-      const cx = x + SMALL_W / 2, y0 = y + 30;
-      const L = cx - REACH, R = cx + REACH;
-      const pts = [L, y0, cx - 14, y0];
-      for (let i = 0; i < 6; i++) pts.push(cx - 14 + (i + 0.5) * (28 / 6), y0 + (i % 2 ? 4.2 : -4.2));
-      pts.push(cx + 14, y0, R, y0);
-      g.line(pts);
-      g.line([cx, y0 + 6.5, cx, y0 + 16, R, y0 + 16]);
-      g.shape([cx, y0 + 4.6, cx - 2.6, y0 + 9.4, cx + 2.6, y0 + 9.4], 'ink', 0.4);
-      pinName(g, L, y0, -1, top.label);
-      pinName(g, R, y0, 1, bottom.label);
-      pinName(g, R, y0 + 16, 1, wiper.label);
-      netEnd(g, L, y0, -1, top);
-      netEnd(g, R, y0, 1, bottom);
-      netEnd(g, R, y0 + 16, 1, wiper);
-      caption(g, cx, y + 13, y0 + 37, part, text);
+      const L = x, R = x + SMALL, cx = x + SMALL / 2;
+      g.line(zigzag(L, R, cx, y));
+      g.line([cx, y + 6.5, cx, y + 16, R, y + 16]);
+      g.shape([cx, y + 4.6, cx - 2.6, y + 9.4, cx + 2.6, y + 9.4], 'ink', 0.4);
+      pinName(g, L, y, -1, top.label);
+      pinName(g, R, y, 1, bottom.label);
+      pinName(g, R, y + 16, 1, wiper.label);
+      titles(g, cx, y - 14, y + 35, part, text);
     },
   };
 }
 
-function rgbLed(part: ProjectPart, text: SheetText): Drawn | null {
+function rgbLed(part: ProjectPart, text: SheetText): El | null {
   const d = part.diodes ?? [];
   const pin = (n: string) => part.pins.find((p) => p.name === n);
   if (d.length < 2 || d.length > 4 || d.some((e) => !pin(e.anode) || !pin(e.cathode))) return null;
@@ -306,31 +382,33 @@ function rgbLed(part: ProjectPart, text: SheetText): Drawn | null {
   const commonAnode = d.every((e) => e.anode === d[0].anode);
   if (!commonCathode && !commonAnode) return null;
   const step = 16;
+  const last = (d.length - 1) * step;
+  const sy = d.length % 2 ? last / 2 : last / 2 + step / 2;
+  const shared = pin(commonCathode ? d[0].cathode : d[0].anode)!;
+  const own = d.map((e) => pin(commonCathode ? e.anode : e.cathode)!);
   return {
-    w: SMALL_W,
-    h: 30 + (d.length - 1) * step + 32,
+    part,
+    w: SMALL,
+    up: 29,
+    down: last + 25,
+    textW: titlesWidth(part, text),
+    inline: false,
+    ports: [...own.map((p, i) => ({ pin: p, side: (commonCathode ? -1 : 1) as -1 | 1, dx: commonCathode ? 0 : SMALL, dy: i * step })), { pin: shared, side: (commonCathode ? 1 : -1) as -1 | 1, dx: commonCathode ? SMALL : 0, dy: sy }],
     draw(g, x, y) {
-      const cx = x + SMALL_W / 2, y0 = y + 32;
-      const L = cx - REACH, R = cx + REACH;
-      const mid = y0 + ((d.length - 1) * step) / 2;
-      // the shared pin's side has one stub; the other side has one per colour
+      const L = x, R = x + SMALL, cx = x + SMALL / 2;
+      // the shared pin's side has one lead; the other side has one per colour
       const busX = commonCathode ? cx + 11 : cx - 11;
-      d.forEach((e, i) => {
-        const yi = y0 + i * step;
+      d.forEach((_, i) => {
+        const yi = y + i * step;
         g.line([commonCathode ? L : busX, yi, commonCathode ? busX : R, yi]);
         diodeBody(g, cx, yi, 4.6, i === 0);
-        const own = pin(commonCathode ? e.anode : e.cathode)!;
-        pinName(g, commonCathode ? L : R, yi, commonCathode ? -1 : 1, own.label);
-        netEnd(g, commonCathode ? L : R, yi, commonCathode ? -1 : 1, own);
+        pinName(g, commonCathode ? L : R, yi, commonCathode ? -1 : 1, own[i].label);
       });
-      g.line([busX, y0, busX, y0 + (d.length - 1) * step]);
-      const shared = pin(commonCathode ? d[0].cathode : d[0].anode)!;
-      const sy = d.length % 2 ? mid : mid + step / 2;
-      g.line([busX, sy, commonCathode ? R : L, sy]);
-      g.circle(busX, sy, 1, 'ink', 0);
-      pinName(g, commonCathode ? R : L, sy, commonCathode ? 1 : -1, shared.label);
-      netEnd(g, commonCathode ? R : L, sy, commonCathode ? 1 : -1, shared);
-      caption(g, cx, y + 10, y0 + (d.length - 1) * step + 22, part, text);
+      g.line([busX, y, busX, y + last]);
+      g.line([busX, y + sy, commonCathode ? R : L, y + sy]);
+      g.circle(busX, y + sy, 1.1, 'ink', 0);
+      pinName(g, commonCathode ? R : L, y + sy, commonCathode ? 1 : -1, shared.label);
+      titles(g, cx, y - 20, y + last + 20, part, text);
     },
   };
 }
@@ -353,22 +431,23 @@ function shownPins(part: ProjectPart): ProjectPin[] {
 function icon(g: Pen, cls: string, cx: number, cy: number): void {
   if (cls === 'servo') {
     g.circle(cx, cy, 9, 'paper');
-    g.text(cx, cy + 3, 'M', 8.5, { font: 'bold', align: 'center' });
+    g.text(cx, cy + 3.1, 'M', 9, { font: 'display', align: 'center' });
     // the horn
-    g.line([cx + 6.4, cy - 6.4, cx + 13, cy - 13], 1.4);
-    g.circle(cx + 13, cy - 13, 1.4, 'ink', 0);
+    g.line([cx + 6.4, cy - 6.4, cx + 13, cy - 13], 1.5);
+    g.circle(cx + 13, cy - 13, 1.5, 'ink', 0);
   } else if (cls === 'relay') {
     // the coil, and the contact it moves
     g.shape([cx - 12, cy - 6, cx - 2, cy - 6, cx - 2, cy + 6, cx - 12, cy + 6], 'paper');
     g.line([cx - 12, cy + 6, cx - 2, cy - 6], 0.7);
     g.line([cx - 2, cy, cx + 3, cy], 0.6, 'soft');
-    g.line([cx + 4, cy + 5, cx + 12.5, cy - 3], 1.1);
-    g.circle(cx + 4, cy + 5, 1.3, 'paper');
-    g.circle(cx + 13, cy - 6, 1.3, 'paper');
-    g.circle(cx + 13, cy + 5, 1.3, 'paper');
+    g.line([cx + 4, cy + 5, cx + 12.5, cy - 3], 1.2);
+    g.circle(cx + 4, cy + 5, 1.4, 'paper');
+    g.circle(cx + 13, cy - 6, 1.4, 'paper');
+    g.circle(cx + 13, cy + 5, 1.4, 'paper');
   }
 }
-function blocks(part: ProjectPart, text: SheetText): Drawn[] {
+const NAME = 6.3;
+function blocks(part: ProjectPart, text: SheetText): El[] {
   const pins = shownPins(part);
   const faces = part.cls === 'relay';
   let left = pins.filter((p) => POWER.has(p.kind));
@@ -387,29 +466,39 @@ function blocks(part: ProjectPart, text: SheetText): Drawn[] {
   while (right.length > MAX_ROWS && left.length < MAX_ROWS) left.push(right.pop()!);
   while (left.length > MAX_ROWS && right.length < MAX_ROWS) right.push(left.pop()!);
   const count = Math.max(1, Math.ceil(Math.max(left.length, right.length) / MAX_ROWS));
-  const out: Drawn[] = [];
+  const withIcon = part.cls === 'servo' || part.cls === 'relay';
+  const out: El[] = [];
   for (let k = 0; k < count; k++) {
     const l = left.slice(k * MAX_ROWS, (k + 1) * MAX_ROWS), r = right.slice(k * MAX_ROWS, (k + 1) * MAX_ROWS);
-    const rows = Math.max(l.length, r.length, part.cls === 'servo' || part.cls === 'relay' ? 3 : 2);
+    const rows = Math.max(l.length, r.length, withIcon ? 3 : 2);
     const bodyH = rows * PITCH + 8;
+    const title = part.ref + (count > 1 ? ` (${k + 1}/${count})` : '');
+    const sub = fit(nameAndValue(part, text), CAP + 0.4, 150);
+    const wName = (list: ProjectPin[]) => Math.max(0, ...list.map((p) => textWidth(cutTo(p.label, 18), NAME, 'mono')));
+    const titleW = textWidth(title, REF + 1, 'display') + 6 + textWidth(sub, CAP + 0.4);
+    const bw = Math.ceil(Math.max(84, wName(l) + wName(r) + (withIcon ? 52 : 22), Math.min(titleW, 190)));
+    const dyOf = (i: number) => 4 + PITCH / 2 + i * PITCH;
     out.push({
-      w: BLOCK_W,
-      h: 16 + bodyH + 8,
+      part,
+      w: bw + 2 * STUB,
+      up: 17,
+      down: bodyH + 4,
+      textW: titleW,
+      inline: false,
+      ports: [...l.map((p, i) => ({ pin: p, side: -1 as const, dx: 0, dy: dyOf(i) })), ...r.map((p, i) => ({ pin: p, side: 1 as const, dx: bw + 2 * STUB, dy: dyOf(i) }))],
       draw(g, x, y) {
-        const bx = x + (BLOCK_W - BODY_W) / 2, by = y + 16;
-        const title = part.ref + (count > 1 ? ` (${k + 1}/${count})` : '');
-        g.text(bx, by - 4.5, title, 8.5, { font: 'bold' });
-        g.text(bx + widthOf(title, 8.5, 'bold') + 5, by - 4.5, cut(nameAndValue(part, text), 34), 6.8, { ink: 'soft' });
-        g.shape([bx, by, bx + BODY_W, by, bx + BODY_W, by + bodyH, bx, by + bodyH], 'paper', 1.1);
-        if (part.cls === 'servo' || part.cls === 'relay') icon(g, part.cls, bx + BODY_W / 2 + (part.cls === 'servo' ? 8 : 0), by + bodyH / 2);
+        const bx = x + STUB;
+        g.text(bx, y - 5.5, title, REF + 1, { font: 'display' });
+        g.text(bx + textWidth(title, REF + 1, 'display') + 6, y - 5.5, sub, CAP + 0.4, { ink: 'soft' });
+        g.shape(roundRect(bx, y, bw, bodyH, 3.5), 'card', 1.1);
+        if (withIcon) icon(g, part.cls, bx + bw / 2 + (part.cls === 'servo' ? 6 : 0), y + bodyH / 2);
         const side = (list: ProjectPin[], dir: -1 | 1) => {
           list.forEach((p, i) => {
-            const yy = by + 4 + PITCH / 2 + i * PITCH;
-            const edge = dir < 0 ? bx : bx + BODY_W;
-            g.text(edge - dir * 4, yy + 2.3, cut(p.label, 16), 6.5, { align: dir < 0 ? 'left' : 'right' });
+            const yy = y + dyOf(i);
+            const edge = dir < 0 ? bx : bx + bw;
+            g.text(edge - dir * 5, yy + 2.2, cutTo(p.label, 18), NAME, { font: 'mono', align: dir < 0 ? 'left' : 'right' });
             g.line([edge, yy, edge + dir * STUB, yy]);
-            if (p.number !== undefined) g.text(edge + dir * STUB * 0.5, yy - 1.8, String(p.number), 4.8, { align: 'center', ink: 'soft' });
-            netEnd(g, edge + dir * STUB, yy, dir, p);
+            if (p.number !== undefined) g.text(edge + dir * STUB * 0.5, yy - 2.6, String(p.number), 4.6, { font: 'mono', align: 'center', ink: 'soft' });
           });
         };
         side(l, -1);
@@ -420,108 +509,319 @@ function blocks(part: ProjectPart, text: SheetText): Drawn[] {
   return out;
 }
 
-function symbolsOf(part: ProjectPart, text: SheetText): Drawn[] {
-  switch (part.cls) {
-    case 'resistor':
-    case 'capacitor':
-    case 'capacitor-pol':
-    case 'diode':
-    case 'led':
-    case 'buzzer':
-    case 'motor':
-    case 'cell':
-      return part.pins.length === 2 ? [twoPin(part, text)] : blocks(part, text);
-    case 'switch': {
-      const s = switchSymbol(part, text);
-      return s ? [s] : blocks(part, text);
-    }
-    case 'potentiometer':
-      return part.pins.length === 3 ? [potentiometer(part, text)] : blocks(part, text);
-    case 'rgb-led': {
-      const s = rgbLed(part, text);
-      return s ? [s] : blocks(part, text);
-    }
-    default:
-      return blocks(part, text);
+const isController = (p: ProjectPart): boolean => p.cls === 'dot' || p.cls === 'board' || p.cls === 'module';
+const TWO_PIN = new Set(['resistor', 'capacitor', 'capacitor-pol', 'diode', 'led', 'buzzer', 'motor', 'cell']);
+
+/** Which way a net wants to be: supplies and driven signals on the left, ground on the right. */
+function leftness(pin: ProjectPin): number {
+  const net = pin.net;
+  if (!net) return 3;
+  if (net.kind === 'supply') return 0;
+  if (net.kind === 'ground') return 5;
+  return net.members.some((m) => isController(m.part)) ? 1 : 2;
+}
+
+function elementsOf(part: ProjectPart, text: SheetText, first?: ProjectPin): El[] {
+  if (TWO_PIN.has(part.cls) && part.pins.length === 2) return [twoPin(part, text, first ?? part.pins[0])];
+  if (part.cls === 'switch') {
+    const s = switchSymbol(part, text, first);
+    if (s) return [s];
   }
+  if (part.cls === 'potentiometer' && part.pins.length === 3) return [potentiometer(part, text)];
+  if (part.cls === 'rgb-led') {
+    const s = rgbLed(part, text);
+    if (s) return [s];
+  }
+  return blocks(part, text);
+}
+
+// ---- rows: parts in series, joined by wires -------------------------------------------------------------------------
+interface Row {
+  els: El[];
+  /** Left pin end of each element, from the row's own left pin line. */
+  xs: number[];
+  /** The net of the wire after each element (to the next one). */
+  links: (ProjectNet | null)[];
+  leftExt: number;
+  rightExt: number;
+  up: number;
+  down: number;
+  /** Where the row belongs among the others. */
+  key: number;
+}
+const LINK = 34;
+
+/** A net that is nothing but the joint of two pins of row parts: drawn as a wire between them. */
+function linkNet(pin: ProjectPin): ProjectNet | null {
+  const net = pin.net;
+  return net && net.kind === 'signal' && net.members.length === 2 && /^N\d+$/.test(net.name) ? net : null;
+}
+
+function buildRows(parts: ProjectPart[], controllers: ProjectPart[], text: SheetText): Row[] {
+  // the two ends of each part that can stand in a row
+  const ends = new Map<ProjectPart, [ProjectPin, ProjectPin]>();
+  for (const p of parts) {
+    const probe = elementsOf(p, text);
+    if (probe.length === 1 && probe[0].inline) ends.set(p, [probe[0].ports[0].pin, probe[0].ports[1].pin]);
+  }
+  const peer = (part: ProjectPart, pin: ProjectPin): { part: ProjectPart; pin: ProjectPin } | null => {
+    const net = linkNet(pin);
+    const other = net?.members.find((m) => m.pin !== pin);
+    if (!net || !other || other.part === part || !ends.has(other.part) || !ends.get(other.part)!.includes(other.pin)) return null;
+    return other;
+  };
+  const used = new Set<ProjectPart>();
+  const chains: { part: ProjectPart; first: ProjectPin }[][] = [];
+  const walk = (start: ProjectPart, into: ProjectPin) => {
+    // from `start`, entered through `into`, as far as the wires go
+    const chain: { part: ProjectPart; first: ProjectPin }[] = [];
+    let part = start, first = into;
+    for (;;) {
+      used.add(part);
+      chain.push({ part, first });
+      const [a, b] = ends.get(part)!;
+      const out = first === a ? b : a;
+      const next = peer(part, out);
+      if (!next || used.has(next.part)) break;
+      part = next.part;
+      first = next.pin;
+    }
+    return chain;
+  };
+  for (const p of parts) {
+    if (used.has(p) || !ends.has(p)) continue;
+    const [a, b] = ends.get(p)!;
+    const pa = peer(p, a), pb = peer(p, b);
+    if (pa && pb) continue; // in the middle of a row: reached from its end
+    chains.push(walk(p, pa ? b : pb ? a : leftness(a) <= leftness(b) ? a : b));
+  }
+  for (const p of parts) if (!used.has(p) && ends.has(p)) chains.push(walk(p, ends.get(p)![0])); // a ring of parts
+  // a row reads from its source: turned round when its far end is the more source-like one
+  for (const c of chains) {
+    if (c.length < 2) continue;
+    const head = c[0].first;
+    const tailEnds = ends.get(c[c.length - 1].part)!;
+    const tail = tailEnds[0] === c[c.length - 1].first ? tailEnds[1] : tailEnds[0];
+    if (leftness(tail) < leftness(head)) {
+      c.reverse();
+      for (const x of c) {
+        const [a, b] = ends.get(x.part)!;
+        x.first = x.first === a ? b : a;
+      }
+    }
+  }
+  const order = new Map<ProjectPin, number>();
+  controllers.forEach((c, i) => c.pins.forEach((p, j) => order.set(p, i * 1000 + j)));
+  const keyOf = (els: El[]): number => {
+    let best = Infinity;
+    for (const el of els) {
+      for (const port of el.ports) {
+        const net = port.pin.net;
+        if (!net) continue;
+        const k = Math.min(Infinity, ...net.members.filter((m) => order.has(m.pin)).map((m) => order.get(m.pin)!));
+        // what a controller's signal pin drives comes first, in the order of those pins; then what hangs on supplies only
+        const rank = net.kind === 'signal' ? k : Number.isFinite(k) ? 1e6 + k : Infinity;
+        if (rank < best) best = rank;
+      }
+    }
+    return Number.isFinite(best) ? best : els.some((e) => e.ports.some((p) => p.pin.net)) ? 5e6 : 9e6;
+  };
+  const rows: Row[] = [];
+  const add = (els: El[], links: (ProjectNet | null)[]) => {
+    const xs: number[] = [];
+    let x = 0;
+    els.forEach((el, i) => {
+      xs.push(x);
+      if (i < els.length - 1) {
+        const name = links[i] ? textWidth(links[i]!.name, 5.4, 'label') + 10 : 0;
+        const texts = (el.textW + els[i + 1].textW) / 2 - (el.w + els[i + 1].w) / 2 + 8;
+        x += el.w + Math.max(LINK, name, texts);
+      }
+    });
+    const linked = (el: El, port: Port, i: number) => (port.side < 0 ? i > 0 : i < els.length - 1) && el.inline;
+    const ext = (side: -1 | 1) => Math.max(0, ...els.flatMap((el, i) => el.ports.filter((p) => p.side === side && !linked(el, p, i)).map((p) => endExtent(p.pin) - (side < 0 ? xs[i] + p.dx : xs[els.length - 1] + els[els.length - 1].w - xs[i] - p.dx))));
+    // texts wider than the symbol reach out too
+    const over = (el: El) => Math.max(0, (el.textW - el.w) / 2);
+    rows.push({ els, xs, links, leftExt: Math.max(ext(-1), over(els[0]) - 0), rightExt: Math.max(ext(1), over(els[els.length - 1])), up: Math.max(...els.map((e) => e.up)), down: Math.max(...els.map((e) => e.down)), key: keyOf(els) });
+  };
+  for (const c of chains) {
+    const els = c.map((x) => elementsOf(x.part, text, x.first)[0]);
+    add(els, els.map((el, i) => (i < els.length - 1 ? linkNet(el.ports[1].pin) : null)));
+  }
+  for (const p of parts) if (!ends.has(p)) for (const el of elementsOf(p, text)) add([el], [null]);
+  // stable: rows with the same key keep the order of the parts list
+  return rows.map((r, i) => ({ r, i })).sort((a, b) => a.r.key - b.r.key || a.i - b.i).map((x) => x.r);
 }
 
 // ---- the sheets ---------------------------------------------------------------------------------------------------
-function frame(g: Pen, text: SheetText, n: number, m: number): void {
-  const x0 = FRAME, y0 = FRAME, x1 = SHEET.w - FRAME, y1 = SHEET.h - FRAME;
-  g.shape([x0, y0, x1, y0, x1, y1, x0, y1], undefined, 1.2);
-  const ty = y1 - STRIP;
-  g.line([x0, ty, x1, ty], 1.2);
-  // the title block: project, what the sheet is, the date, the sheet's number
-  const cols = [x0, x0 + 150, x1 - 250, x1 - 120, x1];
-  for (const c of cols.slice(1, -1)) g.line([c, ty, c, y1], 0.8);
-  const base = ty + STRIP / 2 + 3;
-  g.text(cols[0] + 10, base, text.heading.toUpperCase(), 8.5, { font: 'bold' });
-  g.text(cols[1] + 10, base, cut(text.title, 74), 9.5, { font: 'bold' });
-  g.text(cols[2] + 10, base, text.date, 8.5);
-  g.text(cols[3] + 10, base, text.sheet(n, m), 8.5);
+interface Column {
+  rows: Row[];
+  w: number;
+  h: number;
+  left: number;
 }
+const ROW_GAP = 12;
+const COL_GAP = 40;
 
-/** Puts the symbols in columns inside a box of `w` by `h` (its corner at 0,0): blocks first, each family in its own column width. */
-function arrange(items: { ref: string; d: Drawn }[], w: number, h: number): { g: Pen; placed: Placed[] }[] {
-  const sheets: { g: Pen; placed: Placed[] }[] = [];
-  const open = () => {
-    const s = { g: new Pen(), placed: [] as Placed[] };
-    sheets.push(s);
-    return s;
+function columnsOf(rows: Row[], maxH: number, gap: number): Column[] {
+  const cols: Column[] = [];
+  let cur: Row[] = [], h = 0;
+  const close = () => {
+    if (!cur.length) return;
+    const left = Math.max(...cur.map((r) => r.leftExt));
+    const w = left + Math.max(...cur.map((r) => r.xs[r.xs.length - 1] + r.els[r.els.length - 1].w + r.rightExt));
+    cols.push({ rows: cur, w, h, left });
+    cur = [];
+    h = 0;
   };
-  let cur = open();
-  let x = 0, y = 0, colW = 0;
-  for (const { ref, d } of items) {
-    if (colW && (d.w !== colW || y + d.h > h)) {
-      x += colW + GAP;
-      y = 0;
-      colW = 0;
-    }
-    if (x + d.w > w + 0.5) {
-      cur = open();
-      x = 0;
-      y = 0;
-    }
-    colW = d.w;
-    d.draw(cur.g, x, y);
-    cur.placed.push({ ref, x, y, w: d.w, h: d.h });
-    y += d.h + GAP;
+  for (const r of rows) {
+    const rh = r.up + r.down;
+    if (cur.length && h + gap + rh > maxH) close();
+    h += (cur.length ? gap : 0) + rh;
+    cur.push(r);
   }
-  return sheets;
+  close();
+  return cols;
 }
-const scaled = (op: Op, k: number, dx: number, dy: number): Op =>
-  op.t === 'line'
-    ? { ...op, pts: op.pts.map((v, i) => (i % 2 ? dy : dx) + v * k), w: (op.w ?? 0.9) * Math.sqrt(k) }
-    : op.t === 'circle'
-      ? { ...op, x: dx + op.x * k, y: dy + op.y * k, r: op.r * k, w: (op.w ?? 0.9) * Math.sqrt(k) }
-      : { ...op, x: dx + op.x * k, y: dy + op.y * k, size: op.size * k };
 
-/** A small circuit is drawn larger, as large as still fits one sheet. */
-const SCALES = [1.7, 1.5, 1.3, 1.15, 1];
+interface Laid {
+  sheets: { g: Pen; placed: Placed[] }[];
+  fits: boolean;
+}
+function arrange(project: Project, text: SheetText, W: number, H: number): Laid {
+  const controllers = project.parts.filter(isController);
+  const others = project.parts.filter((p) => !isController(p));
+  const ctlRows = buildRows(controllers, [], text).sort((a, b) => project.parts.indexOf(a.els[0].part) - project.parts.indexOf(b.els[0].part));
+  const cols = [...columnsOf(ctlRows, H, 22), ...columnsOf(buildRows(others, controllers, text), H, ROW_GAP)];
+  let fits = cols.every((c) => c.w <= W + 0.5 && c.h <= H + 0.5);
+  // columns side by side until a sheet is full
+  const groups: Column[][] = [];
+  let width = 0;
+  for (const c of cols) {
+    const last = groups[groups.length - 1];
+    if (last && width + COL_GAP + c.w <= W + 0.5) {
+      last.push(c);
+      width += COL_GAP + c.w;
+    } else {
+      groups.push([c]);
+      width = c.w;
+    }
+  }
+  if (!groups.length) groups.push([]);
+  const sheets = groups.map((group) => {
+    const g = new Pen();
+    const placed: Placed[] = [];
+    const totalW = group.reduce((s, c) => s + c.w, 0) + COL_GAP * Math.max(0, group.length - 1);
+    const totalH = Math.max(0, ...group.map((c) => c.h));
+    let x = Math.max(0, (W - totalW) / 2);
+    const top = Math.max(0, (H - totalH) / 2);
+    for (const c of group) {
+      let y = top + (totalH - c.h) / 2;
+      const gap = c.rows.length > 1 ? (c.h - c.rows.reduce((s, r) => s + r.up + r.down, 0)) / (c.rows.length - 1) : 0;
+      for (const r of c.rows) {
+        const axis = y + r.up;
+        const x0 = x + c.left;
+        r.els.forEach((el, i) => {
+          const ex = x0 + r.xs[i];
+          el.draw(g, ex, axis);
+          for (const port of el.ports) {
+            const linked = el.inline && (port.side < 0 ? i > 0 : i < r.els.length - 1);
+            if (!linked) netEnd(g, ex + port.dx, axis + port.dy, port.side, port.pin);
+          }
+          if (i < r.els.length - 1) {
+            // the wire to the next part in the row, with the net's name over it
+            const a = ex + el.w, b = x0 + r.xs[i + 1];
+            g.line([a, axis, b, axis]);
+            const net = r.links[i];
+            if (net) g.text((a + b) / 2, axis - 2.6, net.name, 5.4, { font: 'label', align: 'center', ink: 'net' });
+          }
+          const lx = Math.max(0, ...el.ports.filter((p) => p.side < 0 && !(el.inline && i > 0)).map((p) => endExtent(p.pin)), (el.textW - el.w) / 2);
+          const rx = Math.max(0, ...el.ports.filter((p) => p.side > 0 && !(el.inline && i < r.els.length - 1)).map((p) => endExtent(p.pin)), (el.textW - el.w) / 2);
+          placed.push({ ref: el.part.ref, x: ex - lx, y: axis - el.up, w: el.w + lx + rx, h: el.up + el.down });
+        });
+        y += r.up + r.down + gap;
+      }
+      x += c.w + COL_GAP;
+    }
+    return { g, placed };
+  });
+  if (groups.length === 1 && width > W + 0.5) fits = false;
+  return { sheets, fits };
+}
+
+function frame(g: Pen, text: SheetText, n: number, m: number): void {
+  const o = { x0: EDGE, y0: EDGE, x1: SHEET.w - EDGE, y1: SHEET.h - EDGE };
+  g.shape([o.x0, o.y0, o.x1, o.y0, o.x1, o.y1, o.x0, o.y1], undefined, 0.6, 'line');
+  g.shape([INNER.x0, INNER.y0, INNER.x1, INNER.y0, INNER.x1, INNER.y1, INNER.x0, INNER.y1], undefined, 1.1);
+  // zone markers: 1 to 6 across, A to D down
+  const cols = 6, rows = 4;
+  for (let i = 0; i < cols; i++) {
+    const xa = INNER.x0 + ((INNER.x1 - INNER.x0) * i) / cols, xb = INNER.x0 + ((INNER.x1 - INNER.x0) * (i + 1)) / cols;
+    if (i) for (const [ya, yb] of [[o.y0, INNER.y0], [INNER.y1, o.y1]]) g.line([xa, ya, xa, yb], 0.6, 'line');
+    for (const y of [o.y0 + BAND / 2 + 2.4, INNER.y1 + BAND / 2 + 2.4]) g.text((xa + xb) / 2, y, String(i + 1), 6.2, { font: 'mono', align: 'center', ink: 'soft' });
+  }
+  for (let i = 0; i < rows; i++) {
+    const ya = INNER.y0 + ((INNER.y1 - INNER.y0) * i) / rows, yb = INNER.y0 + ((INNER.y1 - INNER.y0) * (i + 1)) / rows;
+    if (i) for (const [xa, xb] of [[o.x0, INNER.x0], [INNER.x1, o.x1]]) g.line([xa, ya, xb, ya], 0.6, 'line');
+    for (const x of [o.x0 + BAND / 2, INNER.x1 + BAND / 2]) g.text(x, (ya + yb) / 2 + 2.4, 'ABCD'[i], 6.2, { font: 'mono', align: 'center', ink: 'soft' });
+  }
+  // the title block
+  const x0 = INNER.x1 - TB.w, y0 = INNER.y1 - TB.h, x1 = INNER.x1, y1 = INNER.y1;
+  g.shape([x0, y0, x1, y0, x1, y1, x0, y1], 'cream', 1.1);
+  const mid = y0 + 36;
+  g.line([x0, mid, x1, mid], 0.7);
+  const cell = (x: number, y: number, label: string, value: string, size: number, font: FontId, max: number) => {
+    g.text(x + 8, y + 9.5, label.toUpperCase(), 4.8, { font: 'strong', ink: 'soft' });
+    g.text(x + 8, y + 9.5 + size + 2.5, fit(value, size, max - 16, font), size, { font });
+  };
+  // maker's mark, then the project
+  const brandW = 92;
+  g.line([x0 + brandW, y0, x0 + brandW, mid], 0.7);
+  g.circle(x0 + 14, y0 + 18, 4, 'amber', 0);
+  g.text(x0 + 23, y0 + 16.5, 'KodeDot Sim', 9, { font: 'display' });
+  g.text(x0 + 23, y0 + 26, text.heading, 6.4, { ink: 'soft' });
+  cell(x0 + brandW, y0, text.labels.project, text.title, 11, 'display', TB.w - brandW);
+  const cw = [136, 62, TB.w - 198];
+  let cx = x0;
+  const cells: [string, string][] = [[text.labels.date, text.date], [text.labels.rev, 'A'], [text.labels.sheet, `${n} / ${m}`]];
+  cells.forEach(([label, value], i) => {
+    if (i) g.line([cx, mid, cx, y1], 0.7);
+    cell(cx, mid - 1.5, label, value, 7.6, 'text', cw[i]);
+    cx += cw[i];
+  });
+}
+
+/** A small circuit is drawn larger, as large as still fits one sheet; a crowded one a little smaller before it takes two. */
+const SCALES = [2.4, 2.2, 2, 1.8, 1.6, 1.45, 1.3, 1.15, 1, 0.9, 0.8];
 
 export function drawSchematic(project: Project, text: SheetText): Sheet[] {
-  const items: { ref: string; d: Drawn }[] = [];
-  for (const part of project.parts) for (const d of symbolsOf(part, text)) items.push({ ref: part.ref, d });
   const W = AREA.x1 - AREA.x0, H = AREA.y1 - AREA.y0;
+  // the largest size at which everything is on one sheet; when even the smallest takes two, natural size on several
   let k = 1;
-  let sheets = arrange(items, W, H);
+  let laid: Laid | null = null;
   for (const s of SCALES) {
-    const tried = s === 1 ? sheets : arrange(items, W / s, H / s);
-    if (tried.length === 1 || s === 1) {
+    const tried = arrange(project, text, W / s, H / s);
+    if (tried.fits && tried.sheets.length === 1) {
       k = s;
-      sheets = tried;
+      laid = tried;
       break;
     }
   }
-  if (!items.length) sheets[0].g.text(W / 2, H / 2 - 20, text.empty, 11, { align: 'center', ink: 'soft' });
-  return sheets.map((s, i) => {
+  if (!laid) {
+    const natural = arrange(project, text, W, H);
+    [k, laid] = natural.fits ? [1, natural] : [0.8, arrange(project, text, W / 0.8, H / 0.8)];
+  }
+  if (!project.parts.length) laid.sheets[0].g.text(W / k / 2, H / k / 2, text.empty, 11 / k, { align: 'center', ink: 'soft' });
+  const scaled = (op: Op): Op =>
+    op.t === 'line'
+      ? { ...op, pts: op.pts.map((v, i) => (i % 2 ? AREA.y0 : AREA.x0) + v * k), w: (op.w ?? 1) * Math.sqrt(k) }
+      : op.t === 'circle'
+        ? { ...op, x: AREA.x0 + op.x * k, y: AREA.y0 + op.y * k, r: op.r * k, w: (op.w ?? 1) * Math.sqrt(k) }
+        : { ...op, x: AREA.x0 + op.x * k, y: AREA.y0 + op.y * k, size: op.size * k };
+  return laid.sheets.map((s, i) => {
     const g = new Pen();
-    frame(g, text, i + 1, sheets.length);
-    return {
-      ops: [...g.ops, ...s.g.ops.map((op) => scaled(op, k, AREA.x0, AREA.y0))],
-      placed: s.placed.map((p) => ({ ref: p.ref, x: AREA.x0 + p.x * k, y: AREA.y0 + p.y * k, w: p.w * k, h: p.h * k })),
-    };
+    frame(g, text, i + 1, laid.sheets.length);
+    return { ops: [...s.g.ops.map(scaled), ...g.ops], placed: s.placed.map((p) => ({ ref: p.ref, x: AREA.x0 + p.x * k, y: AREA.y0 + p.y * k, w: p.w * k, h: p.h * k })), scale: k };
   });
 }
 export const SCHEMATIC_AREA = AREA;

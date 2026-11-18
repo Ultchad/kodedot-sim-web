@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { PDFDocument, PDFName } from '@cantoo/pdf-lib';
 import { describe, expect, it } from 'vitest';
 import { translate, type Locale, type TFn } from '../i18n/core';
-import { TestBench, ledBench, moduleBench, servoBench } from './fixtures';
+import { TestBench, busyBench, ledBench, moduleBench, servoBench } from './fixtures';
 import { buildProject } from './nets';
 import { ATTACHMENT, ProjectPdfError, isPdf, makeProjectPdf, nameOf, readProjectPdf, type ProjectPdfInput } from './pdf';
 import { SCHEMATIC_AREA, SHEET, drawSchematic, type SheetText } from './schematic';
@@ -35,7 +35,7 @@ function inputOf(t: TestBench, title: string, locale: Locale = 'en'): ProjectPdf
     benchOnly: JSON.stringify(bench),
   };
 }
-const sheetText: SheetText = { title: 'T', date: 'd', heading: 'Schematic', sheet: (n, m) => `Sheet ${n} of ${m}`, name: (p) => p.names.en, empty: 'empty' };
+const sheetText: SheetText = { title: 'T', date: 'd', heading: 'Schematic', labels: { project: 'Project', date: 'Date', sheet: 'Sheet', rev: 'Rev.' }, name: (p) => p.names.en, empty: 'empty' };
 
 /** One of every part of the library, each with something on one pin, so every symbol is drawn with labels. */
 function everything(): TestBench {
@@ -93,7 +93,7 @@ function everything(): TestBench {
 }
 
 describe('the schematic sheets', () => {
-  const cases: [string, () => TestBench][] = [['led', () => ledBench(true)], ['servo', servoBench], ['module', moduleBench], ['everything', everything]];
+  const cases: [string, () => TestBench][] = [['led', () => ledBench(true)], ['servo', servoBench], ['module', moduleBench], ['busy', busyBench], ['everything', everything]];
   for (const [name, make] of cases) {
     it(`${name}: every symbol is inside the frame and none overlaps another`, () => {
       const project = buildProject(make().input());
@@ -112,10 +112,10 @@ describe('the schematic sheets', () => {
         for (const op of s.ops) {
           const xs = op.t === 'line' ? op.pts.filter((_, i) => i % 2 === 0) : [op.x];
           const ys = op.t === 'line' ? op.pts.filter((_, i) => i % 2 === 1) : [op.y];
-          expect(Math.min(...xs)).toBeGreaterThanOrEqual(20);
-          expect(Math.max(...xs)).toBeLessThanOrEqual(SHEET.w - 20);
-          expect(Math.min(...ys)).toBeGreaterThanOrEqual(20);
-          expect(Math.max(...ys)).toBeLessThanOrEqual(SHEET.h - 20);
+          expect(Math.min(...xs)).toBeGreaterThanOrEqual(22);
+          expect(Math.max(...xs)).toBeLessThanOrEqual(SHEET.w - 22);
+          expect(Math.min(...ys)).toBeGreaterThanOrEqual(22);
+          expect(Math.max(...ys)).toBeLessThanOrEqual(SHEET.h - 22);
         }
       }
     });
@@ -124,25 +124,30 @@ describe('the schematic sheets', () => {
     const project = buildProject(ledBench().input());
     const [sheet] = drawSchematic(project, sheetText);
     const texts = sheet.ops.filter((o) => o.t === 'text').map((o) => (o as { text: string }).text);
-    for (const want of ['U1', 'R1', 'D1', '220 Ω', 'EXP1', 'N1', 'GND', 'EXP1 (IO8)', 'Sheet 1 of 1']) expect(texts, want).toContain(want);
-    expect(texts.filter((x) => x === 'N1')).toHaveLength(2);
+    for (const want of ['U1', 'R1', 'D1', '220 Ω', 'EXP1', 'N1', 'GND', 'EXP1 (IO8)', '1 / 1', 'KodeDot Sim']) expect(texts, want).toContain(want);
+    // the resistor and the LED stand in one row, joined by a wire that carries the net's name once
+    expect(texts.filter((x) => x === 'N1')).toHaveLength(1);
+    const at = (ref: string) => sheet.placed.find((p) => p.ref === ref)!;
+    expect(at('U1').x).toBeLessThan(at('R1').x);
+    expect(at('R1').x + at('R1').w).toBeLessThanOrEqual(at('D1').x + 0.01);
+    expect(sheet.scale).toBeGreaterThan(1.2);
     // the breadboard is not a symbol, and unwired Dot pins are left out
     expect(texts).not.toContain('BB1');
     expect(texts).not.toContain('EXP2 (IO9)');
   });
   it('starts another sheet when the first is full', () => {
     const t = new TestBench();
-    for (let i = 0; i < 40; i++) t.add('resistor', { x: 100 + (i % 10) * 30, z: Math.floor(i / 10) * 30 });
+    for (let i = 0; i < 160; i++) t.add('resistor', { x: 100 + (i % 20) * 30, z: Math.floor(i / 20) * 30 });
     const sheets = drawSchematic(buildProject(t.input()), sheetText);
     expect(sheets.length).toBeGreaterThan(1);
-    expect(sheets.flatMap((s) => s.placed)).toHaveLength(40);
-    expect(sheets[1].ops.some((o) => o.t === 'text' && o.text === `Sheet 2 of ${sheets.length}`)).toBe(true);
+    expect(sheets.flatMap((s) => s.placed)).toHaveLength(160);
+    expect(sheets[1].ops.some((o) => o.t === 'text' && o.text === `2 / ${sheets.length}`)).toBe(true);
   });
 });
 
 describe('the project PDF', () => {
   it('carries the bench: PDF bytes -> the same bench file, deep-equal', async () => {
-    for (const [name, t, locale] of [['led', ledBench(true), 'en'], ['servo', servoBench(), 'pt-BR'], ['module', moduleBench(), 'es'], ['everything', everything(), 'pt-BR']] as const) {
+    for (const [name, t, locale] of [['led', ledBench(true), 'en'], ['servo', servoBench(), 'pt-BR'], ['module', moduleBench(), 'es'], ['busy', busyBench(), 'en'], ['everything', everything(), 'pt-BR']] as const) {
       const input = inputOf(t, name === 'servo' ? 'Servo com Arduino Uno: varredura' : `Project ${name}`, locale);
       const bytes = await makeProjectPdf(input);
       keep(`${name}.pdf`, bytes);

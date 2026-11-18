@@ -106,3 +106,49 @@ export function moduleBench(side: 'upright' | 'turned' = 'upright'): TestBench {
   t.wire(`${mod}.MOTA_2`, `${motor}.M2`);
   return t;
 }
+
+/**
+ * A busier bench: the Dot with the Robotics module on its header and a motor on it, talking to an Uno that lights three
+ * LEDs through resistors on a breadboard, reads a push button, a slide switch and a potentiometer, and drives a servo.
+ */
+export function busyBench(): TestBench {
+  const t = new TestBench();
+  const mod = t.add('kode-robotics', { x: 0, z: -80 });
+  t.store.setMount(mod, 'upright');
+  const motor = t.add('dc-motor', { x: -120, z: -60 });
+  t.wire(`${mod}.MOTA_1`, `${motor}.M1`);
+  t.wire(`${mod}.MOTA_2`, `${motor}.M2`);
+  const uno = t.add('uno-r3', { x: 130, z: -90 });
+  const bb = t.add('breadboard-half', { x: 130, z: 20 });
+  const leds = ['led-red', 'led-yellow', 'led-green'];
+  ['D3', 'D5', 'D6'].forEach((pin, i) => {
+    const c = 2 + i * 8;
+    t.plug('resistor', 'A', bb, `a${c}`, { ohms: 220 });
+    t.plug(leds[i], 'A', bb, `b${c + 4}`);
+    t.wire(`${uno}.${pin}`, `${bb}.e${c}`);
+  });
+  // the cathode columns are chained to the Uno's ground
+  t.wire(`${bb}.e7`, `${uno}.GND_1`);
+  t.wire(`${bb}.d15`, `${bb}.d7`);
+  t.wire(`${bb}.d23`, `${bb}.d15`);
+  t.plug('push-button', 'A', bb, 'c26');
+  t.wire(`${uno}.D2`, `${bb}.e26`);
+  t.wire(`${bb}.e28`, `${bb}.c23`);
+  const sw = t.add('slide-switch', { x: 260, z: 60 });
+  t.wire(`${uno}.D4`, `${sw}.COM`);
+  t.wire(`${sw}.A`, `${uno}.V5`);
+  t.wire(`${sw}.B`, `${bb}.c7`);
+  const servo = t.add('servo', { x: 270, z: -90 });
+  t.wire(`${uno}.D9`, `${servo}.SIG`);
+  t.wire(`${uno}.V5`, `${servo}.V5`);
+  t.wire(`${uno}.GND_2`, `${servo}.GND`);
+  const pot = t.add('potentiometer', { x: 300, z: 20 });
+  t.wire(`${uno}.A0`, `${pot}.W`);
+  t.wire(`${pot}.T`, `${uno}.V5`);
+  t.wire(`${pot}.B`, `${bb}.a7`);
+  t.wire('device.EXP3', `${uno}.D0`);
+  t.wire('device.EXP4', `${uno}.D1`);
+  t.wire('device.GND', `${uno}.GND_T`);
+  t.store.setCode(uno, { files: [{ name: 'sketch.ino', text: SERVO_SKETCH }, { name: 'pins.h', text: '#pragma once\nconst int LED_RED = 3;\nconst int LED_YELLOW = 5;\nconst int LED_GREEN = 6;\nconst int BUTTON = 2;\n' }] });
+  return t;
+}

@@ -659,4 +659,12 @@ export const es: Messages = {
   'project.pdf.col.value': 'Valor',
   'project.pdf.col.qty': 'Cant.',
   'project.pdf.jumpers': 'Cables puente',
+  'project.pdf.tb.project': 'Proyecto',
+  'project.pdf.tb.date': 'Fecha',
+  'project.pdf.tb.sheet': 'Hoja',
+  'project.pdf.tb.rev': 'Rev.',
+  'project.pdf.contents': 'Contenido',
+  'project.pdf.around': 'Construido en torno a',
+  'project.pdf.page': 'Página',
+  'project.pdf.col.line': 'Línea',
 };

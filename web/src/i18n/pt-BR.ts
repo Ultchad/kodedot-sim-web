@@ -659,4 +659,12 @@ export const ptBR: Messages = {
   'project.pdf.col.value': 'Valor',
   'project.pdf.col.qty': 'Qtd.',
   'project.pdf.jumpers': 'Fios jumper',
+  'project.pdf.tb.project': 'Projeto',
+  'project.pdf.tb.date': 'Data',
+  'project.pdf.tb.sheet': 'Folha',
+  'project.pdf.tb.rev': 'Rev.',
+  'project.pdf.contents': 'Conteúdo',
+  'project.pdf.around': 'Montado em torno de',
+  'project.pdf.page': 'Página',
+  'project.pdf.col.line': 'Linha',
 };

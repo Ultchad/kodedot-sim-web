@@ -658,4 +658,12 @@ export const en = {
   'project.pdf.col.value': 'Value',
   'project.pdf.col.qty': 'Qty',
   'project.pdf.jumpers': 'Jumper wires',
+  'project.pdf.tb.project': 'Project',
+  'project.pdf.tb.date': 'Date',
+  'project.pdf.tb.sheet': 'Sheet',
+  'project.pdf.tb.rev': 'Rev.',
+  'project.pdf.contents': 'Contents',
+  'project.pdf.around': 'Built around',
+  'project.pdf.page': 'Page',
+  'project.pdf.col.line': 'Line',
 } as const satisfies Record<string, string>;
