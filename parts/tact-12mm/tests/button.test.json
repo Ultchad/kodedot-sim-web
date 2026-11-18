@@ -1,0 +1,156 @@
+{
+  "name": "the legs are joined in pairs, the press joins the pairs",
+  "steps": [
+    {
+      "comment": "A1 held low by the tester, the other three pulled up",
+      "set_pin": {
+        "pin": "A1",
+        "level": 0
+      }
+    },
+    {
+      "pullup": "A2"
+    },
+    {
+      "pullup": "B1"
+    },
+    {
+      "pullup": "B2"
+    },
+    {
+      "advance_ms": 5
+    },
+    {
+      "comment": "A2 is the same metal as A1: low without a press",
+      "expect_pin": {
+        "pin": "A2",
+        "level": 0
+      }
+    },
+    {
+      "comment": "the B pair is not connected to the A pair",
+      "expect_pin": {
+        "pin": "B1",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "B2",
+        "level": 1
+      }
+    },
+    {
+      "set_field": {
+        "pressed": true
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "comment": "pressed: both B legs follow A",
+      "expect_pin": {
+        "pin": "B1",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "B2",
+        "level": 0
+      }
+    },
+    {
+      "set_field": {
+        "pressed": false
+      }
+    },
+    {
+      "advance_ms": 20
+    },
+    {
+      "expect_pin": {
+        "pin": "B1",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "B2",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "A2",
+        "level": 0
+      }
+    },
+    {
+      "comment": "a press() holds the contact for its time and lets go",
+      "press": {
+        "field": "pressed",
+        "ms": 100
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "B2",
+        "level": 1
+      }
+    },
+    {
+      "comment": "B1 and B2 are one piece too: drive B1 low, B2 follows",
+      "set_pin": {
+        "pin": "A1",
+        "level": null
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "B1",
+        "level": 0
+      }
+    },
+    {
+      "pullup": "A1"
+    },
+    {
+      "advance_ms": 5
+    },
+    {
+      "expect_pin": {
+        "pin": "B2",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "A1",
+        "level": 1
+      }
+    },
+    {
+      "comment": "the cap's colour is only a look",
+      "set_field": {
+        "cap": "blue"
+      }
+    },
+    {
+      "advance_ms": 5
+    },
+    {
+      "expect_pin": {
+        "pin": "B2",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "A1",
+        "level": 1
+      }
+    }
+  ]
+}

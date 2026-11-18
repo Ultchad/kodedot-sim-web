@@ -1,0 +1,174 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.latching-button",
+  "name": {
+    "en": "Latching push button (push on, push off)",
+    "pt-BR": "Botão com trava (liga/desliga)",
+    "es": "Pulsador con enclavamiento (on/off)"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "The self-locking push button, 8.5 x 8.5 mm, six pins: press it once and the plunger stays down and the contact stays closed; press again and it comes back. Click it on the table. It is two switches moved by one plunger (DPDT), one per row of pins: released, COM is joined to NC; latched, COM is joined to NO. For a simple on/off use COM1 and NO1. Rows 7.62 mm apart so it sits over a breadboard's centre channel with one pole on each side. Rated 30 V, 0.3 A; contacts are ideal joins. ESTIMATES: the leg positions (real about 2.5 x 5 mm, bent out here) and which end pin is NO: check your part with a multimeter.",
+    "pt-BR": "O botão com trava (autotravante), 8,5 x 8,5 mm, seis pinos: aperte uma vez e o pino fica embaixo e o contato fica fechado; aperte de novo e ele volta. Clique nele na mesa. São duas chaves movidas pelo mesmo pino (DPDT), uma por fileira de pinos: solto, COM fica ligado ao NC; travado, COM fica ligado ao NO. Para um liga/desliga simples use COM1 e NO1. Fileiras a 7,62 mm para ficar sobre o canal central da protoboard com um polo de cada lado. 30 V, 0,3 A; os contatos são ligações ideais. ESTIMATIVAS: a posição das pernas (real cerca de 2,5 x 5 mm, aqui abertas) e qual pino da ponta é o NO: confira a sua peça com um multímetro.",
+    "es": "El pulsador con enclavamiento (autobloqueo), 8,5 x 8,5 mm, seis pines: púlsalo una vez y el émbolo se queda abajo y el contacto cerrado; púlsalo otra vez y vuelve. Haz clic en la mesa. Son dos interruptores movidos por el mismo émbolo (DPDT), uno por fila de pines: suelto, COM queda unido a NC; enclavado, COM queda unido a NO. Para un encendido simple usa COM1 y NO1. Filas a 7,62 mm para quedar sobre el canal central de la protoboard con un polo a cada lado. 30 V, 0,3 A; los contactos son uniones ideales. ESTIMACIONES: la posición de las patas (real unos 2,5 x 5 mm, aquí abiertas) y cuál pin del extremo es NO: comprueba tu pieza con un multímetro."
+  },
+  "category": "input",
+  "tags": [
+    "button",
+    "latching",
+    "self-locking",
+    "switch",
+    "dpdt",
+    "input"
+  ],
+  "keywords": {
+    "en": [
+      "button",
+      "latching",
+      "self-locking",
+      "push on push off",
+      "on off",
+      "dpdt",
+      "6 pin",
+      "switch",
+      "power switch",
+      "input"
+    ],
+    "pt-BR": [
+      "botão",
+      "trava",
+      "com trava",
+      "autotravante",
+      "liga desliga",
+      "push button",
+      "dpdt",
+      "6 pinos",
+      "chave",
+      "entrada"
+    ],
+    "es": [
+      "botón",
+      "pulsador",
+      "enclavamiento",
+      "autobloqueo",
+      "encendido apagado",
+      "dpdt",
+      "6 pines",
+      "interruptor",
+      "entrada"
+    ]
+  },
+  "body": {
+    "w_mm": 8.5,
+    "d_mm": 8.5,
+    "h_mm": 14,
+    "estimate": true
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 136,
+    "height": 136
+  },
+  "pins": [
+    {"name":"NC1","kind":"io","pos":{"x":27.4,"y":7},"mm":{"x":1.71,"y":0.44,"z":0},"face":"bottom","label":{"en":"NC1"},"abs_max_mv":30000},
+    {"name":"COM1","kind":"io","pos":{"x":68,"y":7},"mm":{"x":4.25,"y":0.44,"z":0},"face":"bottom","label":{"en":"COM1"},"abs_max_mv":30000},
+    {"name":"NO1","kind":"io","pos":{"x":108.6,"y":7},"mm":{"x":6.79,"y":0.44,"z":0},"face":"bottom","label":{"en":"NO1"},"abs_max_mv":30000},
+    {"name":"NC2","kind":"io","pos":{"x":27.4,"y":129},"mm":{"x":1.71,"y":8.06,"z":0},"face":"bottom","label":{"en":"NC2"},"abs_max_mv":30000},
+    {"name":"COM2","kind":"io","pos":{"x":68,"y":129},"mm":{"x":4.25,"y":8.06,"z":0},"face":"bottom","label":{"en":"COM2"},"abs_max_mv":30000},
+    {"name":"NO2","kind":"io","pos":{"x":108.6,"y":129},"mm":{"x":6.79,"y":8.06,"z":0},"face":"bottom","label":{"en":"NO2"},"abs_max_mv":30000}
+  ],
+  "fields": [
+    {
+      "name": "latched",
+      "type": "boolean",
+      "label": {
+        "en": "Latched (down)",
+        "pt-BR": "Travado (embaixo)",
+        "es": "Enclavado (abajo)"
+      },
+      "default": false
+    }
+  ],
+  "controls": [
+    {
+      "field": "latched",
+      "region": {
+        "x": 26.4,
+        "y": 26.4,
+        "w": 83.2,
+        "h": 83.2
+      },
+      "mode": "toggle"
+    }
+  ],
+  "visuals": [
+    {
+      "id": "cap",
+      "effect": "fill",
+      "x": 42.4,
+      "y": 42.4,
+      "w": 51.2,
+      "h": 51.2,
+      "color": "#ffffff",
+      "source": {
+        "field": "latched"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "switch",
+        "a": "COM1",
+        "b": "NC1",
+        "closed": {
+          "field": "latched",
+          "op": "eq",
+          "value": false
+        },
+        "bounce_ms": 2
+      },
+      {
+        "type": "switch",
+        "a": "COM1",
+        "b": "NO1",
+        "closed": {
+          "field": "latched",
+          "op": "eq",
+          "value": true
+        },
+        "bounce_ms": 2
+      },
+      {
+        "type": "switch",
+        "a": "COM2",
+        "b": "NC2",
+        "closed": {
+          "field": "latched",
+          "op": "eq",
+          "value": false
+        },
+        "bounce_ms": 2
+      },
+      {
+        "type": "switch",
+        "a": "COM2",
+        "b": "NO2",
+        "closed": {
+          "field": "latched",
+          "op": "eq",
+          "value": true
+        },
+        "bounce_ms": 2
+      }
+    ]
+  }
+}

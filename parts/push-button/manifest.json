@@ -9,25 +9,26 @@
   "license": "GPL-3.0-or-later",
   "id": "dotbench.push-button",
   "name": {
-    "en": "Push button",
-    "pt-BR": "Botão",
-    "es": "Pulsador"
+    "en": "Tactile button, 2 pins (6 x 3.5 mm)",
+    "pt-BR": "Botão táctil, 2 pinos (6 x 3,5 mm)",
+    "es": "Pulsador táctil, 2 pines (6 x 3,5 mm)"
   },
   "description": {
-    "en": "A momentary switch between A and B with 5 ms of contact bounce. Press it on the picture; set the Pressed field to keep it down.",
-    "pt-BR": "Uma chave momentânea entre A e B com 5 ms de repique. Pressione na imagem; use o campo Pressionado para mantê-la apertada.",
-    "es": "Un pulsador entre A y B con 5 ms de rebote. Púlsalo en la imagen; usa el campo Pulsado para mantenerlo."
+    "en": "The small two-leg tactile button, 6 x 3.5 mm: one contact between A and B, closed while pressed, with 5 ms of contact bounce. Press it on the table; set the Pressed field to keep it down. Legs 5.08 mm apart (the real ones are about 5 mm: estimate). Rated 12 V, 50 mA; the contact is an ideal join.",
+    "pt-BR": "O botão táctil pequeno de duas pernas, 6 x 3,5 mm: um contato entre A e B, fechado enquanto apertado, com 5 ms de repique. Aperte na mesa; use o campo Pressionado para mantê-lo apertado. Pernas a 5,08 mm (as reais ficam a cerca de 5 mm: estimativa). 12 V, 50 mA; o contato é uma ligação ideal.",
+    "es": "El pulsador táctil pequeño de dos patas, 6 x 3,5 mm: un contacto entre A y B, cerrado mientras se pulsa, con 5 ms de rebote. Púlsalo en la mesa; usa el campo Pulsado para mantenerlo. Patas a 5,08 mm (las reales están a unos 5 mm: estimación). 12 V, 50 mA; el contacto es una unión ideal."
   },
   "category": "input",
   "tags": [
     "button",
+    "tactile",
     "switch",
     "input"
   ],
   "picture": {
     "file": "picture.svg",
     "width": 150,
-    "height": 150
+    "height": 88
   },
   "pins": [
     {
@@ -35,12 +36,12 @@
       "kind": "io",
       "pos": {
         "x": 11.5,
-        "y": 75
+        "y": 43.8
       },
-      "abs_max_mv": 5500,
+      "abs_max_mv": 12000,
       "mm": {
         "x": 0.46,
-        "y": 3,
+        "y": 1.75,
         "z": 0
       },
       "face": "bottom"
@@ -50,12 +51,12 @@
       "kind": "io",
       "pos": {
         "x": 138.5,
-        "y": 75
+        "y": 43.8
       },
-      "abs_max_mv": 5500,
+      "abs_max_mv": 12000,
       "mm": {
         "x": 5.54,
-        "y": 3,
+        "y": 1.75,
         "z": 0
       },
       "face": "bottom"
@@ -78,9 +79,9 @@
       "field": "pressed",
       "region": {
         "x": 37.5,
-        "y": 18.8,
+        "y": 12.5,
         "w": 75,
-        "h": 75
+        "h": 62.5
       },
       "mode": "momentary"
     }
@@ -90,9 +91,9 @@
       "id": "cap",
       "effect": "fill",
       "x": 50,
-      "y": 31.2,
+      "y": 25,
       "w": 50,
-      "h": 50,
+      "h": 37.5,
       "color": "#e03a3a",
       "source": {
         "field": "pressed"
@@ -116,18 +117,28 @@
   },
   "body": {
     "w_mm": 6,
-    "d_mm": 6,
-    "h_mm": 5
+    "d_mm": 3.5,
+    "h_mm": 5,
+    "estimate": true
   },
   "keywords": {
     "en": [
       "button",
-      "switch",
+      "tactile",
+      "tact switch",
       "push",
+      "2 pin",
+      "momentary",
+      "switch",
       "input"
     ],
     "pt-BR": [
       "botão",
+      "táctil",
+      "tátil",
+      "push button",
+      "2 pinos",
+      "momentâneo",
       "chave",
       "pressionar",
       "entrada"
@@ -135,6 +146,9 @@
     "es": [
       "botón",
       "pulsador",
+      "táctil",
+      "2 pines",
+      "momentáneo",
       "interruptor",
       "entrada"
     ]

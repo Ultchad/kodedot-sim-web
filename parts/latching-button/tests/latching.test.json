@@ -1,0 +1,165 @@
+{
+  "name": "push on, push off: two poles change over together and stay",
+  "steps": [
+    {
+      "comment": "both commons held low by the tester, the four ends pulled up",
+      "set_pin": {
+        "pin": "COM1",
+        "level": 0
+      }
+    },
+    {
+      "set_pin": {
+        "pin": "COM2",
+        "level": 0
+      }
+    },
+    {
+      "pullup": "NC1"
+    },
+    {
+      "pullup": "NO1"
+    },
+    {
+      "pullup": "NC2"
+    },
+    {
+      "pullup": "NO2"
+    },
+    {
+      "advance_ms": 10
+    },
+    {
+      "comment": "released: COM to NC on both poles",
+      "expect_pin": {
+        "pin": "NC1",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NO1",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NC2",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NO2",
+        "level": 1
+      }
+    },
+    {
+      "comment": "first press: latched",
+      "set_field": {
+        "latched": true
+      }
+    },
+    {
+      "advance_ms": 10
+    },
+    {
+      "expect_pin": {
+        "pin": "NO1",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NC1",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NO2",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NC2",
+        "level": 1
+      }
+    },
+    {
+      "comment": "nobody touches it: it stays",
+      "advance_ms": 2000
+    },
+    {
+      "expect_pin": {
+        "pin": "NO1",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NC1",
+        "level": 1
+      }
+    },
+    {
+      "comment": "second press: released",
+      "set_field": {
+        "latched": false
+      }
+    },
+    {
+      "advance_ms": 10
+    },
+    {
+      "expect_pin": {
+        "pin": "NC1",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NO1",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NC2",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NO2",
+        "level": 1
+      }
+    },
+    {
+      "comment": "the poles are separate: free COM2, pole 2 floats high while pole 1 still conducts",
+      "set_pin": {
+        "pin": "COM2",
+        "level": null
+      }
+    },
+    {
+      "pullup": "COM2"
+    },
+    {
+      "advance_ms": 10
+    },
+    {
+      "expect_pin": {
+        "pin": "NC2",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "NC1",
+        "level": 0
+      }
+    }
+  ]
+}
