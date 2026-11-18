@@ -35,12 +35,38 @@ export interface AutoNote {
 }
 
 /** The id of the newest hand-written entry: change it to the day the update is published. */
-export const LATEST_NOTE_ID = '2026-11-18';
+export const LATEST_NOTE_ID = '2026-11-18-b';
 
 /** Hand-written entries, newest first. */
 export const NOTES: NewsEntry[] = [
   {
     id: LATEST_NOTE_ID,
+    title: {
+      en: 'Export your project as a PDF',
+      'pt-BR': 'Exporte seu projeto em PDF',
+      es: 'Exporta tu proyecto en PDF',
+    },
+    points: {
+      en: [
+        'One file with a picture of the table, the schematic, every connection to tick off, the parts list and the code.',
+        'Open that same PDF here again and the whole bench comes back as it was.',
+        'Find it in the Bench panel, under Bench file.',
+      ],
+      'pt-BR': [
+        'Um arquivo com a foto da mesa, o esquemático, cada ligação para marcar, a lista de peças e o código.',
+        'Abra esse mesmo PDF aqui de novo e a bancada inteira volta como estava.',
+        'Fica no painel Bancada, em Arquivo da bancada.',
+      ],
+      es: [
+        'Un archivo con una foto de la mesa, el esquema, cada conexión para marcar, la lista de piezas y el código.',
+        'Abre ese mismo PDF aquí otra vez y todo el banco vuelve tal como estaba.',
+        'Está en el panel Banco, en Archivo del banco.',
+      ],
+    },
+    guide: 'workbench',
+  },
+  {
+    id: '2026-11-18',
     title: {
       en: 'Part pictures, new buttons and kodeOS 0.1.2',
       'pt-BR': 'Fotos das peças, botões novos e kodeOS 0.1.2',
