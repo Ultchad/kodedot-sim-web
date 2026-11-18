@@ -91,8 +91,8 @@ function netEnd(g: Pen, x: number, y: number, dir: -1 | 1, pin: ProjectPin | und
     g.text(x + dir * 11.5, y + 2.5, name, LABEL, { align, font: 'bold' });
   } else if (net.kind === 'supply') {
     const sx = x + dir * 5;
-    g.line([x, y, sx, y, sx, y - 5], 0.9, 'supply');
-    g.line([sx - 3.6, y - 5, sx + 3.6, y - 5], 1.3, 'supply');
+    g.line([x, y, sx, y, sx, y - 4.4], 0.9, 'supply');
+    g.line([sx - 3.6, y - 4.4, sx + 3.6, y - 4.4], 1.3, 'supply');
     g.text(x + dir * 11.5, y + 2.5, name, LABEL, { align, font: 'bold', ink: 'supply' });
   } else {
     // a small flag, as net labels are drawn
@@ -379,6 +379,10 @@ function blocks(part: ProjectPart, text: SheetText): Drawn[] {
     left = pins.filter((p) => !contact(p));
     right = pins.filter(contact);
   }
+  // supplies above grounds, as schematics have them (and a ground symbol never hangs into a supply's)
+  const groundLast = (list: ProjectPin[]) => [...list.filter((p) => p.net?.kind !== 'ground'), ...list.filter((p) => p.net?.kind === 'ground')];
+  left = groundLast(left);
+  if (!faces) right = groundLast(right);
   // a side with too many rows spills onto the other, then onto further blocks
   while (right.length > MAX_ROWS && left.length < MAX_ROWS) left.push(right.pop()!);
   while (left.length > MAX_ROWS && right.length < MAX_ROWS) right.push(left.pop()!);

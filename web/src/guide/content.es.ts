@@ -130,7 +130,7 @@ export const es: GuideMessages = {
   'wb.reset.h': 'Reset y BOOT',
   'wb.reset': 'Los botones de las placas funcionan: pulsa el interruptor en la propia placa, o mantén el botón de **{t:parts.buttons}**, en su ficha. El reset (EN en las placas ESP32) reinicia el sketch.',
   'wb.file.h': 'Guardar el banco',
-  'wb.file': 'La mesa se va guardando en este navegador mientras trabajas. **{t:benchfile.title}** › **{t:benchfile.save}**, al final del panel **{t:nav.bench}**, lo escribe todo en `bench.kodedot.json`: cosas, posiciones, cables, sketches con su código ya compilado y las piezas que importaste. **{t:benchfile.open}** sustituye la mesa por una guardada, y [[Ctrl]]+[[Z]] lo deshace.',
+  'wb.file': 'La mesa se va guardando en este navegador mientras trabajas. **{t:benchfile.title}** › **{t:benchfile.save}**, al final del panel **{t:nav.bench}**, lo escribe todo en `bench.kodedot.json`: cosas, posiciones, cables, sketches con su código ya compilado y las piezas que importaste. **{t:benchfile.open}** sustituye la mesa por una guardada, y [[Ctrl]]+[[Z]] lo deshace. **{t:benchfile.export}** genera un PDF del proyecto: portada con una imagen de la mesa, el esquema, la tabla de conexiones, la lista de piezas y los sketches. El banco va dentro de ese PDF, así que **{t:benchfile.open}** también lo acepta.',
   'wb.ex1.h': 'Ejemplo completo: un LED manejado desde la app GPIO',
   'wb.ex1.1': 'Pasa a **{t:mode.workbench}** y abre **{t:nav.components}**. De la biblioteca, pon en la mesa una **Protoboard media**, un **LED rojo 5 mm** y una **Resistencia**.',
   'wb.ex1.2': 'Selecciona la resistencia y pon **Resistencia** en 220 Ω en su ficha.',

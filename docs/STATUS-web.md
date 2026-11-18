@@ -906,3 +906,43 @@ pictures in `web/screenshots/workbench2/`), and for the parts `tests/node/parts/
 ## Part pictures in the library (feat/part-thumbs)
 
 Each library card shows a picture of the part's own 3D model (also the "on the table" rows and the inspector card). The pictures are made by `node scripts/part-thumbs.mjs` (optional `--only <text>`): it opens the model stand in `thumb=1` mode (no table or shadow, transparent background, three-quarter view from above, framed on the model's real vertices with a 10% margin, the stand's studio light, time frozen), renders at 512 px, smooths down to 128 px and writes lossy WebP with alpha to `web/public/parts-thumbs/<part id>.webp` plus `index.json`. They are committed (39 pictures, about 143 KB); the Vercel build never renders. A library part with no model but a `picture.svg` gets that file copied as `<id>.svg`; any other part is listed under `fallback` and keeps the generic icon, as do parts the visitor imports. Shown at 36 px (the file is 128 for sharpness), `loading="lazy"`, fixed box. Re-run the script after a model changes. Test: `src/parts/thumbs.test.ts`. Weak pictures: the two breadboards (wide and flat, low contrast on cream), and the three ESP32 example boards look alike.
+
+## Project export as a PDF (2026-11-18, branch feat/project-pdf)
+
+Run: `npm test` (the `src/project/*.test.ts` files: 26 tests) and `npm run build && UX_PORT=4397 node scripts/project-pdf-check.mjs`
+(headless Chrome, the real page; last run: all 27 passed; `--no-compile` skips the in-page sketch compile).
+
+- **Bench panel › Bench file › Export project (PDF)**: a small form (title, default "My project, <date>"), then the PDF is
+  made in the page and offered for download. **Open a file** takes that PDF as well as the old `bench.kodedot.json`.
+- `src/project/nets.ts` (pure): the bench as a circuit. Nets by union-find over the same pairs the parts engine joins
+  before it solves (`bench.js` `_pass`): jumper wires, one pair per leg in a hole (`PartsService.plugs()`), manifest
+  `groups` and `bridge` elements, the pairs of a module on the header (`mount.pins`/`rails`, turned = 15 - p). Contacts
+  that open and close are not joined. Names: the Dot's GND/5V/3V3, a board's or cell's ground (GND), a board supply pin
+  (5V, 3V3, VIN) or a cell's plus (+9V), EXPn, a board's pin name (D9), else N1, N2; a second net wanting a taken name
+  gets `_2`. Symbol class from the manifest (behaviour elements, category, pins), reference designators (U, R, C, D, SW,
+  RV, BZ, M, K, BT; BB for breadboards, which are listed but not drawn), values (ohms, farads, volts).
+- `src/project/schematic.ts` (pure): net-label schematic as drawing operations on A4 landscape sheets with a title
+  block: symbols for resistor, capacitors, diode, LED, RGB LED, switches from their contact sets (push button, 4-pin
+  tact, SPDT, DPDT), potentiometer, buzzer, motor, cell; the Dot, boards, modules, servo, relay and unknown parts as
+  blocks with only their wired pins (all pins when 8 or fewer). Columns, further sheets when full, a small circuit drawn
+  up to 1.7x.
+- `src/project/pdf.ts` + `exportProject.ts` (one lazy chunk): cover (title, date, the table's picture taken from the
+  canvas at about 2000 px through `WorkbenchBus.capture`, counts, how to rebuild), schematic, connections table with
+  tick boxes, parts list, sketches in Courier with line numbers. The bench file is attached as `bench.kodedot.json`
+  (exactly what Save writes, compiled sketches included) and the bench alone is copied into the XMP metadata
+  (`kodedot:bench`, base64) as a fallback: opened from it, sketches must be uploaded again and the page says so.
+- Library: `@cantoo/pdf-lib` 2.11 (the maintained fork of pdf-lib; no eval, no worker, no network, standard 14 fonts).
+  The lazy chunk `exportProject-*.js` is 596 kB, 259 kB gzip, fetched only on export or when a PDF is opened. The
+  unmaintained original pdf-lib 1.17.1 would be about 435 kB / 180 kB gzip and the code uses nothing the original lacks
+  except its import name.
+- Page pictures looked at: `web/screenshots/project-pdf/` (`led-1..4`, `servo-1..5`, `phone-pt-1..4`, `phone-sheet`).
+
+Weak or not done
+- Text is Helvetica/Courier (the standard fonts), not Outfit/DM Sans: embedding them needs a font engine. Characters
+  outside Latin-1 (other than Greek from Symbol) print as "?" in sketches.
+- The cover picture is the view as it is on the screen (theme included); in Device mode there is no picture.
+- Parts without a symbol of their own (sensors, drivers, steppers) are plain blocks. A block side holds 30 pins, more
+  continue in a second block. When a circuit needs two sheets the sheets are not balanced.
+- Legs standing in holes are in the nets but the hole names are not printed (the checklist says what joins what, not
+  which hole).
+- pdftoppm on this machine draws no micro sign in Helvetica, so it is written from Symbol; not checked in Acrobat or Preview.

@@ -490,6 +490,7 @@ function BenchFile() {
   };
   const open = async (file: File | undefined) => {
     if (!file) return;
+    setMsg(null);
     const count = () => bench.getState().objects.length;
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
