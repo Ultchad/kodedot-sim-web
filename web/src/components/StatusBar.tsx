@@ -7,6 +7,7 @@ import { useObservable, useTick } from '../state/hooks';
 import { Icon } from './Glyphs';
 import { useCurrentAppName } from './TopBar';
 import { Popover } from './ui';
+import { WhatsNewButton } from '../news/WhatsNew';
 
 const DOT: Record<string, string> = { idle: 'bg-ink3', booting: 'bg-primary', running: 'bg-ok', crashed: 'bg-err' };
 /** Below this many redraws per second the screen counts as steady (a clock ticking once a second is not an animation). */
@@ -174,6 +175,7 @@ function Details({ isolated }: { isolated: boolean }) {
             <h3 className="text-[14px]">{t('status.privacy')}</h3>
             <p className="m-0 text-[13px] leading-snug text-ink2">{t('status.privacy.body')}</p>
           </div>
+          <WhatsNewButton className="self-start" before={() => setOpen(false)} />
         </div>
       </Popover>
     </>

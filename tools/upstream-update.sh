@@ -18,6 +18,8 @@
 #   boot      tests/node/boot/run.sh
 #   areas     tests/node/run.sh <areas>
 #   stage     copy the packages to web/public/apps (web/scripts/prepare-apps.mjs) and rewrite web/public/apps/SOURCES.md
+#   news      with --to: add "kodeOS updated to TAG" to the site's "What's new" (tools/news-add.mjs appends to web/src/news/auto.json;
+#             a release already listed there changes nothing)
 #   page      a scratch copy of the tree, `npm run build`, then web/scripts/system-check.mjs, settings-check.mjs, bench-check.mjs
 #             in headless Chrome
 #
@@ -60,7 +62,7 @@ AREAS="${UPSTREAM_AREAS:-system ble nfc rfid ir wifi radio usb power storage sd 
 # an empty UPSTREAM_SKIP_TESTS= runs everything)
 export NODE_TEST_RETRIES="${UPSTREAM_TEST_RETRIES:-2}"   # per test file: the IR replay-gap check sits on a 1 ms boundary and fails about one run in three, alone
 export NODE_SKIP_TESTS="${UPSTREAM_SKIP_TESTS-system/restart.test.mjs}"
-TOUCHED=(tools/pins.env web/public/apps)     # what a failed run puts back
+TOUCHED=(tools/pins.env web/public/apps web/src/news/auto.json)     # what a failed run puts back
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
 STEP="(start)"
 RESULTS=()
@@ -184,6 +186,13 @@ PY
     cat "$ROOT/web/public/apps/SOURCES.md"
 }
 step stage stage_step
+
+# ---------------------------------------------------------------- news
+news_step() {   # the visitors' "What's new" card: one line of data, the page writes the texts (web/src/news/changelog.ts)
+    [ -n "$TO" ] || { echo "verify only: the changelog stays as it is"; return 0; }
+    node "$ROOT/tools/news-add.mjs" kodeos "$TO"
+}
+step news news_step
 
 # ---------------------------------------------------------------- page
 page_step() {
