@@ -15,6 +15,7 @@ step "built-in library: build and run every part's scenarios" node "$root/parts/
 step "bench unit tests" node "$here/bench.test.mjs"
 step "geometry of every part (picture = mm x scale, grid, inside the body, contact heights)" node "$here/geometry.test.mjs"
 step "circuit tests (nodal solve, capacitors, hazards)" node "$here/circuit.test.mjs"
+step "buttons and switches (LED loops, leg pairs, latching, saved layouts)" node "$here/buttons.test.mjs"
 step "boards and Arduino libraries (compiles sketches for each board)" node "$here/boards.test.mjs"
 step "Kode modules (mount, Maker, Robotics, a Dot app)" node "$here/modules.test.mjs"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT

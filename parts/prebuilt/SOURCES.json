@@ -145,6 +145,13 @@
    "hash": "e6a51228f773dc44ece34740cf7b3db4af89942356c76b79a41a1f3332649a9e",
    "sha256": "6de8341a42c1d4a2ef8de8dbf3d70bf166d221f1ef923b3b9706655ec7f1622f"
   },
+  "latching-button": {
+   "id": "dotbench.latching-button",
+   "file": "dotbench.latching-button.dotpart",
+   "kind": "declarative",
+   "hash": "814535afee4a3e83554b9849c4c9d0896bc95e6416571ee72805dabaec23a508",
+   "sha256": "1edbbc3e5561cf22e49415936b13f2c943bebd292107f375604d4c0b07c9aa3a"
+  },
   "led": {
    "id": "dotbench.led",
    "file": "dotbench.led.dotpart",
@@ -198,8 +205,8 @@
    "id": "dotbench.push-button",
    "file": "dotbench.push-button.dotpart",
    "kind": "declarative",
-   "hash": "472ba32fe80f49a69496b23236c88f70812d48ab4a6c052675bdf28e4f0f6855",
-   "sha256": "01d4ced039336ae034822c6ff4db1a00da4bf76f2d3764ed4e51a8d1eba85890"
+   "hash": "82fc86cf8120bcbd127e8e2a6d8f984561491f0e0435cff26037ff23ea2be7be",
+   "sha256": "0ac79fe283b4a1908169b4eb7bfb82c02ad5e88156d6416398bc44603d2cffc8"
   },
   "relay-module": {
    "id": "dotbench.relay-module",
@@ -256,6 +263,27 @@
    "kind": "declarative",
    "hash": "f18604b37919791c69cb4e7f2d613c7785fc730e19a4b16f413bf18f81338cb5",
    "sha256": "00240fd71d8e80c61b7606b8871983bcd1e54f6f9e20106fc03808c611658564"
+  },
+  "tact-12mm": {
+   "id": "dotbench.tact-12mm",
+   "file": "dotbench.tact-12mm.dotpart",
+   "kind": "declarative",
+   "hash": "c552a2fdf065f782539b20c745f8f074f28c3d3acf4c2a7b95518ed68631e624",
+   "sha256": "5861e6bc9ae62f65a2c361612173411cf7568e699e27faece1688f6534390232"
+  },
+  "tact-6mm": {
+   "id": "dotbench.tact-6mm",
+   "file": "dotbench.tact-6mm.dotpart",
+   "kind": "declarative",
+   "hash": "e3b67f6839ac38ea301d6bc96ecd310a46c7546e9f5162d840c72f683f895d2b",
+   "sha256": "c5957bfc3f82e9bbf4abf6bb6d772b1071fd7606cfdf49995a897085e5b57b27"
+  },
+  "toggle-switch": {
+   "id": "dotbench.toggle-switch",
+   "file": "dotbench.toggle-switch.dotpart",
+   "kind": "declarative",
+   "hash": "9871585b7d73243e3004d82cd7015622fd449efb96b66d76112e663cf12af2f4",
+   "sha256": "2feb2b7df895057577d3b0570d2e3ad3c64a9bdcee1944e9cfa6409c98705178"
   },
   "uno-r3": {
    "id": "dotbench.uno-r3",

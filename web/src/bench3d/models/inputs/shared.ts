@@ -2,7 +2,7 @@
  * Shared by the inputs family (push button, slide switch, potentiometer, buzzer, HDC1080 breakout, antenna): the
  * manifest as the models read it, small builders, and the helpers of `animate` (no allocation in any of them).
  */
-import { DoubleSide, Mesh, MeshBasicMaterial, RingGeometry, type BufferGeometry } from 'three';
+import { DoubleSide, Mesh, MeshBasicMaterial, RingGeometry, type BufferGeometry, type MeshStandardMaterial, type Object3D } from 'three';
 import { PAL, place, type Finish, type ManifestBody, type ManifestPin, type Shape } from '../../index';
 
 /** What these models read of parts/<id>/manifest.json (the JSON import is cast to this once per model). */
@@ -74,4 +74,14 @@ export function setWave(ring: Mesh, y: number, r: number, strength: number): voi
   ring.position.y = y;
   ring.scale.set(r, 1, r);
   (ring.material as MeshBasicMaterial).opacity = strength;
+}
+
+/** Sets the colour of a `glowing` part of one copy (its materials are its own; build it white): 0xRRGGBB. */
+export function tint(node: Object3D, hex: number): void {
+  if (node.userData.tint === hex) return;
+  node.userData.tint = hex;
+  for (let i = 0; i < node.children.length; i++) {
+    const m = (node.children[i] as Mesh).material as MeshStandardMaterial | undefined;
+    if (m?.color) m.color.setHex(hex);
+  }
 }

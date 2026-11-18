@@ -1,0 +1,151 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.toggle-switch",
+  "name": {
+    "en": "Toggle switch",
+    "pt-BR": "Chave alavanca",
+    "es": "Interruptor palanca"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "A miniature toggle switch with a metal lever, on-on, three pins: COM connects to A or to B and stays there. Click it to flip. As in the real switch the lever leans away from the pin it connects: lever towards B, COM is joined to A. Pins 5.08 mm apart (the real lugs are 4.7 mm). Contacts are ideal joins. The sizes are estimates.",
+    "pt-BR": "Uma chave alavanca miniatura com alavanca de metal, liga-liga, três pinos: COM liga em A ou em B e fica. Clique para virar. Como na chave real, a alavanca inclina para o lado oposto ao pino que ela liga: alavanca para o lado do B, COM ligado ao A. Pinos a 5,08 mm (os terminais reais ficam a 4,7 mm). Os contatos são ligações ideais. As medidas são estimadas.",
+    "es": "Un interruptor de palanca miniatura con palanca metálica, on-on, tres pines: COM conecta con A o con B y se queda. Haz clic para cambiarlo. Como en el real, la palanca se inclina al lado contrario del pin que conecta: palanca hacia B, COM unido a A. Pines a 5,08 mm (los terminales reales están a 4,7 mm). Los contactos son uniones ideales. Las medidas son estimadas."
+  },
+  "category": "input",
+  "tags": [
+    "switch",
+    "toggle",
+    "lever",
+    "spdt",
+    "input"
+  ],
+  "keywords": {
+    "en": [
+      "switch",
+      "toggle",
+      "lever",
+      "spdt",
+      "on off",
+      "input"
+    ],
+    "pt-BR": [
+      "chave",
+      "alavanca",
+      "interruptor",
+      "liga desliga",
+      "spdt",
+      "entrada"
+    ],
+    "es": [
+      "interruptor",
+      "palanca",
+      "conmutador",
+      "encendido apagado",
+      "spdt",
+      "entrada"
+    ]
+  },
+  "body": {
+    "w_mm": 13.2,
+    "d_mm": 7.9,
+    "h_mm": 27,
+    "estimate": true
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 145,
+    "height": 87
+  },
+  "pins": [
+    {"name":"A","kind":"io","pos":{"x":16.7,"y":43.5},"mm":{"x":1.52,"y":3.95,"z":0},"face":"bottom","label":{"en":"A"},"abs_max_mv":60000},
+    {"name":"COM","kind":"io","pos":{"x":72.6,"y":43.5},"mm":{"x":6.6,"y":3.95,"z":0},"face":"bottom","label":{"en":"COM"},"abs_max_mv":60000},
+    {"name":"B","kind":"io","pos":{"x":128.5,"y":43.5},"mm":{"x":11.68,"y":3.95,"z":0},"face":"bottom","label":{"en":"B"},"abs_max_mv":60000}
+  ],
+  "fields": [
+    {
+      "name": "position",
+      "type": "enum",
+      "label": {
+        "en": "Position",
+        "pt-BR": "Posição",
+        "es": "Posición"
+      },
+      "default": "a",
+      "values": [
+        {
+          "value": "a",
+          "label": {
+            "en": "A"
+          }
+        },
+        {
+          "value": "b",
+          "label": {
+            "en": "B"
+          }
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "field": "position",
+      "region": {
+        "x": 28.599999999999994,
+        "y": 4,
+        "w": 88,
+        "h": 78.9
+      },
+      "mode": "toggle"
+    }
+  ],
+  "visuals": [
+    {
+      "id": "lever",
+      "effect": "fill",
+      "x": 56.099999999999994,
+      "y": 26.950000000000003,
+      "w": 33,
+      "h": 33,
+      "color": "#e8eef5",
+      "source": {
+        "field": "position"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "switch",
+        "a": "COM",
+        "b": "A",
+        "closed": {
+          "field": "position",
+          "op": "eq",
+          "value": "a"
+        },
+        "bounce_ms": 2
+      },
+      {
+        "type": "switch",
+        "a": "COM",
+        "b": "B",
+        "closed": {
+          "field": "position",
+          "op": "eq",
+          "value": "b"
+        },
+        "bounce_ms": 2
+      }
+    ]
+  }
+}

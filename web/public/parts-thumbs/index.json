@@ -23,6 +23,7 @@
   "dotbench.kode-mesh-shape": "dotbench.kode-mesh-shape.webp",
   "dotbench.kode-robotics": "dotbench.kode-robotics.webp",
   "dotbench.l298n": "dotbench.l298n.webp",
+  "dotbench.latching-button": "dotbench.latching-button.webp",
   "dotbench.led": "dotbench.led.webp",
   "dotbench.led-blue": "dotbench.led-blue.webp",
   "dotbench.led-green": "dotbench.led-green.webp",
@@ -39,6 +40,9 @@
   "dotbench.stepper-28byj48": "dotbench.stepper-28byj48.webp",
   "dotbench.stepper-a4988": "dotbench.stepper-a4988.webp",
   "dotbench.supply": "dotbench.supply.webp",
+  "dotbench.tact-12mm": "dotbench.tact-12mm.webp",
+  "dotbench.tact-6mm": "dotbench.tact-6mm.webp",
+  "dotbench.toggle-switch": "dotbench.toggle-switch.webp",
   "dotbench.uno-r3": "dotbench.uno-r3.webp",
   "dotbench.uno-r4-minima": "dotbench.uno-r4-minima.webp",
   "dotbench.uno-r4-wifi": "dotbench.uno-r4-wifi.webp"

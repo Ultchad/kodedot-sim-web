@@ -1,0 +1,63 @@
+{
+  "name": "toggle switch joins COM to A or B",
+  "steps": [
+    {
+      "set_pin": {
+        "pin": "COM",
+        "level": 0
+      }
+    },
+    {
+      "pullup": "A"
+    },
+    {
+      "pullup": "B"
+    },
+    {
+      "advance_ms": 10
+    },
+    {
+      "comment": "position a: COM is joined to A",
+      "expect_pin": {
+        "pin": "A",
+        "level": 0
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "B",
+        "level": 1
+      }
+    },
+    {
+      "set_field": {
+        "position": "b"
+      }
+    },
+    {
+      "advance_ms": 10
+    },
+    {
+      "expect_pin": {
+        "pin": "A",
+        "level": 1
+      }
+    },
+    {
+      "expect_pin": {
+        "pin": "B",
+        "level": 0
+      }
+    },
+    {
+      "comment": "it stays",
+      "advance_ms": 1000
+    },
+    {
+      "expect_pin": {
+        "pin": "B",
+        "level": 0
+      }
+    }
+  ]
+}

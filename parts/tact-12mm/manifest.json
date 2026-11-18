@@ -1,0 +1,198 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.tact-12mm",
+  "name": {
+    "en": "Button 12x12",
+    "pt-BR": "Botão 12x12",
+    "es": "Botón 12x12"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "The large tactile button with a round coloured cap: 12 x 12 mm, four legs joined in pairs like the 6 x 6 one (A1 with A2, B1 with B2; a press joins A to B). Choose the cap's colour. Momentary, 5 ms of contact bounce. Legs at 12.7 x 5.08 mm (real 12.5 x 5.0 mm): over a breadboard's centre channel they stand in rows d and g, two columns apart. Rated 24 V, 50 mA; the contact is an ideal join. The height with the cap is an estimate.",
+    "pt-BR": "O botão táctil grande com capa redonda colorida: 12 x 12 mm, quatro pernas ligadas em pares como no de 6 x 6 (A1 com A2, B1 com B2; apertar liga A com B). Escolha a cor da capa. Momentâneo, 5 ms de repique. Pernas em 12,7 x 5,08 mm (real 12,5 x 5,0 mm): sobre o canal central da protoboard ficam nas fileiras d e g, com duas colunas de distância. 24 V, 50 mA; o contato é uma ligação ideal. A altura com a capa é estimada.",
+    "es": "El pulsador táctil grande con tapa redonda de color: 12 x 12 mm, cuatro patas unidas por pares como el de 6 x 6 (A1 con A2, B1 con B2; al pulsar une A con B). Elige el color de la tapa. Momentáneo, 5 ms de rebote. Patas a 12,7 x 5,08 mm (real 12,5 x 5,0 mm): sobre el canal central de la protoboard quedan en las filas d y g, a dos columnas. 24 V, 50 mA; el contacto es una unión ideal. La altura con la tapa es estimada."
+  },
+  "category": "input",
+  "tags": [
+    "button",
+    "tactile",
+    "switch",
+    "input",
+    "cap"
+  ],
+  "keywords": {
+    "en": [
+      "button",
+      "tactile",
+      "tact switch",
+      "push",
+      "4 pin",
+      "12x12",
+      "cap",
+      "arcade",
+      "momentary",
+      "input"
+    ],
+    "pt-BR": [
+      "botão",
+      "táctil",
+      "tátil",
+      "push button",
+      "4 pinos",
+      "12x12",
+      "capa",
+      "momentâneo",
+      "entrada"
+    ],
+    "es": [
+      "botón",
+      "pulsador",
+      "táctil",
+      "4 pines",
+      "12x12",
+      "tapa",
+      "momentáneo",
+      "entrada"
+    ]
+  },
+  "body": {
+    "w_mm": 12,
+    "d_mm": 13.1,
+    "h_mm": 12,
+    "estimate": true
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 240,
+    "height": 262
+  },
+  "pins": [
+    {"name":"A1","kind":"io","pos":{"x":69.2,"y":4},"mm":{"x":3.46,"y":0.2,"z":0},"face":"bottom","label":{"en":"A1 (1)"},"abs_max_mv":24000},
+    {"name":"A2","kind":"io","pos":{"x":69.2,"y":258},"mm":{"x":3.46,"y":12.9,"z":0},"face":"bottom","label":{"en":"A2 (2)"},"abs_max_mv":24000},
+    {"name":"B1","kind":"io","pos":{"x":170.8,"y":4},"mm":{"x":8.54,"y":0.2,"z":0},"face":"bottom","label":{"en":"B1 (3)"},"abs_max_mv":24000},
+    {"name":"B2","kind":"io","pos":{"x":170.8,"y":258},"mm":{"x":8.54,"y":12.9,"z":0},"face":"bottom","label":{"en":"B2 (4)"},"abs_max_mv":24000}
+  ],
+  "groups": [
+    {"pins":["A1","A2"]},
+    {"pins":["B1","B2"]}
+  ],
+  "fields": [
+    {
+      "name": "pressed",
+      "type": "boolean",
+      "label": {
+        "en": "Pressed",
+        "pt-BR": "Pressionado",
+        "es": "Pulsado"
+      },
+      "default": false
+    },
+    {
+      "name": "cap",
+      "type": "enum",
+      "label": {
+        "en": "Cap colour",
+        "pt-BR": "Cor da capa",
+        "es": "Color de la tapa"
+      },
+      "default": "red",
+      "values": [
+        {
+          "value": "black",
+          "label": {
+            "en": "Black",
+            "pt-BR": "Preta",
+            "es": "Negra"
+          }
+        },
+        {
+          "value": "red",
+          "label": {
+            "en": "Red",
+            "pt-BR": "Vermelha",
+            "es": "Roja"
+          }
+        },
+        {
+          "value": "blue",
+          "label": {
+            "en": "Blue",
+            "pt-BR": "Azul",
+            "es": "Azul"
+          }
+        },
+        {
+          "value": "yellow",
+          "label": {
+            "en": "Yellow",
+            "pt-BR": "Amarela",
+            "es": "Amarilla"
+          }
+        },
+        {
+          "value": "green",
+          "label": {
+            "en": "Green",
+            "pt-BR": "Verde",
+            "es": "Verde"
+          }
+        },
+        {
+          "value": "white",
+          "label": {
+            "en": "White",
+            "pt-BR": "Branca",
+            "es": "Blanca"
+          }
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "field": "pressed",
+      "region": {
+        "x": 5,
+        "y": 16,
+        "w": 230,
+        "h": 230
+      },
+      "mode": "momentary"
+    }
+  ],
+  "visuals": [
+    {
+      "id": "cap",
+      "effect": "fill",
+      "x": 39.5,
+      "y": 50.5,
+      "w": 161,
+      "h": 161,
+      "color": "#ffffff",
+      "source": {
+        "field": "pressed"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "switch",
+        "a": "A1",
+        "b": "B1",
+        "closed": {
+          "field": "pressed"
+        },
+        "bounce_ms": 5
+      }
+    ]
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "$schema": "../../templates/component-starter/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "dotbench.tact-6mm",
+  "name": {
+    "en": "Button 6x6",
+    "pt-BR": "Botão 6x6",
+    "es": "Botón 6x6"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "dotbench",
+    "url": "https://dotbench.app"
+  },
+  "license": "GPL-3.0-or-later",
+  "description": {
+    "en": "The classic breadboard button: 6 x 6 mm, four legs. The two legs that face each other across the body are one piece of metal (A1 with A2, B1 with B2: pins 1-2 and 3-4 of the datasheet), so across the breadboard's centre channel it joins the two halves of each of its columns all the time; a press joins A to B, the two columns. Momentary, 5 ms of contact bounce. Press it on the table; set the Pressed field to keep it down. Legs at 7.62 x 5.08 mm (the real 6.5 x 4.5 mm legs spring to that in a breadboard). Rated 24 V, 50 mA; the contact is an ideal join.",
+    "pt-BR": "O botão clássico de protoboard: 6 x 6 mm, quatro pernas. As duas pernas que ficam frente a frente através do corpo são uma peça só de metal (A1 com A2, B1 com B2: pinos 1-2 e 3-4 do datasheet), então sobre o canal central da protoboard ele liga o tempo todo as duas metades de cada uma das suas colunas; apertar liga A com B, as duas colunas. Momentâneo, 5 ms de repique. Aperte na mesa; use o campo Pressionado para mantê-lo apertado. Pernas em 7,62 x 5,08 mm (as pernas reais de 6,5 x 4,5 mm abrem até aí na protoboard). 24 V, 50 mA; o contato é uma ligação ideal.",
+    "es": "El pulsador clásico de protoboard: 6 x 6 mm, cuatro patas. Las dos patas enfrentadas a través del cuerpo son una sola pieza de metal (A1 con A2, B1 con B2: pines 1-2 y 3-4 de la hoja de datos), así que sobre el canal central de la protoboard une todo el tiempo las dos mitades de cada una de sus columnas; al pulsar une A con B, las dos columnas. Momentáneo, 5 ms de rebote. Púlsalo en la mesa; usa el campo Pulsado para mantenerlo. Patas a 7,62 x 5,08 mm (las patas reales de 6,5 x 4,5 mm se abren hasta ahí en la protoboard). 24 V, 50 mA; el contacto es una unión ideal."
+  },
+  "category": "input",
+  "tags": [
+    "button",
+    "tactile",
+    "switch",
+    "input"
+  ],
+  "keywords": {
+    "en": [
+      "button",
+      "tactile",
+      "tact switch",
+      "push",
+      "4 pin",
+      "6x6",
+      "momentary",
+      "input"
+    ],
+    "pt-BR": [
+      "botão",
+      "táctil",
+      "tátil",
+      "chave táctil",
+      "push button",
+      "4 pinos",
+      "6x6",
+      "momentâneo",
+      "entrada"
+    ],
+    "es": [
+      "botón",
+      "pulsador",
+      "táctil",
+      "4 pines",
+      "6x6",
+      "momentáneo",
+      "entrada"
+    ]
+  },
+  "body": {
+    "w_mm": 6,
+    "d_mm": 8.02,
+    "h_mm": 5,
+    "estimate": true
+  },
+  "picture": {
+    "file": "picture.svg",
+    "width": 120,
+    "height": 160
+  },
+  "pins": [
+    {"name":"A1","kind":"io","pos":{"x":9.2,"y":4},"mm":{"x":0.46,"y":0.2,"z":0},"face":"bottom","label":{"en":"A1 (1)"},"abs_max_mv":24000},
+    {"name":"A2","kind":"io","pos":{"x":9.2,"y":156.4},"mm":{"x":0.46,"y":7.82,"z":0},"face":"bottom","label":{"en":"A2 (2)"},"abs_max_mv":24000},
+    {"name":"B1","kind":"io","pos":{"x":110.8,"y":4},"mm":{"x":5.54,"y":0.2,"z":0},"face":"bottom","label":{"en":"B1 (3)"},"abs_max_mv":24000},
+    {"name":"B2","kind":"io","pos":{"x":110.8,"y":156.4},"mm":{"x":5.54,"y":7.82,"z":0},"face":"bottom","label":{"en":"B2 (4)"},"abs_max_mv":24000}
+  ],
+  "groups": [
+    {"pins":["A1","A2"]},
+    {"pins":["B1","B2"]}
+  ],
+  "fields": [
+    {
+      "name": "pressed",
+      "type": "boolean",
+      "label": {
+        "en": "Pressed",
+        "pt-BR": "Pressionado",
+        "es": "Pulsado"
+      },
+      "default": false
+    }
+  ],
+  "controls": [
+    {
+      "field": "pressed",
+      "region": {
+        "x": 25,
+        "y": 45.19999999999999,
+        "w": 70,
+        "h": 70
+      },
+      "mode": "momentary"
+    }
+  ],
+  "visuals": [
+    {
+      "id": "cap",
+      "effect": "fill",
+      "x": 35.5,
+      "y": 55.69999999999999,
+      "w": 49,
+      "h": 49,
+      "color": "#ffffff",
+      "source": {
+        "field": "pressed"
+      }
+    }
+  ],
+  "behaviour": {
+    "type": "declarative",
+    "engine": 1,
+    "elements": [
+      {
+        "type": "switch",
+        "a": "A1",
+        "b": "B1",
+        "closed": {
+          "field": "pressed"
+        },
+        "bounce_ms": 5
+      }
+    ]
+  }
+}
