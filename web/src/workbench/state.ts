@@ -83,6 +83,11 @@ export class WorkbenchBus {
     return () => this.menuListeners.delete(l);
   };
   getMenu = (): { x: number; y: number; target: string } | null => this.menu;
+  /**
+   * A picture of the table as it is on the screen now, about `maxWidth` pixels wide (set by the scene while the table
+   * is shown; null otherwise). For the project export's cover.
+   */
+  capture: ((maxWidth?: number) => HTMLCanvasElement | null) | null = null;
   /** The pointer moves things, or draws wires between terminals. */
   tool: 'move' | 'wire' = 'move';
   /** The colour the next wire gets. */

@@ -86,7 +86,7 @@ const TURN_MARKS: Mark[] = quarterMarks();
 const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function World({ deps, active, dark, storePose, onApi }: WorldProps) {
-  const { gl, size, camera, invalidate } = useThree();
+  const { gl, size, camera, invalidate, scene } = useThree();
   const world = useMemo(() => {
     // a part without a model of its own gets a body made from its manifest (once per part id)
     const made = new Map<string, PartModel>();
@@ -549,6 +549,47 @@ export default function World({ deps, active, dark, storePose, onApi }: WorldPro
     world.rig.jump();
     invalidate();
   }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- a picture of the table for the project export: the same view, drawn once with more pixels
+  useEffect(() => {
+    if (!active) return;
+    const capture = (maxWidth = 2000): HTMLCanvasElement | null => {
+      const el = gl.domElement;
+      const w = el.clientWidth, h = el.clientHeight;
+      if (!w || !h) return null;
+      const before = gl.getPixelRatio();
+      const limit = Math.min(4096, gl.capabilities.maxTextureSize || 4096);
+      const ratio = Math.max(1, Math.min(4, maxWidth / w, limit / w, limit / h));
+      const out = document.createElement('canvas');
+      try {
+        gl.setPixelRatio(Math.max(before, ratio));
+        gl.render(scene, live.current.camera);
+        out.width = el.width;
+        out.height = el.height;
+        const c = out.getContext('2d');
+        if (!c) return null;
+        // the canvas is see-through where nothing is drawn: the page's own colour goes behind it
+        let bg = '';
+        for (let n: HTMLElement | null = el; n && !bg; n = n.parentElement) {
+          const v = getComputedStyle(n).backgroundColor;
+          if (v && v !== 'transparent' && !/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(v)) bg = v;
+        }
+        c.fillStyle = bg || '#c2bab3';
+        c.fillRect(0, 0, out.width, out.height);
+        c.drawImage(el, 0, 0);
+        return out;
+      } catch {
+        return null;
+      } finally {
+        gl.setPixelRatio(before);
+        invalidate();
+      }
+    };
+    deps.bus.capture = capture;
+    return () => {
+      if (deps.bus.capture === capture) deps.bus.capture = null;
+    };
+  }, [active, gl, scene, invalidate, deps.bus]);
 
   // ---- commands from the page
   useEffect(

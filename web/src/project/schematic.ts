@@ -103,8 +103,9 @@ function netEnd(g: Pen, x: number, y: number, dir: -1 | 1, pin: ProjectPin | und
   }
 }
 /** The small name of a pin, above its stub. */
-function pinName(g: Pen, x: number, y: number, dir: -1 | 1, text: string): void {
-  g.text(x, y - 2.2, cut(text, 8), 5.4, { align: dir > 0 ? 'right' : 'left', ink: 'soft' });
+function pinName(g: Pen, xEnd: number, y: number, dir: -1 | 1, text: string): void {
+  // from the pin's end toward the symbol (`dir` is the way the pin points)
+  g.text(xEnd - dir * 2.5, y - 2.2, cut(text, 5), 5.4, { align: dir > 0 ? 'right' : 'left', ink: 'soft' });
 }
 
 // ---- the small symbols --------------------------------------------------------------------------------------------
@@ -122,7 +123,13 @@ function caption(g: Pen, cx: number, yRef: number, yCap: number, part: ProjectPa
 /** What stands under a symbol: its value when the value says it all (a resistor), else its name and value. */
 export function captionOf(part: ProjectPart, text: SheetText): string {
   const pure = part.cls === 'resistor' || part.cls === 'capacitor' || part.cls === 'capacitor-pol';
-  return cut(pure && part.value ? part.value : [text.name(part), part.value].filter(Boolean).join(', '), 50);
+  return cut(pure && part.value ? part.value : nameAndValue(part, text), 50);
+}
+/** "LED with resistor, 330 Ω"; a name that already says the value ("Potentiometer 10 kΩ") stands alone. */
+function nameAndValue(part: ProjectPart, text: SheetText): string {
+  const name = text.name(part);
+  const squeeze = (s: string) => s.replace(/[\s,.]/g, '').toLowerCase();
+  return part.value && !squeeze(name).includes(squeeze(part.value)) ? `${name}, ${part.value}` : name;
 }
 
 function arcPts(cx: number, cy: number, r: number, a0: number, a1: number, n = 14): number[] {
@@ -202,8 +209,8 @@ function twoPin(part: ProjectPart, text: SheetText): Drawn {
           g.line([cx + 2.4, y0 - 4, cx + 2.4, y0 + 4], 2.2);
           g.text(cx - 8, y0 - 5, '+', 7, { align: 'center' });
       }
-      pinName(g, L + 9, y0, 1, a.label);
-      pinName(g, R - 9, y0, -1, b.label);
+      pinName(g, L, y0, -1, a.label);
+      pinName(g, R, y0, 1, b.label);
       netEnd(g, L, y0, -1, a);
       netEnd(g, R, y0, 1, b);
       caption(g, cx, refY, y0 + 21, part, text);
@@ -215,7 +222,7 @@ function twoPin(part: ProjectPart, text: SheetText): Drawn {
 function fan(g: Pen, pins: ProjectPin[], xContact: number, yc: number, xEnd: number, dir: -1 | 1): void {
   if (pins.length === 1) {
     g.line([xContact, yc, xEnd, yc]);
-    pinName(g, xEnd - dir * 9, yc, dir > 0 ? -1 : 1, pins[0].label);
+    pinName(g, xEnd, yc, dir, pins[0].label);
     netEnd(g, xEnd, yc, dir, pins[0]);
     return;
   }
@@ -226,7 +233,7 @@ function fan(g: Pen, pins: ProjectPin[], xContact: number, yc: number, xEnd: num
   pins.slice(0, 2).forEach((p, i) => {
     const yy = yc + (i ? 7 : -7);
     g.line([xj, yy, xEnd, yy]);
-    pinName(g, xEnd - dir * 7, yy, dir > 0 ? -1 : 1, p.label);
+    pinName(g, xEnd, yy, dir, p.label);
     netEnd(g, xEnd, yy, dir, p);
   });
 }
@@ -280,9 +287,9 @@ function potentiometer(part: ProjectPart, text: SheetText): Drawn {
       g.line(pts);
       g.line([cx, y0 + 6.5, cx, y0 + 16, R, y0 + 16]);
       g.shape([cx, y0 + 4.6, cx - 2.6, y0 + 9.4, cx + 2.6, y0 + 9.4], 'ink', 0.4);
-      pinName(g, L + 9, y0, 1, top.label);
-      pinName(g, R - 9, y0, -1, bottom.label);
-      pinName(g, R - 9, y0 + 16, -1, wiper.label);
+      pinName(g, L, y0, -1, top.label);
+      pinName(g, R, y0, 1, bottom.label);
+      pinName(g, R, y0 + 16, 1, wiper.label);
       netEnd(g, L, y0, -1, top);
       netEnd(g, R, y0, 1, bottom);
       netEnd(g, R, y0 + 16, 1, wiper);
@@ -307,13 +314,13 @@ function rgbLed(part: ProjectPart, text: SheetText): Drawn | null {
       const L = cx - REACH, R = cx + REACH;
       const mid = y0 + ((d.length - 1) * step) / 2;
       // the shared pin's side has one stub; the other side has one per colour
-      const busX = commonCathode ? cx + 15 : cx - 15;
+      const busX = commonCathode ? cx + 11 : cx - 11;
       d.forEach((e, i) => {
         const yi = y0 + i * step;
         g.line([commonCathode ? L : busX, yi, commonCathode ? busX : R, yi]);
         diodeBody(g, cx, yi, 4.6, i === 0);
         const own = pin(commonCathode ? e.anode : e.cathode)!;
-        pinName(g, commonCathode ? L + 9 : R - 9, yi, commonCathode ? 1 : -1, own.label);
+        pinName(g, commonCathode ? L : R, yi, commonCathode ? -1 : 1, own.label);
         netEnd(g, commonCathode ? L : R, yi, commonCathode ? -1 : 1, own);
       });
       g.line([busX, y0, busX, y0 + (d.length - 1) * step]);
@@ -321,7 +328,7 @@ function rgbLed(part: ProjectPart, text: SheetText): Drawn | null {
       const sy = d.length % 2 ? mid : mid + step / 2;
       g.line([busX, sy, commonCathode ? R : L, sy]);
       g.circle(busX, sy, 1, 'ink', 0);
-      pinName(g, commonCathode ? R - 7 : L + 7, sy, commonCathode ? -1 : 1, shared.label);
+      pinName(g, commonCathode ? R : L, sy, commonCathode ? 1 : -1, shared.label);
       netEnd(g, commonCathode ? R : L, sy, commonCathode ? 1 : -1, shared);
       caption(g, cx, y + 10, y0 + (d.length - 1) * step + 22, part, text);
     },
@@ -388,7 +395,7 @@ function blocks(part: ProjectPart, text: SheetText): Drawn[] {
         const bx = x + (BLOCK_W - BODY_W) / 2, by = y + 16;
         const title = part.ref + (count > 1 ? ` (${k + 1}/${count})` : '');
         g.text(bx, by - 4.5, title, 8.5, { font: 'bold' });
-        g.text(bx + widthOf(title, 8.5, 'bold') + 5, by - 4.5, cut([text.name(part), part.value].filter(Boolean).join(', '), 34), 6.8, { ink: 'soft' });
+        g.text(bx + widthOf(title, 8.5, 'bold') + 5, by - 4.5, cut(nameAndValue(part, text), 34), 6.8, { ink: 'soft' });
         g.shape([bx, by, bx + BODY_W, by, bx + BODY_W, by + bodyH, bx, by + bodyH], 'paper', 1.1);
         if (part.cls === 'servo' || part.cls === 'relay') icon(g, part.cls, bx + BODY_W / 2 + (part.cls === 'servo' ? 8 : 0), by + bodyH / 2);
         const side = (list: ProjectPin[], dir: -1 | 1) => {
@@ -451,9 +458,8 @@ function frame(g: Pen, text: SheetText, n: number, m: number): void {
   g.text(cols[3] + 10, base, text.sheet(n, m), 8.5);
 }
 
-export function drawSchematic(project: Project, text: SheetText): Sheet[] {
-  const items: { ref: string; d: Drawn }[] = [];
-  for (const part of project.parts) for (const d of symbolsOf(part, text)) items.push({ ref: part.ref, d });
+/** Puts the symbols in columns inside a box of `w` by `h` (its corner at 0,0): blocks first, each family in its own column width. */
+function arrange(items: { ref: string; d: Drawn }[], w: number, h: number): { g: Pen; placed: Placed[] }[] {
   const sheets: { g: Pen; placed: Placed[] }[] = [];
   const open = () => {
     const s = { g: new Pen(), placed: [] as Placed[] };
@@ -461,28 +467,57 @@ export function drawSchematic(project: Project, text: SheetText): Sheet[] {
     return s;
   };
   let cur = open();
-  let x = AREA.x0, y = AREA.y0, colW = 0;
+  let x = 0, y = 0, colW = 0;
   for (const { ref, d } of items) {
-    if (colW && (d.w !== colW || y + d.h > AREA.y1)) {
+    if (colW && (d.w !== colW || y + d.h > h)) {
       x += colW + GAP;
-      y = AREA.y0;
+      y = 0;
       colW = 0;
     }
-    if (x + d.w > AREA.x1 + 0.5) {
+    if (x + d.w > w + 0.5) {
       cur = open();
-      x = AREA.x0;
-      y = AREA.y0;
+      x = 0;
+      y = 0;
     }
     colW = d.w;
     d.draw(cur.g, x, y);
     cur.placed.push({ ref, x, y, w: d.w, h: d.h });
     y += d.h + GAP;
   }
-  if (!items.length) cur.g.text(SHEET.w / 2, SHEET.h / 2 - 20, text.empty, 11, { align: 'center', ink: 'soft' });
+  return sheets;
+}
+const scaled = (op: Op, k: number, dx: number, dy: number): Op =>
+  op.t === 'line'
+    ? { ...op, pts: op.pts.map((v, i) => (i % 2 ? dy : dx) + v * k), w: (op.w ?? 0.9) * Math.sqrt(k) }
+    : op.t === 'circle'
+      ? { ...op, x: dx + op.x * k, y: dy + op.y * k, r: op.r * k, w: (op.w ?? 0.9) * Math.sqrt(k) }
+      : { ...op, x: dx + op.x * k, y: dy + op.y * k, size: op.size * k };
+
+/** A small circuit is drawn larger, as large as still fits one sheet. */
+const SCALES = [1.7, 1.5, 1.3, 1.15, 1];
+
+export function drawSchematic(project: Project, text: SheetText): Sheet[] {
+  const items: { ref: string; d: Drawn }[] = [];
+  for (const part of project.parts) for (const d of symbolsOf(part, text)) items.push({ ref: part.ref, d });
+  const W = AREA.x1 - AREA.x0, H = AREA.y1 - AREA.y0;
+  let k = 1;
+  let sheets = arrange(items, W, H);
+  for (const s of SCALES) {
+    const tried = s === 1 ? sheets : arrange(items, W / s, H / s);
+    if (tried.length === 1 || s === 1) {
+      k = s;
+      sheets = tried;
+      break;
+    }
+  }
+  if (!items.length) sheets[0].g.text(W / 2, H / 2 - 20, text.empty, 11, { align: 'center', ink: 'soft' });
   return sheets.map((s, i) => {
     const g = new Pen();
     frame(g, text, i + 1, sheets.length);
-    return { ops: [...g.ops, ...s.g.ops], placed: s.placed };
+    return {
+      ops: [...g.ops, ...s.g.ops.map((op) => scaled(op, k, AREA.x0, AREA.y0))],
+      placed: s.placed.map((p) => ({ ref: p.ref, x: AREA.x0 + p.x * k, y: AREA.y0 + p.y * k, w: p.w * k, h: p.h * k })),
+    };
   });
 }
 export const SCHEMATIC_AREA = AREA;

@@ -77,7 +77,9 @@ function runsOf(f: Fonts, font: PDFFont, text: string): Run[] {
     for (const ch of SWAP[raw] ?? raw) {
       const cp = ch.codePointAt(0)!;
       if (cp < 32 || cp === 127) continue;
-      if (main.has(cp)) push(font, ch);
+      // the micro sign too comes from Symbol: some viewers' stand-in for Helvetica has no glyph for it
+      if (cp === 0xb5 && sym.has(cp)) push(f.symbol, ch);
+      else if (main.has(cp)) push(font, ch);
       else if (sym.has(cp)) push(f.symbol, ch);
       else if (cp === 0x2126 && sym.has(0x3a9)) push(f.symbol, 'Ω');
       else push(font, '?');
