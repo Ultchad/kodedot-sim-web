@@ -205,15 +205,15 @@ Decision on Camera, Mesh and the hacking module: they are in the library as clea
 
 ## Buttons and switches (branch `feat/buttons`)
 
-Generator: `parts/gen/buttons.mjs` (the four new parts) and `parts/gen/legacy.mjs` (the push button). Models: `web/src/bench3d/models/inputs/`. Library: 43 parts.
+Display names are short so that a library card shows them in two lines (checked in en, pt-BR and es by `buttons-proof.mjs`); pin counts, sizes and the cap are in the descriptions. Generator: `parts/gen/buttons.mjs` (the four new parts) and `parts/gen/legacy.mjs` (the push button). Models: `web/src/bench3d/models/inputs/`. Library: 43 parts.
 
 | Id | Name | Pins | Body (mm) | How it is solved |
 |---|---|---|---|---|
-| `dotbench.push-button` | Tactile button, 2 pins (6 x 3.5 mm) | A, B (5.08 apart) | 6 x 3.5 x 5 | one `switch` A-B on the momentary field `pressed`, 5 ms bounce |
-| `dotbench.tact-6mm` | Tactile button 6 x 6 mm (4 pins) | A1, A2, B1, B2 | 6 x 8.02 x 5 (the box includes the legs) | `groups` A1-A2 and B1-B2 (the datasheet's 1-2 and 3-4), one `switch` A1-B1 on `pressed` |
-| `dotbench.tact-12mm` | Tactile button 12 x 12 mm with cap (4 pins) | A1, A2, B1, B2 | 12 x 13.1 x 12 | the same; enum field `cap` (black, red, blue, yellow, green, white) is only a look |
-| `dotbench.latching-button` | Latching push button (push on, push off) | NC1, COM1, NO1, NC2, COM2, NO2 | 8.5 x 8.5 x 14 | four `switch` elements on the boolean field `latched` (control mode `toggle`): COM-NC while false, COM-NO while true |
-| `dotbench.toggle-switch` | Toggle switch (SPDT) | A, COM, B (5.08 apart) | 13.2 x 7.9 x 27 | as the slide switch: enum field `position` a / b, control mode `toggle` |
+| `dotbench.push-button` | Button, 2 pins | A, B (5.08 apart) | 6 x 3.5 x 5 | one `switch` A-B on the momentary field `pressed`, 5 ms bounce |
+| `dotbench.tact-6mm` | Button 6x6 | A1, A2, B1, B2 | 6 x 8.02 x 5 (the box includes the legs) | `groups` A1-A2 and B1-B2 (the datasheet's 1-2 and 3-4), one `switch` A1-B1 on `pressed` |
+| `dotbench.tact-12mm` | Button 12x12 | A1, A2, B1, B2 | 12 x 13.1 x 12 | the same; enum field `cap` (black, red, blue, yellow, green, white) is only a look |
+| `dotbench.latching-button` | Latching button | NC1, COM1, NO1, NC2, COM2, NO2 | 8.5 x 8.5 x 14 | four `switch` elements on the boolean field `latched` (control mode `toggle`): COM-NC while false, COM-NO while true |
+| `dotbench.toggle-switch` | Toggle switch | A, COM, B (5.08 apart) | 13.2 x 7.9 x 27 | as the slide switch: enum field `position` a / b, control mode `toggle` |
 
 - **What the old push button was**: a 6 x 6 x 5 mm body with only two terminals (A, B, 5.08 mm apart, drawn with four legs). No real part is like that. It keeps its id, version, pins, field and its legs' positions about the centre, so a saved bench loads unchanged and a plugged button stands in the same holes (tested); its body is now the real two-leg 6 x 3.5 mm tactile button and its name says so. `abs_max_mv` went from 5.5 V to 12 V (a 9 V battery through it was an overvoltage hazard).
 - **Legs and the breadboard** (holes 2.54 mm apart, 7.62 mm between rows e and f): the 6 x 6 button's real legs are 6.5 mm apart across the body and 4.5 mm along a side; they are at 7.62 x 5.08 mm, which is what they spring to in a board, so it stands over the centre channel (e and f, two columns apart) and bridges the channel in each of its columns, as the real one does. The 12 x 12 one (real 12.5 x 5.0 mm) is at 12.7 x 5.08 mm: rows d and g. The latching button's rows are 7.62 mm apart (ESTIMATE and a choice: the real rows are about 5 mm apart and would put both poles in the same column strips; bent out to 7.62 mm it straddles the channel with a pole on each side).

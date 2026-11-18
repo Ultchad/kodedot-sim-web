@@ -9,9 +9,9 @@
   "license": "GPL-3.0-or-later",
   "id": "dotbench.push-button",
   "name": {
-    "en": "Tactile button, 2 pins (6 x 3.5 mm)",
-    "pt-BR": "Botão táctil, 2 pinos (6 x 3,5 mm)",
-    "es": "Pulsador táctil, 2 pines (6 x 3,5 mm)"
+    "en": "Button, 2 pins",
+    "pt-BR": "Botão, 2 pinos",
+    "es": "Botón, 2 pines"
   },
   "description": {
     "en": "The small two-leg tactile button, 6 x 3.5 mm: one contact between A and B, closed while pressed, with 5 ms of contact bounce. Press it on the table; set the Pressed field to keep it down. Legs 5.08 mm apart (the real ones are about 5 mm: estimate). Rated 12 V, 50 mA; the contact is an ideal join.",

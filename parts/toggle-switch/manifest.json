@@ -3,9 +3,9 @@
   "schemaVersion": 1,
   "id": "dotbench.toggle-switch",
   "name": {
-    "en": "Toggle switch (SPDT)",
-    "pt-BR": "Chave alavanca (SPDT)",
-    "es": "Interruptor de palanca (SPDT)"
+    "en": "Toggle switch",
+    "pt-BR": "Chave alavanca",
+    "es": "Interruptor palanca"
   },
   "version": "1.0.0",
   "author": {

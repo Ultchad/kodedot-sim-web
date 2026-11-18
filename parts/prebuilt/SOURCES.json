@@ -149,8 +149,8 @@
    "id": "dotbench.latching-button",
    "file": "dotbench.latching-button.dotpart",
    "kind": "declarative",
-   "hash": "97d50d57358eb642fc8a295c7ab22a303e03ecfc416f298eedbfd6063651c5a9",
-   "sha256": "cd0500c9df94f6408f89e6fb8948222df822b2560e79d7bc75ec3f026604878a"
+   "hash": "814535afee4a3e83554b9849c4c9d0896bc95e6416571ee72805dabaec23a508",
+   "sha256": "1edbbc3e5561cf22e49415936b13f2c943bebd292107f375604d4c0b07c9aa3a"
   },
   "led": {
    "id": "dotbench.led",
@@ -205,8 +205,8 @@
    "id": "dotbench.push-button",
    "file": "dotbench.push-button.dotpart",
    "kind": "declarative",
-   "hash": "deb283d8b8ca501662b73adc65365fd66713949f1b3886fbac9cb1ba543e4670",
-   "sha256": "6a97bbc84caec4410759c9166949f6e042283907790c4beef94ef34e19a05e24"
+   "hash": "82fc86cf8120bcbd127e8e2a6d8f984561491f0e0435cff26037ff23ea2be7be",
+   "sha256": "0ac79fe283b4a1908169b4eb7bfb82c02ad5e88156d6416398bc44603d2cffc8"
   },
   "relay-module": {
    "id": "dotbench.relay-module",
@@ -268,22 +268,22 @@
    "id": "dotbench.tact-12mm",
    "file": "dotbench.tact-12mm.dotpart",
    "kind": "declarative",
-   "hash": "7c0398b5c44ceb443b3273d4b623dd98781e241022b018b1aac8c40a3a92f31a",
-   "sha256": "ef4f884d551a3839cdcdf6583a17190858e9e5dd450fa78b31906e38f309231f"
+   "hash": "c552a2fdf065f782539b20c745f8f074f28c3d3acf4c2a7b95518ed68631e624",
+   "sha256": "5861e6bc9ae62f65a2c361612173411cf7568e699e27faece1688f6534390232"
   },
   "tact-6mm": {
    "id": "dotbench.tact-6mm",
    "file": "dotbench.tact-6mm.dotpart",
    "kind": "declarative",
-   "hash": "8faa1af760f72370e715cf6ea6b48b32f5dee9a9bc483e21d091f24cb1305bda",
-   "sha256": "16a054c53d088dce6c2e12c02babb73637ac4e4b782fa2b00121c880fc413010"
+   "hash": "e3b67f6839ac38ea301d6bc96ecd310a46c7546e9f5162d840c72f683f895d2b",
+   "sha256": "c5957bfc3f82e9bbf4abf6bb6d772b1071fd7606cfdf49995a897085e5b57b27"
   },
   "toggle-switch": {
    "id": "dotbench.toggle-switch",
    "file": "dotbench.toggle-switch.dotpart",
    "kind": "declarative",
-   "hash": "5c773e981f96dd5306d9659081bdf3e740641d037821ec5a8e5441a638d422c7",
-   "sha256": "1622363d07fb40aac574ab29c3cc4fe0400a095e36abb47fc4899fd2d7a305df"
+   "hash": "9871585b7d73243e3004d82cd7015622fd449efb96b66d76112e663cf12af2f4",
+   "sha256": "2feb2b7df895057577d3b0570d2e3ad3c64a9bdcee1944e9cfa6409c98705178"
   },
   "uno-r3": {
    "id": "dotbench.uno-r3",

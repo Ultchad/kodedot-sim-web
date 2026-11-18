@@ -3,9 +3,9 @@
   "schemaVersion": 1,
   "id": "dotbench.tact-6mm",
   "name": {
-    "en": "Tactile button 6 x 6 mm (4 pins)",
-    "pt-BR": "Botão táctil 6 x 6 mm (4 pinos)",
-    "es": "Pulsador táctil 6 x 6 mm (4 pines)"
+    "en": "Button 6x6",
+    "pt-BR": "Botão 6x6",
+    "es": "Botón 6x6"
   },
   "version": "1.0.0",
   "author": {

@@ -3,9 +3,9 @@
   "schemaVersion": 1,
   "id": "dotbench.tact-12mm",
   "name": {
-    "en": "Tactile button 12 x 12 mm with cap (4 pins)",
-    "pt-BR": "Botão táctil 12 x 12 mm com capa (4 pinos)",
-    "es": "Pulsador táctil 12 x 12 mm con tapa (4 pines)"
+    "en": "Button 12x12",
+    "pt-BR": "Botão 12x12",
+    "es": "Botón 12x12"
   },
   "version": "1.0.0",
   "author": {

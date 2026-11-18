@@ -3,9 +3,9 @@
   "schemaVersion": 1,
   "id": "dotbench.latching-button",
   "name": {
-    "en": "Latching push button (push on, push off)",
-    "pt-BR": "Botão com trava (liga/desliga)",
-    "es": "Pulsador con enclavamiento (on/off)"
+    "en": "Latching button",
+    "pt-BR": "Botão trava",
+    "es": "Botón retención"
   },
   "version": "1.0.0",
   "author": {

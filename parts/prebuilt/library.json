@@ -1215,12 +1215,12 @@
       "id": "dotbench.latching-button",
       "version": "1.0.0",
       "file": "dotbench.latching-button.dotpart",
-      "bytes": 2379,
-      "sha256": "cd0500c9df94f6408f89e6fb8948222df822b2560e79d7bc75ec3f026604878a",
+      "bytes": 2367,
+      "sha256": "1edbbc3e5561cf22e49415936b13f2c943bebd292107f375604d4c0b07c9aa3a",
       "name": {
-        "en": "Latching push button (push on, push off)",
-        "pt-BR": "Botão com trava (liga/desliga)",
-        "es": "Pulsador con enclavamiento (on/off)"
+        "en": "Latching button",
+        "pt-BR": "Botão trava",
+        "es": "Botón retención"
       },
       "category": "input",
       "kind": "declarative",
@@ -1659,12 +1659,12 @@
       "id": "dotbench.push-button",
       "version": "1.0.0",
       "file": "dotbench.push-button.dotpart",
-      "bytes": 1754,
-      "sha256": "6a97bbc84caec4410759c9166949f6e042283907790c4beef94ef34e19a05e24",
+      "bytes": 1746,
+      "sha256": "0ac79fe283b4a1908169b4eb7bfb82c02ad5e88156d6416398bc44603d2cffc8",
       "name": {
-        "en": "Tactile button, 2 pins (6 x 3.5 mm)",
-        "pt-BR": "Botão táctil, 2 pinos (6 x 3,5 mm)",
-        "es": "Pulsador táctil, 2 pines (6 x 3,5 mm)"
+        "en": "Button, 2 pins",
+        "pt-BR": "Botão, 2 pinos",
+        "es": "Botón, 2 pines"
       },
       "category": "input",
       "kind": "declarative",
@@ -2164,12 +2164,12 @@
       "id": "dotbench.tact-12mm",
       "version": "1.0.0",
       "file": "dotbench.tact-12mm.dotpart",
-      "bytes": 2128,
-      "sha256": "ef4f884d551a3839cdcdf6583a17190858e9e5dd450fa78b31906e38f309231f",
+      "bytes": 2105,
+      "sha256": "5861e6bc9ae62f65a2c361612173411cf7568e699e27faece1688f6534390232",
       "name": {
-        "en": "Tactile button 12 x 12 mm with cap (4 pins)",
-        "pt-BR": "Botão táctil 12 x 12 mm com capa (4 pinos)",
-        "es": "Pulsador táctil 12 x 12 mm con tapa (4 pines)"
+        "en": "Button 12x12",
+        "pt-BR": "Botão 12x12",
+        "es": "Botón 12x12"
       },
       "category": "input",
       "kind": "declarative",
@@ -2233,12 +2233,12 @@
       "id": "dotbench.tact-6mm",
       "version": "1.0.0",
       "file": "dotbench.tact-6mm.dotpart",
-      "bytes": 2126,
-      "sha256": "16a054c53d088dce6c2e12c02babb73637ac4e4b782fa2b00121c880fc413010",
+      "bytes": 2114,
+      "sha256": "c5957bfc3f82e9bbf4abf6bb6d772b1071fd7606cfdf49995a897085e5b57b27",
       "name": {
-        "en": "Tactile button 6 x 6 mm (4 pins)",
-        "pt-BR": "Botão táctil 6 x 6 mm (4 pinos)",
-        "es": "Pulsador táctil 6 x 6 mm (4 pines)"
+        "en": "Button 6x6",
+        "pt-BR": "Botão 6x6",
+        "es": "Botón 6x6"
       },
       "category": "input",
       "kind": "declarative",
@@ -2298,12 +2298,12 @@
       "id": "dotbench.toggle-switch",
       "version": "1.0.0",
       "file": "dotbench.toggle-switch.dotpart",
-      "bytes": 1855,
-      "sha256": "1622363d07fb40aac574ab29c3cc4fe0400a095e36abb47fc4899fd2d7a305df",
+      "bytes": 1845,
+      "sha256": "2feb2b7df895057577d3b0570d2e3ad3c64a9bdcee1944e9cfa6409c98705178",
       "name": {
-        "en": "Toggle switch (SPDT)",
-        "pt-BR": "Chave alavanca (SPDT)",
-        "es": "Interruptor de palanca (SPDT)"
+        "en": "Toggle switch",
+        "pt-BR": "Chave alavanca",
+        "es": "Interruptor palanca"
       },
       "category": "input",
       "kind": "declarative",

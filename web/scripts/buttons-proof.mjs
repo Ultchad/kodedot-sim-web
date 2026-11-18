@@ -1,6 +1,6 @@
 // Proof of the buttons on the Workbench, in headless Chrome against `vite preview` of dist/ (build first):
 //   UX_PORT=4467 node scripts/buttons-proof.mjs
-// 1. the library cards of the buttons and switches, light and dark  -> screenshots/buttons/library-<theme>.png
+// 1. the library cards of the buttons and switches, light and dark  -> screenshots/buttons/library-<theme>[-<lang>].png
 // 2. the 6 x 6 mm tactile button plugged over a breadboard's centre channel, a 9 V battery, a resistor and an LED wired
 //    through it; the pointer held on its plunger lights the LED     -> screenshots/buttons/tact-6mm-pressed.png
 // 3. the latching button: one click latches it, the next releases it
@@ -14,11 +14,13 @@ mkdirSync(out, { recursive: true });
 const IDS = ['dotbench.push-button', 'dotbench.tact-6mm', 'dotbench.tact-12mm', 'dotbench.latching-button', 'dotbench.toggle-switch', 'dotbench.slide-switch'];
 
 let failed = 0;
-for (const theme of ['light', 'dark']) {
-  const b = await openBench({ prefs: { 'dotbench.theme': theme } });
+for (const [theme, lang] of [['light', 'en'], ['dark', 'en'], ['light', 'pt-BR'], ['light', 'es']]) {
+  const b = await openBench({ prefs: { 'dotbench.theme': theme, 'dotbench.lang': lang } });
   try {
     await b.ready();
     const boxes = [];
+    await b.D(() => document.fonts.ready.then(() => true));
+    await sleep(300);
     for (const id of IDS) {
       const el = await b.page.$(`[data-testid="part-${id}"]`);
       b.check(`${theme}: the library lists ${id}`, !!el);
@@ -26,15 +28,17 @@ for (const theme of ['light', 'dark']) {
       await el.evaluate((x) => x.scrollIntoView({ block: 'center' }));
       const pic = (await until(() => el.$eval('img', (i) => i.complete && i.naturalWidth > 0 && /parts-thumbs/.test(i.src)), 5000, 100)) >= 0;
       b.check(`${theme}: ${id} shows its picture`, pic);
+      const lines = await el.$eval('span', (x) => Math.round(x.getBoundingClientRect().height / parseFloat(getComputedStyle(x).lineHeight)));
+      if (id !== 'dotbench.slide-switch') b.check(`${theme} ${lang}: the name of ${id} takes at most two lines on its card`, lines <= 2, `${lines} lines`);
       boxes.push(el);
     }
     await boxes[1].evaluate((e) => e.scrollIntoView({ block: 'center' }));
     await sleep(400);
     const r = await Promise.all(boxes.map((e) => e.boundingBox()));
     const x0 = Math.min(...r.map((q) => q.x)) - 12, y0 = Math.max(0, Math.min(...r.map((q) => q.y)) - 12), x1 = Math.max(...r.map((q) => q.x + q.width)) + 12, y1 = Math.min(900, Math.max(...r.map((q) => q.y + q.height)) + 12);
-    await b.page.screenshot({ path: join(out, `library-${theme}.png`), clip: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } });
+    await b.page.screenshot({ path: join(out, `library-${theme}${lang === 'en' ? '' : '-' + lang}.png`), clip: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } });
 
-    if (theme === 'light') {
+    if (theme === 'light' && lang === 'en') {
       const bb = await b.place('dotbench.breadboard-half'), btn = await b.place('dotbench.tact-6mm'), led = await b.place('dotbench.led-red'), res = await b.place('dotbench.resistor'), bat = await b.place('dotbench.battery-9v');
       // the plunger is a control (a press on it never drags), so the button is taken by the front of its base
       const bp0 = await b.D((i) => window.__dotbench.bench.get(i).pos, btn);
