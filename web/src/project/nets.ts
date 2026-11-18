@@ -72,6 +72,8 @@ export interface ProjectPart {
   /** For a switch: its contact sets, and whether it springs back. */
   poles?: Pole[];
   momentary?: boolean;
+  /** For an LED of several colours: each light, by its two pins. */
+  diodes?: { anode: string; cathode: string }[];
   /** Carries a sketch (the compiler's board id). */
   core?: string;
 }
@@ -224,7 +226,7 @@ export function valueOf(m: PartManifest, cls: SymbolClass, fields: Record<string
     case 'rgb-led': {
       // an LED that carries its own series resistor says so
       const n = numberOf(first.series_ohms, all);
-      return n ? `+ ${ohmsText(n)}` : '';
+      return n ? ohmsText(n) : '';
     }
     case 'potentiometer': {
       const n = numberOf(first.ohms, all);
@@ -348,6 +350,7 @@ export function buildProject(input: ProjectInput): Project {
       part.poles = polesOf(m);
       part.momentary = (m.controls ?? []).some((c) => c.mode === 'momentary') || (m.fields ?? []).some((f) => f.name === 'pressed');
     }
+    if (cls === 'rgb-led') part.diodes = elementsOf(m).filter((e) => typeof e.anode === 'string' && typeof e.cathode === 'string').map((e) => ({ anode: e.anode as string, cathode: e.cathode as string }));
     if (m.behaviour.type === 'wasm' && m.behaviour.core) part.core = m.behaviour.core;
     return part;
   });

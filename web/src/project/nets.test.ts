@@ -142,7 +142,7 @@ describe('symbols, designators, values', () => {
     });
     expect(p.nets).toEqual([]);
     const value = (ref: string) => p.parts.find((x) => x.ref === ref)!.value;
-    expect([value('R1'), value('C1'), value('C2'), value('RV1'), value('BT1'), value('D3')]).toEqual(['330 Ω', '100 nF', '100 µF', '10 kΩ', '9 V', '+ 220 Ω']);
+    expect([value('R1'), value('C1'), value('C2'), value('RV1'), value('BT1'), value('D3')]).toEqual(['330 Ω', '100 nF', '100 µF', '10 kΩ', '9 V', '220 Ω']);
     const bom = billOfMaterials(p);
     expect(bom.find((l) => l.part.kind === 'dotbench.resistor')).toMatchObject({ refs: ['R1', 'R2'], qty: 2, value: '330 Ω' });
   });
