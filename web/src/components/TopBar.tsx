@@ -9,6 +9,7 @@ import { Icon } from './Glyphs';
 import { ModelControls } from './ModelControls';
 import { Popover } from './ui';
 import { GuideButton } from '../guide/entry';
+import { REPO_URL } from '../guide/content';
 
 /** The product's name as shown to people, the same in every language. Internal identifiers (.dotbench packages, storage keys) keep the old name for now. */
 export const PRODUCT_NAME = 'KodeDot Sim';
@@ -28,7 +29,12 @@ export function About() {
   return (
     <p className="m-0 text-[13px] leading-snug text-ink2" data-testid="about">
       <strong className="font-semibold text-ink">{PRODUCT_NAME}</strong> · {t('app.descriptor')}
-      <span className="mt-1 block xl:hidden">{t('app.unofficial')}</span>
+      <span className="mt-1 block xl:hidden">
+        {t('app.unofficial')}{' '}
+        <a href={REPO_URL} target="_blank" rel="noreferrer" className="font-semibold text-ink underline underline-offset-2">
+          {t('app.source')}
+        </a>
+      </span>
     </p>
   );
 }
@@ -38,7 +44,10 @@ export function Unofficial({ className = '' }: { className?: string }) {
   const { t } = useI18n();
   return (
     <p className={`m-0 min-w-0 truncate text-center text-[12.5px] leading-snug text-ink2 ${className}`} data-testid="unofficial">
-      {t('app.unofficial')}
+      {t('app.unofficial')}{' '}
+      <a href={REPO_URL} target="_blank" rel="noreferrer" className="font-semibold text-ink underline decoration-hair underline-offset-2 hover:decoration-current">
+        {t('app.source')}
+      </a>
     </p>
   );
 }

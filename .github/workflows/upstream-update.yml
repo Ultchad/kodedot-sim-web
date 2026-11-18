@@ -28,7 +28,7 @@ concurrency:
 jobs:
   check:
     name: Is there a newer release?
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       update: ${{ steps.look.outputs.update }}
@@ -53,7 +53,7 @@ jobs:
     name: Build, test and publish ${{ needs.check.outputs.tag }}
     needs: check
     if: needs.check.outputs.update == 'true'
-    runs-on: ubuntu-latest          # the standard runner: free for public repositories
+    runs-on: ubuntu-24.04          # the standard runner: free for public repositories
     timeout-minutes: 180
     permissions:
       contents: write                # the built-in GITHUB_TOKEN may push to this repository, nothing else; no secret is used
