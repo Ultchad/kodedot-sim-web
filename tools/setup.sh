@@ -38,6 +38,7 @@ fetch_commit() {   # dir url ref [expected-full-sha]   (ref: tag or commit)
 fetch_commit "$DEPS/kode-sdk"           https://github.com/kodediy/kode-sdk.git           "$KODE_SDK_TAG" "$KODE_SDK_COMMIT"
 fetch_commit "$DEPS/KodeOS"             https://github.com/kodediy/KodeOS.git             "$KODEOS_TAG"   "$KODEOS_COMMIT"
 fetch_commit "$DEPS/kode-app-kody_kart" https://github.com/kodediy/kode-app-kody_kart.git "$KODY_KART_COMMIT" "$KODY_KART_COMMIT"
+fetch_commit "$DEPS/kode-app-kodecity"  https://github.com/kodediy/kode-app-kodecity.git  "$KODECITY_COMMIT"  "$KODECITY_COMMIT"
 fetch_commit "$DEPS/third/lvgl"         https://github.com/lvgl/lvgl.git                  "$LVGL_TAG"
 
 # DOTBENCH_EMSDK_REUSE=<dir>: use an Emscripten SDK that is already installed there (it must be $EMSDK_VERSION) instead of
