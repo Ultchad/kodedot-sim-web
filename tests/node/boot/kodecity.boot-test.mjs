@@ -50,6 +50,12 @@ await check("it draws frames for several seconds at a playable rate, and driving
   shot(sys, path.join(shots, "kodecity-3.png"));
   const c = sum();
   await sleep(2000);
+  // CPU the whole simulator (every worker) burns over 10 s of play, as a share of one core
+  await pause("up", 0);
+  const c0 = process.cpuUsage(), w0 = Date.now();
+  sys.button("up", true); await sleep(10000); sys.button("up", false);
+  const cu = process.cpuUsage(c0), cpu = (cu.user + cu.system) / 1000 / (Date.now() - w0);
+  console.log(`     CPU over 10 s of driving: ${(cpu * 100).toFixed(0)} % of one core`);
   const logEnd = log();
   const dt = (Date.now() - t0) / 1000, fps = (sys.frameSeq - s0) / dt;
   // the game's own readouts (its console variables): frames the game renders a second, and its work per frame
