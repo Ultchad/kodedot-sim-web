@@ -28,33 +28,24 @@ typedef struct {
 
 typedef union { struct { uint32_t b : 8; uint32_t g : 8; uint32_t r : 8; uint32_t a : 8; }; uint32_t val; } color_pixel_argb8888_data_t;
 
+/* One input and one output block type for all three passes, as in ESP-IDF: the colour mode is a union. The enums above share their
+ * first values (ARGB8888, RGB888, RGB565), so the mode reads the same whichever member a caller names. */
 typedef struct {
-    void *buffer;
+    const void *buffer;
     uint32_t pic_w, pic_h, block_w, block_h, block_offset_x, block_offset_y;
-    ppa_srm_color_mode_t srm_cm;
-} ppa_in_pic_blk_srm_t;
+    union { ppa_srm_color_mode_t srm_cm; ppa_blend_color_mode_t blend_cm; };
+} ppa_in_pic_blk_config_t;
+
 typedef struct {
     void *buffer;
     uint32_t buffer_size;
     uint32_t pic_w, pic_h, block_offset_x, block_offset_y;
-    ppa_srm_color_mode_t srm_cm;
-} ppa_out_pic_blk_srm_t;
+    union { ppa_srm_color_mode_t srm_cm; ppa_blend_color_mode_t blend_cm; ppa_fill_color_mode_t fill_cm; };
+} ppa_out_pic_blk_config_t;
 
 typedef struct {
-    struct {
-        const void *buffer;
-        uint32_t pic_w, pic_h, block_w, block_h, block_offset_x, block_offset_y;
-        ppa_srm_color_mode_t srm_cm;
-        ppa_blend_color_mode_t blend_cm;
-    } in;
-    struct {
-        void *buffer;
-        uint32_t buffer_size;
-        uint32_t pic_w, pic_h, block_offset_x, block_offset_y;
-        ppa_srm_color_mode_t srm_cm;
-        ppa_fill_color_mode_t fill_cm;
-        ppa_blend_color_mode_t blend_cm;
-    } out;
+    ppa_in_pic_blk_config_t in;
+    ppa_out_pic_blk_config_t out;
     ppa_srm_rotation_angle_t rotation_angle;
     float scale_x, scale_y;
     bool mirror_x, mirror_y;
@@ -66,19 +57,8 @@ typedef struct {
 } ppa_srm_oper_config_t;
 
 typedef struct {
-    const void *buffer;
-    uint32_t pic_w, pic_h, block_w, block_h, block_offset_x, block_offset_y;
-    ppa_blend_color_mode_t blend_cm;
-} ppa_in_pic_blk_blend_t;
-typedef struct {
-    void *buffer;
-    uint32_t buffer_size;
-    uint32_t pic_w, pic_h, block_offset_x, block_offset_y;
-    ppa_blend_color_mode_t blend_cm;
-} ppa_out_pic_blk_blend_t;
-typedef struct {
-    ppa_in_pic_blk_blend_t in_bg, in_fg;
-    ppa_out_pic_blk_blend_t out;
+    ppa_in_pic_blk_config_t in_bg, in_fg;
+    ppa_out_pic_blk_config_t out;
     ppa_alpha_update_mode_t bg_alpha_update_mode, fg_alpha_update_mode;
     uint32_t bg_alpha_fix_val, fg_alpha_fix_val;
     float bg_alpha_scale_ratio, fg_alpha_scale_ratio;
@@ -88,12 +68,7 @@ typedef struct {
 } ppa_blend_oper_config_t;
 
 typedef struct {
-    struct {
-        void *buffer;
-        uint32_t buffer_size;
-        uint32_t pic_w, pic_h, block_offset_x, block_offset_y;
-        ppa_fill_color_mode_t fill_cm;
-    } out;
+    ppa_out_pic_blk_config_t out;
     uint32_t fill_block_w, fill_block_h;
     color_pixel_argb8888_data_t fill_argb_color;
     ppa_trans_mode_t mode;
