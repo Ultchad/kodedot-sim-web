@@ -17,6 +17,7 @@ import { DeviceStatusCard } from './DeviceStatusCard';
 import { Icon } from './Glyphs';
 import { ModelOffer } from './ModelControls';
 import { NoticeBanner } from './Notice';
+import { HOLD_IDLE } from '../lib/homeHold';
 import { GuideLink } from '../guide/entry';
 
 const Device3D = lazy(() => import('./Device3D'));
@@ -313,6 +314,7 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
           </div>
         )}
         {!show3d && <Device2D zoom={phone ? 'fit' : zoom2d} crop={phone} inset={phone ? 0 : 8} />}
+        <HoldAnnouncer />
         <DeviceStatusCard />
         <ModelOffer />
         <NoticeBanner />
@@ -328,6 +330,20 @@ export function DevicePane({ panels }: { panels?: Record<PanelId, PanelControl> 
  * covers the device: under it on desktop, on top of the bottom bar on a phone, inside the side panel in phone landscape.
  * Gone for good with "Got it", or once an own app was installed.
  */
+/**
+ * The hold-to-go-home bar itself is drawn on the screen picture (lib/screen.ts); this is its twin for assistive technology
+ * and for the browser checks: a progress bar that nobody sees, present only while the hold is shown.
+ */
+function HoldAnnouncer() {
+  const { t } = useI18n();
+  const { homeHold } = useHost();
+  const st = useSyncExternalStore(homeHold ? homeHold.state.subscribe : noSub, homeHold ? homeHold.state.get : idleHold);
+  if (st.phase === 'idle') return null;
+  return <div className="sr-only" role="progressbar" aria-label={t('hold.home')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={st.percent} data-testid="hold-bar" data-phase={st.phase} />;
+}
+const noSub = () => () => {};
+const idleHold = () => HOLD_IDLE;
+
 export function WelcomeHint({ variant = 'desk' }: { variant?: 'desk' | 'bar' | 'panel' }) {
   const { t } = useI18n();
   const { welcome, dismissWelcome, requestApps, device } = useHost();

@@ -31,6 +31,7 @@ export const ptBR: Messages = {
   'device.region': 'Aparelho',
   'device.view': 'Visualização',
   'device.recenter': 'Centralizar',
+  'hold.home': 'Segure para voltar ao início',
   'device.tilt': 'Inclinar → sensor',
   'device.zoom': 'Zoom',
   'device.fit': 'Ajustar',

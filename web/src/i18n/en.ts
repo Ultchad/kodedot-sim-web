@@ -30,6 +30,7 @@ export const en = {
   'device.region': 'Device',
   'device.view': 'View',
   'device.recenter': 'Recenter',
+  'hold.home': 'Hold to go home',
   'device.tilt': 'Tilt → sensor',
   'device.zoom': 'Zoom',
   'device.fit': 'Fit',

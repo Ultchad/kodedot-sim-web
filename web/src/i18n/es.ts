@@ -31,6 +31,7 @@ export const es: Messages = {
   'device.region': 'Dispositivo',
   'device.view': 'Vista',
   'device.recenter': 'Centrar',
+  'hold.home': 'Mantén para ir al inicio',
   'device.tilt': 'Inclinar → sensor',
   'device.zoom': 'Zoom',
   'device.fit': 'Ajustar',
