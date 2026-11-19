@@ -17,6 +17,10 @@ import { loadPref, savePref } from './prefs';
  *
  * The bar is only an estimate that moves with the clock; the firmware decides. It never reaches its end by time alone: it
  * waits at HOLD_CAP until the device really leaves the app (status leaves "running"), and only then jumps to full.
+ *
+ * A heavy app (KodeCity drawing flat out) can starve the firmware's own clock in a busy browser, and an app may have no hold
+ * gesture at all, so a hold that is still down OVERDUE_MS past the expected time sends the Dot home from the page itself
+ * (the same as the menu's "back to kodeOS"): holding the button always gets you out.
  */
 
 /** KODE_HOME_HOLD_MS + KODE_SYS_HOME_GRACE_MS (kode-sdk v0.1.5, kqp_config.h). A test compares these with the pinned SDK. */
@@ -39,6 +43,8 @@ export const HOME_HOLD_BY_PROJECT: Readonly<Record<string, number>> = {
 export const HOLD_CAP = 0.97;
 /** An ordinary press must not flash the bar. */
 export const SHOW_AFTER_MS = 200;
+/** How long past the expected time a still-held button waits for the firmware before the page sends the Dot home itself. */
+export const OVERDUE_MS = 1200;
 const FADE_MS = 120;
 const DONE_SHOW_MS = 160;
 
@@ -96,6 +102,11 @@ export class HomeHoldModel {
     return now - this.pressedAt;
   }
 
+  /** The button is still down this long past the app's own gesture time (only while it is down and the app was not left). */
+  overdue(now: number, extra: number): boolean {
+    return this.pressed && this.holdMs > 0 && now - (this.pressedAt as number) >= this.holdMs + extra;
+  }
+
   reset(): void {
     this.pressedAt = null;
     this.releasedAt = null;
@@ -142,6 +153,8 @@ export interface HomeHoldDeps {
   device: KodeDevice;
   now?: () => number;
   reducedMotion?: () => boolean;
+  /** Sends the Dot back to kodeOS from the page (used when the firmware does not leave on time) */
+  goHome?: () => void;
   /** localStorage-like store for what the page learned, or null */
   learn?: { load(): Record<string, number>; save(v: Record<string, number>): void } | null;
 }
@@ -161,6 +174,8 @@ export class HomeHoldController {
   private learnStore: NonNullable<HomeHoldDeps['learn']> | null;
   private label = '';
   private drawn = false;
+  private forced = false;
+  private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private deps: HomeHoldDeps) {
     this.now = deps.now ?? (() => performance.now());
@@ -185,6 +200,7 @@ export class HomeHoldController {
   }
 
   dispose(): void {
+    this.clearTimer();
     this.offs.forEach((o) => o());
     this.offs = [];
   }
@@ -211,15 +227,35 @@ export class HomeHoldController {
     if (bottom) {
       if (!this.inApp()) return;
       this.projectOfPress = this.appProject();
-      this.model.press(this.now(), homeHoldMs(this.projectOfPress, this.projectOfPress ? this.learned[this.projectOfPress] : undefined));
+      const ms = homeHoldMs(this.projectOfPress, this.projectOfPress ? this.learned[this.projectOfPress] : undefined);
+      this.forced = false;
+      this.model.press(this.now(), ms);
+      // a timer as well as the painter's frames: a hidden tab paints nothing
+      this.clearTimer();
+      if (ms > 0) this.timer = setTimeout(() => this.check(), ms + OVERDUE_MS + 50);
     } else {
+      this.clearTimer();
       this.model.release(this.now());
     }
+  }
+
+  private clearTimer(): void {
+    if (this.timer !== null) clearTimeout(this.timer);
+    this.timer = null;
+  }
+
+  /** The firmware has not left the app well past its time while the button is still down: the page sends the Dot home. */
+  check(): void {
+    if (this.forced || !this.deps.goHome || !this.model.overdue(this.now(), OVERDUE_MS) || !this.inApp()) return;
+    this.forced = true;
+    this.deps.goHome();
   }
 
   private onStatus(): void {
     if (this.deps.device.status.get() === 'running') return;
     const lasted = this.model.leave(this.now());
+    if (lasted !== null) this.clearTimer();
+    if (this.forced) return; // the page sent it home: that says nothing about the app's own gesture
     // what the app's gesture really took, kept for the next press (only a plausible hold counts, and never over a known rule)
     if (lasted !== null && this.projectOfPress && lasted >= 300 && lasted <= 10_000 && !(this.projectOfPress in HOME_HOLD_BY_PROJECT)) {
       this.learned = { ...this.learned, [this.projectOfPress]: Math.round(lasted) };
@@ -229,6 +265,7 @@ export class HomeHoldController {
 
   /** One animation frame. `ctx` is the screen canvas context; returns true when something was drawn (the screen must repaint). */
   draw(ctx: CanvasRenderingContext2D, w: number, h: number): boolean {
+    this.check();
     const v = this.model.view(this.now());
     const percent = v.phase === 'idle' ? 0 : Math.round((v.fraction * 100) / 5) * 5;
     this.state.set(v.phase === this.state.get().phase && percent === this.state.get().percent ? this.state.get() : { phase: v.phase, percent });

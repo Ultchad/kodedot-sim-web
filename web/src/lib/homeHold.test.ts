@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { Atom } from '../device/observable';
 import type { ButtonId, DeviceStatus } from '../device/types';
-import { DEFAULT_HOME_HOLD_MS, HOLD_CAP, HomeHoldController, HomeHoldModel, SDK_HOME_GRACE_MS, SDK_HOME_HOLD_MS, SHOW_AFTER_MS, homeHoldMs } from './homeHold';
+import { DEFAULT_HOME_HOLD_MS, HOLD_CAP, HomeHoldController, HomeHoldModel, OVERDUE_MS, SDK_HOME_GRACE_MS, SDK_HOME_HOLD_MS, SHOW_AFTER_MS, homeHoldMs } from './homeHold';
 
 describe('HomeHoldModel', () => {
   it('shows nothing before 200 ms, then fills with the clock', () => {
@@ -75,9 +75,10 @@ function fake() {
   const device = { info: { kind: 'wasm' }, detail: {}, status, program, apps };
   let t = 0;
   const learnt: Record<string, number> = {};
-  const c = new HomeHoldController({ input: { pressed }, device: device as never, now: () => t, learn: { load: () => ({ ...learnt }), save: (v) => Object.assign(learnt, v) } });
+  const homes: number[] = [];
+  const c = new HomeHoldController({ input: { pressed }, device: device as never, now: () => t, goHome: () => homes.push(t), learn: { load: () => ({ ...learnt }), save: (v) => Object.assign(learnt, v) } });
   const ctx = { save() {}, restore() {}, beginPath() {}, moveTo() {}, arcTo() {}, closePath() {}, fill() {}, stroke() {}, fillText() {}, measureText: () => ({ width: 10 }) } as unknown as CanvasRenderingContext2D;
-  return { status, program, pressed, c, ctx, at: (ms: number) => (t = ms), learnt };
+  return { status, program, pressed, c, ctx, at: (ms: number) => (t = ms), learnt, homes };
 }
 
 describe('HomeHoldController', () => {
@@ -114,5 +115,34 @@ describe('HomeHoldController', () => {
     f.at(2600);
     expect(f.c.draw(f.ctx, 410, 502)).toBe(false);
     expect(f.c.state.get().phase).toBe('idle');
+  });
+  it('a firmware that does not leave in time: the page sends the Dot home once, and learns nothing from it', () => {
+    const f = fake();
+    f.pressed.set(new Set<ButtonId>(['bottom']));
+    f.at(DEFAULT_HOME_HOLD_MS + OVERDUE_MS - 1);
+    f.c.draw(f.ctx, 410, 502);
+    expect(f.homes).toEqual([]);
+    f.at(DEFAULT_HOME_HOLD_MS + OVERDUE_MS);
+    f.c.draw(f.ctx, 410, 502);
+    f.c.check();
+    expect(f.homes).toEqual([DEFAULT_HOME_HOLD_MS + OVERDUE_MS]);
+    f.at(5000);
+    f.status.set('booting');
+    f.c.draw(f.ctx, 410, 502);
+    expect(f.c.state.get()).toEqual({ phase: 'done', percent: 100 });
+    expect(f.learnt.light).toBeUndefined();
+    f.c.dispose();
+  });
+  it('a release before the firmware is late never sends the Dot home', () => {
+    const f = fake();
+    f.pressed.set(new Set<ButtonId>(['bottom']));
+    f.at(DEFAULT_HOME_HOLD_MS);
+    f.c.draw(f.ctx, 410, 502);
+    f.pressed.set(new Set<ButtonId>());
+    f.at(DEFAULT_HOME_HOLD_MS + OVERDUE_MS * 3);
+    f.c.draw(f.ctx, 410, 502);
+    f.c.check();
+    expect(f.homes).toEqual([]);
+    f.c.dispose();
   });
 });

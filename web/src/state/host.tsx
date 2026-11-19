@@ -203,7 +203,10 @@ export function HostProvider({ children }: { children: ReactNode }) {
   const [homeHold, setHomeHold] = useState<HomeHoldController | null>(null);
   useEffect(() => {
     const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const c = new HomeHoldController({ input, device, reducedMotion: reduced });
+    const c = new HomeHoldController({ input, device, reducedMotion: reduced, goHome: () => {
+      const d = deviceRef.current;
+      if (isRealDevice(d)) void d.home().catch(() => {});
+    } });
     c.setLabel(tRef.current('hold.home'));
     painter.setOverlay((ctx, w, h) => c.draw(ctx, w, h));
     void document.fonts?.load('600 16px "DM Sans"');
