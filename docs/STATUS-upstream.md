@@ -75,3 +75,28 @@ Actions tab > "Upstream update" > "..." > Disable workflow (or delete the file).
 - Upstream rewording of log lines the tests match, an API change kgui needs a shim for (`kodeos_compat.h`), a new HID/feature model.
 - Kody Kart is not updated by the workflow (no tags) unless it gets the same tag as the release.
 - Owner, once: Vercel Hobby deploys only commits whose author is the account owner, which is why the commit carries his identity; check that the first automated commit deploys. If branch protection on `main` requires pull requests, the push is refused (allow it for the Actions bot or the workflow cannot publish). Repository Settings > Actions > General: Actions must be allowed; the job asks for write permission itself.
+
+## Update to v0.1.5 (kode-sdk and KodeOS v0.1.3, v0.1.4, v0.1.5)
+
+Branch `fix/upstream-0.1.5`. The daily updater tried v0.1.5 and failed safely at step `sdk`: `kdrv_apps.c` calls `esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "storage")`, which the minimal `esp_partition.h` of `runtime/idf` did not define.
+
+What mattered in 0.1.3 to 0.1.5 for the simulator: `kdrv_apps` can now write a whole FAT image into the `storage` partition (firmware-update sink `kdrv_apps_storage_sink`, `kdrv_apps_storage_sha256`; it calls `kdrv_fs_raw_begin/end`, new in `kdrv_fs`), kodeOS copies the apps to the SD card ahead of an install. Nothing else needed new code: the other new functions are hardware the simulator has no meaning for (stubs `kdrv_display_panel_cold`, `kdrv_ov5640_lost_take`, `khal_power_wake_disarm`).
+
+What was added:
+- `runtime/drivers/apps/include/esp_partition.h`: all ESP-IDF data subtype values (`ESP_PARTITION_SUBTYPE_DATA_FAT` = 0x81, ...).
+- `runtime/drivers/apps/apps_flash_web.c`: a third partition, `storage` (data, fat, 0x1800000, 2 MB as in `kbsp/partitions.csv`), found by `esp_partition_find_first`; read, write (NOR: bits only clear), erase (0xFF) and mmap go to the storage driver.
+- `runtime/drivers/storage/diskio.c` + `dotbench_vfs.h`: `dbd_flash_raw_read/write/erase`, a raw view of the `flash-fs` region (the FAT image as FatFs sees it; the wear-levelling layer is not modelled, so an image written raw is the plain FAT image).
+- `runtime/drivers/storage/kdrv_fs_web.c`: `kdrv_fs_raw_begin` (unmounts, refuses every mount and so every format) and `kdrv_fs_raw_end` (mounts as it is, never formats), same contract and log lines as the SDK's.
+Limits: no test drives the storage sink end to end yet (the SDK's host tests for it are not run here); the partition is only reached by that sink and by `test_dot` (not in the simulator). Stub count: 81.
+
+## Test results v0.1.5
+
+`tools/upstream-update.sh --to v0.1.5` (with `UPSTREAM_NODE_MODULES`, `UPSTREAM_CC_ASSETS`) end to end: every step ok (pins, setup, sdk, factory, kodeos, boot, areas, stage, news, page), no retry needed in the last run.
+- kodeOS suite 81 checks ok; boot suite 39 ok; areas 801 ok (`restart` skipped as before).
+- Page checks: system-check, settings-check and bench-check, 63 PASS and no FAIL in all. Lock screen (clock, "Choose your time zone", Kody) and the app list (13 factory apps; Games group with Kody Kart) looked at.
+- An earlier run had `audio/tone_volume` fail once on a 1 ms timing boundary and pass on its retry (known timing sensitivity, assertion untouched).
+- The console shows `dotbench: kdrv_slot_confirm_self not implemented` once at boot: the OTA slot stub, there before 0.1.3.
+
+## Where the "pull_request" title came from (not found)
+
+The only workflow is `upstream-update.yml` with `schedule` and `workflow_dispatch`; no other workflow file exists, `git log -S pull_request` over `.github` finds nothing in any branch, and the repository has no pull requests. The GitHub API for the failed run (id 44543512478) says event `schedule`, title "Upstream update", branch main, no pull requests. So nothing in the repository can start it on a pull request; the title seen was probably another run or a Vercel/other page. Triggers left unchanged.
