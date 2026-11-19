@@ -246,7 +246,7 @@ export const en = {
   'sim.usb': 'USB',
   'sim.usb.d': 'The cable carries power (charging, cable detection) and the kodeOS console: a terminal, files to and from the Dot, app install. The Dot cannot act as a keyboard or a drive; the real one\'s software has neither.',
   'sim.audio': 'Sound',
-  'sim.audio.d': 'Apps play and record inside the Dot, but the page does not connect that to your speakers or microphone: you hear nothing and recordings are silent.',
+  'sim.audio.d': 'Everything the Dot plays (apps, games, alerts) comes out of your speakers. Your browser starts the sound after your first click or key press. The **Sound** button in the bar at the bottom mutes it. The microphone is not connected yet: recordings are silent.',
   'sim.circuit': 'Parts and circuits',
   'sim.circuit.d': 'Resistors, capacitors charging over time, diodes and LEDs are solved; shorts, burnt LEDs and overvoltage are flagged. No inductors: a motor has no back-EMF. It is not a circuit simulator like SPICE.',
   'sim.boards': 'Arduino and ESP32 boards',

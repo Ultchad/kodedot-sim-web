@@ -1,3 +1,4 @@
+import { loadPref, savePref } from '../lib/prefs';
 /**
  * SystemDevice: the simulated Kode Dot as the page sees it, over the firmware team's system layer
  * (runtime/web-adapter, `DotbenchSystem`): kodeOS plus the apps installed in it, on one persistent device.
@@ -91,6 +92,9 @@ export interface RealDevice extends KodeDevice {
   readonly program: Observable<Program | null>;
   /** The apps installed in kodeOS, in install order. */
   readonly apps: Observable<readonly InstalledApp[]>;
+  /** The page's mute for the Dot's speaker. */
+  readonly muted: Observable<boolean>;
+  setMuted(muted: boolean): void;
   /** Install a .dotbench into kodeOS (it restarts once to list it). Resolves with the app's id. */
   install(bundle: ArrayBuffer | Uint8Array): Promise<string>;
   /** Open an installed app, as a tap on it in kodeOS does. */
@@ -154,6 +158,15 @@ const defaultSystem = async (): Promise<AdapterSystem> => {
   return new DotbenchSystem({ os, persist: new IdbBackend({ name: SYSTEM_STORE }), factory: { apps: factory, fetch: fetchBytes } });
 };
 
+const MUTE_KEY = 'dotbench.muted';
+
+/** What the page uses of the audio area's JS glue (runtime/drivers/audio/audio.js). */
+interface AudioGlue {
+  attachOutput(opts: { audioContext?: AudioContext; latencyMs?: number }): Promise<string>;
+  setVolume(v: number): void;
+  setMuted(m: boolean): void;
+}
+
 export class SystemDevice implements RealDevice {
   readonly info: DeviceInfo = { kind: 'wasm', label: 'WebAssembly', runsBundles: true };
   readonly unsupported: readonly RuntimeProblemCode[];
@@ -167,6 +180,9 @@ export class SystemDevice implements RealDevice {
   private _panelOn = new Atom(true);
   private _led = new Atom<Rgb>({ r: 0, g: 0, b: 0 });
   private _haptic = new Atom(0);
+  private _muted = new Atom<boolean>(loadPref<boolean>(MUTE_KEY, false) === true);
+  /** The page's own audio output for the Dot's speaker: a fresh AudioContext per boot, closed when the program goes. */
+  private audioCtx: AudioContext | null = null;
   private _log = new LogBuffer();
 
   readonly status: Observable<DeviceStatus> = this._status;
@@ -178,6 +194,8 @@ export class SystemDevice implements RealDevice {
   readonly panelOn: Observable<boolean> = this._panelOn;
   readonly led: Observable<Rgb> = this._led;
   readonly haptic: Observable<number> = this._haptic;
+  /** The page's mute for the Dot's speaker (the firmware's own volume and mute are its business). */
+  readonly muted: Observable<boolean> = this._muted;
   readonly log: LogStream = this._log;
   readonly areas: Readonly<Partial<HardwareAreas>>;
 
@@ -257,7 +275,10 @@ export class SystemDevice implements RealDevice {
     if (s.status === 'booting') this._detail.set(s.reason ? { status: 'booting', reason: s.reason, restarting: true } : { status: 'booting' });
     else this._detail.set(s.status === 'crashed' ? { status: 'crashed', reason: s.reason } : { status: s.status });
     this._status.set(s.status);
-    if (s.status === 'running' && this.sys) this.applyOutputs(this.sys.outputs());
+    if (s.status === 'running' && this.sys) {
+      this.applyOutputs(this.sys.outputs());
+      this.attachSound();
+    } else this.closeSound();
     if (s.status === 'idle' || s.status === 'crashed') {
       this._led.set({ r: 0, g: 0, b: 0 });
       this._haptic.set(0);
@@ -286,6 +307,58 @@ export class SystemDevice implements RealDevice {
       return; // the device is not open yet
     }
     if (JSON.stringify(list) !== JSON.stringify(this._apps.get())) this._apps.set(list);
+  }
+
+  /** Mute or unmute the Dot's speaker on this page (kept for the next visit). */
+  setMuted(muted: boolean): void {
+    this._muted.set(muted);
+    savePref(MUTE_KEY, muted);
+    const a = this.audioArea();
+    try {
+      a?.setMuted(muted);
+    } catch {
+      /* the program is going */
+    }
+  }
+
+  private audioArea(): AudioGlue | null {
+    const a = (this.sys?.area('audio') ?? null) as AudioGlue | null;
+    return a && typeof a.attachOutput === 'function' ? a : null;
+  }
+
+  // Every program brings its own audio glue reading its own memory, and the glue's worklet never stops by itself, so each boot
+  // gets a fresh AudioContext and the last one is closed (that frees the old program's memory). The browser starts a context
+  // made after the first click or key press straight away; before that the glue resumes it on the first gesture.
+  private attachSound(): void {
+    const a = this.audioArea();
+    if (!a) return;
+    const AC = (globalThis as { AudioContext?: typeof AudioContext }).AudioContext;
+    if (!AC) return;
+    this.closeSound();
+    let ac: AudioContext;
+    try {
+      ac = new AC({ sampleRate: 48000, latencyHint: 'interactive' });
+    } catch {
+      try {
+        ac = new AC({ latencyHint: 'interactive' });
+      } catch {
+        return;
+      }
+    }
+    this.audioCtx = ac;
+    try {
+      a.setVolume(1);
+      a.setMuted(this._muted.get());
+      void a.attachOutput({ audioContext: ac, latencyMs: 80 }).catch(() => {});
+    } catch {
+      /* no sound for this program; it runs anyway */
+    }
+  }
+
+  private closeSound(): void {
+    const ac = this.audioCtx;
+    this.audioCtx = null;
+    if (ac && ac.state !== 'closed') void ac.close().catch(() => {});
   }
 
   private applyOutputs(o: AdapterOutputs): void {
@@ -359,6 +432,7 @@ export class SystemDevice implements RealDevice {
     this.sys?.stop(); // the system saves everything as it stops the program
   }
   dispose(): void {
+    this.closeSound();
     this.disposed = true;
     this.on = false;
     this.saving(false);

@@ -242,7 +242,7 @@ export const ptBR: GuideMessages = {
   'sim.usb': 'USB',
   'sim.usb.d': 'O cabo leva energia (carga, detecção do cabo) e o console do kodeOS: um terminal, arquivos indo e voltando, instalação de app. O Dot não se passa por teclado nem por pendrive; o software do Dot de verdade também não tem isso.',
   'sim.audio': 'Som',
-  'sim.audio.d': 'Os apps tocam e gravam dentro do Dot, mas a página não liga isso nos seus alto-falantes nem no seu microfone: você não ouve nada e as gravações saem mudas.',
+  'sim.audio.d': 'Tudo o que o Dot toca (apps, jogos, alertas) sai nos seus alto-falantes. O navegador libera o som depois do seu primeiro clique ou tecla. O botão **Som** na barra de baixo deixa mudo. O microfone ainda não está ligado: as gravações saem mudas.',
   'sim.circuit': 'Peças e circuitos',
   'sim.circuit.d': 'Resistores, capacitores carregando com o tempo, diodos e LEDs são calculados; curto, LED queimado e sobretensão são apontados. Não há indutores: um motor não tem força contraeletromotriz. Não é um simulador de circuitos como o SPICE.',
   'sim.boards': 'Placas Arduino e ESP32',

@@ -52,6 +52,10 @@ export const ptBR: Messages = {
   'hud.haptic': 'Vibração',
   'hud.backlight': 'Luz de fundo',
   'hud.off': 'apagado',
+  'hud.on': 'ligado',
+  'hud.sound': 'Som',
+  'hud.sound.on': 'Desligar o som do Dot',
+  'hud.sound.off': 'Ligar o som do Dot',
 
   'bench.rename': 'Renomear',
   'bench.duplicate': 'Duplicar',

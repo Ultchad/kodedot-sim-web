@@ -52,6 +52,10 @@ export const es: Messages = {
   'hud.haptic': 'Vibración',
   'hud.backlight': 'Retroiluminación',
   'hud.off': 'apagado',
+  'hud.on': 'encendido',
+  'hud.sound': 'Sonido',
+  'hud.sound.on': 'Apagar el sonido del Dot',
+  'hud.sound.off': 'Encender el sonido del Dot',
 
   'bench.rename': 'Renombrar',
   'bench.duplicate': 'Duplicar',

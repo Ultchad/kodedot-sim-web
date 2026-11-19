@@ -791,7 +791,7 @@ Found in the product while writing (not fixed here; each is something the guide 
    them optional, and the refusal is a raw JavaScript error. The starter's README also says to drop the file in "Check my part",
    which the Make tab does not have (it is "Import a part").
 5. Portuguese: the Bench panel and the Workbench mode are both called "Bancada" (`nav.bench`, `mode.workbench`).
-6. Sound is silent: apps record and play inside the Dot, the page connects neither speakers nor microphone.
+6. The microphone is not connected: recordings inside the Dot are silent. (The speaker is: each boot gets a fresh AudioContext fed by the audio area's worklet, `SystemDevice.attachSound`, mute in the status bar.)
 7. `tools/dotbench build` needs Pillow for an app with a PNG icon (Kode's template has one) and does not say so; its other path
    defaults point at the maker's machine when `.dotbench-env` was not sourced.
 8. The repository has no LICENSE file at its root (the README states GPL-3.0-or-later).

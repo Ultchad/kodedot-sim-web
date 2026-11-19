@@ -76,6 +76,7 @@ export function StatusBar({ show3d }: { show3d: boolean }) {
           {panelOn ? `${fmt.number(backlight)}%` : t('hud.off')}
         </span>
       </span>
+      <SoundToggle />
       {useMock && (
         <span className="pill" title={t('mock.hint')} data-testid="status-mock">
           <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full bg-primary" />
@@ -93,6 +94,24 @@ export function StatusBar({ show3d }: { show3d: boolean }) {
     </footer>
   );
 }
+
+/** The Dot's speaker on this page: on or muted. Hidden without a real device. */
+function SoundToggle() {
+  const { t } = useI18n();
+  const { device } = useHost();
+  const real = isRealDevice(device) ? device : null;
+  const muted = useObservable(real?.muted ?? NOT_MUTED);
+  if (!real) return null;
+  const label = muted ? t('hud.sound.off') : t('hud.sound.on');
+  return (
+    <button type="button" className="pill" aria-pressed={!muted} title={label} aria-label={label} onClick={() => real.setMuted(!muted)} data-testid="sound-toggle" data-muted={muted ? '1' : '0'}>
+      <Icon name={muted ? 'soundOff' : 'sound'} size={16} className={muted ? 'text-ink3' : undefined} />
+      <b>{t('hud.sound')}</b>
+      <span>{muted ? t('hud.off') : t('hud.on')}</span>
+    </button>
+  );
+}
+const NOT_MUTED = { get: () => false, subscribe: () => () => {} };
 
 /** Keyboard and pointer help as a popover: it does not move the device when it opens. */
 function KeysHelp({ show3d }: { show3d: boolean }) {

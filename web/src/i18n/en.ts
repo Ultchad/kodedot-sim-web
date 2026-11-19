@@ -51,6 +51,10 @@ export const en = {
   'hud.haptic': 'Haptic',
   'hud.backlight': 'Backlight',
   'hud.off': 'off',
+  'hud.on': 'on',
+  'hud.sound': 'Sound',
+  'hud.sound.on': 'Turn the Dot\'s sound off',
+  'hud.sound.off': 'Turn the Dot\'s sound on',
 
   'bench.rename': 'Rename',
   'bench.duplicate': 'Duplicate',
