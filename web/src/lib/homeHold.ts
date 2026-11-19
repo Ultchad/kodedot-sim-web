@@ -39,6 +39,12 @@ export const HOME_HOLD_BY_PROJECT: Readonly<Record<string, number>> = {
   buttons_led: 0,
 };
 
+/**
+ * The bar is the page's addition to this project's own apps (apps/ in this repository). Kode's apps, the SDK's examples and
+ * apps people install keep whatever their firmware or kodeOS shows: the page draws nothing over them and never sends them home.
+ */
+export const OWN_APPS: ReadonlySet<string> = new Set(['light', 'nfc_kit', 'rfid_kit', 'ir_kit', 'wifi_kit', 'ble_kit', 'gpio_kit', 'level', 'files', 'sound']);
+
 /** The bar waits at this fraction until the firmware really leaves. */
 export const HOLD_CAP = 0.97;
 /** An ordinary press must not flash the bar. */
@@ -227,6 +233,7 @@ export class HomeHoldController {
     if (bottom) {
       if (!this.inApp()) return;
       this.projectOfPress = this.appProject();
+      if (!this.projectOfPress || !OWN_APPS.has(this.projectOfPress)) return;
       const ms = homeHoldMs(this.projectOfPress, this.projectOfPress ? this.learned[this.projectOfPress] : undefined);
       this.forced = false;
       this.model.press(this.now(), ms);

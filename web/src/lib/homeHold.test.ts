@@ -67,10 +67,10 @@ describe('homeHoldMs', () => {
   });
 });
 
-function fake() {
+function fake(project = 'light') {
   const status = new Atom<DeviceStatus>('running');
   const program = new Atom<{ id: string; name: string; kind: 'os' | 'app' } | null>({ id: 'b1', name: 'Light', kind: 'app' });
-  const apps = new Atom([{ id: 'b1', project: 'light' }]);
+  const apps = new Atom([{ id: 'b1', project }]);
   const pressed = new Atom<ReadonlySet<ButtonId>>(new Set());
   const device = { info: { kind: 'wasm' }, detail: {}, status, program, apps };
   let t = 0;
@@ -144,5 +144,19 @@ describe('HomeHoldController', () => {
     f.c.check();
     expect(f.homes).toEqual([]);
     f.c.dispose();
+  });
+  it('only this project\'s own apps get the bar: a Kode app or an installed one keeps its own behaviour', () => {
+    for (const p of ['kodecity', 'kody_kart', 'display_lvgl', 'someones_game']) {
+      const f = fake(p);
+      f.pressed.set(new Set<ButtonId>(['bottom']));
+      for (const t of [1600, DEFAULT_HOME_HOLD_MS + OVERDUE_MS + 100]) {
+        f.at(t);
+        expect(f.c.draw(f.ctx, 410, 502)).toBe(false);
+        f.c.check();
+      }
+      expect(f.c.state.get().phase).toBe('idle');
+      expect(f.homes).toEqual([]);
+      f.c.dispose();
+    }
   });
 });
