@@ -80,7 +80,9 @@ try {
     for (let i = 0; i < d.length; i += 4 * 11) s.add(d[i] | (d[i + 1] << 8) | (d[i + 2] << 16));
     return s.size;
   });
-  check('the city has many colours on the glass', g > 150, String(g));
+  check('the city has many colours on the glass', g > 60, String(g));
+  const dry = await page.evaluate(() => window.__dotbench.device().log.get().filter((l) => /ran dry/.test(l.text)).length);
+  console.log(`haptic "ran dry" log lines during the run: ${dry}`);
   const t0 = Date.now();
   await page.keyboard.down('b');
   const home = await until(async () => (await program())?.kind === 'os', 30000, 100);

@@ -55,6 +55,7 @@ await check("it draws frames for several seconds at a playable rate, and driving
   // the game's own readouts (its console variables): frames the game renders a second, and its work per frame
   const asked = async (name) => { sys.clearLog(); sys.sendConsole(`variable name="${name}"`); let v = NaN; await waitFor(() => { const m = log().match(new RegExp(`variable="${name}" value=([0-9.]+)`)); if (m) v = Number(m[1]); return m; }, 5000, "variable " + name, sys); return v; };
   const gameFps = await asked("fps"), frameMs = await asked("frame_ms");
+  console.log(`     haptic "ran dry" lines in the log: ${(logEnd.match(/ran dry/g) || []).length}`);
   console.log(`     presented to the glass: ${sys.frameSeq - s0} frames in ${dt.toFixed(1)} s = ${fps.toFixed(1)} fps; the game renders ${gameFps} fps, ${frameMs} ms of work per frame`);
   assert.ok(lit() > 0.2, "the city is on the glass: " + lit());
   assert.notEqual(a, b, "the picture moved after the D-pad up");
