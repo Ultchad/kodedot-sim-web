@@ -35,6 +35,12 @@ uint32_t dbd_sd_sectors(void);
 int      dbd_sd_read(uint32_t first, uint32_t count, void *dst);        /* 0 ok, -1 refused */
 int      dbd_sd_write(uint32_t first, uint32_t count, const void *src);
 
+/* raw view of the internal flash for the `storage` partition (apps/apps_flash_web.c); the bytes are the FAT image as FatFs sees it.
+ * The volume must be unmounted (kdrv_fs_raw_begin does that). NOR semantics: a write can only clear bits, an erase sets 0xFF. */
+int      dbd_flash_raw_read(uint32_t off, void *dst, uint32_t len);           /* 0 ok, -1 out of range */
+int      dbd_flash_raw_write(uint32_t off, const void *src, uint32_t len);
+int      dbd_flash_raw_erase(uint32_t off, uint32_t len);
+
 /* page-visible card control (called from the page thread, any time) */
 int      dbsd_set_inserted(int inserted);
 int      dbsd_new_card(int capacity_mb, int format);    /* swaps in a new card: blank or FAT formatted */
