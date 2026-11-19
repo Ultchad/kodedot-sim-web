@@ -164,7 +164,7 @@ try {
     await openManager();
     const input = await page.$('[data-testid=file-input]');
     await input.uploadFile(extra);
-    const inst = await until(async () => (await appNames()).length === 14 && (await program())?.kind === 'app', 120000, 300);
+    const inst = await until(async () => (await appNames()).length === 15 && (await program())?.kind === 'app', 120000, 300);
     const names = await appNames();
     const now = await program();
     check('installing a .dotbench from the page: it appears in the list and opens', inst >= 0 && now?.name === names[names.length - 1], `${names.join('|')}; running ${JSON.stringify(now)}`);
