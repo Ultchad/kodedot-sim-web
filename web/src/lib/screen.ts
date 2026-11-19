@@ -17,6 +17,18 @@ export class ScreenPainter {
   fps = 0;
   /** Increments every time new pixels were painted. */
   version = 0;
+  private lastFrame: ImageData | null = null;
+  private overActive = false;
+  private overlay: ((ctx: CanvasRenderingContext2D, w: number, h: number) => boolean) | null = null;
+
+  /**
+   * Something the page draws on top of the Dot's picture (the hold-to-go-home bar). Called once per animation frame; it
+   * returns true when it drew, and is called once more after its last true so the picture is wiped. Because it lives in
+   * this canvas, the 2D view, the 3D device and the Workbench Dot all show it the same way.
+   */
+  setOverlay(draw: ((ctx: CanvasRenderingContext2D, w: number, h: number) => boolean) | null): void {
+    this.overlay = draw;
+  }
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -52,9 +64,18 @@ export class ScreenPainter {
     const dev = this.device;
     if (!dev) return;
     const f = dev.getFrame();
-    if (f.seq !== this.lastSeq) {
+    const changed = f.seq !== this.lastSeq;
+    if (changed) {
       this.lastSeq = f.seq;
-      this.ctx.putImageData(new ImageData(f.data as Uint8ClampedArray<ArrayBuffer>, f.width, f.height), 0, 0);
+      this.lastFrame = new ImageData(f.data as Uint8ClampedArray<ArrayBuffer>, f.width, f.height);
+    }
+    // The picture is laid down again when it changed or when a bar stands on it (a new bar is drawn over a clean one);
+    // the overlay says whether it drew, and a frame after its last bar wipes it.
+    const wasOver = this.overActive;
+    if (this.lastFrame && (changed || wasOver)) this.ctx.putImageData(this.lastFrame, 0, 0);
+    const drew = this.overlay && this.lastFrame ? this.overlay(this.ctx, SCREEN_WIDTH, SCREEN_HEIGHT) : false;
+    this.overActive = drew;
+    if (changed || drew || wasOver) {
       this.version++;
       this.frames++;
       for (const l of this.listeners) l();

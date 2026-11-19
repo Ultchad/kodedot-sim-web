@@ -20,6 +20,7 @@ import { customModel } from '../device3d/customModel';
 import { ModelController, classifyFile, isModelStore, type CustomModelState, type CustomModelStore } from '../lib/modelChoice';
 import type { MotionPose } from '../device/motion';
 import { loadPref, safeLocal, savePref } from '../lib/prefs';
+import { HomeHoldController } from '../lib/homeHold';
 import { ScreenPainter } from '../lib/screen';
 import { SensorBridge, vibrate } from '../lib/sensors';
 import { useObservable } from './hooks';
@@ -44,6 +45,7 @@ export interface Host {
   setUseMock(v: boolean): void;
   input: InputController;
   painter: ScreenPainter;
+  homeHold: HomeHoldController | null;
   bench: BenchStore;
   /** What the Dot did with each bench object. */
   live: LiveStore;
@@ -196,6 +198,24 @@ export function HostProvider({ children }: { children: ReactNode }) {
     },
     [input],
   );
+
+  // the bar that shows how far the hold to leave an app has got, drawn on the screen picture by the painter
+  const [homeHold, setHomeHold] = useState<HomeHoldController | null>(null);
+  useEffect(() => {
+    const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const c = new HomeHoldController({ input, device, reducedMotion: reduced });
+    c.setLabel(tRef.current('hold.home'));
+    painter.setOverlay((ctx, w, h) => c.draw(ctx, w, h));
+    void document.fonts?.load('600 16px "DM Sans"');
+    setHomeHold(c);
+    return () => {
+      painter.setOverlay(null);
+      c.dispose();
+    };
+  }, [input, device, painter]);
+  useEffect(() => {
+    homeHold?.setLabel(t('hold.home'));
+  }, [homeHold, t]);
 
   // the Dot and its apps -----------------------------------------------------
   // The Dot always boots kodeOS. Apps live inside it: the system layer installs, lists, opens and removes them, and
@@ -456,6 +476,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
       runtime,
       input,
       painter,
+      homeHold,
       model,
       applyPose,
       // lets the layout audit walk every theme and language on one page load
@@ -495,7 +516,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
         notify: (kind: Notice['kind'], key: TKey, vars?: Vars) => say(kind, key, vars),
       },
     };
-  }, [bench, live, runtime, input, painter, setLocale, say, model, select, bus, setMode]);
+  }, [bench, live, runtime, input, painter, homeHold, setLocale, say, model, select, bus, setMode]);
 
   // input: keyboard, visibility ---------------------------------------------
   useEffect(() => {
@@ -607,6 +628,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
     setUseMock,
     input,
     painter,
+    homeHold,
     bench,
     live,
     runtime,
