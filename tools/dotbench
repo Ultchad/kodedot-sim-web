@@ -176,6 +176,12 @@ def setup_role(a, build):
     return "kodeos", kos, rbuild
 
 
+# SDK files that read CONFIG_* without including sdkconfig.h (they rely on the ESP-IDF build handing it to them, which is what makes
+# them work on the board). The bench's build does not pass it, so without this the file silently sees every option off. Add a file
+# here only after checking that its CONFIG_ use is meant to see the build's configuration.
+SEES_SDKCONFIG = {"components/kdrv/compose/src/kdrv_compose_check.c"}
+
+
 def cmd_sdk(a):
     sdk, lvgl, emsdk, base_build = paths(a)
     T.activate_emsdk(emsdk)
@@ -199,7 +205,8 @@ def cmd_sdk(a):
         fl = flags_for(sdk, lvgl, build, comp)
         for f in S.apply_replaced(files, replaced):
             o = obj / "sdk" / (f.replace("/", "__") + ".o")
-            groups["sdk"].append((sdk / f, o, fl + (["-ffp-contract=off"] if f.endswith(K.NO_FP_CONTRACT) else [])))
+            groups["sdk"].append((sdk / f, o, fl + (["-ffp-contract=off"] if f.endswith(K.NO_FP_CONTRACT) else [])
+                                  + (["-include", "sdkconfig.h"] if f in SEES_SDKCONFIG else [])))
             n_real += 1
     fl = flags_for(sdk, lvgl, build, None)
     for f in S.lvgl_sources(lvgl, cfg):

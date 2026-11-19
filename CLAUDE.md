@@ -27,7 +27,7 @@ Owner: Murilo. Talk to him in Brazilian Portuguese, plainly, without em dashes. 
 
 ## Set-up on a fresh machine
 
-`tools/setup.sh` clones the pinned dependencies and installs Emscripten, then prints the environment variables to export. Pinned (all in `tools/pins.env`): kode-sdk `v0.1.2`, KodeOS `v0.1.2`, Kody Kart `4ee7732`, LVGL `v9.6.0`, Emscripten `7.0.0`; `.github/workflows/upstream-update.yml` moves the kode-sdk and KodeOS pins by itself when both publish a newer release (`docs/STATUS-upstream.md`). The SDK and KodeOS trees are read-only inputs: never modify them.
+`tools/setup.sh` clones the pinned dependencies and installs Emscripten, then prints the environment variables to export. Pinned (all in `tools/pins.env`): kode-sdk `v0.1.2`, KodeOS `v0.1.2`, Kody Kart `4ee7732`, KodeCity `f0b024d`, LVGL `v9.6.0`, Emscripten `7.0.0`; `.github/workflows/upstream-update.yml` moves the kode-sdk and KodeOS pins by itself when both publish a newer release (`docs/STATUS-upstream.md`). The SDK and KodeOS trees are read-only inputs: never modify them.
 
 ```
 tools/setup.sh                 # once

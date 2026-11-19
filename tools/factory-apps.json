@@ -7,6 +7,10 @@
       "source": "dep:kode-app-kody_kart"
     },
     {
+      "name": "kodecity",
+      "source": "dep:kode-app-kodecity"
+    },
+    {
       "name": "light",
       "source": "apps/light"
     },

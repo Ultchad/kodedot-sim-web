@@ -35,12 +35,37 @@ export interface AutoNote {
 }
 
 /** The id of the newest hand-written entry: change it to the day the update is published. */
-export const LATEST_NOTE_ID = '2026-11-18-b';
+export const LATEST_NOTE_ID = '2026-11-19';
 
 /** Hand-written entries, newest first. */
 export const NOTES: NewsEntry[] = [
   {
     id: LATEST_NOTE_ID,
+    title: {
+      en: 'KodeCity is on the Dot',
+      'pt-BR': 'KodeCity já vem no Dot',
+      es: 'KodeCity ya viene en el Dot',
+    },
+    points: {
+      en: [
+        'KodeCity, an open-world 3D city to drive and walk around, is now installed with the other apps.',
+        'Open it from the Apps menu and steer with the D-pad.',
+        'KodeCity is Kode\'s open-source game, built here from its public repository.',
+      ],
+      'pt-BR': [
+        'KodeCity, uma cidade 3D de mundo aberto para dirigir e andar, já vem instalada com os outros apps.',
+        'Abra pelo menu Apps e controle com o direcional.',
+        'KodeCity é o jogo de código aberto da Kode, compilado aqui a partir do repositório público.',
+      ],
+      es: [
+        'KodeCity, una ciudad 3D de mundo abierto para conducir y pasear, ya viene instalada con las demás apps.',
+        'Ábrela desde el menú Apps y muévete con la cruceta.',
+        'KodeCity es el juego de código abierto de Kode, compilado aquí desde su repositorio público.',
+      ],
+    },
+  },
+  {
+    id: '2026-11-18-b',
     title: {
       en: 'Export your project as a PDF',
       'pt-BR': 'Exporte seu projeto em PDF',

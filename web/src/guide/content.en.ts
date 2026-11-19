@@ -68,6 +68,7 @@ export const en = {
   'apps.lead': 'Each of these is built from its source code, unmodified, with this project\'s build tool. Open them from kodeOS or from **{t:nav.apps}**.',
   'apps.kodeos': 'The Dot\'s operating system: lock screen, app list, control centre and settings.',
   'apps.kody_kart': 'Kode\'s kart racing game.',
+  'apps.kodecity': 'Kode\'s open-world 3D city: drive, walk and take jobs across town.',
   'apps.light': 'Screen light, torch LED and SOS, with colour and brightness.',
   'apps.nfc_kit': 'Read a tag or a card, save it, and show a saved one to a reader.',
   'apps.rfid_kit': 'Read a 125 kHz card, save it, act as that card, write it to a T5577 tag.',

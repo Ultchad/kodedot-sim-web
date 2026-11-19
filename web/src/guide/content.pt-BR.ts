@@ -64,6 +64,7 @@ export const ptBR: GuideMessages = {
   'apps.lead': 'Cada um destes é compilado do próprio código-fonte, sem alteração, com a ferramenta de build deste projeto. Abra pelo kodeOS ou por **{t:nav.apps}**.',
   'apps.kodeos': 'O sistema do Dot: tela de bloqueio, lista de apps, central de controle e ajustes.',
   'apps.kody_kart': 'O jogo de corrida de kart da Kode.',
+  'apps.kodecity': 'A cidade 3D de mundo aberto da Kode: dirija, ande e faça trabalhos pela cidade.',
   'apps.light': 'Luz de tela, LED de lanterna e SOS, com cor e brilho.',
   'apps.nfc_kit': 'Lê uma tag ou um cartão, guarda, e apresenta um guardado para um leitor.',
   'apps.rfid_kit': 'Lê um cartão de 125 kHz, guarda, se passa por ele e grava numa tag T5577.',

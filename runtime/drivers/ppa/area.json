@@ -1,0 +1,11 @@
+{
+  "area": "ppa",
+  "description": "The ESP32-P4 pixel accelerator behind kdrv_compose: esp_cache_msync and driver/ppa.h (fill, scale/rotate, blend) done in software, so the SDK's own kdrv_compose.c, its checks, AO_Display's compose step and kscreen_pic_* run unmodified; turns CONFIG_KODE_COMPOSE on for apps",
+  "roles": ["app"],
+  "sdkconfig": {
+    "CONFIG_KODE_COMPOSE": "y",
+    "CONFIG_CACHE_L1_CACHE_LINE_SIZE": "64",
+    "CONFIG_CACHE_L2_CACHE_LINE_SIZE": "64"
+  },
+  "sources": ["*.c"]
+}

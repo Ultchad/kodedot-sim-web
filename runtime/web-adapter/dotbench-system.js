@@ -356,7 +356,11 @@ export class DotbenchSystem {
         for (let i = 0; i < 100; i++) {
           const fsApi = this.device.area("storage");
           if (gone() || !fsApi) return;
-          if (fsApi.mounted("storage")) { await this._syncAppdata(fsApi); return; }
+          if (fsApi.mounted("storage")) {
+            // The firmware can hold the volume for a good while (AppMgr copying an app to the card): the file API gives up after
+            // 200 tries with EBUSY. The sync only writes what differs, so it is simply run again a moment later.
+            try { await this._syncAppdata(fsApi); return; } catch (e) { if (e?.code !== "EBUSY") throw e; }
+          }
           await new Promise((r) => setTimeout(r, 100));
         }
       } catch (e) {

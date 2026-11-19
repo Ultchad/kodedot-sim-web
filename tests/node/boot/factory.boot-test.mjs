@@ -1,6 +1,6 @@
-// The factory set inside kodeOS (docs/STATUS-integration-2.md): a fresh device carries the thirteen apps of tools/factory-apps.json.
-//   1 first boot: all thirteen are in the list with their names and icons (screenshots of every page of the "All" list)
-//   2 each of the thirteen launches from the OS by touch, shows a first screen (not black), and returns to kodeOS with the bottom-button hold
+// The factory set inside kodeOS (docs/STATUS-integration-2.md): a fresh device carries the fourteen apps of tools/factory-apps.json.
+//   1 first boot: all fourteen are in the list with their names and icons (screenshots of every page of the "All" list)
+//   2 each of the fourteen launches from the OS by touch, shows a first screen (not black), and returns to kodeOS with the bottom-button hold
 //   3 saved data survives: a tag saved in nfc_kit is still there after going back to the OS and relaunching
 //   screenshots: BOOT_SHOTS=dir (default docs/boot-shots)
 import assert from "node:assert/strict";
@@ -14,15 +14,15 @@ const check = async (name, fn) => {
   try { await fn(); console.log("ok   - " + name); } catch (e) { failed = true; console.log("FAIL - " + name + "\n" + e.stack); }
 };
 
-const NAMES = { kody_kart: "Kody Kart", light: "Light", nfc_kit: "NFC", rfid_kit: "RFID", ir_kit: "IR Remote", wifi_kit: "Wi-Fi", ble_kit: "Bluetooth", gpio_kit: "GPIO",
+const NAMES = { kody_kart: "Kody Kart", kodecity: "KodeCity", light: "Light", nfc_kit: "NFC", rfid_kit: "RFID", ir_kit: "IR Remote", wifi_kit: "Wi-Fi", ble_kit: "Bluetooth", gpio_kit: "GPIO",
   level: "Level", files: "Files", sound: "Sound", display_lvgl: "Display", buttons_led: "Buttons + LED" };
-const HAS_ICON = ["kody_kart", "light", "nfc_kit", "rfid_kit", "ir_kit", "wifi_kit", "ble_kit", "gpio_kit", "level", "files", "sound"];
+const HAS_ICON = ["kody_kart", "kodecity", "light", "nfc_kit", "rfid_kit", "ir_kit", "wifi_kit", "ble_kit", "gpio_kit", "level", "files", "sound"];
 // Where each app is in kodeOS's "All" list after `swipes` upward swipes of the list. Rows snap two at a time: with no swipe the rows
 // are at y 125, 237, 350; after s swipes (s >= 1) rows 2s, 2s+1, 2s+2 are at y 140, 252, 364. -> [swipes, y]
 const spot = (i) => { if (i <= 2) return [0, 125 + 112 * i]; const s = Math.ceil((i - 2) / 2); return [s, 140 + 112 * (i - 2 * s)]; };
 const SPOT = Object.fromEntries(Object.keys(NAMES).map((n, i) => [n, spot(i)]));
 const PAGES = Math.max(...Object.values(SPOT).map((x) => x[0]));
-assert.deepEqual(FULL_FACTORY, Object.keys(NAMES), "the factory list is the thirteen apps in list order");
+assert.deepEqual(FULL_FACTORY, Object.keys(NAMES), "the factory list is the fourteen apps in list order");
 
 const dir = tmpDir();
 const sys = makeSystem(dir, { factory: fullFactoryJson });
@@ -74,13 +74,13 @@ async function holdHome() {
   return ms;
 }
 
-await check("first boot: the thirteen factory apps are listed by kodeOS with names, versions and icons", async () => {
+await check("first boot: the fourteen factory apps are listed by kodeOS with names, versions and icons", async () => {
   await sys.start();
   await firstBoot();
   const l = sys.list();
   assert.deepEqual(l.map((a) => a.project), FULL_FACTORY);
   assert.deepEqual(l.map((a) => a.name), FULL_FACTORY.map((n) => NAMES[n]));
-  assert.match(log(), /kdrv\.apps\s*apps region ready: 13 app\(s\)/);
+  assert.match(log(), /kdrv\.apps\s*apps region ready: 14 app\(s\)/);
   await sys.settled();
   const fsApi = sys.area("storage");
   for (const n of FULL_FACTORY) {
@@ -92,7 +92,7 @@ await check("first boot: the thirteen factory apps are listed by kodeOS with nam
   for (let p = 0; p <= PAGES; p++) { if (p) await swipeUp(); shot(sys, path.join(shots, `factory-list-${p}.png`)); }
 });
 
-await check("each of the thirteen launches from kodeOS by touch, shows its first screen, and returns with the bottom-button hold", async () => {
+await check("each of the fourteen launches from kodeOS by touch, shows its first screen, and returns with the bottom-button hold", async () => {
   for (const n of FULL_FACTORY) {
     await resetOs();
     await launchByTouch(n);
