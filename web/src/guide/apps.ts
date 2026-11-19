@@ -21,6 +21,7 @@ const kode = (repo: string) => ({ label: 'apps.src.kode' as const, url: `${KODE}
 export const BUNDLED_APPS: readonly BundledApp[] = [
   { id: 'kodeos', name: 'kodeOS', text: 'apps.kodeos', source: kode('KodeOS') },
   { id: 'kody_kart', name: 'Kody Kart', text: 'apps.kody_kart', source: kode('kode-app-kody_kart') },
+  { id: 'kodecity', name: 'KodeCity', text: 'apps.kodecity', source: kode('kode-app-kodecity') },
   { id: 'light', name: 'Light', text: 'apps.light', source: here('light') },
   { id: 'nfc_kit', name: 'NFC', text: 'apps.nfc_kit', source: here('nfc_kit') },
   { id: 'rfid_kit', name: 'RFID', text: 'apps.rfid_kit', source: here('rfid_kit') },

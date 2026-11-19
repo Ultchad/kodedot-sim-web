@@ -2,6 +2,7 @@
   "os": "kodeos",
   "factory": [
     "kody_kart",
+    "kodecity",
     "light",
     "nfc_kit",
     "rfid_kit",
