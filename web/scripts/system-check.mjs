@@ -182,7 +182,7 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__dotbench, { timeout: 30000 });
     const again = await kodeosUp();
-    await until(async () => (await appNames()).length === 14, 20000, 200);
+    await until(async () => (await appNames()).length === 15, 20000, 200);
     check('a reload keeps everything: kodeOS boots with the ten apps', again >= 0 && (await appNames()).join('|') === names.join('|'), (await appNames()).join('|'));
     check('the first-run hint stays gone', !(await page.$('[data-testid=welcome]')));
 
