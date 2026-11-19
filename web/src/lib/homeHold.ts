@@ -258,13 +258,13 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 /** The bar, centred on the screen picture (410 x 502): a dark rounded plate, the label, a track and the amber fill. */
 export function paintBar(ctx: CanvasRenderingContext2D, w: number, h: number, v: HoldView, label: string): void {
-  const pw = 260;
-  const ph = 66;
+  const pw = 312;
+  const ph = 88;
   const x = Math.round((w - pw) / 2);
   const y = Math.round((h - ph) / 2);
   ctx.save();
   ctx.globalAlpha = v.alpha;
-  roundRect(ctx, x, y, pw, ph, 24);
+  roundRect(ctx, x, y, pw, ph, 30);
   ctx.fillStyle = PANEL;
   ctx.fill();
   ctx.lineWidth = 1;
@@ -273,14 +273,14 @@ export function paintBar(ctx: CanvasRenderingContext2D, w: number, h: number, v:
   ctx.fillStyle = INK;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  let size = 16;
+  let size = 21;
   ctx.font = `600 ${size}px "DM Sans", system-ui, sans-serif`;
-  while (size > 11 && ctx.measureText(label).width > pw - 36) ctx.font = `600 ${--size}px "DM Sans", system-ui, sans-serif`;
-  ctx.fillText(label, w / 2, y + 29);
-  const bw = pw - 44;
-  const bh = 10;
-  const bx = x + 22;
-  const by = y + 40;
+  while (size > 11 && ctx.measureText(label).width > pw - 40) ctx.font = `600 ${--size}px "DM Sans", system-ui, sans-serif`;
+  ctx.fillText(label, w / 2, y + 38);
+  const bw = pw - 52;
+  const bh = 14;
+  const bx = x + 26;
+  const by = y + 54;
   roundRect(ctx, bx, by, bw, bh, bh / 2);
   ctx.fillStyle = TRACK;
   ctx.fill();
