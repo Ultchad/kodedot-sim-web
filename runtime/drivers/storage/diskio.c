@@ -82,3 +82,32 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buff)
     default: return RES_PARERR;
     }
 }
+
+/* The raw view: the `storage` partition as kdrv_apps.c (firmware sink for a whole FAT image) sees it. */
+int dbd_flash_raw_read(uint32_t off, void *dst, uint32_t len)
+{
+    if (!s_flash || off > DBV_FLASH_BYTES || len > DBV_FLASH_BYTES - off) return -1;
+    memcpy(dst, s_flash + off, len);
+    return 0;
+}
+
+int dbd_flash_raw_write(uint32_t off, const void *src, uint32_t len)
+{
+    if (!s_flash || off > DBV_FLASH_BYTES || len > DBV_FLASH_BYTES - off) return -1;
+    const uint8_t *in = src;
+    uint8_t tmp[256];
+    for (uint32_t done = 0; done < len;) {
+        uint32_t n = len - done < sizeof tmp ? len - done : (uint32_t)sizeof tmp;
+        for (uint32_t i = 0; i < n; i++) tmp[i] = (uint8_t)(s_flash[off + done + i] & in[done + i]);
+        dbp_write(r_flash, off + done, tmp, n);
+        done += n;
+    }
+    return 0;
+}
+
+int dbd_flash_raw_erase(uint32_t off, uint32_t len)
+{
+    if (!s_flash || off > DBV_FLASH_BYTES || len > DBV_FLASH_BYTES - off) return -1;
+    dbp_fill(r_flash, off, 0xFF, len);
+    return 0;
+}

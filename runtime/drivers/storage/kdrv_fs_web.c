@@ -6,7 +6,11 @@
 #include "kode_log.h"
 #include "dotbench_vfs.h"
 
+#include <stdatomic.h>
+
 #define TAG "kdrv.fs"
+
+static atomic_bool s_raw;   /* the partition is being written raw: nothing mounts it */
 
 const char *kdrv_fs_mount_point(void) { return dbv_mount_point(DBV_FLASH); }
 bool kdrv_fs_mounted(void) { return dbv_mounted(DBV_FLASH) != 0; }
@@ -14,6 +18,7 @@ bool kdrv_fs_mounted(void) { return dbv_mounted(DBV_FLASH) != 0; }
 const char *kdrv_fs_mount(void)
 {
     if (dbv_mounted(DBV_FLASH)) return dbv_mount_point(DBV_FLASH);
+    if (atomic_load(&s_raw)) return NULL;   /* a raw write owns the partition: a mount would format half an image */
     int formatted = 0;
     int r = dbv_mount(DBV_FLASH, 0, &formatted);
     if (r != 0) {
@@ -52,4 +57,28 @@ kode_status_t kdrv_fs_usage(uint64_t *total, uint64_t *free_bytes)
     if (total) *total = t;
     if (free_bytes) *free_bytes = f;
     return KODE_OK;
+}
+
+kode_status_t kdrv_fs_raw_begin(void)
+{
+    bool expect = false;
+    if (!atomic_compare_exchange_strong(&s_raw, &expect, true)) return KODE_DENIED;
+    if (dbv_mounted(DBV_FLASH)) {
+        dbv_unmount(DBV_FLASH);
+        KLOG_I(TAG, "storage unmounted for a raw write");
+    }
+    return KODE_OK;
+}
+
+kode_status_t kdrv_fs_raw_end(void)
+{
+    if (!atomic_load(&s_raw)) return KODE_DENIED;
+    atomic_store(&s_raw, false);
+    int formatted = 0;
+    if (dbv_mount(DBV_FLASH, 0, &formatted) == 0) {
+        KLOG_I(TAG, "storage mounted again after a raw write");
+        return KODE_OK;
+    }
+    KLOG_E(TAG, "'storage' does not mount after a raw write; left unmounted, not formatted");
+    return KODE_ERROR;
 }

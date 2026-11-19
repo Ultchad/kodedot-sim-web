@@ -12,6 +12,18 @@ extern "C" {
 typedef enum { ESP_PARTITION_TYPE_APP = 0x00, ESP_PARTITION_TYPE_DATA = 0x01, ESP_PARTITION_TYPE_ANY = 0xff } esp_partition_type_t;
 typedef int esp_partition_subtype_t;
 #define ESP_PARTITION_SUBTYPE_ANY 0xff
+/* ESP-IDF's data subtypes (esp_partition_subtype_t values) */
+#define ESP_PARTITION_SUBTYPE_DATA_OTA       0x00
+#define ESP_PARTITION_SUBTYPE_DATA_PHY       0x01
+#define ESP_PARTITION_SUBTYPE_DATA_NVS       0x02
+#define ESP_PARTITION_SUBTYPE_DATA_COREDUMP  0x03
+#define ESP_PARTITION_SUBTYPE_DATA_NVS_KEYS  0x04
+#define ESP_PARTITION_SUBTYPE_DATA_EFUSE_EM  0x05
+#define ESP_PARTITION_SUBTYPE_DATA_UNDEFINED 0x06
+#define ESP_PARTITION_SUBTYPE_DATA_ESPHTTPD  0x80
+#define ESP_PARTITION_SUBTYPE_DATA_FAT       0x81
+#define ESP_PARTITION_SUBTYPE_DATA_SPIFFS    0x82
+#define ESP_PARTITION_SUBTYPE_DATA_LITTLEFS  0x83
 typedef struct {
     esp_partition_type_t type;
     esp_partition_subtype_t subtype;

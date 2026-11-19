@@ -17,6 +17,7 @@
 #include "dotbench_persist.h"
 #include "esp_image_format.h"
 #include "esp_partition.h"
+#include "dotbench_vfs.h"
 
 #define APPS_SIZE     0x410000u
 #define PENDING_SIZE  0x100000u
@@ -36,10 +37,15 @@ __attribute__((constructor(115))) static void apps_flash_register(void)
 static const esp_partition_t PART_APPS = { ESP_PARTITION_TYPE_DATA, 0x40, 0xC40000u, APPS_SIZE, SECTOR, "apps", 0 };
 static const esp_partition_t PART_PEND = { ESP_PARTITION_TYPE_DATA, 0x41, 0x1A00000u, PENDING_SIZE, SECTOR, "app_pending", 0 };
 
+/* "storage": the internal FAT volume (partitions.csv: data, fat, 2 MB). Its bytes are the flash-fs region of the storage driver (the FAT
+ * image as FatFs sees it, no wear-levelling layer), reached through dbd_flash_raw_*; unlike the two above it holds the real bytes, not
+ * their complement. kdrv_apps.c writes a whole FAT image into it with kdrv_fs_raw_begin/end around (the web kdrv_fs_web.c). */
+static const esp_partition_t PART_STORAGE = { ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, 0x1800000u, DBV_FLASH_BYTES, SECTOR, "storage", 0 };
+
 const esp_partition_t *esp_partition_find_first(esp_partition_type_t type, esp_partition_subtype_t subtype, const char *label)
 {
-    const esp_partition_t *all[2] = { &PART_APPS, &PART_PEND };
-    for (int i = 0; i < 2; i++) {
+    const esp_partition_t *all[3] = { &PART_APPS, &PART_PEND, &PART_STORAGE };
+    for (int i = 0; i < 3; i++) {
         if (type != ESP_PARTITION_TYPE_ANY && type != all[i]->type) continue;
         if (subtype != ESP_PARTITION_SUBTYPE_ANY && subtype != all[i]->subtype) continue;
         if (label && strcmp(label, all[i]->label)) continue;
@@ -57,6 +63,7 @@ static uint8_t *buf_of(const esp_partition_t *p, dbp_region_t **r)
 
 esp_err_t esp_partition_read(const esp_partition_t *p, size_t off, void *dst, size_t len)
 {
+    if (p == &PART_STORAGE) return (dst && dbd_flash_raw_read((uint32_t)off, dst, (uint32_t)len) == 0) ? ESP_OK : ESP_ERR_INVALID_ARG;
     dbp_region_t *r; uint8_t *b = buf_of(p, &r);
     if (!b || !dst || off > p->size || len > p->size - off) return ESP_ERR_INVALID_ARG;
     uint8_t *d = dst;
@@ -68,6 +75,7 @@ esp_err_t esp_partition_read(const esp_partition_t *p, size_t off, void *dst, si
 
 esp_err_t esp_partition_write(const esp_partition_t *p, size_t off, const void *src, size_t len)
 {
+    if (p == &PART_STORAGE) return (src && dbd_flash_raw_write((uint32_t)off, src, (uint32_t)len) == 0) ? ESP_OK : ESP_ERR_INVALID_ARG;
     dbp_region_t *r; uint8_t *b = buf_of(p, &r);
     if (!b || !src || off > p->size || len > p->size - off) return ESP_ERR_INVALID_ARG;
     const uint8_t *s = src;
@@ -85,6 +93,7 @@ esp_err_t esp_partition_write(const esp_partition_t *p, size_t off, const void *
 
 esp_err_t esp_partition_erase_range(const esp_partition_t *p, size_t off, size_t len)
 {
+    if (p == &PART_STORAGE) return ((off % SECTOR) || (len % SECTOR) || dbd_flash_raw_erase((uint32_t)off, (uint32_t)len)) ? ESP_ERR_INVALID_ARG : ESP_OK;
     dbp_region_t *r; uint8_t *b = buf_of(p, &r);
     if (!b || (off % SECTOR) || (len % SECTOR) || off > p->size || len > p->size - off) return ESP_ERR_INVALID_ARG;
     pthread_mutex_lock(&g_mu);
@@ -98,6 +107,7 @@ esp_err_t esp_partition_mmap(const esp_partition_t *p, size_t off, size_t len, e
 {
     (void)mem;
     dbp_region_t *r; uint8_t *b = buf_of(p, &r);
+    if (p == &PART_STORAGE) b = (uint8_t *)1;   /* served by esp_partition_read below */
     if (!b || !out || !h || off > p->size || len > p->size - off) return ESP_ERR_INVALID_ARG;
     uint8_t *copy = malloc(len ? len : 1);
     if (!copy) return ESP_ERR_NO_MEM;
